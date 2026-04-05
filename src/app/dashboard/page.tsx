@@ -3,6 +3,10 @@ import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { AssetHeatmap } from "../../components/dashboard/AssetHeatmap";
 import { BiasGauge } from "../../components/dashboard/BiasGauge";
+import {
+  SignalBreakdown,
+  type SignalBreakdownScore,
+} from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
 import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
@@ -29,14 +33,16 @@ type ApiTickerChange = {
 };
 
 type ApiBiasSnapshot = {
-  componentScores: Array<{
+  componentScores: SignalBreakdownScore[];
+  createdAt: string;
+  detailedComponentScores?: Array<{
     contribution: number;
     key: string;
+    pillar?: SignalBreakdownScore["key"];
     signal: number;
     summary: string;
     weight: number;
   }>;
-  createdAt: string;
   label: string;
   score: number;
   tickerChanges: Partial<Record<BiasAsset["ticker"], ApiTickerChange>>;
@@ -224,8 +230,8 @@ export default async function DashboardPage() {
     <main
       className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans font-[family:var(--font-heading)] text-zinc-100`}
     >
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-        <header className="grid gap-4 border-b border-white/5 pb-4 lg:grid-cols-[minmax(0,1.45fr)_repeat(3,minmax(0,0.7fr))] lg:items-end">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
               [ Live Macro Regime Dashboard ]
@@ -238,8 +244,8 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3 lg:contents">
-            <div className="lg:border-l lg:border-white/5 lg:pl-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:min-w-0 md:flex-shrink-0 md:gap-6">
+            <div>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                 Date
               </p>
@@ -247,7 +253,7 @@ export default async function DashboardPage() {
                 {reportDate}
               </p>
             </div>
-            <div className="lg:border-l lg:border-white/5 lg:pl-5">
+            <div>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                 Snapshot
               </p>
@@ -255,7 +261,7 @@ export default async function DashboardPage() {
                 {signalLabel}
               </p>
             </div>
-            <div className="lg:border-l lg:border-white/5 lg:pl-5">
+            <div>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                 Breadth
               </p>
@@ -275,18 +281,18 @@ export default async function DashboardPage() {
           </section>
         ) : null}
 
-        <section className="grid gap-6 py-5 lg:grid-cols-3 lg:gap-8">
-          <div className="space-y-6 lg:col-span-2">
+        <section className="grid grid-cols-1 gap-8 py-5 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-8">
             <BiasGauge biasScore={biasData.biasScore} />
 
-            <div className="border-t border-white/5 pt-5">
-              <PaywallWrapper>
-                <AssetHeatmap assets={biasData.assets} />
-              </PaywallWrapper>
-            </div>
+            <SignalBreakdown componentScores={snapshot?.componentScores ?? []} />
+
+            <PaywallWrapper>
+              <AssetHeatmap assets={biasData.assets} />
+            </PaywallWrapper>
           </div>
 
-          <aside className="space-y-5 border-t border-white/5 pt-5 lg:border-l lg:border-t-0 lg:border-white/5 lg:pl-6 lg:pt-0">
+          <aside className="space-y-5 border-t border-white/5 pt-5 lg:col-span-4 lg:border-l lg:border-t-0 lg:border-white/5 lg:pl-6 lg:pt-0">
             <div>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
                 Storm Fronts
@@ -300,35 +306,41 @@ export default async function DashboardPage() {
             </div>
 
             <div className="border-t border-white/10">
-              <div className="grid grid-cols-[92px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 py-3">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Strongest
-                </p>
-                <p className="text-sm font-medium text-white">
-                  {strongestAsset?.ticker ?? "--"}
-                </p>
+              <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    Strongest
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-white">
+                    {strongestAsset?.ticker ?? "--"}
+                  </p>
+                </div>
                 <p className={`font-[family:var(--font-data)] text-sm ${strongestMoveTone}`}>
                   {formatMove(strongestAsset?.dailyChangePercent ?? null)}
                 </p>
               </div>
 
-              <div className="grid grid-cols-[92px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 py-3">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Weakest
-                </p>
-                <p className="text-sm font-medium text-white">
-                  {weakestAsset?.ticker ?? "--"}
-                </p>
+              <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    Weakest
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-white">
+                    {weakestAsset?.ticker ?? "--"}
+                  </p>
+                </div>
                 <p className={`font-[family:var(--font-data)] text-sm ${weakestMoveTone}`}>
                   {formatMove(weakestAsset?.dailyChangePercent ?? null)}
                 </p>
               </div>
 
-              <div className="grid grid-cols-[92px_minmax(0,1fr)_auto] items-center gap-3 py-3">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  View
-                </p>
-                <p className="text-sm font-medium text-white">Heatmap preview</p>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    View
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-white">Heatmap preview</p>
+                </div>
                 <p className="font-[family:var(--font-data)] text-sm text-zinc-300">Below</p>
               </div>
             </div>

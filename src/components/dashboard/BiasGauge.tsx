@@ -4,9 +4,6 @@ interface BiasGaugeProps {
 
 const MIN_SCORE = -100;
 const MAX_SCORE = 100;
-const ZERO_MARK_POSITION = 50;
-const NEGATIVE_THRESHOLD_POSITION = 35;
-const POSITIVE_THRESHOLD_POSITION = 65;
 
 function clampBiasScore(biasScore: number): number {
   return Math.max(MIN_SCORE, Math.min(MAX_SCORE, biasScore));
@@ -68,61 +65,51 @@ export function BiasGauge({ biasScore }: BiasGaugeProps) {
   const indicatorPosition = getScalePosition(normalizedScore);
 
   return (
-    <section className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-[164px_minmax(0,1fr)] lg:items-end">
+    <section className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
             Bias Gauge
           </p>
-          <div className="mt-3 flex items-end gap-3">
-            <p className={`font-[family:var(--font-data)] text-6xl font-semibold leading-none ${tone.score}`}>
+          <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+            <p className={`font-[family:var(--font-data)] text-5xl font-semibold leading-none sm:text-6xl ${tone.score}`}>
               {formatScore(normalizedScore)}
             </p>
-            <span className={`pb-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.label}`}>
+            <span className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.label}`}>
               {regime}
             </span>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <p className="text-sm leading-6 text-zinc-400">{tone.summary}</p>
+        <p className="max-w-md text-sm leading-6 text-zinc-400">{tone.summary}</p>
+      </div>
 
-          <div className="relative pt-4">
-            <div className="relative h-1.5 overflow-hidden rounded-full bg-zinc-800">
-              <div className="grid h-full grid-cols-3">
-                <div className="bg-rose-500/85" />
-                <div className="bg-zinc-500" />
-                <div className="bg-emerald-500/85" />
-              </div>
-
-              <div
-                className="absolute inset-y-0 w-px bg-black/70"
-                style={{ left: `${ZERO_MARK_POSITION}%` }}
-              />
-              <div
-                className="absolute inset-y-0 w-px bg-black/35"
-                style={{ left: `${NEGATIVE_THRESHOLD_POSITION}%` }}
-              />
-              <div
-                className="absolute inset-y-0 w-px bg-black/35"
-                style={{ left: `${POSITIVE_THRESHOLD_POSITION}%` }}
-              />
-            </div>
-
-            <div
-              className="pointer-events-none absolute -top-1 flex -translate-x-1/2 flex-col items-center"
-              style={{ left: `${indicatorPosition}%` }}
-            >
-              <div className="h-0 w-0 border-x-[5px] border-x-transparent border-b-[7px] border-b-white" />
-              <div className="h-7 w-px bg-white" />
-            </div>
+      <div className="space-y-2">
+        <div className="relative w-full pt-3">
+          <div
+            className="relative h-1.5 w-full overflow-hidden rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, #f43f5e 0%, #71717a 50%, #22c55e 100%)",
+            }}
+          >
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-black/60" />
           </div>
 
-          <div className="flex items-center justify-between font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-            <span>-100</span>
-            <span>0</span>
-            <span>+100</span>
+          <div
+            className="pointer-events-none absolute -top-1 h-8 -translate-x-1/2"
+            style={{ left: `${indicatorPosition}%` }}
+          >
+            <div className="relative h-full w-px bg-white">
+              <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-white bg-zinc-950" />
+            </div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+          <span>-100</span>
+          <span>0</span>
+          <span>+100</span>
         </div>
       </div>
     </section>

@@ -42,9 +42,11 @@ export async function PaywallWrapper({
         {children}
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-6 backdrop-blur-[2px]">
-        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/92 p-8 text-left shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+        <div aria-hidden="true" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
+
+        <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/92 p-8 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white">
             <LockIcon />
           </div>
 
