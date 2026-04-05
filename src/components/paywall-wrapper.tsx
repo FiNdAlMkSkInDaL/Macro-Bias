@@ -38,32 +38,31 @@ export async function PaywallWrapper({
 
   return (
     <div className="relative isolate overflow-hidden">
-      <div aria-hidden="true" className="pointer-events-none select-none blur-md">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none select-none opacity-70 blur-[10px] saturate-[0.82]"
+      >
         {children}
       </div>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-        <div aria-hidden="true" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 flex items-center justify-center p-3 text-center sm:p-4 lg:p-6">
+        <div aria-hidden="true" className="absolute inset-0 bg-black/38 backdrop-blur-[1px]" />
 
-        <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/92 p-8 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white">
+        <div className="relative w-full max-w-[22rem] rounded-2xl border border-white/10 bg-zinc-950/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.52)] backdrop-blur-xl sm:max-w-sm sm:p-6 lg:max-w-md lg:p-8">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white sm:h-14 sm:w-14">
             <LockIcon />
           </div>
 
-          <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-            Premium unlock
-          </p>
-
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            Upgrade to Pro for $19/mo
+          <h2 className="mt-5 text-2xl font-bold tracking-tighter text-white sm:mt-6">
+            Unlock the Historical Playbook
           </h2>
 
-          <p className="mt-3 text-sm leading-7 text-zinc-300">
-            Unlock the proprietary Quant Breakdown, the historical analog table, and the live Cross-Asset Heatmap to see which prior sessions today's tape most closely resembles and where the next move usually lands.
+          <p className="mt-3 text-sm text-zinc-400">
+            Analyze exactly how the S&P 500 reacted the last 5 times this regime appeared.
           </p>
 
           <a
-            className="mt-8 inline-flex items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 sm:mt-8"
             href={checkoutHref}
           >
             Upgrade to Pro

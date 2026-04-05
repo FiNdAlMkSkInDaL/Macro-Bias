@@ -107,14 +107,14 @@ function formatBiasLabel(label: string | undefined): string {
 
 function getForecastCopy(regime: "Risk-On" | "Neutral" | "Risk-Off"): string {
   if (regime === "Risk-On") {
-    return "Cyclical leadership is expanding, and defensive hedges are losing relative momentum.";
+    return "Execution Context: Positive regime. Favor continuation setups and reduce defensive exposure.";
   }
 
   if (regime === "Risk-Off") {
-    return "Traders are leaning into protection as growth-sensitive assets lose sponsorship.";
+    return "Execution Context: Defensive regime. Reduce gross exposure and tighten entry selection.";
   }
 
-  return "Signal quality is mixed, so conviction remains tactical instead of directional.";
+  return "Execution Context: Low-conviction regime. Prioritize tactical position sizing over directional swings.";
 }
 
 function formatMove(value: number | null): string {
@@ -302,13 +302,13 @@ export default async function DashboardPage() {
         <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Live Macro Regime Dashboard ]
+              [ Regime Data Terminal ]
             </p>
             <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
               Daily Macro Bias
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              Pre-market regime context served directly from the latest live snapshot.
+              Institutional-grade macro risk scoring. Updated daily at 08:30 EST.
             </p>
           </div>
 
@@ -368,8 +368,8 @@ export default async function DashboardPage() {
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
                     {historicalAnalogs
-                      ? `The analog library found ${historicalAnalogs.candidateCount.toLocaleString()} usable matches across ${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions. Pro unlocks the next-24h SPY, QQQ, and TLT follow-through hidden underneath.`
-                      : "The analog library is still building its eligible session stack. As soon as enough aligned history is available, this layer will start surfacing the closest prior tapes and the locked forward response."}
+                      ? `Pattern matching identified ${historicalAnalogs.candidateCount.toLocaleString()} mathematical analogs. Upgrade to unlock forward return expectancy and historical win rates.`
+                      : "Pattern library unavailable. Additional aligned history is required before forward return expectancy and win rates can be computed."}
                   </p>
                 </div>
 
@@ -418,14 +418,14 @@ export default async function DashboardPage() {
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                    Pro Desk View
+                    Locked Workspace
                   </p>
                   <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                    Quant Breakdown + Historical Analogs + Cross-Asset Heatmap
+                    Historical Playbook + Setup Map
                   </h2>
                 </div>
                 <p className="max-w-md text-sm leading-6 text-zinc-500">
-                  The free layer shows the composite read and analog teaser. The gated layer reveals the exact model drivers, the full analog table, and the setup map underneath it.
+                  Historical analogs, signal drivers, and cross-asset confirmation live behind the lock.
                 </p>
               </div>
 
@@ -622,10 +622,10 @@ export default async function DashboardPage() {
 
             <div className="border-t border-white/10 pt-4">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Signal note
+                Model Integrity
               </p>
               <p className="mt-3 text-sm leading-6 text-zinc-400">
-                The bias scale, storm-front summary, and the analog teaser stay free. The methodology breakdown, full analog table, and cross-asset map begin exactly at the gated boundary below.
+                Model Integrity: This score is derived via K-Nearest Neighbors (KNN) analysis across 730 days of intermarket data. No discretionary bias is applied to the output.
               </p>
             </div>
           </aside>
