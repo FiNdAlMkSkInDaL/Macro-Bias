@@ -77,7 +77,9 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusRes
     throw new Error(`Failed to read subscription status: ${error.message}`);
   }
 
-  const isPro = await getIsPro(user.id);
+  const subscriptionStatus = (data?.subscription_status ?? 'inactive') as SubscriptionStatus;
+  const profileIsPro = await getIsPro(user.id);
+  const isPro = profileIsPro || isSubscriptionActive(subscriptionStatus);
 
   return {
     isPro,
@@ -85,6 +87,6 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusRes
       email: user.email,
       id: user.id,
     },
-    subscriptionStatus: (data?.subscription_status ?? 'inactive') as SubscriptionStatus,
+    subscriptionStatus,
   };
 }

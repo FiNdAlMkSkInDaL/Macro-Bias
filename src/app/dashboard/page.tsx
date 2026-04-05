@@ -8,7 +8,7 @@ import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
-import { getUserSubscriptionStatus } from "../../lib/billing/subscription";
+import { getUserSubscriptionStatus, isSubscriptionActive } from "../../lib/billing/subscription";
 import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
 
@@ -369,8 +369,8 @@ export default async function DashboardPage() {
   ]);
   const landingPageUrl = new URL("/#auth-console", baseUrl).toString();
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
-  const isProUser = subscriptionStatus === "active";
-  const shouldRenderManageSubscription = isPro === true;
+  const isProUser = isSubscriptionActive(subscriptionStatus);
+  const shouldRenderManageSubscription = isPro;
   const regime = getBiasRegime(biasData.biasScore);
   const sortedAssets = [...biasData.assets].sort(
     (leftAsset, rightAsset) => leftAsset.dailyChangePercent - rightAsset.dailyChangePercent,
@@ -460,7 +460,18 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <ShareEdgeButton copyText={shareCopy} />
+            <div className="flex flex-col gap-2 md:items-end">
+              <ShareEdgeButton copyText={shareCopy} />
+
+              {shouldRenderManageSubscription ? (
+                <a
+                  className="text-xs text-zinc-500 hover:text-white underline underline-offset-4"
+                  href="/api/stripe/portal"
+                >
+                  Manage Subscription
+                </a>
+              ) : null}
+            </div>
           </div>
         </header>
 
@@ -753,61 +764,71 @@ export default async function DashboardPage() {
                   </h3>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                      Aligned Sessions
-                    </p>
-                    <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                <div className="mt-4">
+                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                        Aligned Sessions
+                      </p>
+                    </div>
+                    <p className="font-[family:var(--font-data)] text-lg text-white">
                       {historicalAnalogs
                         ? historicalAnalogs.alignedSessionCount.toLocaleString()
                         : "--"}
                     </p>
-                  </article>
+                  </div>
 
-                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                      Usable Matches
-                    </p>
-                    <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                        Usable Matches
+                      </p>
+                    </div>
+                    <p className="font-[family:var(--font-data)] text-lg text-white">
                       {historicalAnalogs
                         ? historicalAnalogs.candidateCount.toLocaleString()
                         : "--"}
                     </p>
-                  </article>
+                  </div>
 
-                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                      Avg Overnight Gap
-                    </p>
+                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                        Avg Overnight Gap
+                      </p>
+                    </div>
                     <p
-                      className={`mt-3 text-2xl font-semibold tracking-tight ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}`}
+                      className={`font-[family:var(--font-data)] text-lg ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}`}
                     >
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}
                     </p>
-                  </article>
+                  </div>
 
-                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                      Avg Intraday Net
-                    </p>
+                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                        Avg Intraday Net
+                      </p>
+                    </div>
                     <p
-                      className={`mt-3 text-2xl font-semibold tracking-tight ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}`}
+                      className={`font-[family:var(--font-data)] text-lg ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}`}
                     >
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}
                     </p>
-                  </article>
+                  </div>
 
-                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                      Avg Session Range
-                    </p>
+                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3 last:border-b-0">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                        Avg Session Range
+                      </p>
+                    </div>
                     <p
-                      className={`mt-3 text-2xl font-semibold tracking-tight ${getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}`}
+                      className={`font-[family:var(--font-data)] text-lg ${getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}`}
                     >
                       {formatUnsignedPercent(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}
                     </p>
-                  </article>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -826,16 +847,13 @@ export default async function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-0">
                   {proSignalPillars.map((pillar) => {
                     const score = signalScoreByKey.get(pillar.key);
                     const disposition = getSignalDisposition(score?.signal);
 
                     return (
-                      <article
-                        className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                        key={pillar.key}
-                      >
+                      <article className="border-b border-zinc-900 py-3 last:border-b-0" key={pillar.key}>
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
@@ -850,7 +868,7 @@ export default async function DashboardPage() {
                             >
                               {disposition.label}
                             </p>
-                            <p className="mt-2 font-[family:var(--font-data)] text-base font-semibold text-white">
+                            <p className="mt-2 font-[family:var(--font-data)] text-base text-white">
                               {formatContribution(score?.contribution)}
                             </p>
                             <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
@@ -862,17 +880,6 @@ export default async function DashboardPage() {
                     );
                   })}
                 </div>
-              </div>
-            ) : null}
-
-            {shouldRenderManageSubscription ? (
-              <div className="border-t border-white/10 pt-4">
-                <a
-                  className="font-[family:var(--font-data)] text-sm text-zinc-400 transition-colors hover:text-white"
-                  href="/api/stripe/portal"
-                >
-                  Manage Subscription
-                </a>
               </div>
             ) : null}
           </aside>
