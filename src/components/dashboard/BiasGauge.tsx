@@ -29,9 +29,9 @@ function getBiasRegime(biasScore: number): "Risk-On" | "Neutral" | "Risk-Off" {
 function getGaugeTone(biasScore: number) {
   if (biasScore > 30) {
     return {
-      badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+      badge: "text-emerald-400",
       accent: "#22c55e",
-      score: "text-emerald-300",
+      score: "text-emerald-400",
       summary:
         "Cross-asset participation is favoring growth and broad risk appetite.",
     };
@@ -39,18 +39,18 @@ function getGaugeTone(biasScore: number) {
 
   if (biasScore < -30) {
     return {
-      badge: "border-rose-500/30 bg-rose-500/10 text-rose-200",
+      badge: "text-rose-400",
       accent: "#f43f5e",
-      score: "text-rose-300",
+      score: "text-rose-400",
       summary:
         "Defensive leadership is taking over as traders rotate away from cyclicals.",
     };
   }
 
   return {
-    badge: "border-slate-600 bg-slate-800/80 text-slate-200",
-    accent: "#94a3b8",
-    score: "text-slate-200",
+    badge: "text-zinc-300",
+    accent: "#a1a1aa",
+    score: "text-white",
     summary:
       "The tape is mixed, with no clean macro confirmation from the core rotation basket.",
   };
@@ -94,32 +94,30 @@ export function BiasGauge({ biasScore }: BiasGaugeProps) {
   const needlePoint = polarToCartesian(scoreToAngle(normalizedScore), RADIUS - 24);
 
   return (
-    <section className="rounded-[28px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm sm:p-7">
+    <section className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
+          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
             Bias Gauge
           </p>
-          <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+          <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             Macro pressure reading
           </h2>
         </div>
-        <span
-          className={`inline-flex items-center rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.28em] ${tone.badge}`}
-        >
+        <span className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.badge}`}>
           {regime}
         </span>
       </div>
 
-      <div className="mt-8">
+      <div>
         <svg
           viewBox="0 0 240 145"
-          className="w-full"
+          className="w-full max-w-2xl"
           role="img"
           aria-label={`Macro bias gauge showing a ${formatScore(normalizedScore)} reading`}
         >
           <path d={describeArc(-100, -30, RADIUS)} fill="none" stroke="#f43f5e" strokeWidth="14" strokeLinecap="round" />
-          <path d={describeArc(-30, 30, RADIUS)} fill="none" stroke="#94a3b8" strokeWidth="14" strokeLinecap="round" />
+          <path d={describeArc(-30, 30, RADIUS)} fill="none" stroke="#71717a" strokeWidth="14" strokeLinecap="round" />
           <path d={describeArc(30, 100, RADIUS)} fill="none" stroke="#22c55e" strokeWidth="14" strokeLinecap="round" />
 
           {scaleMarks.map((mark) => {
@@ -134,13 +132,13 @@ export function BiasGauge({ biasScore }: BiasGaugeProps) {
                   y1={innerTick.y}
                   x2={outerTick.x}
                   y2={outerTick.y}
-                  stroke="#475569"
+                  stroke="#3f3f46"
                   strokeWidth="2"
                 />
                 <text
                   x={labelPoint.x}
                   y={labelPoint.y}
-                  fill="#94a3b8"
+                  fill="#71717a"
                   fontSize="10"
                   textAnchor={mark === -100 ? "start" : mark === 100 ? "end" : "middle"}
                 >
@@ -159,21 +157,21 @@ export function BiasGauge({ biasScore }: BiasGaugeProps) {
             strokeWidth="5"
             strokeLinecap="round"
           />
-          <circle cx={CENTER_X} cy={CENTER_Y} r="10" fill="#0f172a" stroke={tone.accent} strokeWidth="4" />
+          <circle cx={CENTER_X} cy={CENTER_Y} r="10" fill="#09090b" stroke={tone.accent} strokeWidth="4" />
           <circle cx={CENTER_X} cy={CENTER_Y} r="4" fill={tone.accent} />
         </svg>
       </div>
 
-      <div className="mt-4 flex flex-col gap-4 border-t border-slate-800 pt-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="grid gap-8 border-t border-white/10 pt-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-end">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
+          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
             Bias Score
           </p>
-          <p className={`mt-2 font-mono text-5xl font-semibold ${tone.score}`}>
+          <p className={`mt-3 font-[family:var(--font-data)] text-5xl font-semibold ${tone.score}`}>
             {formatScore(normalizedScore)}
           </p>
         </div>
-        <p className="max-w-md text-sm leading-6 text-slate-300">
+        <p className="max-w-xl text-base leading-7 text-zinc-300">
           {tone.summary}
         </p>
       </div>

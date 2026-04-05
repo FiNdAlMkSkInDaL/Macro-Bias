@@ -214,96 +214,102 @@ export default async function DashboardPage() {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.12),_transparent_24%),radial-gradient(circle_at_85%_15%,_rgba(148,163,184,0.1),_transparent_18%),linear-gradient(180deg,_#020617_0%,_#0f172a_55%,_#020617_100%)] px-4 py-10 font-sans font-[family:var(--font-heading)] text-slate-100 sm:px-6 lg:px-8`}
+      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans font-[family:var(--font-heading)] text-zinc-100`}
     >
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-[32px] border border-slate-800/80 bg-slate-950/75 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-sm sm:p-8">
-          <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <span className="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 font-mono font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-sky-200">
-                Live Macro Weather Report
-              </span>
-              <h1 className="mt-5 text-4xl font-semibold text-white sm:text-5xl">
-                Daily Macro Bias dashboard for fast, pre-market context.
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                The score card now reads directly from the latest live snapshot served by the /api/bias/latest route.
-              </p>
-            </div>
+      <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:px-10 lg:py-16">
+        <section className="py-8 lg:py-12">
+          <div className="max-w-5xl">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              [ Live Macro Regime Dashboard ]
+            </p>
+            <h1 className="mt-6 max-w-5xl text-balance text-5xl font-bold tracking-tighter text-white md:text-7xl">
+              Daily Macro Bias. Built for the open.
+            </h1>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300 md:text-xl">
+              A live regime read for pre-market decision-making, driven directly by the
+              latest snapshot served through the bias API.
+            </p>
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
-              <article className="rounded-[24px] border border-slate-800 bg-slate-900/75 p-4">
-                <p className="font-mono font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  Report Date
-                </p>
-                <p className="mt-3 text-lg font-semibold text-white">{reportDate}</p>
-              </article>
-              <article className="rounded-[24px] border border-slate-800 bg-slate-900/75 p-4">
-                <p className="font-mono font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  Snapshot
-                </p>
-                <p className="mt-3 text-lg font-semibold text-white">{signalLabel}</p>
-              </article>
-              <article className="rounded-[24px] border border-slate-800 bg-slate-900/75 p-4">
-                <p className="font-mono font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  Breadth
-                </p>
-                <p className="mt-3 text-lg font-semibold text-white">{breadthSummary}</p>
-              </article>
+          <div className="mt-16 grid gap-10 border-t border-white/5 pt-8 sm:grid-cols-3 lg:max-w-4xl">
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Report Date
+              </p>
+              <p className="mt-3 text-lg font-semibold text-white md:text-xl">{reportDate}</p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Snapshot
+              </p>
+              <p className="mt-3 text-lg font-semibold text-white md:text-xl">{signalLabel}</p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Breadth
+              </p>
+              <p className="mt-3 text-lg font-semibold text-white md:text-xl">{breadthSummary}</p>
             </div>
           </div>
         </section>
 
         {errorMessage ? (
-          <section className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-            {errorMessage}
+          <section className="border-t border-amber-400/15 py-6">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-amber-200/80">
+              Latest sync issue
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-amber-100">{errorMessage}</p>
           </section>
         ) : null}
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
+        <section className="grid gap-16 border-t border-white/5 py-20 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.86fr)] xl:items-start">
           <BiasGauge biasScore={biasData.biasScore} />
 
-          <aside className="rounded-[28px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm sm:p-7">
-            <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
+          <aside className="xl:border-l xl:border-white/5 xl:pl-10">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
               Storm Fronts
             </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               {regime} backdrop
             </h2>
-            <p className="mt-4 text-sm leading-6 text-slate-300">
+            <p className="mt-5 max-w-md text-base leading-7 text-zinc-300">
               {errorMessage ?? getForecastCopy(regime)}
             </p>
 
-            <div className="mt-8 space-y-4">
-              <article className="rounded-[24px] border border-emerald-500/25 bg-emerald-500/10 p-4">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-emerald-200/75">
+            <div className="mt-12 space-y-8">
+              <article className="border-t border-white/10 pt-4">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Strongest tailwind
                 </p>
                 <div className="mt-4 flex items-end justify-between gap-4">
-                  <p className="text-3xl font-semibold text-white">{strongestAsset?.ticker ?? "--"}</p>
-                  <p className="font-mono text-lg text-emerald-200">
+                  <p className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                    {strongestAsset?.ticker ?? "--"}
+                  </p>
+                  <p className="font-[family:var(--font-data)] text-lg text-emerald-400">
                     {formatMove(strongestAsset?.dailyChangePercent ?? null)}
                   </p>
                 </div>
               </article>
 
-              <article className="rounded-[24px] border border-rose-500/25 bg-rose-500/10 p-4">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-rose-200/75">
+              <article className="border-t border-white/10 pt-4">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Weakest pocket
                 </p>
                 <div className="mt-4 flex items-end justify-between gap-4">
-                  <p className="text-3xl font-semibold text-white">{weakestAsset?.ticker ?? "--"}</p>
-                  <p className="font-mono text-lg text-rose-200">
+                  <p className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                    {weakestAsset?.ticker ?? "--"}
+                  </p>
+                  <p className="font-[family:var(--font-data)] text-lg text-rose-400">
                     {formatMove(weakestAsset?.dailyChangePercent ?? null)}
                   </p>
                 </div>
               </article>
 
-              <article className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-4">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
+              <article className="border-t border-white/10 pt-4">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Signal note
                 </p>
-                <p className="mt-4 text-sm leading-6 text-slate-300">
+                <p className="mt-4 max-w-md text-sm leading-7 text-zinc-400">
                   BiasGauge stays fully exposed, while the premium cross-asset heatmap below is gated behind the subscription paywall.
                 </p>
               </article>
@@ -311,9 +317,11 @@ export default async function DashboardPage() {
           </aside>
         </section>
 
-        <PaywallWrapper>
-          <AssetHeatmap assets={biasData.assets} />
-        </PaywallWrapper>
+        <section className="border-t border-white/5 py-20">
+          <PaywallWrapper>
+            <AssetHeatmap assets={biasData.assets} />
+          </PaywallWrapper>
+        </section>
       </div>
     </main>
   );

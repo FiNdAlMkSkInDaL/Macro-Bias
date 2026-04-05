@@ -37,27 +37,31 @@ export async function PaywallWrapper({
   }
 
   return (
-    <div className="relative isolate overflow-hidden rounded-3xl">
+    <div className="relative isolate overflow-hidden">
       <div aria-hidden="true" className="pointer-events-none select-none blur-md">
         {children}
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center bg-slate-950/15 p-6">
-        <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white/90 p-6 text-center shadow-2xl backdrop-blur">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white">
+      <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-6 backdrop-blur-[2px]">
+        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/92 p-8 text-left shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white">
             <LockIcon />
           </div>
 
-          <h2 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
+          <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+            Premium unlock
+          </p>
+
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
             Upgrade to Pro for $19/mo
           </h2>
 
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-7 text-zinc-300">
             Unlock the full Macro Bias workspace once your subscription is active.
           </p>
 
           <a
-            className="mt-6 inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+            className="mt-8 inline-flex items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
             href={checkoutHref}
           >
             Upgrade to Pro

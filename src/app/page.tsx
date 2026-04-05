@@ -240,7 +240,7 @@ export default function HomePage() {
       }
 
       setStatusMessage(
-        "Account created. Check your email to confirm access, then you will be returned to your dashboard automatically.",
+        "Account created. Check your email to verify your account, and the confirmation link will sign you in and send you straight to the dashboard.",
       );
     } catch (error) {
       setErrorMessage(
