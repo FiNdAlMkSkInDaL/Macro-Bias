@@ -211,116 +211,137 @@ export default async function DashboardPage() {
     biasData.assets.length > 0
       ? `${advancingAssets}/${biasData.assets.length} advancing`
       : "Waiting for market data";
+  const strongestMoveTone =
+    strongestAsset && strongestAsset.dailyChangePercent > 0
+      ? "text-emerald-400"
+      : "text-zinc-300";
+  const weakestMoveTone =
+    weakestAsset && weakestAsset.dailyChangePercent < 0
+      ? "text-rose-400"
+      : "text-zinc-300";
 
   return (
     <main
       className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans font-[family:var(--font-heading)] text-zinc-100`}
     >
-      <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:px-10 lg:py-16">
-        <section className="py-8 lg:py-12">
-          <div className="max-w-5xl">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+        <header className="grid gap-4 border-b border-white/5 pb-4 lg:grid-cols-[minmax(0,1.45fr)_repeat(3,minmax(0,0.7fr))] lg:items-end">
+          <div className="min-w-0">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
               [ Live Macro Regime Dashboard ]
             </p>
-            <h1 className="mt-6 max-w-5xl text-balance text-5xl font-bold tracking-tighter text-white md:text-7xl">
-              Daily Macro Bias. Built for the open.
+            <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
+              Daily Macro Bias
             </h1>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300 md:text-xl">
-              A live regime read for pre-market decision-making, driven directly by the
-              latest snapshot served through the bias API.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+              Pre-market regime context served directly from the latest live snapshot.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-10 border-t border-white/5 pt-8 sm:grid-cols-3 lg:max-w-4xl">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-3 lg:contents">
+            <div className="lg:border-l lg:border-white/5 lg:pl-5">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Report Date
+                Date
               </p>
-              <p className="mt-3 text-lg font-semibold text-white md:text-xl">{reportDate}</p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {reportDate}
+              </p>
             </div>
-            <div>
+            <div className="lg:border-l lg:border-white/5 lg:pl-5">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                 Snapshot
               </p>
-              <p className="mt-3 text-lg font-semibold text-white md:text-xl">{signalLabel}</p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {signalLabel}
+              </p>
             </div>
-            <div>
+            <div className="lg:border-l lg:border-white/5 lg:pl-5">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                 Breadth
               </p>
-              <p className="mt-3 text-lg font-semibold text-white md:text-xl">{breadthSummary}</p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {breadthSummary}
+              </p>
             </div>
           </div>
-        </section>
+        </header>
 
         {errorMessage ? (
-          <section className="border-t border-amber-400/15 py-6">
+          <section className="border-b border-amber-400/15 py-3">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-amber-200/80">
               Latest sync issue
             </p>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-amber-100">{errorMessage}</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-100">{errorMessage}</p>
           </section>
         ) : null}
 
-        <section className="grid gap-16 border-t border-white/5 py-20 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.86fr)] xl:items-start">
-          <BiasGauge biasScore={biasData.biasScore} />
+        <section className="grid gap-6 py-5 lg:grid-cols-3 lg:gap-8">
+          <div className="space-y-6 lg:col-span-2">
+            <BiasGauge biasScore={biasData.biasScore} />
 
-          <aside className="xl:border-l xl:border-white/5 xl:pl-10">
-            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              Storm Fronts
-            </p>
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              {regime} backdrop
-            </h2>
-            <p className="mt-5 max-w-md text-base leading-7 text-zinc-300">
-              {errorMessage ?? getForecastCopy(regime)}
-            </p>
+            <div className="border-t border-white/5 pt-5">
+              <PaywallWrapper>
+                <AssetHeatmap assets={biasData.assets} />
+              </PaywallWrapper>
+            </div>
+          </div>
 
-            <div className="mt-12 space-y-8">
-              <article className="border-t border-white/10 pt-4">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Strongest tailwind
-                </p>
-                <div className="mt-4 flex items-end justify-between gap-4">
-                  <p className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                    {strongestAsset?.ticker ?? "--"}
-                  </p>
-                  <p className="font-[family:var(--font-data)] text-lg text-emerald-400">
-                    {formatMove(strongestAsset?.dailyChangePercent ?? null)}
-                  </p>
-                </div>
-              </article>
+          <aside className="space-y-5 border-t border-white/5 pt-5 lg:border-l lg:border-t-0 lg:border-white/5 lg:pl-6 lg:pt-0">
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                Storm Fronts
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                {regime} backdrop
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">
+                {errorMessage ?? getForecastCopy(regime)}
+              </p>
+            </div>
 
-              <article className="border-t border-white/10 pt-4">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Weakest pocket
+            <div className="border-t border-white/10">
+              <div className="grid grid-cols-[92px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 py-3">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  Strongest
                 </p>
-                <div className="mt-4 flex items-end justify-between gap-4">
-                  <p className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                    {weakestAsset?.ticker ?? "--"}
-                  </p>
-                  <p className="font-[family:var(--font-data)] text-lg text-rose-400">
-                    {formatMove(weakestAsset?.dailyChangePercent ?? null)}
-                  </p>
-                </div>
-              </article>
+                <p className="text-sm font-medium text-white">
+                  {strongestAsset?.ticker ?? "--"}
+                </p>
+                <p className={`font-[family:var(--font-data)] text-sm ${strongestMoveTone}`}>
+                  {formatMove(strongestAsset?.dailyChangePercent ?? null)}
+                </p>
+              </div>
 
-              <article className="border-t border-white/10 pt-4">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Signal note
+              <div className="grid grid-cols-[92px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 py-3">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  Weakest
                 </p>
-                <p className="mt-4 max-w-md text-sm leading-7 text-zinc-400">
-                  BiasGauge stays fully exposed, while the premium cross-asset heatmap below is gated behind the subscription paywall.
+                <p className="text-sm font-medium text-white">
+                  {weakestAsset?.ticker ?? "--"}
                 </p>
-              </article>
+                <p className={`font-[family:var(--font-data)] text-sm ${weakestMoveTone}`}>
+                  {formatMove(weakestAsset?.dailyChangePercent ?? null)}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-[92px_minmax(0,1fr)_auto] items-center gap-3 py-3">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  View
+                </p>
+                <p className="text-sm font-medium text-white">Heatmap preview</p>
+                <p className="font-[family:var(--font-data)] text-sm text-zinc-300">Below</p>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Signal note
+              </p>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">
+                The bias scale stays fully visible, and the gated heatmap preview now sits immediately underneath the main read instead of below a large visual break.
+              </p>
             </div>
           </aside>
-        </section>
-
-        <section className="border-t border-white/5 py-20">
-          <PaywallWrapper>
-            <AssetHeatmap assets={biasData.assets} />
-          </PaywallWrapper>
         </section>
       </div>
     </main>

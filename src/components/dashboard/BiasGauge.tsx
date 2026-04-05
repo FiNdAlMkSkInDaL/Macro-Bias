@@ -4,11 +4,9 @@ interface BiasGaugeProps {
 
 const MIN_SCORE = -100;
 const MAX_SCORE = 100;
-const CENTER_X = 120;
-const CENTER_Y = 120;
-const RADIUS = 88;
-
-const scaleMarks = [-100, -30, 0, 30, 100] as const;
+const ZERO_MARK_POSITION = 50;
+const NEGATIVE_THRESHOLD_POSITION = 35;
+const POSITIVE_THRESHOLD_POSITION = 65;
 
 function clampBiasScore(biasScore: number): number {
   return Math.max(MIN_SCORE, Math.min(MAX_SCORE, biasScore));
@@ -29,8 +27,7 @@ function getBiasRegime(biasScore: number): "Risk-On" | "Neutral" | "Risk-Off" {
 function getGaugeTone(biasScore: number) {
   if (biasScore > 30) {
     return {
-      badge: "text-emerald-400",
-      accent: "#22c55e",
+      label: "text-emerald-400",
       score: "text-emerald-400",
       summary:
         "Cross-asset participation is favoring growth and broad risk appetite.",
@@ -39,8 +36,7 @@ function getGaugeTone(biasScore: number) {
 
   if (biasScore < -30) {
     return {
-      badge: "text-rose-400",
-      accent: "#f43f5e",
+      label: "text-rose-400",
       score: "text-rose-400",
       summary:
         "Defensive leadership is taking over as traders rotate away from cyclicals.",
@@ -48,33 +44,15 @@ function getGaugeTone(biasScore: number) {
   }
 
   return {
-    badge: "text-zinc-300",
-    accent: "#a1a1aa",
+    label: "text-zinc-300",
     score: "text-white",
     summary:
       "The tape is mixed, with no clean macro confirmation from the core rotation basket.",
   };
 }
 
-function scoreToAngle(biasScore: number): number {
-  const normalizedScore = (clampBiasScore(biasScore) - MIN_SCORE) / (MAX_SCORE - MIN_SCORE);
-  return 180 - normalizedScore * 180;
-}
-
-function polarToCartesian(angle: number, radius: number) {
-  const radians = (angle * Math.PI) / 180;
-
-  return {
-    x: CENTER_X + radius * Math.cos(radians),
-    y: CENTER_Y - radius * Math.sin(radians),
-  };
-}
-
-function describeArc(startScore: number, endScore: number, radius: number): string {
-  const start = polarToCartesian(scoreToAngle(startScore), radius);
-  const end = polarToCartesian(scoreToAngle(endScore), radius);
-
-  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 0 1 ${end.x} ${end.y}`;
+function getScalePosition(biasScore: number): number {
+  return ((clampBiasScore(biasScore) - MIN_SCORE) / (MAX_SCORE - MIN_SCORE)) * 100;
 }
 
 function formatScore(biasScore: number): string {
@@ -83,97 +61,69 @@ function formatScore(biasScore: number): string {
   return `${roundedScore > 0 ? "+" : ""}${roundedScore}`;
 }
 
-function formatMark(mark: number): string {
-  return `${mark > 0 ? "+" : ""}${mark}`;
-}
-
 export function BiasGauge({ biasScore }: BiasGaugeProps) {
   const normalizedScore = clampBiasScore(biasScore);
   const regime = getBiasRegime(normalizedScore);
   const tone = getGaugeTone(normalizedScore);
-  const needlePoint = polarToCartesian(scoreToAngle(normalizedScore), RADIUS - 24);
+  const indicatorPosition = getScalePosition(normalizedScore);
 
   return (
-    <section className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <section className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-[164px_minmax(0,1fr)] lg:items-end">
         <div>
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
             Bias Gauge
           </p>
-          <h2 className="mt-5 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Macro pressure reading
-          </h2>
+          <div className="mt-3 flex items-end gap-3">
+            <p className={`font-[family:var(--font-data)] text-6xl font-semibold leading-none ${tone.score}`}>
+              {formatScore(normalizedScore)}
+            </p>
+            <span className={`pb-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.label}`}>
+              {regime}
+            </span>
+          </div>
         </div>
-        <span className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.badge}`}>
-          {regime}
-        </span>
-      </div>
 
-      <div>
-        <svg
-          viewBox="0 0 240 145"
-          className="w-full max-w-2xl"
-          role="img"
-          aria-label={`Macro bias gauge showing a ${formatScore(normalizedScore)} reading`}
-        >
-          <path d={describeArc(-100, -30, RADIUS)} fill="none" stroke="#f43f5e" strokeWidth="14" strokeLinecap="round" />
-          <path d={describeArc(-30, 30, RADIUS)} fill="none" stroke="#71717a" strokeWidth="14" strokeLinecap="round" />
-          <path d={describeArc(30, 100, RADIUS)} fill="none" stroke="#22c55e" strokeWidth="14" strokeLinecap="round" />
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-zinc-400">{tone.summary}</p>
 
-          {scaleMarks.map((mark) => {
-            const outerTick = polarToCartesian(scoreToAngle(mark), RADIUS + 10);
-            const innerTick = polarToCartesian(scoreToAngle(mark), RADIUS - 4);
-            const labelPoint = polarToCartesian(scoreToAngle(mark), RADIUS + 26);
+          <div className="relative pt-4">
+            <div className="relative h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="grid h-full grid-cols-3">
+                <div className="bg-rose-500/85" />
+                <div className="bg-zinc-500" />
+                <div className="bg-emerald-500/85" />
+              </div>
 
-            return (
-              <g key={mark}>
-                <line
-                  x1={innerTick.x}
-                  y1={innerTick.y}
-                  x2={outerTick.x}
-                  y2={outerTick.y}
-                  stroke="#3f3f46"
-                  strokeWidth="2"
-                />
-                <text
-                  x={labelPoint.x}
-                  y={labelPoint.y}
-                  fill="#71717a"
-                  fontSize="10"
-                  textAnchor={mark === -100 ? "start" : mark === 100 ? "end" : "middle"}
-                >
-                  {formatMark(mark)}
-                </text>
-              </g>
-            );
-          })}
+              <div
+                className="absolute inset-y-0 w-px bg-black/70"
+                style={{ left: `${ZERO_MARK_POSITION}%` }}
+              />
+              <div
+                className="absolute inset-y-0 w-px bg-black/35"
+                style={{ left: `${NEGATIVE_THRESHOLD_POSITION}%` }}
+              />
+              <div
+                className="absolute inset-y-0 w-px bg-black/35"
+                style={{ left: `${POSITIVE_THRESHOLD_POSITION}%` }}
+              />
+            </div>
 
-          <line
-            x1={CENTER_X}
-            y1={CENTER_Y}
-            x2={needlePoint.x}
-            y2={needlePoint.y}
-            stroke={tone.accent}
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-          <circle cx={CENTER_X} cy={CENTER_Y} r="10" fill="#09090b" stroke={tone.accent} strokeWidth="4" />
-          <circle cx={CENTER_X} cy={CENTER_Y} r="4" fill={tone.accent} />
-        </svg>
-      </div>
+            <div
+              className="pointer-events-none absolute -top-1 flex -translate-x-1/2 flex-col items-center"
+              style={{ left: `${indicatorPosition}%` }}
+            >
+              <div className="h-0 w-0 border-x-[5px] border-x-transparent border-b-[7px] border-b-white" />
+              <div className="h-7 w-px bg-white" />
+            </div>
+          </div>
 
-      <div className="grid gap-8 border-t border-white/10 pt-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-end">
-        <div>
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-            Bias Score
-          </p>
-          <p className={`mt-3 font-[family:var(--font-data)] text-5xl font-semibold ${tone.score}`}>
-            {formatScore(normalizedScore)}
-          </p>
+          <div className="flex items-center justify-between font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+            <span>-100</span>
+            <span>0</span>
+            <span>+100</span>
+          </div>
         </div>
-        <p className="max-w-xl text-base leading-7 text-zinc-300">
-          {tone.summary}
-        </p>
       </div>
     </section>
   );
