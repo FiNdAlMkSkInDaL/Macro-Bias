@@ -251,40 +251,65 @@ export default function HomePage() {
         </section>
 
         <section className="rounded-[32px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-sm sm:p-8">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
+          <div className="flex flex-col gap-6 sm:gap-7">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-sm">
+                <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
+                  Access Console
+                </p>
+                <h2 className="mt-4 text-[1.95rem] font-semibold leading-tight text-white sm:text-[2.15rem]">
+                  Authenticate to continue
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  Use your Macro Bias account to continue into the protected dashboard.
+                </p>
+              </div>
+
+              <div className="w-full sm:max-w-[340px]">
+                <div className="grid w-full grid-cols-2 rounded-2xl border border-slate-700/90 bg-slate-900/90 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <button
+                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                      authMode === "signin"
+                        ? "bg-slate-50 text-slate-950 shadow-[0_10px_30px_rgba(255,255,255,0.08)]"
+                        : "text-slate-400 hover:text-slate-100"
+                    }`}
+                    onClick={() => {
+                      setAuthMode("signin");
+                      setErrorMessage(null);
+                      setStatusMessage(null);
+                    }}
+                    type="button"
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                      authMode === "signup"
+                        ? "bg-slate-50 text-slate-950 shadow-[0_10px_30px_rgba(255,255,255,0.08)]"
+                        : "text-slate-400 hover:text-slate-100"
+                    }`}
+                    onClick={() => {
+                      setAuthMode("signup");
+                      setErrorMessage(null);
+                      setStatusMessage(null);
+                    }}
+                    type="button"
+                  >
+                    Create account
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-800/80 bg-slate-900/55 px-4 py-3.5 text-sm leading-6 text-slate-300">
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
                 Access Console
               </p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">Authenticate to continue</h2>
-            </div>
-            <div className="rounded-full border border-slate-700 bg-slate-900/80 p-1 text-sm text-slate-300">
-              <button
-                className={`rounded-full px-4 py-2 transition ${
-                  authMode === "signin" ? "bg-white text-slate-950" : "text-slate-300"
-                }`}
-                onClick={() => {
-                  setAuthMode("signin");
-                  setErrorMessage(null);
-                  setStatusMessage(null);
-                }}
-                type="button"
-              >
-                Sign in
-              </button>
-              <button
-                className={`rounded-full px-4 py-2 transition ${
-                  authMode === "signup" ? "bg-white text-slate-950" : "text-slate-300"
-                }`}
-                onClick={() => {
-                  setAuthMode("signup");
-                  setErrorMessage(null);
-                  setStatusMessage(null);
-                }}
-                type="button"
-              >
-                Create account
-              </button>
+              <p className="mt-2 text-slate-300">
+                {authMode === "signin"
+                  ? "Enter your credentials to restore your session and return to the live dashboard."
+                  : "Create a new account to unlock the protected Macro Bias workspace and preserved redirect flow."}
+              </p>
             </div>
           </div>
 
@@ -305,14 +330,14 @@ export default function HomePage() {
             </div>
           ) : null}
 
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-400" htmlFor="email">
+          <form className="mt-9 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-3">
+              <label className="block font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/90" htmlFor="email">
                 Email
               </label>
               <input
                 autoComplete="email"
-                className="mt-2 w-full rounded-[20px] border border-slate-700 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/60"
+                className="w-full rounded-[20px] border border-slate-600/90 bg-slate-900/85 px-4 py-3.5 text-base text-white outline-none transition duration-200 placeholder:text-slate-500 focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/50"
                 id="email"
                 onChange={(event) => updateField("email", event.target.value)}
                 placeholder="you@macro-bias.com"
@@ -322,13 +347,13 @@ export default function HomePage() {
               />
             </div>
 
-            <div>
-              <label className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-400" htmlFor="password">
+            <div className="space-y-3">
+              <label className="block font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/90" htmlFor="password">
                 Password
               </label>
               <input
                 autoComplete={authMode === "signin" ? "current-password" : "new-password"}
-                className="mt-2 w-full rounded-[20px] border border-slate-700 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/60"
+                className="w-full rounded-[20px] border border-slate-600/90 bg-slate-900/85 px-4 py-3.5 text-base text-white outline-none transition duration-200 placeholder:text-slate-500 focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/50"
                 id="password"
                 minLength={8}
                 onChange={(event) => updateField("password", event.target.value)}
@@ -339,7 +364,7 @@ export default function HomePage() {
               />
             </div>
 
-            <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-4 text-sm leading-6 text-slate-300">
+            <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
               <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">Redirect after auth</p>
               <p className="mt-3 font-mono text-slate-100">{redirectPath}</p>
               <p className="mt-3 text-slate-400">
@@ -362,7 +387,7 @@ export default function HomePage() {
             ) : null}
 
             <button
-              className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-300"
               disabled={isSubmitting || isRedirecting || !supabase}
               type="submit"
             >
