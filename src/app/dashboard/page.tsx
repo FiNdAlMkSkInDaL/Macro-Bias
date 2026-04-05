@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { AssetHeatmap } from "../../components/dashboard/AssetHeatmap";
 import { BiasGauge } from "../../components/dashboard/BiasGauge";
+import { ShareEdgeButton } from "../../components/dashboard/ShareEdgeButton";
 import {
   SignalBreakdown,
   type SignalBreakdownScore,
@@ -43,6 +44,26 @@ type ApiBiasSnapshot = {
     summary: string;
     weight: number;
   }>;
+  historicalAnalogs?: {
+    alignedSessionCount: number;
+    candidateCount: number;
+    clusterAverageNextSessionReturns: {
+      QQQ: number | null;
+      SPY: number | null;
+      TLT: number | null;
+    };
+    featureTickers: string[];
+    topMatches: Array<{
+      matchConfidence: number;
+      nextSessionDate: string;
+      nextSessionReturns: {
+        QQQ: number | null;
+        SPY: number | null;
+        TLT: number | null;
+      };
+      tradeDate: string;
+    }>;
+  } | null;
   label: string;
   score: number;
   tickerChanges: Partial<Record<BiasAsset["ticker"], ApiTickerChange>>;
@@ -116,6 +137,34 @@ function formatTradeDate(tradeDate?: string) {
   }).format(new Date(`${tradeDate}T12:00:00Z`));
 }
 
+function formatAnalogDate(tradeDate?: string) {
+  if (!tradeDate) {
+    return "Pending";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${tradeDate}T12:00:00Z`));
+}
+
+function getMoveTone(value: number | null): string {
+  if (value === null) {
+    return "text-zinc-500";
+  }
+
+  if (value > 0) {
+    return "text-emerald-400";
+  }
+
+  if (value < 0) {
+    return "text-rose-400";
+  }
+
+  return "text-zinc-300";
+}
+
 async function getRequestBaseUrl() {
   const headerStore = await headers();
   const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
@@ -130,14 +179,14 @@ async function getRequestBaseUrl() {
   return getAppUrl();
 }
 
-async function getDashboardData(): Promise<DashboardDataResult> {
+async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
   const emptyBiasData: BiasData = {
     biasScore: 0,
     assets: [],
   };
 
   try {
-    const response = await fetch(`${await getRequestBaseUrl()}/api/bias/latest`, {
+    const response = await fetch(`${baseUrl}/api/bias/latest`, {
       cache: "no-store",
       headers: {
         Accept: "application/json",
@@ -201,7 +250,8 @@ async function getDashboardData(): Promise<DashboardDataResult> {
 }
 
 export default async function DashboardPage() {
-  const { biasData, errorMessage, snapshot } = await getDashboardData();
+  const baseUrl = await getRequestBaseUrl();
+  const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
   const regime = getBiasRegime(biasData.biasScore);
   const sortedAssets = [...biasData.assets].sort(
     (leftAsset, rightAsset) => leftAsset.dailyChangePercent - rightAsset.dailyChangePercent,
@@ -225,6 +275,23 @@ export default async function DashboardPage() {
     weakestAsset && weakestAsset.dailyChangePercent < 0
       ? "text-rose-400"
       : "text-zinc-300";
+  const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
+  const topAnalogMatches = historicalAnalogs?.topMatches ?? [];
+  const analogSummaryCopy = historicalAnalogs
+    ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
+    : "historical analog engine warming up";
+  const shareCopy = [
+    `Macro Bias | ${reportDate}`,
+    `${signalLabel} (${biasData.biasScore > 0 ? "+" : ""}${biasData.biasScore})`,
+    breadthSummary,
+    strongestAsset
+      ? `Leader ${strongestAsset.ticker} ${formatMove(strongestAsset.dailyChangePercent ?? null)}`
+      : null,
+    analogSummaryCopy,
+    `See today's edge: ${baseUrl}`,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" | ");
 
   return (
     <main
@@ -244,31 +311,35 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:min-w-0 md:flex-shrink-0 md:gap-6">
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Date
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                {reportDate}
-              </p>
+          <div className="flex flex-col gap-4 md:min-w-0 md:flex-shrink-0 md:items-end">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6">
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Date
+                </p>
+                <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                  {reportDate}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Snapshot
+                </p>
+                <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                  {signalLabel}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Breadth
+                </p>
+                <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                  {breadthSummary}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Snapshot
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                {signalLabel}
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Breadth
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                {breadthSummary}
-              </p>
-            </div>
+
+            <ShareEdgeButton copyText={shareCopy} />
           </div>
         </header>
 
@@ -285,11 +356,214 @@ export default async function DashboardPage() {
           <div className="space-y-6 lg:col-span-8">
             <BiasGauge biasScore={biasData.biasScore} />
 
-            <SignalBreakdown componentScores={snapshot?.componentScores ?? []} />
+            <section className="border-t border-white/5 pt-5">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] lg:items-end">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                    Historical Analog Engine
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                    Closest historical tape
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                    {historicalAnalogs
+                      ? `The analog library found ${historicalAnalogs.candidateCount.toLocaleString()} usable matches across ${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions. Pro unlocks the next-24h SPY, QQQ, and TLT follow-through hidden underneath.`
+                      : "The analog library is still building its eligible session stack. As soon as enough aligned history is available, this layer will start surfacing the closest prior tapes and the locked forward response."}
+                  </p>
+                </div>
 
-            <PaywallWrapper>
-              <AssetHeatmap assets={biasData.assets} />
-            </PaywallWrapper>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="border-t border-white/10 pt-3">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                      Matching sessions
+                    </p>
+                    <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                      {historicalAnalogs
+                        ? historicalAnalogs.candidateCount.toLocaleString()
+                        : "--"}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-white/10 pt-3">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                      Nearest cluster
+                    </p>
+                    <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                      {topAnalogMatches.length > 0 ? `${topAnalogMatches.length} sessions` : "--"}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-white/10 pt-3 sm:col-span-1 col-span-2">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                      Next 24h edge
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
+                        SPY •••
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
+                        QQQ •••
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
+                        TLT •••
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-white/5 pt-5">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                    Pro Desk View
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                    Quant Breakdown + Historical Analogs + Cross-Asset Heatmap
+                  </h2>
+                </div>
+                <p className="max-w-md text-sm leading-6 text-zinc-500">
+                  The free layer shows the composite read and analog teaser. The gated layer reveals the exact model drivers, the full analog table, and the setup map underneath it.
+                </p>
+              </div>
+
+              <PaywallWrapper>
+                <div className="space-y-6">
+                  <section>
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                          Historical Analogs
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                          Top 5 matched sessions
+                        </h3>
+                      </div>
+                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
+                        {historicalAnalogs
+                          ? `Ranked against ${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions using the live cross-asset fingerprint from ${historicalAnalogs.featureTickers.join(", ")}.`
+                          : "No analog cluster is available yet. This table will populate as soon as enough aligned daily history is present in the model universe."}
+                      </p>
+                    </div>
+
+                    {historicalAnalogs ? (
+                      <>
+                        <div className="grid gap-3 border-y border-white/5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <div>
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              Aligned sessions
+                            </p>
+                            <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                              {historicalAnalogs.alignedSessionCount.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              Usable matches
+                            </p>
+                            <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                              {historicalAnalogs.candidateCount.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              Cluster avg SPY
+                            </p>
+                            <p
+                              className={`mt-2 text-base font-semibold tracking-tight ${getMoveTone(historicalAnalogs.clusterAverageNextSessionReturns.SPY)}`}
+                            >
+                              {formatMove(historicalAnalogs.clusterAverageNextSessionReturns.SPY)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              Cluster avg QQQ / TLT
+                            </p>
+                            <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                              <span className={getMoveTone(historicalAnalogs.clusterAverageNextSessionReturns.QQQ)}>
+                                {formatMove(historicalAnalogs.clusterAverageNextSessionReturns.QQQ)}
+                              </span>
+                              <span className="mx-2 text-zinc-600">/</span>
+                              <span className={getMoveTone(historicalAnalogs.clusterAverageNextSessionReturns.TLT)}>
+                                {formatMove(historicalAnalogs.clusterAverageNextSessionReturns.TLT)}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="overflow-hidden border-b border-white/5">
+                          <table className="min-w-full border-collapse text-left">
+                            <thead>
+                              <tr className="border-b border-white/5">
+                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  Matched date
+                                </th>
+                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  Match confidence
+                                </th>
+                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  SPY +24h
+                                </th>
+                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  QQQ +24h
+                                </th>
+                                <th className="py-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  TLT +24h
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {topAnalogMatches.map((match) => (
+                                <tr className="border-b border-white/5 last:border-b-0" key={match.tradeDate}>
+                                  <td className="py-4 pr-4 align-top">
+                                    <p className="text-sm font-medium text-white">
+                                      {formatAnalogDate(match.tradeDate)}
+                                    </p>
+                                    <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+                                      Next session {formatAnalogDate(match.nextSessionDate)}
+                                    </p>
+                                  </td>
+                                  <td className="py-4 pr-4 align-top">
+                                    <p className="text-sm font-medium text-white">
+                                      {match.matchConfidence}%
+                                    </p>
+                                  </td>
+                                  <td
+                                    className={`py-4 pr-4 align-top font-[family:var(--font-data)] text-sm ${getMoveTone(match.nextSessionReturns.SPY)}`}
+                                  >
+                                    {formatMove(match.nextSessionReturns.SPY)}
+                                  </td>
+                                  <td
+                                    className={`py-4 pr-4 align-top font-[family:var(--font-data)] text-sm ${getMoveTone(match.nextSessionReturns.QQQ)}`}
+                                  >
+                                    {formatMove(match.nextSessionReturns.QQQ)}
+                                  </td>
+                                  <td
+                                    className={`py-4 align-top font-[family:var(--font-data)] text-sm ${getMoveTone(match.nextSessionReturns.TLT)}`}
+                                  >
+                                    {formatMove(match.nextSessionReturns.TLT)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="border-y border-white/5 py-4">
+                        <p className="max-w-2xl text-sm leading-6 text-zinc-500">
+                          The analog engine has not yet produced a complete forward-return cluster for this snapshot. Once the session library is fully aligned, the top five matched dates and their next-24h SPY, QQQ, and TLT behavior will appear here automatically.
+                        </p>
+                      </div>
+                    )}
+                  </section>
+
+                  <SignalBreakdown componentScores={snapshot?.componentScores ?? []} />
+                  <AssetHeatmap assets={biasData.assets} />
+                </div>
+              </PaywallWrapper>
+            </section>
           </div>
 
           <aside className="space-y-5 border-t border-white/5 pt-5 lg:col-span-4 lg:border-l lg:border-t-0 lg:border-white/5 lg:pl-6 lg:pt-0">
@@ -350,7 +624,7 @@ export default async function DashboardPage() {
                 Signal note
               </p>
               <p className="mt-3 text-sm leading-6 text-zinc-400">
-                The bias scale stays fully visible, and the gated heatmap preview now sits immediately underneath the main read instead of below a large visual break.
+                The bias scale, storm-front summary, and the analog teaser stay free. The methodology breakdown, full analog table, and cross-asset map begin exactly at the gated boundary below.
               </p>
             </div>
           </aside>

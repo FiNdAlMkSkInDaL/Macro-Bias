@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { deriveHistoricalAnalogs } from "../../../../lib/market-data/derive-historical-analogs";
 import { getLatestBiasSnapshot } from "../../../../lib/market-data/get-latest-bias-snapshot";
 import { BIAS_PILLAR_WEIGHTS } from "../../../../lib/macro-bias/constants";
 import type { BiasComponentResult, BiasPillarKey } from "../../../../lib/macro-bias/types";
@@ -30,6 +31,11 @@ type FrontendTickerChange = {
 };
 
 type PillarBreakdown = {
+  analogDates?: string[];
+  averageForward1DayReturn?: number;
+  averageForward3DayReturn?: number;
+  bearishHitRate1Day?: number;
+  bearishHitRate3Day?: number;
   contribution: number;
   key: BiasPillarKey;
   label: string;
@@ -68,6 +74,10 @@ function isBiasComponentResult(value: unknown): value is BiasComponentResult {
   );
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
 function roundTo(value: number, decimals = 2) {
   return Number(value.toFixed(decimals));
 }
@@ -80,7 +90,15 @@ function buildPillarBreakdown(componentScores: unknown): PillarBreakdown[] {
   const components = componentScores.filter(isBiasComponentResult);
   const aggregatedScores = new Map<
     BiasPillarKey,
-    { contribution: number; weight: number }
+    {
+      analogDates?: string[];
+      averageForward1DayReturn?: number;
+      averageForward3DayReturn?: number;
+      bearishHitRate1Day?: number;
+      bearishHitRate3Day?: number;
+      contribution: number;
+      weight: number;
+    }
   >(
     PILLAR_ORDER.map((pillar) => [
       pillar,
@@ -103,12 +121,49 @@ function buildPillarBreakdown(componentScores: unknown): PillarBreakdown[] {
     }
 
     pillarTotals.contribution += component.contribution;
+
+    if (!pillarTotals.analogDates && isStringArray(component.analogDates)) {
+      pillarTotals.analogDates = component.analogDates;
+    }
+
+    if (
+      pillarTotals.averageForward1DayReturn == null &&
+      typeof component.averageForward1DayReturn === "number"
+    ) {
+      pillarTotals.averageForward1DayReturn = component.averageForward1DayReturn;
+    }
+
+    if (
+      pillarTotals.averageForward3DayReturn == null &&
+      typeof component.averageForward3DayReturn === "number"
+    ) {
+      pillarTotals.averageForward3DayReturn = component.averageForward3DayReturn;
+    }
+
+    if (
+      pillarTotals.bearishHitRate1Day == null &&
+      typeof component.bearishHitRate1Day === "number"
+    ) {
+      pillarTotals.bearishHitRate1Day = component.bearishHitRate1Day;
+    }
+
+    if (
+      pillarTotals.bearishHitRate3Day == null &&
+      typeof component.bearishHitRate3Day === "number"
+    ) {
+      pillarTotals.bearishHitRate3Day = component.bearishHitRate3Day;
+    }
   });
 
   return PILLAR_ORDER.map((pillar) => {
     const pillarTotals = aggregatedScores.get(pillar)!;
 
     return {
+      analogDates: pillarTotals.analogDates,
+      averageForward1DayReturn: pillarTotals.averageForward1DayReturn,
+      averageForward3DayReturn: pillarTotals.averageForward3DayReturn,
+      bearishHitRate1Day: pillarTotals.bearishHitRate1Day,
+      bearishHitRate3Day: pillarTotals.bearishHitRate3Day,
       contribution: roundTo(pillarTotals.contribution),
       key: pillar,
       label: PILLAR_LABELS[pillar],
@@ -164,6 +219,7 @@ export async function GET() {
         tickerChanges: buildFrontendTickerChanges(snapshot.ticker_changes),
         componentScores: buildPillarBreakdown(snapshot.component_scores),
         detailedComponentScores: snapshot.component_scores,
+        historicalAnalogs: deriveHistoricalAnalogs(snapshot.engine_inputs),
         createdAt: snapshot.created_at,
         updatedAt: snapshot.updated_at,
       },

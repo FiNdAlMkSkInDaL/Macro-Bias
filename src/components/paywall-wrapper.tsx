@@ -59,7 +59,7 @@ export async function PaywallWrapper({
           </h2>
 
           <p className="mt-3 text-sm leading-7 text-zinc-300">
-            Unlock the full Macro Bias workspace once your subscription is active.
+            Unlock the proprietary Quant Breakdown, the historical analog table, and the live Cross-Asset Heatmap to see which prior sessions today's tape most closely resembles and where the next move usually lands.
           </p>
 
           <a

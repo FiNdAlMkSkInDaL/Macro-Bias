@@ -9,7 +9,7 @@ export async function getLatestBiasSnapshot(): Promise<MacroBiasScoreRow | null>
   const { data, error } = await supabase
     .from("macro_bias_scores")
     .select(
-      "id, trade_date, score, bias_label, component_scores, ticker_changes, created_at, updated_at",
+      "id, trade_date, score, bias_label, component_scores, ticker_changes, engine_inputs, created_at, updated_at",
     )
     .order("trade_date", { ascending: false })
     .limit(1)

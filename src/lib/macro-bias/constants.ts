@@ -10,26 +10,24 @@ export const BIAS_PILLAR_WEIGHTS = {
   volatility: 30,
 } as const;
 
-// Each component is normalized to [-1, 1] and then multiplied by its weight.
-// The component weights sum to 100, so the final score naturally maps to [-100, 100].
-// This lets the dashboard show both the fine-grained signals and the larger pillars.
+// The Glass Box API still expects componentScores, so the KNN engine publishes
+// one diagnostic component per pillar. Their weights mirror the visual pillar
+// weights even though the final score itself now comes from historical analog
+// forward-return expectancy rather than a linear weighted average.
 export const BIAS_SIGNAL_WEIGHTS = {
-  spyTrendVsSma: 18,
-  spyRsiRegime: 12,
-  hygVsTltSpread: 20,
-  cperVsGldSpread: 20,
-  vixLevelRegime: 24,
-  vixTrend: 6,
+  trendAndMomentum: 30,
+  creditAndRiskSpreads: 40,
+  volatility: 30,
 } as const;
 
-// These thresholds define how quickly raw market inputs saturate each signal.
-// Symmetric thresholds mean that crossing the positive or negative band fully
-// expresses that component at +1 or -1.
-export const SIGNAL_NORMALIZATION_THRESHOLDS = {
-  spyDistanceFromSma: 0.03,
-  hygVsTltSpread: 1.5,
-  hygAbsoluteMove: 1,
-  cperVsGldSpread: 2,
-  cperAbsoluteMove: 1.5,
-  vixPercentChange: 15,
+// KNN engine settings.
+// The scales below are percentage-return bands used only when mapping forward
+// expectancy back to the legacy -100 to +100 UI score.
+export const ANALOG_MODEL_SETTINGS = {
+  blendedReturnScale: 2.75,
+  minimumHistoricalAnalogs: 20,
+  nearestNeighborCount: 5,
+  oneDayReturnScale: 2.5,
+  threeDayReturnScale: 4.5,
+  usoMomentumLookbackSessions: 5,
 } as const;
