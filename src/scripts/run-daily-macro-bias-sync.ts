@@ -1,6 +1,9 @@
-import { upsertDailyMarketData } from "../lib/market-data/upsert-daily-market-data";
+import { loadEnvConfig } from "@next/env";
 
 async function main() {
+  loadEnvConfig(process.cwd());
+
+  const { upsertDailyMarketData } = await import("../lib/market-data/upsert-daily-market-data");
   const result = await upsertDailyMarketData();
 
   console.log(

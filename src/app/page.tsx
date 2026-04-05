@@ -5,7 +5,11 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
-import { createSupabaseBrowserClient } from "../lib/supabase/browser";
+import {
+  createSupabaseBrowserClient,
+  getMissingSupabasePublicEnvVars,
+  getSupabaseBrowserClientConfigError,
+} from "../lib/supabase/browser";
 
 const headingFont = Space_Grotesk({
   subsets: ["latin"],
@@ -46,7 +50,11 @@ function getSubmitLabel(mode: AuthMode, isSubmitting: boolean, isRedirecting: bo
 }
 
 export default function HomePage() {
-  const [supabase] = useState(() => createSupabaseBrowserClient());
+  const browserClientConfigError = getSupabaseBrowserClientConfigError();
+  const missingPublicEnvVars = getMissingSupabasePublicEnvVars();
+  const [supabase] = useState(() =>
+    browserClientConfigError ? null : createSupabaseBrowserClient(),
+  );
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [credentials, setCredentials] = useState<Credentials>({
     email: "",
@@ -60,11 +68,21 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    const urlSearchParams = new URLSearchParams(window.location.search);
     const resolvedRedirectPath = sanitizeRedirectPath(
-      new URLSearchParams(window.location.search).get("redirectTo"),
+      urlSearchParams.get("redirectTo"),
     );
+    const callbackError = urlSearchParams.get("authError");
 
     setRedirectPath(resolvedRedirectPath);
+
+    if (callbackError) {
+      setErrorMessage(callbackError);
+    }
 
     const {
       data: { subscription },
@@ -91,6 +109,15 @@ export default function HomePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!supabase) {
+      setErrorMessage(
+        browserClientConfigError ??
+          "Supabase browser authentication is not configured for this deployment.",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
     setStatusMessage(null);
@@ -111,7 +138,7 @@ export default function HomePage() {
         return;
       }
 
-      const emailRedirectUrl = new URL("/", window.location.origin);
+  const emailRedirectUrl = new URL("/auth/callback", window.location.origin);
       emailRedirectUrl.searchParams.set("redirectTo", redirectPath);
 
       const { data, error } = await supabase.auth.signUp({
@@ -261,6 +288,23 @@ export default function HomePage() {
             </div>
           </div>
 
+          {browserClientConfigError ? (
+            <div className="mt-6 rounded-[24px] border border-amber-400/25 bg-amber-400/10 p-5 text-sm leading-6 text-amber-50">
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-amber-200/75">
+                Deployment configuration error
+              </p>
+              <p className="mt-3">{browserClientConfigError}</p>
+              <p className="mt-3 text-amber-100/85">
+                Add these variables in Vercel for the Production environment, redeploy, and make sure Supabase redirect URLs include this domain.
+              </p>
+              <div className="mt-4 rounded-[18px] border border-amber-300/15 bg-slate-950/40 p-4 font-mono text-xs text-amber-50/90">
+                {missingPublicEnvVars.map((name) => (
+                  <p key={name}>{name}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div>
               <label className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-400" htmlFor="email">
@@ -319,7 +363,7 @@ export default function HomePage() {
 
             <button
               className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={isSubmitting || isRedirecting}
+              disabled={isSubmitting || isRedirecting || !supabase}
               type="submit"
             >
               {getSubmitLabel(authMode, isSubmitting, isRedirecting)}

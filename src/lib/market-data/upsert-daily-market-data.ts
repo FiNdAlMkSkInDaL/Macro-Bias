@@ -43,6 +43,13 @@ type YahooChartResponse = {
   };
 };
 
+type SupabaseTableProbeResult = {
+  error: {
+    code?: string;
+    message: string;
+  } | null;
+};
+
 function roundPrice(value: number) {
   return Number(value.toFixed(4));
 }
@@ -61,6 +68,32 @@ function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setUTCDate(nextDate.getUTCDate() + days);
   return nextDate;
+}
+
+async function ensureMacroBiasTablesExist() {
+  const supabase = createSupabaseAdminClient();
+  const [pricesProbe, scoresProbe] = (await Promise.all([
+    supabase.from("etf_daily_prices").select("id").limit(1),
+    supabase.from("macro_bias_scores").select("id").limit(1),
+  ])) as [SupabaseTableProbeResult, SupabaseTableProbeResult];
+
+  const missingTableError = [pricesProbe.error, scoresProbe.error].find(
+    (error) => error?.code === "PGRST205",
+  );
+
+  if (missingTableError) {
+    throw new Error(
+      "Missing required Supabase tables for macro-bias sync. Apply supabase/migrations/20260405_init_macro_bias.sql to the project configured in NEXT_PUBLIC_SUPABASE_URL before running this command.",
+    );
+  }
+
+  const unexpectedError = [pricesProbe.error, scoresProbe.error].find(Boolean);
+
+  if (unexpectedError) {
+    throw unexpectedError;
+  }
+
+  return supabase;
 }
 
 async function fetchTickerHistory(
@@ -183,6 +216,7 @@ function buildTickerChangeMap(
 export async function upsertDailyMarketData(
   options: DailySyncOptions = {},
 ): Promise<DailyBiasResult> {
+  const supabase = await ensureMacroBiasTablesExist();
   const lookbackDays = options.lookbackDays ?? 14;
   const asOfDate = options.asOfDate ?? new Date();
   const period1 = subtractDays(asOfDate, lookbackDays);
@@ -212,8 +246,6 @@ export async function upsertDailyMarketData(
     tradeDate: latestTradeDate,
     tickerChanges,
   });
-
-  const supabase = createSupabaseAdminClient();
 
   const { error: priceError } = await supabase.from("etf_daily_prices").upsert(allRows, {
     onConflict: "ticker,trade_date",
