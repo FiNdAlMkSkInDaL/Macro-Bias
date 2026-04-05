@@ -29,78 +29,66 @@ type Credentials = {
   password: string;
 };
 
-const landingStats = [
+const heroStats = [
   {
-    label: "Dominant regime",
-    value: "Know the tape",
-    detail:
-      "Stop fading the market when cross-asset risk is already leaning the other way.",
+    label: "Update cadence",
+    value: "Daily before the bell",
   },
   {
-    label: "Refresh cadence",
-    value: "Daily before the open",
-    detail:
-      "Start every session with a clean macro read instead of reacting headline by headline.",
+    label: "Coverage",
+    value: "Volatility, credit, trend",
   },
   {
-    label: "Pricing",
+    label: "Price",
     value: "$25 / month",
-    detail:
-      "Institutional-style context built for self-directed day traders, not fund desks.",
   },
 ] as const;
 
 const quantPillars = [
   {
-    eyebrow: "Volatility",
-    title: "VIX Regimes",
+    symbol: "^VIX",
+    title: "Volatility",
     description:
-      "Tracks when volatility is compressing, expanding, or breaking out so your intraday bias matches the market's stress state.",
-    points: [
-      "Identify when trend-following setups have room to work.",
-      "Recognize when a rising fear regime demands tighter risk and faster exits.",
+      "Detects whether the session is opening inside a stable trend regime or a stress regime that punishes loose risk and late entries.",
+    details: [
+      "Regime shifts change how far momentum can realistically travel.",
+      "Rising volatility reframes position sizing and exit speed before price structure breaks.",
     ],
   },
   {
-    eyebrow: "Credit Spreads",
-    title: "HYG vs TLT",
+    symbol: "HYG vs TLT",
+    title: "Credit Spreads",
     description:
-      "Measures whether capital is rotating toward corporate risk or defensive duration before equity price action fully confirms it.",
-    points: [
-      "Spot risk-on participation beneath the surface of index price.",
-      "Catch defensive rotation before broad momentum breaks down.",
+      "Measures whether capital is leaning toward corporate risk or defensive duration before index price fully reflects that internal rotation.",
+    details: [
+      "Credit strength confirms healthier risk appetite under the surface.",
+      "Defensive bond demand often shows up before equity traders fully price the shift.",
     ],
   },
   {
-    eyebrow: "Momentum & Trend",
-    title: "SPY RSI & SMA",
+    symbol: "SPY RSI / SMA",
+    title: "Trend",
     description:
-      "Blends momentum and trend confirmation to tell you whether the benchmark is aligned with the broader macro message.",
-    points: [
-      "Separate healthy continuation from exhausted squeeze behavior.",
-      "Avoid forcing longs or shorts when trend structure is not confirmed.",
+      "Combines momentum and structure so you can tell whether the benchmark is aligned with the broader macro message or fighting it.",
+    details: [
+      "Momentum without structure is noise.",
+      "Trend confirmation keeps you from forcing conviction into a mixed tape.",
     ],
   },
 ] as const;
 
-const dashboardPreview = [
+const consoleNotes = [
   {
-    label: "Macro bias",
-    value: "Daily regime score",
+    label: "Redirect",
+    value: "Route preserved",
     detail:
-      "A single read on whether the session favors risk-on, neutral, or risk-off behavior.",
+      "Authentication returns you to the protected destination you originally requested.",
   },
   {
-    label: "Cross-asset map",
-    value: "ETFs that confirm",
+    label: "Delivery",
+    value: "Browser auth",
     detail:
-      "SPY, QQQ, XLP, TLT, and GLD show whether the move is broad or fragile.",
-  },
-  {
-    label: "Execution context",
-    value: "Trade with alignment",
-    detail:
-      "Use the regime to filter impulsive entries that fight the dominant market weather.",
+      "Supabase handles sign-in, sign-up, session restore, and callback routing safely in the browser.",
   },
 ] as const;
 
@@ -190,6 +178,12 @@ export default function HomePage() {
     }));
   }
 
+  function switchAuthMode(mode: AuthMode) {
+    setAuthMode(mode);
+    setErrorMessage(null);
+    setStatusMessage(null);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -261,144 +255,99 @@ export default function HomePage() {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.12),_transparent_24%),radial-gradient(circle_at_85%_15%,_rgba(148,163,184,0.1),_transparent_18%),linear-gradient(180deg,_#020617_0%,_#0f172a_55%,_#020617_100%)] px-4 py-10 font-sans font-[family:var(--font-heading)] text-slate-100 sm:px-6 lg:px-8`}
+      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans text-zinc-100`}
     >
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="relative overflow-hidden rounded-[36px] border border-slate-800/80 bg-slate-950/75 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-sm sm:p-8 lg:p-10">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(56,189,248,0.16),transparent_28%),radial-gradient(circle_at_84%_20%,rgba(34,197,94,0.16),transparent_24%),linear-gradient(135deg,rgba(15,23,42,0.2),rgba(2,6,23,0))]" />
+      <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-10">
+        <header className="flex h-16 items-center justify-between border-b border-white/10">
+          <a
+            className="font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"
+            href="#top"
+          >
+            Macro Bias
+          </a>
+          <a
+            className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
+            href="#auth-console"
+          >
+            Sign In
+          </a>
+        </header>
 
-          <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] xl:items-start">
-            <div className="max-w-3xl">
-              <span className="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 font-mono font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-sky-200">
-                Macro Bias for Active Traders
-              </span>
+        <section
+          id="top"
+          className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-24 text-center"
+        >
+          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+            [ Live Macro Regime Engine ]
+          </p>
+          <h1 className="mt-8 max-w-5xl text-balance font-[family:var(--font-heading)] text-5xl font-bold tracking-tighter text-white md:text-7xl xl:text-[5.75rem]">
+            Trade with the weather. Not against it.
+          </h1>
+          <p className="mt-6 max-w-3xl text-balance text-lg leading-8 text-zinc-300 md:text-xl">
+            Macro Bias gives day traders an institutional-grade regime read before the
+            open, so you stop forcing trades into the wrong volatility, credit, and trend
+            backdrop.
+          </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a
+              className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+              href="#auth-console"
+            >
+              Access the Dashboard
+            </a>
+            <a
+              className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
+              href="#the-edge"
+            >
+              View the Model
+            </a>
+          </div>
 
-              <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl xl:text-6xl">
-                Institutional Macro Intelligence for Day Traders
-              </h1>
-
-              <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
-                Stop trading against the dominant market regime. Macro Bias translates
-                volatility, credit, and trend structure into a daily institutional-style
-                read so you know when the tape wants risk and when it wants defense.
-              </p>
-
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a
-                  className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                  href="#access-console"
-                >
-                  Start Your Edge
-                </a>
-                <a
-                  className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3.5 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-900"
-                  href="#quant-edge"
-                >
-                  Explore The Model
-                </a>
-              </div>
-
-              <div className="mt-8 grid gap-4 md:grid-cols-3">
-                {landingStats.map((stat) => (
-                  <article
-                    key={stat.label}
-                    className="rounded-[24px] border border-slate-800/80 bg-slate-900/60 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-                  >
-                    <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      {stat.label}
-                    </p>
-                    <p className="mt-4 text-2xl font-semibold text-white">{stat.value}</p>
-                    <p className="mt-3 text-sm leading-6 text-slate-400">
-                      {stat.detail}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <aside className="rounded-[30px] border border-slate-800/80 bg-slate-950/85 p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm sm:p-7">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                    Today&apos;s edge
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold text-white">
-                    Trade with the weather, not against it
-                  </h2>
-                </div>
-                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-200">
-                  Built for the open
-                </span>
-              </div>
-
-              <div className="mt-7 space-y-3">
-                {dashboardPreview.map((item) => (
-                  <article
-                    key={item.label}
-                    className="rounded-[22px] border border-slate-800 bg-slate-900/70 p-4"
-                  >
-                    <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      {item.label}
-                    </p>
-                    <p className="mt-3 text-lg font-semibold text-white">{item.value}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">{item.detail}</p>
-                  </article>
-                ))}
-              </div>
-
-              <div className="mt-6 rounded-[24px] border border-sky-400/20 bg-sky-400/10 p-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-sky-200/75">
-                  Why it matters
+          <div className="mt-16 grid w-full max-w-5xl gap-8 border-y border-white/10 py-6 sm:grid-cols-3">
+            {heroStats.map((stat) => (
+              <div key={stat.label} className="text-left sm:text-center">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  {stat.label}
                 </p>
-                <p className="mt-3 text-sm leading-6 text-sky-50/90">
-                  Most retail traders lose not because they cannot find setups, but because
-                  they press those setups into the wrong macro backdrop. Macro Bias gives
-                  you the filter first.
+                <p className="mt-3 text-base font-medium text-white md:text-lg">
+                  {stat.value}
                 </p>
               </div>
-            </aside>
+            ))}
           </div>
         </section>
 
-        <section
-          id="quant-edge"
-          className="rounded-[32px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-sm sm:p-8"
-        >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                The Quant Edge
-              </p>
-              <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
-                Three institutional pillars. One actionable market regime.
-              </h2>
-            </div>
-            <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-              The model does not guess. It measures whether volatility, credit, and price
-              structure are aligned so you can press trades when the evidence is stacked
-              and step back when it is not.
+        <section id="the-edge" className="py-24">
+          <div className="max-w-3xl">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              The Edge
+            </p>
+            <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
+              Three market inputs. One cleaner decision framework.
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
+              The engine compresses the macro picture into the signals that matter most for
+              intraday decision-making: stress, sponsorship, and structural trend.
             </p>
           </div>
 
-          <div className="mt-8 grid gap-4 xl:grid-cols-3">
+          <div className="mt-16 grid gap-14 lg:grid-cols-3 lg:gap-10">
             {quantPillars.map((pillar) => (
-              <article
-                key={pillar.title}
-                className="group rounded-[28px] border border-slate-800 bg-slate-900/70 p-6 transition-colors hover:border-slate-700"
-              >
-                <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-sky-200/80">
-                  {pillar.eyebrow}
+              <article key={pillar.title} className="border-t border-white/10 pt-6">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-300/70">
+                  {pillar.symbol}
                 </p>
-                <h3 className="mt-4 text-2xl font-semibold text-white">{pillar.title}</h3>
-                <p className="mt-4 text-sm leading-7 text-slate-300">
+                <h3 className="mt-5 font-[family:var(--font-heading)] text-2xl font-semibold tracking-tight text-white">
+                  {pillar.title}
+                </h3>
+                <p className="mt-4 text-base leading-7 text-zinc-300">
                   {pillar.description}
                 </p>
-                <div className="mt-6 space-y-3 border-t border-slate-800 pt-5">
-                  {pillar.points.map((point) => (
-                    <div key={point} className="flex gap-3">
-                      <span className="mt-2 h-2 w-2 rounded-full bg-sky-300" />
-                      <p className="text-sm leading-6 text-slate-400">{point}</p>
-                    </div>
+                <div className="mt-6 space-y-4">
+                  {pillar.details.map((detail) => (
+                    <p key={detail} className="text-sm leading-7 text-zinc-400">
+                      {detail}
+                    </p>
                   ))}
                 </div>
               </article>
@@ -406,258 +355,187 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section
-          id="access-console"
-          className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.82fr)] xl:items-start"
-        >
-          <div className="rounded-[32px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-sm sm:p-8">
-            <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-mono font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-emerald-200">
-              Primary CTA
-            </span>
-            <h2 className="mt-5 max-w-3xl text-3xl font-semibold leading-tight text-white sm:text-4xl">
-              Get the macro edge before the opening bell.
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-slate-300">
-              Create your account or sign back in to access the live Macro Bias dashboard.
-              Your redirect path is preserved, so once authentication completes you land
-              directly where you intended to go.
-            </p>
+        <section id="auth-console" className="border-t border-white/10 py-24">
+          <div className="grid gap-16 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+            <div className="max-w-3xl">
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                Access Console
+              </p>
+              <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
+                Enter the live macro regime dashboard.
+              </h2>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
+                Authenticate below to access the protected Macro Bias workspace. The route
+                you originally requested stays intact through sign-in, sign-up, and email
+                confirmation.
+              </p>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <article className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  Destination
-                </p>
-                <p className="mt-4 font-mono text-lg text-white">{redirectPath}</p>
-                <p className="mt-3 text-sm leading-6 text-slate-400">
-                  Successful authentication returns you directly to the protected
-                  experience you requested.
-                </p>
-              </article>
-
-              <article className="rounded-[24px] border border-sky-400/25 bg-sky-400/10 p-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-sky-200/75">
-                  Included
-                </p>
-                <p className="mt-4 text-2xl font-semibold text-white">
-                  Daily regime dashboard
-                </p>
-                <p className="mt-3 text-sm leading-6 text-sky-50/85">
-                  Secure access to the live bias read, cross-asset confirmation, and
-                  protected member workflow.
-                </p>
-              </article>
-
-              <article className="rounded-[24px] border border-emerald-500/25 bg-emerald-500/10 p-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-emerald-200/75">
-                  Positioning
-                </p>
-                <p className="mt-4 text-2xl font-semibold text-white">
-                  Trade with alignment
-                </p>
-                <p className="mt-3 text-sm leading-6 text-emerald-50/85">
-                  Use the macro regime as a daily filter so your intraday setups work with
-                  the broader tape instead of against it.
-                </p>
-              </article>
+              <div className="mt-12 grid gap-10 sm:grid-cols-2">
+                {consoleNotes.map((note) => (
+                  <div key={note.label} className="border-t border-white/10 pt-4">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      {note.label}
+                    </p>
+                    <p className="mt-3 text-lg font-medium text-white">{note.value}</p>
+                    <p className="mt-3 text-sm leading-7 text-zinc-400">{note.detail}</p>
+                  </div>
+                ))}
+                <div className="border-t border-white/10 pt-4 sm:col-span-2 lg:col-span-1">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Active destination
+                  </p>
+                  <p className="mt-3 font-[family:var(--font-data)] text-sm text-white">
+                    {redirectPath}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    Successful authentication routes you back to this protected path without
+                    dropping context.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              <article className="rounded-[28px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm">
-                <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                  What you unlock
+            <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 sm:p-10">
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                    Sign In / Create Account
+                  </p>
+                  <h3 className="mt-4 font-[family:var(--font-heading)] text-2xl font-semibold tracking-tight text-white">
+                    Secure access
+                  </h3>
+                </div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-300/70">
+                  Live auth
                 </p>
-                <div className="mt-5 space-y-4 text-sm leading-7 text-slate-300">
-                  <p>Protected dashboard access behind Supabase session validation.</p>
-                  <p>
-                    Daily macro context that frames whether to lean risk-on, neutral, or
-                    risk-off.
-                  </p>
-                  <p>
-                    A clean member entry point that respects redirect flow after sign-in or
-                    email confirmation.
-                  </p>
-                </div>
-              </article>
+              </div>
 
-              <article className="rounded-[28px] border border-slate-800/80 bg-slate-950/80 p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] backdrop-blur-sm">
-                <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                  Access flow
-                </p>
-                <div className="mt-5 rounded-[22px] border border-slate-800 bg-slate-900/70 p-4 font-mono text-xs leading-6 text-slate-300">
-                  <p>1. You request a protected route</p>
-                  <p className="mt-2">2. Macro Bias preserves redirectTo={redirectPath}</p>
-                  <p className="mt-2">3. Supabase authenticates the session</p>
-                  <p className="mt-2">4. Routing sends you directly back into the dashboard</p>
-                </div>
-              </article>
-            </div>
-          </div>
+              <div className="mt-8 flex gap-6 border-b border-white/10">
+                <button
+                  className={`relative pb-4 text-sm font-medium transition ${
+                    authMode === "signin"
+                      ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-white"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  onClick={() => switchAuthMode("signin")}
+                  type="button"
+                >
+                  Sign in
+                </button>
+                <button
+                  className={`relative pb-4 text-sm font-medium transition ${
+                    authMode === "signup"
+                      ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-white"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  onClick={() => switchAuthMode("signup")}
+                  type="button"
+                >
+                  Create account
+                </button>
+              </div>
 
-          <section className="rounded-[32px] border border-slate-800/80 bg-slate-950/88 p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-sm sm:p-8">
-            <div className="flex flex-col gap-6 sm:gap-7">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="max-w-sm">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                    Access Console
-                  </p>
-                  <h2 className="mt-4 text-[1.95rem] font-semibold leading-tight text-white sm:text-[2.15rem]">
-                    Start with secure access
-                  </h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-300">
-                    {authMode === "signin"
-                      ? "Sign in to restore your session and get back to the live macro dashboard."
-                      : "Create your account to start using the institutional-style daily regime read."}
-                  </p>
-                </div>
+              <p className="mt-6 text-sm leading-7 text-zinc-400">
+                {authMode === "signin"
+                  ? "Restore your session and continue directly into the protected Macro Bias dashboard."
+                  : "Create your account and preserve the same redirect target through the full auth flow."}
+              </p>
 
-                <div className="w-full sm:max-w-[340px]">
-                  <div className="grid w-full grid-cols-2 rounded-2xl border border-slate-700/90 bg-slate-900/90 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                    <button
-                      className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                        authMode === "signin"
-                          ? "bg-slate-50 text-slate-950 shadow-[0_10px_30px_rgba(255,255,255,0.08)]"
-                          : "text-slate-400 hover:text-slate-100"
-                      }`}
-                      onClick={() => {
-                        setAuthMode("signin");
-                        setErrorMessage(null);
-                        setStatusMessage(null);
-                      }}
-                      type="button"
-                    >
-                      Sign in
-                    </button>
-                    <button
-                      className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                        authMode === "signup"
-                          ? "bg-slate-50 text-slate-950 shadow-[0_10px_30px_rgba(255,255,255,0.08)]"
-                          : "text-slate-400 hover:text-slate-100"
-                      }`}
-                      onClick={() => {
-                        setAuthMode("signup");
-                        setErrorMessage(null);
-                        setStatusMessage(null);
-                      }}
-                      type="button"
-                    >
-                      Create account
-                    </button>
+              {browserClientConfigError ? (
+                <div className="mt-8 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-sm leading-6 text-amber-100">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-amber-200/80">
+                    Deployment configuration error
+                  </p>
+                  <p className="mt-3">{browserClientConfigError}</p>
+                  <div className="mt-4 space-y-1 font-[family:var(--font-data)] text-[11px] text-amber-100/90">
+                    {missingPublicEnvVars.map((name) => (
+                      <p key={name}>{name}</p>
+                    ))}
                   </div>
                 </div>
-              </div>
+              ) : null}
 
-              <div className="rounded-[24px] border border-slate-800/80 bg-slate-900/55 px-4 py-3.5 text-sm leading-6 text-slate-300">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  Access note
-                </p>
-                <p className="mt-2 text-slate-300">
-                  {authMode === "signin"
-                    ? "Use your existing credentials to continue directly into the protected Macro Bias experience."
-                    : "New accounts respect the same redirect target, including email-confirmation-safe routing when enabled."}
-                </p>
-              </div>
-            </div>
-
-            {browserClientConfigError ? (
-              <div className="mt-6 rounded-[24px] border border-amber-400/25 bg-amber-400/10 p-5 text-sm leading-6 text-amber-50">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-amber-200/75">
-                  Deployment configuration error
-                </p>
-                <p className="mt-3">{browserClientConfigError}</p>
-                <p className="mt-3 text-amber-100/85">
-                  Add these variables in Vercel for the Production environment, redeploy,
-                  and make sure Supabase redirect URLs include this domain.
-                </p>
-                <div className="mt-4 rounded-[18px] border border-amber-300/15 bg-slate-950/40 p-4 font-mono text-xs text-amber-50/90">
-                  {missingPublicEnvVars.map((name) => (
-                    <p key={name}>{name}</p>
-                  ))}
+              <form className="mt-8 space-y-7" onSubmit={handleSubmit}>
+                <div className="space-y-2">
+                  <label
+                    className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500"
+                    htmlFor="email"
+                  >
+                    Email
+                  </label>
+                  <div className="border-b border-white/10 transition-colors focus-within:border-white/40">
+                    <input
+                      autoComplete="email"
+                      className="w-full bg-transparent px-0 py-3 text-base text-white outline-none placeholder:text-zinc-600"
+                      id="email"
+                      onChange={(event) => updateField("email", event.target.value)}
+                      placeholder="you@macro-bias.com"
+                      required
+                      type="email"
+                      value={credentials.email}
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : null}
 
-            <form className="mt-9 space-y-6" onSubmit={handleSubmit}>
-              <div className="space-y-3">
-                <label
-                  className="block font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/90"
-                  htmlFor="email"
-                >
-                  Email
-                </label>
-                <input
-                  autoComplete="email"
-                  className="w-full rounded-[20px] border border-slate-600/90 bg-slate-900/85 px-4 py-3.5 text-base text-white outline-none transition duration-200 placeholder:text-slate-500 focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/50"
-                  id="email"
-                  onChange={(event) => updateField("email", event.target.value)}
-                  placeholder="you@macro-bias.com"
-                  required
-                  type="email"
-                  value={credentials.email}
-                />
-              </div>
+                <div className="space-y-2">
+                  <label
+                    className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500"
+                    htmlFor="password"
+                  >
+                    Password
+                  </label>
+                  <div className="border-b border-white/10 transition-colors focus-within:border-white/40">
+                    <input
+                      autoComplete={
+                        authMode === "signin" ? "current-password" : "new-password"
+                      }
+                      className="w-full bg-transparent px-0 py-3 text-base text-white outline-none placeholder:text-zinc-600"
+                      id="password"
+                      minLength={8}
+                      onChange={(event) => updateField("password", event.target.value)}
+                      placeholder="Minimum 8 characters"
+                      required
+                      type="password"
+                      value={credentials.password}
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-3">
-                <label
-                  className="block font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/90"
-                  htmlFor="password"
-                >
-                  Password
-                </label>
-                <input
-                  autoComplete={
-                    authMode === "signin" ? "current-password" : "new-password"
-                  }
-                  className="w-full rounded-[20px] border border-slate-600/90 bg-slate-900/85 px-4 py-3.5 text-base text-white outline-none transition duration-200 placeholder:text-slate-500 focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/50"
-                  id="password"
-                  minLength={8}
-                  onChange={(event) => updateField("password", event.target.value)}
-                  placeholder="Minimum 8 characters"
-                  required
-                  type="password"
-                  value={credentials.password}
-                />
-              </div>
-
-              <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                <div className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Redirect after auth
-                </p>
-                <p className="mt-3 font-mono text-slate-100">{redirectPath}</p>
-                <p className="mt-3 text-slate-400">
-                  {authMode === "signin"
-                    ? "Successful sign-in routes immediately to the protected dashboard."
-                    : "If email confirmation is enabled, the confirmation link returns here first and then forwards you into the dashboard."}
-                </p>
-              </div>
-
-              {statusMessage ? (
-                <div
-                  className="rounded-[20px] border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-50"
-                  role="status"
-                >
-                  {statusMessage}
+                  <p className="mt-3 text-[11px] normal-case tracking-normal text-zinc-300">
+                    {redirectPath}
+                  </p>
                 </div>
-              ) : null}
 
-              {errorMessage ? (
-                <div
-                  className="rounded-[20px] border border-rose-500/25 bg-rose-500/10 p-4 text-sm leading-6 text-rose-100"
-                  role="alert"
+                {statusMessage ? (
+                  <div
+                    className="rounded-xl bg-emerald-500/[0.08] px-4 py-3 text-sm leading-6 text-emerald-50"
+                    role="status"
+                  >
+                    {statusMessage}
+                  </div>
+                ) : null}
+
+                {errorMessage ? (
+                  <div
+                    className="rounded-xl bg-rose-500/[0.08] px-4 py-3 text-sm leading-6 text-rose-100"
+                    role="alert"
+                  >
+                    {errorMessage}
+                  </div>
+                ) : null}
+
+                <button
+                  className="inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-500"
+                  disabled={isSubmitting || isRedirecting || !supabase}
+                  type="submit"
                 >
-                  {errorMessage}
-                </div>
-              ) : null}
-
-              <button
-                className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-300"
-                disabled={isSubmitting || isRedirecting || !supabase}
-                type="submit"
-              >
-                {getSubmitLabel(authMode, isSubmitting, isRedirecting)}
-              </button>
-            </form>
-          </section>
+                  {getSubmitLabel(authMode, isSubmitting, isRedirecting)}
+                </button>
+              </form>
+            </section>
+          </div>
         </section>
       </div>
     </main>
