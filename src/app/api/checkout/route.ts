@@ -105,12 +105,14 @@ async function buildCheckoutSession(request: Request): Promise<CheckoutResult> {
     ],
     metadata: {
       billingPlan: plan,
+      supabaseUUID: user.id,
       supabaseUserId: user.id,
     },
     mode: 'subscription',
     subscription_data: {
       metadata: {
         billingPlan: plan,
+        supabaseUUID: user.id,
         supabaseUserId: user.id,
       },
     },

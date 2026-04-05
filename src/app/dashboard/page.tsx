@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
@@ -9,6 +10,7 @@ import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
+import { getUserSubscriptionStatus } from "../../lib/billing/subscription";
 import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
 
@@ -250,9 +252,15 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
 }
 
 export default async function DashboardPage() {
-  const baseUrl = await getRequestBaseUrl();
+  noStore();
+
+  const [baseUrl, { subscriptionStatus, user }] = await Promise.all([
+    getRequestBaseUrl(),
+    getUserSubscriptionStatus(),
+  ]);
   const landingPageUrl = new URL("/#auth-console", baseUrl).toString();
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
+  const isProUser = subscriptionStatus === "active";
   const regime = getBiasRegime(biasData.biasScore);
   const sortedAssets = [...biasData.assets].sort(
     (leftAsset, rightAsset) => leftAsset.dailyChangePercent - rightAsset.dailyChangePercent,
@@ -429,7 +437,7 @@ export default async function DashboardPage() {
                 </p>
               </div>
 
-              <PaywallWrapper>
+              <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
                 <div className="space-y-6">
                   <section>
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -625,7 +633,7 @@ export default async function DashboardPage() {
                 Model Integrity
               </p>
               <p className="mt-3 text-sm leading-6 text-zinc-400">
-                Model Integrity: This score is derived via K-Nearest Neighbors (KNN) analysis across 730 days of intermarket data. No discretionary bias is applied to the output.
+                Model Integrity: This score is derived via K-Nearest Neighbors analysis across 730 days of intermarket data. No discretionary bias is applied to the output.
               </p>
             </div>
           </aside>

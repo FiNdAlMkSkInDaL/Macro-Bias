@@ -22,7 +22,7 @@ export type SubscriptionStatusResult = {
 };
 
 export function isSubscriptionActive(status: SubscriptionStatus): boolean {
-  return status === 'active';
+  return status === 'active' || status === 'trialing';
 }
 
 export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusResult> {

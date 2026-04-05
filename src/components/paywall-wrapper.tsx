@@ -1,11 +1,31 @@
-import type { ReactNode } from 'react';
+"use client";
 
-import { getUserSubscriptionStatus } from '../lib/billing/subscription';
+import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+
+import { createSupabaseBrowserClient } from '../lib/supabase/browser';
 
 type PaywallWrapperProps = {
   checkoutHref?: string;
   children: ReactNode;
+  initialIsPro: boolean;
+  userId: string | null;
 };
+
+function isActiveSubscriptionStatus(status: unknown): boolean {
+  return status === 'active' || status === 'trialing';
+}
+
+function readSubscriptionStatus(value: unknown) {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const subscriptionStatus = (value as { subscription_status?: unknown }).subscription_status;
+
+  return typeof subscriptionStatus === 'string' ? subscriptionStatus : null;
+}
 
 function LockIcon() {
   return (
@@ -26,13 +46,153 @@ function LockIcon() {
   );
 }
 
-export async function PaywallWrapper({
+export function PaywallWrapper({
   checkoutHref = '/api/checkout?plan=monthly',
   children,
+  initialIsPro,
+  userId,
 }: PaywallWrapperProps) {
-  const { subscriptionStatus } = await getUserSubscriptionStatus();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [isUnlocked, setIsUnlocked] = useState(initialIsPro);
+  const refreshFrameRef = useRef<number | null>(null);
 
-  if (subscriptionStatus === 'active') {
+  useEffect(() => {
+    setIsUnlocked(initialIsPro);
+  }, [initialIsPro]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const supabase = createSupabaseBrowserClient();
+
+    const requestRefresh = (unlock = false) => {
+      if (unlock) {
+        setIsUnlocked(true);
+      }
+
+      if (refreshFrameRef.current !== null) {
+        window.cancelAnimationFrame(refreshFrameRef.current);
+      }
+
+      refreshFrameRef.current = window.requestAnimationFrame(() => {
+        startTransition(() => {
+          router.refresh();
+        });
+      });
+    };
+
+    const checkLatestSubscriptionStatus = async () => {
+      if (!userId) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('subscription_status')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        return;
+      }
+
+      if (isActiveSubscriptionStatus(data?.subscription_status)) {
+        requestRefresh(true);
+      }
+    };
+
+    const handleFocus = () => {
+      requestRefresh();
+      void checkLatestSubscriptionStatus();
+    };
+
+    const handlePageShow = () => {
+      requestRefresh();
+      void checkLatestSubscriptionStatus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+
+      requestRefresh();
+      void checkLatestSubscriptionStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const {
+      data: { subscription: authSubscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'SIGNED_OUT' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED'
+      ) {
+        requestRefresh();
+        void checkLatestSubscriptionStatus();
+      }
+    });
+
+    const usersChannel = userId
+      ? supabase
+          .channel(`dashboard-subscription-status-${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              filter: `id=eq.${userId}`,
+              schema: 'public',
+              table: 'users',
+            },
+            (payload) => {
+              const nextStatus = readSubscriptionStatus(payload.new);
+
+              requestRefresh(isActiveSubscriptionStatus(nextStatus));
+            },
+          )
+          .subscribe()
+      : null;
+
+    const pollingInterval =
+      userId && !isUnlocked
+        ? window.setInterval(() => {
+            if (document.visibilityState === 'visible') {
+              void checkLatestSubscriptionStatus();
+            }
+          }, 4000)
+        : null;
+
+    void checkLatestSubscriptionStatus();
+
+    return () => {
+      if (refreshFrameRef.current !== null) {
+        window.cancelAnimationFrame(refreshFrameRef.current);
+      }
+
+      if (pollingInterval !== null) {
+        window.clearInterval(pollingInterval);
+      }
+
+      authSubscription.unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      if (usersChannel) {
+        void supabase.removeChannel(usersChannel);
+      }
+    };
+  }, [isUnlocked, router, startTransition, userId]);
+
+  if (isUnlocked) {
     return <>{children}</>;
   }
 
@@ -65,7 +225,7 @@ export async function PaywallWrapper({
             className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 sm:mt-8"
             href={checkoutHref}
           >
-            Upgrade to Pro
+            {isPending ? 'Refreshing access...' : 'Upgrade to Pro'}
           </a>
         </div>
       </div>
