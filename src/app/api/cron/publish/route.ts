@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { TwitterApi } from 'twitter-api-v2';
 
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { getAppUrl } from '../../../../lib/server-env';
@@ -44,7 +45,16 @@ type PublishPayload = {
   discordText: string;
   headline: string;
   ogImageUrl: string;
+  regimeSentence: string;
+  shareUrl: string;
   xText: string;
+};
+
+type XCredentials = {
+  accessToken: string;
+  accessSecret: string;
+  apiKey: string;
+  apiSecret: string;
 };
 
 type ComparableFeature =
@@ -121,6 +131,21 @@ function getRegimeTone(label: BiasLabel) {
   }
 }
 
+function getRegimeSentence(label: BiasLabel) {
+  switch (label) {
+    case 'EXTREME_RISK_ON':
+      return 'The tape is explosive. Risk-on leadership is widening fast.';
+    case 'RISK_ON':
+      return 'Risk appetite is widening. Buyers still have control.';
+    case 'EXTREME_RISK_OFF':
+      return 'The tape is breaking down. Defensive leadership is taking over.';
+    case 'RISK_OFF':
+      return 'The tape is heavy. Risk-off leadership is taking over.';
+    default:
+      return 'The tape is split. Selectivity matters more than conviction.';
+  }
+}
+
 function getColorForLabel(label: BiasLabel) {
   switch (label) {
     case 'EXTREME_RISK_ON':
@@ -137,6 +162,41 @@ function getColorForLabel(label: BiasLabel) {
 function getOptionalServerEnv(name: string) {
   const value = process.env[name]?.trim();
   return value ? value : null;
+}
+
+function getRequiredXEnv(name: 'X_API_KEY' | 'X_API_SECRET' | 'X_ACCESS_TOKEN' | 'X_ACCESS_SECRET') {
+  const value = getOptionalServerEnv(name);
+
+  if (!value) {
+    throw new Error(`Missing required X environment variable: ${name}`);
+  }
+
+  return value;
+}
+
+function getXCredentials() {
+  const legacyApiSecret = getOptionalServerEnv('X_API_KEY_SECRET');
+  const legacyAccessSecret = getOptionalServerEnv('X_ACCESS_TOKEN_SECRET');
+  const hasAnyXCredential = Boolean(
+    getOptionalServerEnv('X_API_KEY') ||
+      getOptionalServerEnv('X_API_SECRET') ||
+      getOptionalServerEnv('X_ACCESS_TOKEN') ||
+      getOptionalServerEnv('X_ACCESS_SECRET') ||
+      legacyApiSecret ||
+      legacyAccessSecret,
+  );
+
+  if (!hasAnyXCredential) {
+    return null;
+  }
+
+  return {
+    apiKey: getRequiredXEnv('X_API_KEY'),
+    apiSecret: getOptionalServerEnv('X_API_SECRET') ?? legacyApiSecret ?? getRequiredXEnv('X_API_SECRET'),
+    accessToken: getRequiredXEnv('X_ACCESS_TOKEN'),
+    accessSecret:
+      getOptionalServerEnv('X_ACCESS_SECRET') ?? legacyAccessSecret ?? getRequiredXEnv('X_ACCESS_SECRET'),
+  } satisfies XCredentials;
 }
 
 function safeCompare(left: string, right: string) {
@@ -410,10 +470,12 @@ function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[
   const appUrl = getAppUrl();
   const dashboardUrl = new URL('/dashboard', appUrl).toString();
   const ogImageUrl = new URL('/api/og', appUrl).toString();
+  const shareUrl = 'https://macro-bias.com';
   const formattedDate = formatDisplayDate(snapshot.trade_date);
   const label = snapshot.bias_label.replace(/_/g, ' ');
   const headline = `Today's Macro Weather Report: ${label} (${formatSignedNumber(snapshot.score)})`;
   const regimeTone = getRegimeTone(snapshot.bias_label);
+  const regimeSentence = getRegimeSentence(snapshot.bias_label);
   const signalContext = buildSignalContext(snapshot);
   const analogSection = buildAnalogSection(analogs);
   const discordText = [
@@ -427,15 +489,9 @@ function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[
     .filter((line): line is string => Boolean(line))
     .join('\n');
   const xText = [
-    `${headline}`,
-    regimeTone,
-    signalContext ? `${signalContext}.` : null,
-    analogs.length > 0
-      ? `Closest analogs: ${analogs
-          .map((analog) => `${formatDisplayDate(analog.tradeDate)}${analog.biasLabel ? ` ${analog.biasLabel.replace(/_/g, ' ')}` : ''}`)
-          .join(' • ')}.`
-      : 'Closest historical analogs are still warming up.',
-    dashboardUrl,
+    `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)}`,
+    `Regime: ${regimeSentence}`,
+    shareUrl,
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n');
@@ -446,6 +502,8 @@ function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[
     discordText,
     headline,
     ogImageUrl,
+    regimeSentence,
+    shareUrl,
     xText,
   } satisfies PublishPayload;
 }
@@ -495,18 +553,15 @@ async function publishToDiscord(webhookUrl: string, snapshot: StoredBiasSnapshot
   );
 }
 
-async function publishToX(webhookUrl: string, payload: PublishPayload) {
-  await postJson(
-    webhookUrl,
-    {
-      text: payload.xText,
-      url: payload.dashboardUrl,
-      ogImageUrl: payload.ogImageUrl,
-      analogs: payload.analogs,
-      source: 'macro-bias',
-    },
-    'X publish endpoint',
-  );
+async function publishToX(credentials: XCredentials, payload: PublishPayload) {
+  const xClient = new TwitterApi({
+    appKey: credentials.apiKey,
+    appSecret: credentials.apiSecret,
+    accessToken: credentials.accessToken,
+    accessSecret: credentials.accessSecret,
+  });
+
+  await xClient.v2.tweet(payload.xText);
 }
 
 async function getRecentSnapshots() {
@@ -531,13 +586,12 @@ async function handlePublish(request: NextRequest) {
     }
 
     const discordWebhookUrl = getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL');
-    const xPublishWebhookUrl = getOptionalServerEnv('X_PUBLISH_WEBHOOK_URL');
+    const xCredentials = getXCredentials();
 
-    if (!discordWebhookUrl && !xPublishWebhookUrl) {
+    if (!discordWebhookUrl && !xCredentials) {
       return NextResponse.json(
         {
-          error:
-            'No publish destinations are configured. Set DISCORD_PUBLISH_WEBHOOK_URL and/or X_PUBLISH_WEBHOOK_URL.',
+          error: 'No publish destinations are configured. Set DISCORD_PUBLISH_WEBHOOK_URL and/or the X API credentials.',
         },
         { status: 500 },
       );
@@ -572,8 +626,8 @@ async function handlePublish(request: NextRequest) {
       discordWebhookUrl
         ? publishToDiscord(discordWebhookUrl, latestSnapshot, publishPayload).then(() => 'discord')
         : null,
-      xPublishWebhookUrl
-        ? publishToX(xPublishWebhookUrl, publishPayload).then(() => 'x')
+      xCredentials
+        ? publishToX(xCredentials, publishPayload).then(() => 'x')
         : null,
     ].filter((job): job is Promise<'discord' | 'x'> => Boolean(job));
 

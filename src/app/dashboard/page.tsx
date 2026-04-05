@@ -251,6 +251,7 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
 
 export default async function DashboardPage() {
   const baseUrl = await getRequestBaseUrl();
+  const landingPageUrl = new URL("/#auth-console", baseUrl).toString();
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
   const regime = getBiasRegime(biasData.biasScore);
   const sortedAssets = [...biasData.assets].sort(
@@ -288,7 +289,7 @@ export default async function DashboardPage() {
       ? `Leader ${strongestAsset.ticker} ${formatMove(strongestAsset.dailyChangePercent ?? null)}`
       : null,
     analogSummaryCopy,
-    `See today's edge: ${baseUrl}`,
+    `See today's edge: ${landingPageUrl}`,
   ]
     .filter((value): value is string => Boolean(value))
     .join(" | ");
