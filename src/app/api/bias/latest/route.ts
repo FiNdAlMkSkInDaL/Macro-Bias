@@ -211,6 +211,8 @@ export async function GET() {
       );
     }
 
+    const historicalAnalogs = deriveHistoricalAnalogs(snapshot.engine_inputs);
+
     return NextResponse.json({
       data: {
         tradeDate: snapshot.trade_date,
@@ -219,7 +221,7 @@ export async function GET() {
         tickerChanges: buildFrontendTickerChanges(snapshot.ticker_changes),
         componentScores: buildPillarBreakdown(snapshot.component_scores),
         detailedComponentScores: snapshot.component_scores,
-        historicalAnalogs: deriveHistoricalAnalogs(snapshot.engine_inputs),
+        historicalAnalogs,
         createdAt: snapshot.created_at,
         updatedAt: snapshot.updated_at,
       },

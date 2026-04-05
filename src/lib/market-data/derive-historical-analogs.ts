@@ -1,11 +1,11 @@
 const FEATURE_TICKERS = ["SPY", "QQQ", "XLP", "TLT", "GLD", "USO", "VIX", "HYG", "CPER"] as const;
-const FORWARD_TICKERS = ["SPY", "QQQ", "TLT"] as const;
-
-type ForwardTicker = (typeof FORWARD_TICKERS)[number];
 
 type HistoricalArrayPoint = {
   adjustedClose: number;
   close: number;
+  high?: number;
+  low?: number;
+  open?: number;
   percentChangeFromPreviousClose: number | null;
   tradeDate: string;
 };
@@ -19,16 +19,22 @@ type TickerSnapshotLike = {
 };
 
 export type HistoricalAnalogMatch = {
+  intradayNet: number | null;
   matchConfidence: number;
   nextSessionDate: string;
-  nextSessionReturns: Record<ForwardTicker, number | null>;
+  overnightGap: number | null;
+  sessionRange: number | null;
   tradeDate: string;
 };
 
 export type HistoricalAnalogsPayload = {
   alignedSessionCount: number;
   candidateCount: number;
-  clusterAverageNextSessionReturns: Record<ForwardTicker, number | null>;
+  clusterAveragePlaybook: {
+    intradayNet: number | null;
+    overnightGap: number | null;
+    sessionRange: number | null;
+  };
   featureTickers: string[];
   topMatches: HistoricalAnalogMatch[];
 };
@@ -42,6 +48,9 @@ function isHistoricalArrayPoint(value: unknown): value is HistoricalArrayPoint {
     isRecord(value) &&
     typeof value.adjustedClose === "number" &&
     typeof value.close === "number" &&
+    (value.high === undefined || typeof value.high === "number") &&
+    (value.low === undefined || typeof value.low === "number") &&
+    (value.open === undefined || typeof value.open === "number") &&
     typeof value.tradeDate === "string" &&
     (value.percentChangeFromPreviousClose === null ||
       typeof value.percentChangeFromPreviousClose === "number")
@@ -61,6 +70,14 @@ function isTickerSnapshotLike(value: unknown): value is TickerSnapshotLike {
 
 function roundTo(value: number, decimals = 2) {
   return Number(value.toFixed(decimals));
+}
+
+function calculatePercentChange(currentValue: number, previousValue: number) {
+  if (previousValue === 0) {
+    return null;
+  }
+
+  return roundTo(((currentValue - previousValue) / previousValue) * 100);
 }
 
 function averageNullable(values: Array<number | null>) {
@@ -131,6 +148,33 @@ function getAlignedSessionCount(engineInputs: Record<string, unknown>, fallbackC
   return commonSessionCoverage.sessionCount;
 }
 
+function buildSpyNextSessionMetrics(
+  currentSession: HistoricalArrayPoint,
+  nextSession: HistoricalArrayPoint,
+) {
+  if (
+    typeof nextSession.open !== "number" ||
+    typeof nextSession.high !== "number" ||
+    typeof nextSession.low !== "number"
+  ) {
+    return null;
+  }
+
+  const overnightGap = calculatePercentChange(nextSession.open, currentSession.close);
+  const intradayNet = calculatePercentChange(nextSession.close, nextSession.open);
+  const sessionRange = calculatePercentChange(nextSession.high, nextSession.low);
+
+  if (overnightGap === null || intradayNet === null || sessionRange === null) {
+    return null;
+  }
+
+  return {
+    intradayNet,
+    overnightGap,
+    sessionRange,
+  };
+}
+
 export function deriveHistoricalAnalogs(engineInputs: unknown): HistoricalAnalogsPayload | null {
   if (!isRecord(engineInputs)) {
     return null;
@@ -192,7 +236,7 @@ export function deriveHistoricalAnalogs(engineInputs: unknown): HistoricalAnalog
     featureTickers.map((ticker) => [ticker, getStandardDeviation(historicalArrays[ticker])]),
   ) as Record<string, number>;
   const pointsByTicker = Object.fromEntries(
-    [...featureTickers, ...FORWARD_TICKERS]
+    featureTickers
       .filter((ticker, index, tickers) => tickers.indexOf(ticker) === index)
       .map((ticker) => [
         ticker,
@@ -229,6 +273,19 @@ export function deriveHistoricalAnalogs(engineInputs: unknown): HistoricalAnalog
         return [];
       }
 
+      const currentSpyPoint = pointsByTicker.SPY.get(tradeDate);
+      const nextSpyPoint = pointsByTicker.SPY.get(nextSessionDate);
+
+      if (!currentSpyPoint || !nextSpyPoint) {
+        return [];
+      }
+
+      const nextSessionMetrics = buildSpyNextSessionMetrics(currentSpyPoint, nextSpyPoint);
+
+      if (!nextSessionMetrics) {
+        return [];
+      }
+
       let distanceSquared = 0;
 
       for (const ticker of featureTickers) {
@@ -245,28 +302,13 @@ export function deriveHistoricalAnalogs(engineInputs: unknown): HistoricalAnalog
         distanceSquared += normalizedDifference ** 2;
       }
 
-      const nextSessionReturns = Object.fromEntries(
-        FORWARD_TICKERS.map((ticker) => {
-          const nextPoint = pointsByTicker[ticker].get(nextSessionDate);
-
-          return [
-            ticker,
-            nextPoint && typeof nextPoint.percentChangeFromPreviousClose === "number"
-              ? roundTo(nextPoint.percentChangeFromPreviousClose)
-              : null,
-          ];
-        }),
-      ) as Record<ForwardTicker, number | null>;
-
-      if (FORWARD_TICKERS.some((ticker) => nextSessionReturns[ticker] === null)) {
-        return [];
-      }
-
       return [
         {
           distanceSquared,
+          intradayNet: nextSessionMetrics.intradayNet,
           nextSessionDate,
-          nextSessionReturns,
+          overnightGap: nextSessionMetrics.overnightGap,
+          sessionRange: nextSessionMetrics.sessionRange,
           tradeDate,
         },
       ];
@@ -276,6 +318,7 @@ export function deriveHistoricalAnalogs(engineInputs: unknown): HistoricalAnalog
     .sort((left, right) => left.distanceSquared - right.distanceSquared)
     .slice(0, 5)
     .map((match) => ({
+      intradayNet: match.intradayNet,
       matchConfidence: Math.max(
         1,
         Math.min(
@@ -286,17 +329,18 @@ export function deriveHistoricalAnalogs(engineInputs: unknown): HistoricalAnalog
         ),
       ),
       nextSessionDate: match.nextSessionDate,
-      nextSessionReturns: match.nextSessionReturns,
+      overnightGap: match.overnightGap,
+      sessionRange: match.sessionRange,
       tradeDate: match.tradeDate,
     }));
 
   return {
     alignedSessionCount: getAlignedSessionCount(engineInputs, matches.length),
     candidateCount: matches.length,
-    clusterAverageNextSessionReturns: {
-      QQQ: averageNullable(topMatches.map((match) => match.nextSessionReturns.QQQ)),
-      SPY: averageNullable(topMatches.map((match) => match.nextSessionReturns.SPY)),
-      TLT: averageNullable(topMatches.map((match) => match.nextSessionReturns.TLT)),
+    clusterAveragePlaybook: {
+      intradayNet: averageNullable(topMatches.map((match) => match.intradayNet)),
+      overnightGap: averageNullable(topMatches.map((match) => match.overnightGap)),
+      sessionRange: averageNullable(topMatches.map((match) => match.sessionRange)),
     },
     featureTickers: [...featureTickers],
     topMatches,

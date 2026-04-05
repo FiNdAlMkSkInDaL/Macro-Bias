@@ -13,6 +13,7 @@ export const revalidate = 0;
 
 const MAX_HISTORY_ROWS = 180;
 const MIN_ANALOG_FEATURE_OVERLAP = 4;
+const DISCORD_PUBLISHING_ENABLED = false;
 
 type StoredBiasSnapshot = {
   trade_date: string;
@@ -585,13 +586,17 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const discordWebhookUrl = getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL');
+    // Temporarily bypass Discord publishing for launch stability.
+    const discordWebhookUrl = DISCORD_PUBLISHING_ENABLED
+      ? getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL')
+      : null;
     const xCredentials = getXCredentials();
 
     if (!discordWebhookUrl && !xCredentials) {
       return NextResponse.json(
         {
-          error: 'No publish destinations are configured. Set DISCORD_PUBLISH_WEBHOOK_URL and/or the X API credentials.',
+          error:
+            'No active publish destinations are configured. Discord publishing is temporarily disabled, so configure the X API credentials to enable cron publishing.',
         },
         { status: 500 },
       );
@@ -623,7 +628,7 @@ async function handlePublish(request: NextRequest) {
       .slice(0, 2);
     const publishPayload = buildPublishPayload(latestSnapshot, analogs);
     const publishJobs = [
-      discordWebhookUrl
+      DISCORD_PUBLISHING_ENABLED && discordWebhookUrl
         ? publishToDiscord(discordWebhookUrl, latestSnapshot, publishPayload).then(() => 'discord')
         : null,
       xCredentials

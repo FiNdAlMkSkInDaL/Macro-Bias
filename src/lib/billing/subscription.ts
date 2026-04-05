@@ -1,6 +1,13 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '../supabase/admin';
 import { createSupabaseServerClient } from '../supabase/server';
+
+const IGNORED_PROFILE_LOOKUP_ERROR_CODES = new Set(['42P01', '42703', 'PGRST204', 'PGRST205']);
+
+function shouldIgnoreProfileLookupError(error: { code?: string }) {
+  return error.code != null && IGNORED_PROFILE_LOOKUP_ERROR_CODES.has(error.code);
+}
 
 export type SubscriptionStatus =
   | 'active'
@@ -14,6 +21,7 @@ export type SubscriptionStatus =
   | null;
 
 export type SubscriptionStatusResult = {
+  isPro: boolean;
   user: {
     email: string | null | undefined;
     id: string;
@@ -25,6 +33,25 @@ export function isSubscriptionActive(status: SubscriptionStatus): boolean {
   return status === 'active' || status === 'trialing';
 }
 
+async function getIsPro(userId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from('profiles')
+    .select('is_pro')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    if (shouldIgnoreProfileLookupError(error)) {
+      return false;
+    }
+
+    throw new Error(`Failed to read profiles.is_pro: ${error.message}`);
+  }
+
+  return data?.is_pro === true;
+}
+
 export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusResult> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -34,6 +61,7 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusRes
 
   if (authError || !user) {
     return {
+      isPro: false,
       user: null,
       subscriptionStatus: null,
     };
@@ -49,7 +77,10 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusRes
     throw new Error(`Failed to read subscription status: ${error.message}`);
   }
 
+  const isPro = await getIsPro(user.id);
+
   return {
+    isPro,
     user: {
       email: user.email,
       id: user.id,

@@ -50,9 +50,54 @@ function getSubscriptionId(subscription: string | Stripe.Subscription | null | u
   return typeof subscription === 'string' ? subscription : subscription.id;
 }
 
+function getInvoiceParentSubscriptionDetails(invoice: Stripe.Invoice) {
+  const invoiceWithParent = invoice as Stripe.Invoice & {
+    lines?: {
+      data?: Array<{
+        metadata?: Stripe.Metadata | null;
+        parent?: {
+          subscription_item_details?: {
+            subscription?: string | Stripe.Subscription | null;
+          } | null;
+        } | null;
+      }>;
+    };
+    parent?: {
+      subscription_details?: {
+        metadata?: Stripe.Metadata | null;
+        subscription?: string | Stripe.Subscription | null;
+      } | null;
+    } | null;
+    subscription?: string | Stripe.Subscription | null;
+  };
+
+  return invoiceWithParent;
+}
+
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
-  return getSubscriptionId(
-    (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription,
+  const invoiceWithParent = getInvoiceParentSubscriptionDetails(invoice);
+
+  return (
+    getSubscriptionId(invoiceWithParent.subscription) ??
+    getSubscriptionId(invoiceWithParent.parent?.subscription_details?.subscription) ??
+    getSubscriptionId(
+      invoiceWithParent.lines?.data?.find((lineItem) =>
+        Boolean(lineItem.parent?.subscription_item_details?.subscription),
+      )?.parent?.subscription_item_details?.subscription,
+    )
+  );
+}
+
+function getInvoiceMetadataUserId(invoice: Stripe.Invoice) {
+  const invoiceWithParent = getInvoiceParentSubscriptionDetails(invoice);
+
+  return (
+    getMetadataUserId(invoice.metadata) ??
+    getMetadataUserId(invoiceWithParent.parent?.subscription_details?.metadata) ??
+    invoiceWithParent.lines?.data
+      ?.map((lineItem) => getMetadataUserId(lineItem.metadata))
+      .find((userId): userId is string => Boolean(userId)) ??
+    null
   );
 }
 
@@ -200,7 +245,7 @@ async function buildInvoiceSyncInput(invoice: Stripe.Invoice): Promise<BillingSy
     email: invoice.customer_email ?? (await getStripeCustomerEmail(customerId)),
     subscriptionId,
     subscriptionStatus: 'active',
-    userId: getMetadataUserId(subscription?.metadata),
+    userId: getInvoiceMetadataUserId(invoice) ?? getMetadataUserId(subscription?.metadata),
   };
 }
 

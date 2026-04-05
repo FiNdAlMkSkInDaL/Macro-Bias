@@ -2,11 +2,9 @@ import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
-import { AssetHeatmap } from "../../components/dashboard/AssetHeatmap";
 import { BiasGauge } from "../../components/dashboard/BiasGauge";
 import { ShareEdgeButton } from "../../components/dashboard/ShareEdgeButton";
 import {
-  SignalBreakdown,
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
@@ -49,20 +47,18 @@ type ApiBiasSnapshot = {
   historicalAnalogs?: {
     alignedSessionCount: number;
     candidateCount: number;
-    clusterAverageNextSessionReturns: {
-      QQQ: number | null;
-      SPY: number | null;
-      TLT: number | null;
+    clusterAveragePlaybook: {
+      intradayNet: number | null;
+      overnightGap: number | null;
+      sessionRange: number | null;
     };
     featureTickers: string[];
     topMatches: Array<{
+      intradayNet: number | null;
       matchConfidence: number;
       nextSessionDate: string;
-      nextSessionReturns: {
-        QQQ: number | null;
-        SPY: number | null;
-        TLT: number | null;
-      };
+      overnightGap: number | null;
+      sessionRange: number | null;
       tradeDate: string;
     }>;
   } | null;
@@ -86,6 +82,87 @@ type DashboardDataResult = {
   errorMessage: string | null;
   snapshot: ApiBiasSnapshot | null;
 };
+
+const priceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const proSignalPillars = [
+  {
+    key: "volatility" as const,
+    label: "Volatility Regime",
+    symbol: "^VIX",
+  },
+  {
+    key: "creditAndRiskSpreads" as const,
+    label: "Credit Stress",
+    symbol: "HYG vs TLT",
+  },
+  {
+    key: "trendAndMomentum" as const,
+    label: "Trend Exhaustion",
+    symbol: "SPY RSI / SMA",
+  },
+] satisfies Array<{
+  key: SignalBreakdownScore["key"];
+  label: string;
+  symbol: string;
+}>;
+
+function formatPrice(value: number | null) {
+  if (value === null) {
+    return "Pending";
+  }
+
+  return priceFormatter.format(value);
+}
+
+function getSignalDisposition(signal: number | undefined) {
+  if (signal == null || Number.isNaN(signal)) {
+    return {
+      label: "Pending",
+      tone: "text-zinc-500",
+    };
+  }
+
+  if (signal > 0.15) {
+    return {
+      label: "Bullish",
+      tone: "text-emerald-400",
+    };
+  }
+
+  if (signal < -0.15) {
+    return {
+      label: "Bearish",
+      tone: "text-rose-400",
+    };
+  }
+
+  return {
+    label: "Neutral",
+    tone: "text-zinc-300",
+  };
+}
+
+function formatContribution(value: number | undefined) {
+  if (value == null || Number.isNaN(value)) {
+    return "--";
+  }
+
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
+}
+
+function formatWeight(value: number | undefined) {
+  if (value == null || Number.isNaN(value)) {
+    return "--";
+  }
+
+  return value.toFixed(0);
+}
 
 function getBiasRegime(biasScore: number): "Risk-On" | "Neutral" | "Risk-Off" {
   if (biasScore > 30) {
@@ -127,6 +204,14 @@ function formatMove(value: number | null): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function formatUnsignedPercent(value: number | null): string {
+  if (value === null) {
+    return "Pending";
+  }
+
+  return `${value.toFixed(2)}%`;
+}
+
 function formatTradeDate(tradeDate?: string) {
   if (!tradeDate) {
     return "Pending first sync";
@@ -165,6 +250,30 @@ function getMoveTone(value: number | null): string {
   }
 
   return "text-zinc-300";
+}
+
+function getDeltaTone(value: number | null): string {
+  if (value === null) {
+    return "text-zinc-500";
+  }
+
+  if (value > 0) {
+    return "text-green-500";
+  }
+
+  if (value < 0) {
+    return "text-red-500";
+  }
+
+  return "text-zinc-400";
+}
+
+function getRangeTone(value: number | null): string {
+  if (value === null) {
+    return "text-zinc-500";
+  }
+
+  return "text-sky-300";
 }
 
 async function getRequestBaseUrl() {
@@ -254,13 +363,14 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
 export default async function DashboardPage() {
   noStore();
 
-  const [baseUrl, { subscriptionStatus, user }] = await Promise.all([
+  const [baseUrl, { isPro, subscriptionStatus, user }] = await Promise.all([
     getRequestBaseUrl(),
     getUserSubscriptionStatus(),
   ]);
   const landingPageUrl = new URL("/#auth-console", baseUrl).toString();
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
   const isProUser = subscriptionStatus === "active";
+  const shouldRenderManageSubscription = isPro === true;
   const regime = getBiasRegime(biasData.biasScore);
   const sortedAssets = [...biasData.assets].sort(
     (leftAsset, rightAsset) => leftAsset.dailyChangePercent - rightAsset.dailyChangePercent,
@@ -285,6 +395,8 @@ export default async function DashboardPage() {
       ? "text-rose-400"
       : "text-zinc-300";
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
+  const componentScores = snapshot?.componentScores ?? [];
+  const signalScoreByKey = new Map(componentScores.map((score) => [score.key, score]));
   const topAnalogMatches = historicalAnalogs?.topMatches ?? [];
   const analogSummaryCopy = historicalAnalogs
     ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
@@ -376,8 +488,8 @@ export default async function DashboardPage() {
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
                     {historicalAnalogs
-                      ? `Pattern matching identified ${historicalAnalogs.candidateCount.toLocaleString()} mathematical analogs. Upgrade to unlock forward return expectancy and historical win rates.`
-                      : "Pattern library unavailable. Additional aligned history is required before forward return expectancy and win rates can be computed."}
+                      ? `Pattern matching identified ${historicalAnalogs.candidateCount.toLocaleString()} mathematical analogs. Upgrade to unlock the typical overnight gap, cash-session drift, and range expansion for the next SPY session.`
+                      : "Pattern library unavailable. Additional aligned history is required before next-session gap, intraday drift, and range tendencies can be computed."}
                   </p>
                 </div>
 
@@ -404,17 +516,17 @@ export default async function DashboardPage() {
 
                   <div className="border-t border-white/10 pt-3 sm:col-span-1 col-span-2">
                     <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Next 24h edge
+                      Next session playbook
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
-                        SPY •••
+                        Gap •••
                       </span>
                       <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
-                        QQQ •••
+                        Intraday •••
                       </span>
                       <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
-                        TLT •••
+                        Range •••
                       </span>
                     </div>
                   </div>
@@ -423,22 +535,30 @@ export default async function DashboardPage() {
             </section>
 
             <section className="border-t border-white/5 pt-5">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
+              {isProUser ? (
+                <div className="mb-5">
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                    Locked Workspace
+                    [ PRO DATA TERMINAL ]
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                    Historical Playbook + Setup Map
-                  </h2>
                 </div>
-                <p className="max-w-md text-sm leading-6 text-zinc-500">
-                  Historical analogs, signal drivers, and cross-asset confirmation live behind the lock.
-                </p>
-              </div>
+              ) : (
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                      Locked Workspace
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                      Historical Playbook + Setup Map
+                    </h2>
+                  </div>
+                  <p className="max-w-md text-sm leading-6 text-zinc-500">
+                    Historical analogs, signal drivers, and cross-asset confirmation live behind the lock.
+                  </p>
+                </div>
+              )}
 
               <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
-                <div className="space-y-6">
+                <div>
                   <section>
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                       <div>
@@ -446,112 +566,67 @@ export default async function DashboardPage() {
                           Historical Analogs
                         </p>
                         <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                          Top 5 matched sessions
+                          Intraday Playbook
                         </h3>
                       </div>
-                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
-                        {historicalAnalogs
-                          ? `Ranked against ${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions using the live cross-asset fingerprint from ${historicalAnalogs.featureTickers.join(", ")}.`
-                          : "No analog cluster is available yet. This table will populate as soon as enough aligned daily history is present in the model universe."}
-                      </p>
+                      {isProUser && historicalAnalogs ? (
+                        <p className="max-w-lg text-sm leading-6 text-zinc-500">
+                          Ranked against {historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions across {historicalAnalogs.featureTickers.join(", ")}.
+                        </p>
+                      ) : null}
                     </div>
 
                     {historicalAnalogs ? (
                       <>
-                        <div className="grid gap-3 border-y border-white/5 py-4 sm:grid-cols-2 lg:grid-cols-4">
-                          <div>
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                              Aligned sessions
-                            </p>
-                            <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                              {historicalAnalogs.alignedSessionCount.toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                              Usable matches
-                            </p>
-                            <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                              {historicalAnalogs.candidateCount.toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                              Cluster avg SPY
-                            </p>
-                            <p
-                              className={`mt-2 text-base font-semibold tracking-tight ${getMoveTone(historicalAnalogs.clusterAverageNextSessionReturns.SPY)}`}
-                            >
-                              {formatMove(historicalAnalogs.clusterAverageNextSessionReturns.SPY)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                              Cluster avg QQQ / TLT
-                            </p>
-                            <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                              <span className={getMoveTone(historicalAnalogs.clusterAverageNextSessionReturns.QQQ)}>
-                                {formatMove(historicalAnalogs.clusterAverageNextSessionReturns.QQQ)}
-                              </span>
-                              <span className="mx-2 text-zinc-600">/</span>
-                              <span className={getMoveTone(historicalAnalogs.clusterAverageNextSessionReturns.TLT)}>
-                                {formatMove(historicalAnalogs.clusterAverageNextSessionReturns.TLT)}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="overflow-hidden border-b border-white/5">
-                          <table className="min-w-full border-collapse text-left">
+                        <div className="overflow-hidden">
+                          <table className="min-w-full table-fixed border-collapse text-left">
                             <thead>
-                              <tr className="border-b border-white/5">
-                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              <tr className="border-b border-zinc-800">
+                                <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                                   Matched date
                                 </th>
-                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                                   Match confidence
                                 </th>
-                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  SPY +24h
+                                <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  SPY Gap
                                 </th>
-                                <th className="py-3 pr-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  QQQ +24h
+                                <th className="w-[18%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  SPY Intraday (O-C)
                                 </th>
-                                <th className="py-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  TLT +24h
+                                <th className="w-[16%] py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  SPY Range
                                 </th>
                               </tr>
                             </thead>
                             <tbody>
                               {topAnalogMatches.map((match) => (
-                                <tr className="border-b border-white/5 last:border-b-0" key={match.tradeDate}>
-                                  <td className="py-4 pr-4 align-top">
-                                    <p className="text-sm font-medium text-white">
+                                <tr className="border-b border-zinc-800 last:border-b-0" key={match.tradeDate}>
+                                  <td className="py-5 pr-6 align-middle">
+                                    <p className="text-base font-medium text-white">
                                       {formatAnalogDate(match.tradeDate)}
                                     </p>
-                                    <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-500">
-                                      Next session {formatAnalogDate(match.nextSessionDate)}
+                                    <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                                      Next {formatAnalogDate(match.nextSessionDate)}
                                     </p>
                                   </td>
-                                  <td className="py-4 pr-4 align-top">
-                                    <p className="text-sm font-medium text-white">
+                                  <td className="py-5 pr-6 align-middle">
+                                    <p className="font-[family:var(--font-data)] text-sm text-zinc-400">
                                       {match.matchConfidence}%
                                     </p>
                                   </td>
                                   <td
-                                    className={`py-4 pr-4 align-top font-[family:var(--font-data)] text-sm ${getMoveTone(match.nextSessionReturns.SPY)}`}
+                                    className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.overnightGap)}`}
                                   >
-                                    {formatMove(match.nextSessionReturns.SPY)}
+                                    {formatMove(match.overnightGap)}
                                   </td>
                                   <td
-                                    className={`py-4 pr-4 align-top font-[family:var(--font-data)] text-sm ${getMoveTone(match.nextSessionReturns.QQQ)}`}
+                                    className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.intradayNet)}`}
                                   >
-                                    {formatMove(match.nextSessionReturns.QQQ)}
+                                    {formatMove(match.intradayNet)}
                                   </td>
-                                  <td
-                                    className={`py-4 align-top font-[family:var(--font-data)] text-sm ${getMoveTone(match.nextSessionReturns.TLT)}`}
-                                  >
-                                    {formatMove(match.nextSessionReturns.TLT)}
+                                  <td className={`py-5 align-middle font-[family:var(--font-data)] text-base ${getRangeTone(match.sessionRange)}`}>
+                                    {formatUnsignedPercent(match.sessionRange)}
                                   </td>
                                 </tr>
                               ))}
@@ -562,14 +637,11 @@ export default async function DashboardPage() {
                     ) : (
                       <div className="border-y border-white/5 py-4">
                         <p className="max-w-2xl text-sm leading-6 text-zinc-500">
-                          The analog engine has not yet produced a complete forward-return cluster for this snapshot. Once the session library is fully aligned, the top five matched dates and their next-24h SPY, QQQ, and TLT behavior will appear here automatically.
+                          The analog engine has not yet produced a complete intraday playbook for this snapshot. Additional aligned price history is required before the next-session gap, intraday drift, and range profile can be computed.
                         </p>
                       </div>
                     )}
                   </section>
-
-                  <SignalBreakdown componentScores={snapshot?.componentScores ?? []} />
-                  <AssetHeatmap assets={biasData.assets} />
                 </div>
               </PaywallWrapper>
             </section>
@@ -620,13 +692,46 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between gap-4 py-3">
                 <div>
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    View
+                    Heatmap
                   </p>
-                  <p className="mt-1 text-sm font-medium text-white">Heatmap preview</p>
+                  <p className="mt-1 text-sm font-medium text-white">
+                    {isProUser ? "Cross-asset map" : "Heatmap preview"}
+                  </p>
                 </div>
-                <p className="font-[family:var(--font-data)] text-sm text-zinc-300">Below</p>
+                <p className="font-[family:var(--font-data)] text-sm text-zinc-300">
+                  {isProUser ? `${biasData.assets.length} assets` : "Below"}
+                </p>
               </div>
             </div>
+
+            {isProUser ? (
+              <div className="border-t border-white/10 pt-4">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Cross-Asset Map
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  {biasData.assets.map((asset) => (
+                    <div
+                      className="flex items-center justify-between gap-4 border-b border-zinc-800 pb-3 last:border-b-0 last:pb-0"
+                      key={asset.ticker}
+                    >
+                      <div>
+                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                          {asset.ticker}
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-white">
+                          {formatPrice(asset.currentPrice)}
+                        </p>
+                      </div>
+                      <p className={`font-[family:var(--font-data)] text-sm ${getMoveTone(asset.dailyChangePercent)}`}>
+                        {formatMove(asset.dailyChangePercent)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="border-t border-white/10 pt-4">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
@@ -636,6 +741,140 @@ export default async function DashboardPage() {
                 Model Integrity: This score is derived via K-Nearest Neighbors analysis across 730 days of intermarket data. No discretionary bias is applied to the output.
               </p>
             </div>
+
+            {isProUser ? (
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex flex-col gap-2">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Cluster Averages
+                  </p>
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    Macro summary
+                  </h3>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                      Aligned Sessions
+                    </p>
+                    <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                      {historicalAnalogs
+                        ? historicalAnalogs.alignedSessionCount.toLocaleString()
+                        : "--"}
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                      Usable Matches
+                    </p>
+                    <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                      {historicalAnalogs
+                        ? historicalAnalogs.candidateCount.toLocaleString()
+                        : "--"}
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                      Avg Overnight Gap
+                    </p>
+                    <p
+                      className={`mt-3 text-2xl font-semibold tracking-tight ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}`}
+                    >
+                      {formatMove(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                      Avg Intraday Net
+                    </p>
+                    <p
+                      className={`mt-3 text-2xl font-semibold tracking-tight ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}`}
+                    >
+                      {formatMove(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                      Avg Session Range
+                    </p>
+                    <p
+                      className={`mt-3 text-2xl font-semibold tracking-tight ${getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}`}
+                    >
+                      {formatUnsignedPercent(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}
+                    </p>
+                  </article>
+                </div>
+              </div>
+            ) : null}
+
+            {isProUser ? (
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex flex-col gap-2">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Methodology
+                  </p>
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    Signal Breakdown
+                  </h3>
+                  <p className="text-sm leading-6 text-zinc-500">
+                    Weighted pillar contribution to the composite score.
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {proSignalPillars.map((pillar) => {
+                    const score = signalScoreByKey.get(pillar.key);
+                    const disposition = getSignalDisposition(score?.signal);
+
+                    return (
+                      <article
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                        key={pillar.key}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              {pillar.label}
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-white">{pillar.symbol}</p>
+                          </div>
+
+                          <div className="text-right">
+                            <p
+                              className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] ${disposition.tone}`}
+                            >
+                              {disposition.label}
+                            </p>
+                            <p className="mt-2 font-[family:var(--font-data)] text-base font-semibold text-white">
+                              {formatContribution(score?.contribution)}
+                            </p>
+                            <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              of {formatWeight(score?.weight)} pts
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {shouldRenderManageSubscription ? (
+              <div className="border-t border-white/10 pt-4">
+                <a
+                  className="font-[family:var(--font-data)] text-sm text-zinc-400 transition-colors hover:text-white"
+                  href="/api/stripe/portal"
+                >
+                  Manage Subscription
+                </a>
+              </div>
+            ) : null}
           </aside>
         </section>
       </div>

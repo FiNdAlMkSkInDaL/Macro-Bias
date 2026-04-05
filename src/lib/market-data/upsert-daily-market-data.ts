@@ -170,6 +170,9 @@ function buildHistoricalArrayPayload(
         return {
           adjustedClose: row.adjusted_close,
           close: row.close,
+          high: row.high,
+          low: row.low,
+          open: row.open,
           percentChangeFromPreviousClose: previousRow
             ? Number((((row.close - previousRow.close) / previousRow.close) * 100).toFixed(2))
             : null,
