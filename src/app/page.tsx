@@ -48,47 +48,26 @@ const quantPillars = [
   {
     symbol: "^VIX",
     title: "Volatility",
-    description:
-      "Detects whether the session is opening inside a stable trend regime or a stress regime that punishes loose risk and late entries.",
     details: [
-      "Regime shifts change how far momentum can realistically travel.",
-      "Rising volatility reframes position sizing and exit speed before price structure breaks.",
+      "Measures market stress vs. stability.",
+      "Identifies when to press momentum and when to reduce position sizing.",
     ],
   },
   {
     symbol: "HYG vs TLT",
     title: "Credit Spreads",
-    description:
-      "Measures whether capital is leaning toward corporate risk or defensive duration before index price fully reflects that internal rotation.",
     details: [
-      "Credit strength confirms healthier risk appetite under the surface.",
-      "Defensive bond demand often shows up before equity traders fully price the shift.",
+      "Tracks smart-money rotation.",
+      "Detects defensive bond demand before equity markets price in the risk-off shift.",
     ],
   },
   {
     symbol: "SPY RSI / SMA",
     title: "Trend",
-    description:
-      "Combines momentum and structure so you can tell whether the benchmark is aligned with the broader macro message or fighting it.",
     details: [
-      "Momentum without structure is noise.",
-      "Trend confirmation keeps you from forcing conviction into a mixed tape.",
+      "Quantifies structural momentum.",
+      "Prevents you from forcing directional conviction into a broken or mixed tape.",
     ],
-  },
-] as const;
-
-const consoleNotes = [
-  {
-    label: "Redirect",
-    value: "Route preserved",
-    detail:
-      "Authentication returns you to the protected destination you originally requested.",
-  },
-  {
-    label: "Delivery",
-    value: "Browser auth",
-    detail:
-      "Supabase handles sign-in, sign-up, session restore, and callback routing safely in the browser.",
   },
 ] as const;
 
@@ -323,11 +302,10 @@ export default function HomePage() {
               The Edge
             </p>
             <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-              Three market inputs. One cleaner decision framework.
+              Three Core Pillars. Zero Discretion.
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              The engine compresses the macro picture into the signals that matter most for
-              intraday decision-making: stress, sponsorship, and structural trend.
+              We compress raw intermarket data into a singular, actionable daily bias. Trade the regime, not the noise.
             </p>
           </div>
 
@@ -340,16 +318,17 @@ export default function HomePage() {
                 <h3 className="mt-5 font-[family:var(--font-heading)] text-2xl font-semibold tracking-tight text-white">
                   {pillar.title}
                 </h3>
-                <p className="mt-4 text-base leading-7 text-zinc-300">
-                  {pillar.description}
-                </p>
-                <div className="mt-6 space-y-4">
+                <ul className="mt-6 space-y-3">
                   {pillar.details.map((detail) => (
-                    <p key={detail} className="text-sm leading-7 text-zinc-400">
-                      {detail}
-                    </p>
+                    <li
+                      key={detail}
+                      className="flex gap-3 text-sm leading-7 text-zinc-300"
+                    >
+                      <span className="mt-[0.72rem] block h-px w-3 flex-none bg-zinc-600" />
+                      <span>{detail}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </article>
             ))}
           </div>
@@ -362,37 +341,11 @@ export default function HomePage() {
                 Access Console
               </p>
               <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-                Enter the live macro regime dashboard.
+                Terminal Access.
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-                Authenticate below to access the protected Macro Bias workspace. The route
-                you originally requested stays intact through sign-in, sign-up, and email
-                confirmation.
+                Log in to view today's macro risk score, historical analogs, and the intraday playbook.
               </p>
-
-              <div className="mt-12 grid gap-10 sm:grid-cols-2">
-                {consoleNotes.map((note) => (
-                  <div key={note.label} className="border-t border-white/10 pt-4">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                      {note.label}
-                    </p>
-                    <p className="mt-3 text-lg font-medium text-white">{note.value}</p>
-                    <p className="mt-3 text-sm leading-7 text-zinc-400">{note.detail}</p>
-                  </div>
-                ))}
-                <div className="border-t border-white/10 pt-4 sm:col-span-2 lg:col-span-1">
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                    Active destination
-                  </p>
-                  <p className="mt-3 font-[family:var(--font-data)] text-sm text-white">
-                    {redirectPath}
-                  </p>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Successful authentication routes you back to this protected path without
-                    dropping context.
-                  </p>
-                </div>
-              </div>
             </div>
 
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 sm:p-10">
@@ -437,8 +390,8 @@ export default function HomePage() {
 
               <p className="mt-6 text-sm leading-7 text-zinc-400">
                 {authMode === "signin"
-                  ? "Restore your session and continue directly into the protected Macro Bias dashboard."
-                  : "Create your account and preserve the same redirect target through the full auth flow."}
+                  ? "View today's macro risk score, historical analogs, and the intraday playbook."
+                  : "Create access to the macro terminal and daily regime data feed."}
               </p>
 
               {browserClientConfigError ? (
@@ -499,13 +452,6 @@ export default function HomePage() {
                       value={credentials.password}
                     />
                   </div>
-                </div>
-
-                <div className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Redirect after auth
-                  <p className="mt-3 text-[11px] normal-case tracking-normal text-zinc-300">
-                    {redirectPath}
-                  </p>
                 </div>
 
                 {statusMessage ? (
