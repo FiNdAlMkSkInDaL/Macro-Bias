@@ -419,10 +419,16 @@ export default async function DashboardPage() {
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
   const componentScores = snapshot?.componentScores ?? [];
   const signalScoreByKey = new Map(componentScores.map((score) => [score.key, score]));
+  const detailedSignalScoreByKey = new Map(
+    (snapshot?.detailedComponentScores ?? []).map((score) => [score.pillar ?? score.key, score]),
+  );
   const topAnalogMatches = historicalAnalogs?.topMatches ?? [];
   const analogSummaryCopy = historicalAnalogs
     ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
     : "historical analog engine warming up";
+  const moduleClassName = "border border-white/10 p-5 sm:p-6";
+  const footerModuleClassName =
+    "border border-white/10 p-5 text-sm leading-6 text-zinc-500 sm:p-6";
   const shareCopy = [
     `Macro Bias | ${targetSessionDate}`,
     `Data as of ${snapshotDateLabel}`,
@@ -510,417 +516,344 @@ export default async function DashboardPage() {
           </section>
         ) : null}
 
-        <section className="grid grid-cols-1 gap-8 py-5 lg:grid-cols-12">
-          <div className="space-y-6 lg:col-span-8">
-            <BiasGauge biasScore={biasData.biasScore} />
-
-            {!isProUser ? (
-              <section className="border-t border-white/5 pt-5">
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] lg:items-end">
-                  <div>
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                      Historical Analog Engine
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                      Closest historical tape
-                    </h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                      {historicalAnalogs
-                        ? `Pattern matching identified ${historicalAnalogs.candidateCount.toLocaleString()} mathematical analogs. Upgrade to unlock the typical overnight gap, cash-session drift, and range expansion for the next SPY session.`
-                        : "Pattern library unavailable. Additional aligned history is required before next-session gap, intraday drift, and range tendencies can be computed."}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <div className="border-t border-white/10 pt-3">
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                        Matching sessions
-                      </p>
-                      <p className="mt-2 text-lg font-semibold tracking-tight text-white">
-                        {historicalAnalogs
-                          ? historicalAnalogs.candidateCount.toLocaleString()
-                          : "--"}
-                      </p>
-                    </div>
-
-                    <div className="border-t border-white/10 pt-3">
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                        Nearest cluster
-                      </p>
-                      <p className="mt-2 text-lg font-semibold tracking-tight text-white">
-                        {topAnalogMatches.length > 0 ? `${topAnalogMatches.length} sessions` : "--"}
-                      </p>
-                    </div>
-
-                    <div className="col-span-2 border-t border-white/10 pt-3 sm:col-span-1">
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                        Next session playbook
-                      </p>
-                      <ul className="mt-2 space-y-1 text-sm text-zinc-400">
-                        <li>Gap ...</li>
-                        <li>Intraday ...</li>
-                        <li>Range ...</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            <section className="border-t border-white/5 pt-5">
-              {isProUser ? (
-                <div className="mb-5">
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                    [ PRO DATA TERMINAL ]
-                  </p>
-                </div>
-              ) : (
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                      Locked Workspace
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                      Historical Playbook + Setup Map
-                    </h2>
-                  </div>
-                  <p className="max-w-md text-sm leading-6 text-zinc-500">
-                    Historical analogs, signal drivers, and cross-asset confirmation live behind the lock.
-                  </p>
-                </div>
-              )}
-
-              <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
-                <div>
-                  <section>
-                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                          Historical Analogs
-                        </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                          Intraday Playbook
-                        </h3>
-                      </div>
-                      {isProUser && historicalAnalogs ? (
-                        <p className="max-w-lg text-sm leading-6 text-zinc-500">
-                          Ranked against {historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions across {historicalAnalogs.featureTickers.join(", ")}.
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {historicalAnalogs ? (
-                      <>
-                        <div className="overflow-hidden">
-                          <table className="min-w-full table-fixed border-collapse text-left">
-                            <thead>
-                              <tr className="border-b border-zinc-800">
-                                <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  Matched date
-                                </th>
-                                <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  Match confidence
-                                </th>
-                                <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  SPY Gap
-                                </th>
-                                <th className="w-[18%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  SPY Intraday (O-C)
-                                </th>
-                                <th className="w-[16%] py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                  SPY Range
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {topAnalogMatches.map((match) => (
-                                <tr className="border-b border-zinc-800 last:border-b-0" key={match.tradeDate}>
-                                  <td className="py-5 pr-6 align-middle">
-                                    <p className="text-base font-medium text-white">
-                                      {formatAnalogDate(match.tradeDate)}
-                                    </p>
-                                    <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.22em] text-zinc-500">
-                                      Next {formatAnalogDate(match.nextSessionDate)}
-                                    </p>
-                                  </td>
-                                  <td className="py-5 pr-6 align-middle">
-                                    <p className="font-[family:var(--font-data)] text-sm text-zinc-400">
-                                      {match.matchConfidence}%
-                                    </p>
-                                  </td>
-                                  <td
-                                    className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.overnightGap)}`}
-                                  >
-                                    {formatMove(match.overnightGap)}
-                                  </td>
-                                  <td
-                                    className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.intradayNet)}`}
-                                  >
-                                    {formatMove(match.intradayNet)}
-                                  </td>
-                                  <td className={`py-5 align-middle font-[family:var(--font-data)] text-base ${getRangeTone(match.sessionRange)}`}>
-                                    {formatUnsignedPercent(match.sessionRange)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="border-y border-white/5 py-4">
-                        <p className="max-w-2xl text-sm leading-6 text-zinc-500">
-                          The analog engine has not yet produced a complete intraday playbook for this snapshot. Additional aligned price history is required before the next-session gap, intraday drift, and range profile can be computed.
-                        </p>
-                      </div>
-                    )}
-                  </section>
-
-                  {isProUser ? (
-                    <section className="mt-12 border-t border-white/10 pt-4">
-                      <div className="flex flex-col gap-2">
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                          Methodology
-                        </p>
-                        <h3 className="text-lg font-semibold tracking-tight text-white">
-                          Signal Breakdown
-                        </h3>
-                        <p className="text-sm leading-6 text-zinc-500">
-                          Weighted pillar contribution to the composite score.
-                        </p>
-                      </div>
-
-                      <div className="mt-4 space-y-0">
-                        {proSignalPillars.map((pillar) => {
-                          const score = signalScoreByKey.get(pillar.key);
-                          const disposition = getSignalDisposition(score?.signal);
-
-                          return (
-                            <article className="border-b border-zinc-900 py-3 last:border-b-0" key={pillar.key}>
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                                    {pillar.label}
-                                  </p>
-                                  <p className="mt-1 text-sm font-medium text-white">{pillar.symbol}</p>
-                                </div>
-
-                                <div className="text-right">
-                                  <p
-                                    className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] ${disposition.tone}`}
-                                  >
-                                    {disposition.label}
-                                  </p>
-                                  <p className="mt-2 font-[family:var(--font-data)] text-base text-white">
-                                    {formatContribution(score?.contribution)}
-                                  </p>
-                                  <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                    of {formatWeight(score?.weight)} pts
-                                  </p>
-                                </div>
-                              </div>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ) : null}
-                </div>
-              </PaywallWrapper>
+        <section className="grid grid-cols-1 gap-6 py-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+            <section className={moduleClassName}>
+              <BiasGauge biasScore={biasData.biasScore} />
             </section>
-          </div>
 
-          <aside className="space-y-5 border-t border-white/5 pt-5 lg:col-span-4 lg:border-l lg:border-t-0 lg:border-white/5 lg:pl-6 lg:pt-0">
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                Storm Fronts
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                {regime} backdrop
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-zinc-400">
-                {errorMessage ?? getForecastCopy(regime)}
-              </p>
-            </div>
+            <section className={moduleClassName}>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                  Storm Fronts
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                  {regime} backdrop
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                  {errorMessage ?? getForecastCopy(regime)}
+                </p>
+              </div>
 
-            <div className="border-t border-white/10">
-              <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3">
-                <div>
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="border-t border-white/10 pt-3">
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     Strongest
                   </p>
-                  <p className="mt-1 text-sm font-medium text-white">
+                  <p className="mt-2 text-sm font-medium text-white">
                     {strongestAsset?.ticker ?? "--"}
                   </p>
+                  <p className={`mt-1 font-[family:var(--font-data)] text-sm ${strongestMoveTone}`}>
+                    {formatMove(strongestAsset?.dailyChangePercent ?? null)}
+                  </p>
                 </div>
-                <p className={`font-[family:var(--font-data)] text-sm ${strongestMoveTone}`}>
-                  {formatMove(strongestAsset?.dailyChangePercent ?? null)}
-                </p>
-              </div>
 
-              <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3">
-                <div>
+                <div className="border-t border-white/10 pt-3">
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     Weakest
                   </p>
-                  <p className="mt-1 text-sm font-medium text-white">
+                  <p className="mt-2 text-sm font-medium text-white">
                     {weakestAsset?.ticker ?? "--"}
                   </p>
+                  <p className={`mt-1 font-[family:var(--font-data)] text-sm ${weakestMoveTone}`}>
+                    {formatMove(weakestAsset?.dailyChangePercent ?? null)}
+                  </p>
                 </div>
-                <p className={`font-[family:var(--font-data)] text-sm ${weakestMoveTone}`}>
-                  {formatMove(weakestAsset?.dailyChangePercent ?? null)}
-                </p>
-              </div>
 
-              <div className="flex items-center justify-between gap-4 py-3">
-                <div>
+                <div className="border-t border-white/10 pt-3">
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Heatmap
+                    Breadth
                   </p>
-                  <p className="mt-1 text-sm font-medium text-white">
-                    {isProUser ? "Cross-asset map" : "Heatmap preview"}
+                  <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
+                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
+                    {biasData.assets.length} core ETFs
                   </p>
                 </div>
-                <p className="font-[family:var(--font-data)] text-sm text-zinc-300">
-                  {isProUser ? `${biasData.assets.length} assets` : "Below"}
-                </p>
               </div>
-            </div>
+            </section>
+          </div>
 
-            {isProUser ? (
-              <div className="border-t border-white/10 pt-4">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Cross-Asset Map
-                </p>
+          {!isProUser ? (
+            <section className={`${moduleClassName} lg:col-span-2`}>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                Locked Workspace
+              </p>
+              <h2 className="mt-3 text-xl font-semibold tracking-tight text-white">
+                Historical Playbook + Setup Map
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                Signal drivers, cross-asset confirmation, and the intraday playbook are arranged below in the Pro grid.
+              </p>
+            </section>
+          ) : null}
 
-                <div className="mt-4 space-y-3">
-                  {biasData.assets.map((asset) => (
-                    <div
-                      className="flex items-center justify-between gap-4 border-b border-zinc-800 pb-3 last:border-b-0 last:pb-0"
-                      key={asset.ticker}
-                    >
+          <div className="lg:col-span-2">
+            <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <section className={`${moduleClassName} h-full`}>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                       <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                          {asset.ticker}
+                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                          Signal Breakdown
                         </p>
-                        <p className="mt-1 text-sm font-medium text-white">
-                          {formatPrice(asset.currentPrice)}
-                        </p>
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                          Context Engine
+                        </h3>
                       </div>
-                      <p className={`font-[family:var(--font-data)] text-sm ${getMoveTone(asset.dailyChangePercent)}`}>
-                        {formatMove(asset.dailyChangePercent)}
+                      <p className="max-w-md text-sm leading-6 text-zinc-500">
+                        Weighted pillar contribution to the composite score.
                       </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
-            <div className="border-t border-white/10 pt-4">
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Model Integrity
-              </p>
-              <p className="mt-3 text-sm leading-6 text-zinc-400">
-                Model Integrity: This score is derived via K-Nearest Neighbors analysis across 730 days of intermarket data. No discretionary bias is applied to the output.
-              </p>
-              {isProUser ? (
-                <div className="mt-4 border-y border-white/5">
-                  <div className="flex items-start justify-between gap-4 py-3">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                      Temporal Decay Factor
-                    </p>
-                    <p className="font-[family:var(--font-data)] text-sm text-white">
-                      λ = 0.001
-                    </p>
-                  </div>
-                  <p className="pb-3 text-sm leading-6 text-zinc-500">
-                    Older analogs are mathematically penalized to prioritize recent market microstructures.
-                  </p>
-                </div>
-              ) : null}
-            </div>
+                    <div className="mt-4 space-y-0">
+                      {proSignalPillars.map((pillar) => {
+                        const score = signalScoreByKey.get(pillar.key);
+                        const detailedScore = detailedSignalScoreByKey.get(pillar.key);
+                        const disposition = getSignalDisposition(score?.signal);
 
-            {isProUser ? (
-              <div className="border-t border-white/10 pt-4">
-                <div className="flex flex-col gap-2">
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                    Cluster Averages
-                  </p>
-                  <h3 className="text-lg font-semibold tracking-tight text-white">
-                    Macro summary
-                  </h3>
+                        return (
+                          <article
+                            className="border-t border-white/10 py-3 first:border-t-0 first:pt-0 last:pb-0"
+                            key={pillar.key}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                                  {pillar.label}
+                                </p>
+                                <p className="mt-1 text-sm font-medium text-white">{pillar.symbol}</p>
+                              </div>
+
+                              <div className="text-right">
+                                <p
+                                  className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] ${disposition.tone}`}
+                                >
+                                  {disposition.label}
+                                </p>
+                                <p className="mt-2 font-[family:var(--font-data)] text-base text-white">
+                                  {formatContribution(score?.contribution)}
+                                </p>
+                                <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                  of {formatWeight(score?.weight)} pts
+                                </p>
+                              </div>
+                            </div>
+
+                            <p className="mt-3 text-sm leading-6 text-zinc-400">
+                              {detailedScore?.summary ?? "Waiting for the next model sync to publish this pillar's narrative read."}
+                            </p>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section className={`${moduleClassName} h-full`}>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                          Cross-Asset Map
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                          Market Internals
+                        </h3>
+                      </div>
+                      <p className="max-w-md text-sm leading-6 text-zinc-500">
+                        Live confirmation across the core ETF basket feeding the composite bias.
+                      </p>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {biasData.assets.map((asset) => (
+                        <article className="border border-white/10 p-4" key={asset.ticker}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                                {asset.ticker}
+                              </p>
+                              <p className="mt-2 text-sm font-medium text-white">
+                                {formatPrice(asset.currentPrice)}
+                              </p>
+                            </div>
+                            <p className={`font-[family:var(--font-data)] text-sm ${getMoveTone(asset.dailyChangePercent)}`}>
+                              {formatMove(asset.dailyChangePercent)}
+                            </p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
                 </div>
 
-                <div className="mt-4">
-                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
+                <section className={moduleClassName}>
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                        Aligned Sessions
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        Historical Analogs
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        Intraday Playbook
+                      </h3>
+                    </div>
+                    {historicalAnalogs ? (
+                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
+                        Ranked against {historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions across {historicalAnalogs.featureTickers.join(", ")}.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {historicalAnalogs ? (
+                    <div className="overflow-hidden">
+                      <table className="min-w-full table-fixed border-collapse text-left">
+                        <thead>
+                          <tr className="border-b border-white/10">
+                            <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              Matched date
+                            </th>
+                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              Match confidence
+                            </th>
+                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              SPY Gap
+                            </th>
+                            <th className="w-[18%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              SPY Intraday (O-C)
+                            </th>
+                            <th className="w-[16%] py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              SPY Range
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {topAnalogMatches.map((match) => (
+                            <tr
+                              className="border-b border-white/10 even:bg-white/[0.02] last:border-b-0"
+                              key={match.tradeDate}
+                            >
+                              <td className="py-5 pr-6 align-middle">
+                                <p className="text-base font-medium text-white">
+                                  {formatAnalogDate(match.tradeDate)}
+                                </p>
+                                <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                                  Next {formatAnalogDate(match.nextSessionDate)}
+                                </p>
+                              </td>
+                              <td className="py-5 pr-6 align-middle">
+                                <p className="font-[family:var(--font-data)] text-sm text-zinc-400">
+                                  {match.matchConfidence}%
+                                </p>
+                              </td>
+                              <td
+                                className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.overnightGap)}`}
+                              >
+                                {formatMove(match.overnightGap)}
+                              </td>
+                              <td
+                                className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.intradayNet)}`}
+                              >
+                                {formatMove(match.intradayNet)}
+                              </td>
+                              <td className={`py-5 align-middle font-[family:var(--font-data)] text-base ${getRangeTone(match.sessionRange)}`}>
+                                {formatUnsignedPercent(match.sessionRange)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="border border-white/10 bg-white/[0.01] p-4">
+                      <p className="max-w-2xl text-sm leading-6 text-zinc-500">
+                        The analog engine has not yet produced a complete intraday playbook for this snapshot. Additional aligned price history is required before the next-session gap, intraday drift, and range profile can be computed.
                       </p>
                     </div>
-                    <p className="font-[family:var(--font-data)] text-lg text-white">
+                  )}
+                </section>
+              </div>
+            </PaywallWrapper>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:col-span-2 lg:grid-cols-2">
+            <section className={footerModuleClassName}>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Macro Summary
+              </p>
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+                Cluster Averages
+              </h3>
+
+              {isProUser ? (
+                <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[11px]">
+                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3 first:pt-0">
+                    <p className="uppercase tracking-[0.28em] text-zinc-500">Aligned Sessions</p>
+                    <p className="text-sm text-white">
                       {historicalAnalogs
                         ? historicalAnalogs.alignedSessionCount.toLocaleString()
                         : "--"}
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                        Usable Matches
-                      </p>
-                    </div>
-                    <p className="font-[family:var(--font-data)] text-lg text-white">
+                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3">
+                    <p className="uppercase tracking-[0.28em] text-zinc-500">Usable Matches</p>
+                    <p className="text-sm text-white">
                       {historicalAnalogs
                         ? historicalAnalogs.candidateCount.toLocaleString()
                         : "--"}
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                        Avg Overnight Gap
-                      </p>
-                    </div>
-                    <p
-                      className={`font-[family:var(--font-data)] text-lg ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}`}
-                    >
+                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3">
+                    <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Overnight Gap</p>
+                    <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}>
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3">
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                        Avg Intraday Net
-                      </p>
-                    </div>
-                    <p
-                      className={`font-[family:var(--font-data)] text-lg ${getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}`}
-                    >
+                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3">
+                    <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Intraday Net</p>
+                    <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}>
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-b border-zinc-900 py-3 last:border-b-0">
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                        Avg Session Range
-                      </p>
-                    </div>
-                    <p
-                      className={`font-[family:var(--font-data)] text-lg ${getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}`}
-                    >
+                  <div className="flex items-end justify-between gap-4 border-t border-white/10 pt-3">
+                    <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Session Range</p>
+                    <p className={getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}>
                       {formatUnsignedPercent(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}
                     </p>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ) : (
+                <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500">
+                  Upgrade to expose the exact analog cluster averages behind the current regime classification.
+                </p>
+              )}
+            </section>
 
-          </aside>
+            <section className={footerModuleClassName}>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Model Integrity
+              </p>
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+                Microstructure Upgrade
+              </h3>
+              <p className="mt-3">
+                This score is generated from a K-Nearest Neighbors engine over aligned intermarket history. The dashboard, playbook table, and publication pipeline now reference the same decay-adjusted analog set.
+              </p>
+
+              <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[11px] text-zinc-500">
+                <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3 first:pt-0">
+                  <p className="uppercase tracking-[0.28em]">Temporal Decay</p>
+                  <p className="text-sm text-white">λ = 0.001</p>
+                </div>
+                <div className="flex items-end justify-between gap-4 border-t border-white/10 pt-3">
+                  <p className="uppercase tracking-[0.28em]">Selection Logic</p>
+                  <p className="text-right text-sm text-zinc-400">Exact decayed KNN top 5</p>
+                </div>
+              </div>
+            </section>
+          </div>
         </section>
       </div>
     </main>

@@ -59,6 +59,14 @@ type XCredentials = {
   apiSecret: string;
 };
 
+type PublishDestination = 'discord' | 'x';
+
+type PublishResult = {
+  destination: PublishDestination;
+  failure?: string;
+  ok: boolean;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -421,6 +429,26 @@ async function publishToX(credentials: XCredentials, payload: PublishPayload) {
   }
 }
 
+async function safePublish(destination: PublishDestination, publish: () => Promise<void>) {
+  try {
+    await publish();
+
+    return {
+      destination,
+      ok: true,
+    } satisfies PublishResult;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown publish failure.';
+    console.warn(`[publish-cron] ${destination} publish failed: ${message}`);
+
+    return {
+      destination,
+      failure: message,
+      ok: false,
+    } satisfies PublishResult;
+  }
+}
+
 async function getRecentSnapshots() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -510,40 +538,24 @@ async function handlePublish(request: NextRequest) {
     );
     const analogs = buildPublishedAnalogs(historicalAnalogs, snapshotsByDate);
     const publishPayload = buildPublishPayload(latestSnapshot, historicalAnalogs, analogs);
-    const publishJobs = [
-      DISCORD_PUBLISHING_ENABLED && discordWebhookUrl
-        ? publishToDiscord(discordWebhookUrl, latestSnapshot, publishPayload).then(() => 'discord')
-        : null,
-      xCredentials
-        ? publishToX(xCredentials, publishPayload).then(() => 'x')
-        : null,
-    ].filter((job): job is Promise<'discord' | 'x'> => Boolean(job));
+    const publishJobs: Array<Promise<PublishResult>> = [];
 
-    const publishResults = await Promise.allSettled(publishJobs);
-    const publishedTo = publishResults
-      .filter((result): result is PromiseFulfilledResult<'discord' | 'x'> => result.status === 'fulfilled')
-      .map((result) => result.value);
-    const failures = publishResults
-      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-      .map((result) => result.reason instanceof Error ? result.reason.message : 'Unknown publish failure.');
-
-    if (failures.length > 0) {
-      return NextResponse.json(
-        {
-          error: 'One or more publish destinations failed.',
-          publishedTo,
-          failures,
-          preview: publishPayload.xText,
-          analogs,
-          playbook: historicalAnalogs?.clusterAveragePlaybook ?? null,
-        },
-        { status: 502 },
-      );
+    if (DISCORD_PUBLISHING_ENABLED && discordWebhookUrl) {
+      publishJobs.push(safePublish('discord', () => publishToDiscord(discordWebhookUrl, latestSnapshot, publishPayload)));
     }
+
+    if (xCredentials) {
+      publishJobs.push(safePublish('x', () => publishToX(xCredentials, publishPayload)));
+    }
+
+    const publishResults = await Promise.all(publishJobs);
+    const publishedTo = publishResults.flatMap((result) => (result.ok ? [result.destination] : []));
+    const failures = publishResults.flatMap((result) => (result.ok || !result.failure ? [] : [result.failure]));
 
     return NextResponse.json({
       ok: true,
       publishedTo,
+      failures,
       analogs,
       playbook: historicalAnalogs?.clusterAveragePlaybook ?? null,
       preview: publishPayload.xText,
