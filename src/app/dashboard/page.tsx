@@ -823,6 +823,21 @@ export default async function DashboardPage() {
               <p className="mt-3 text-sm leading-6 text-zinc-400">
                 Model Integrity: This score is derived via K-Nearest Neighbors analysis across 730 days of intermarket data. No discretionary bias is applied to the output.
               </p>
+              {isProUser ? (
+                <div className="mt-4 border-y border-white/5">
+                  <div className="flex items-start justify-between gap-4 py-3">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                      Temporal Decay Factor
+                    </p>
+                    <p className="font-[family:var(--font-data)] text-sm text-white">
+                      λ = 0.001
+                    </p>
+                  </div>
+                  <p className="pb-3 text-sm leading-6 text-zinc-500">
+                    Older analogs are mathematically penalized to prioritize recent market microstructures.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             {isProUser ? (

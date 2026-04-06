@@ -121,6 +121,7 @@ export type MacroBiasScoreRow = {
   component_scores: BiasComponentResult[];
   ticker_changes: TickerChangeMap;
   engine_inputs: Record<string, unknown> | null;
+  technical_indicators: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };

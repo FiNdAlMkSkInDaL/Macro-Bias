@@ -1,3 +1,4 @@
+import { calculateDecayedDistance } from "../../utils/knn";
 import {
   ANALOG_MODEL_SETTINGS,
   BIAS_SIGNAL_WEIGHTS,
@@ -192,25 +193,17 @@ function standardizeVector(
   }, {} as AnalogStateVector);
 }
 
-function calculateEuclideanDistance(
-  leftVector: AnalogStateVector,
-  rightVector: AnalogStateVector,
-) {
-  const squaredDistance = FEATURE_ORDER.reduce((total, feature) => {
-    const delta = leftVector[feature] - rightVector[feature];
-
-    return total + delta ** 2;
-  }, 0);
-
-  return Math.sqrt(squaredDistance);
-}
-
 function buildNeighborMatches(
+  todayTradeDate: string,
   todayVector: AnalogStateVector,
   historicalAnalogs: HistoricalAnalogVector[],
 ) {
   const featureStatistics = buildFeatureStatistics(historicalAnalogs);
   const standardizedTodayVector = standardizeVector(todayVector, featureStatistics);
+  const standardizedTodaySnapshot = {
+    tradeDate: todayTradeDate,
+    vector: standardizedTodayVector,
+  };
 
   const nearestNeighbors = historicalAnalogs
     .map<NeighborWithStandardizedVector>((analog) => {
@@ -218,7 +211,14 @@ function buildNeighborMatches(
 
       return {
         analog,
-        distance: calculateEuclideanDistance(standardizedTodayVector, standardizedVector),
+        distance: calculateDecayedDistance(
+          standardizedTodaySnapshot,
+          {
+            tradeDate: analog.tradeDate,
+            vector: standardizedVector,
+          },
+          ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+        ),
         standardizedVector,
       };
     })
@@ -421,14 +421,15 @@ function buildComponentScores(
 // Historical analog engine:
 // 1. Build today's 6-factor vector.
 // 2. Standardize it against the historical distribution.
-// 3. Measure Euclidean distance to every historical vector.
-// 4. Take the 5 nearest matches.
+// 3. Measure Euclidean distance in z-scored space and apply temporal decay.
+// 4. Take the 5 nearest adjusted matches.
 // 5. Average their 1-day and 3-day forward SPY returns.
 // 6. Map that forward-return expectancy back onto the legacy -100 to +100 score scale.
 export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
   const todayVector = buildTodayStateVector(input);
   const historicalAnalogs = getHistoricalAnalogVectors(input);
   const { nearestNeighbors, standardizedTodayVector } = buildNeighborMatches(
+    input.tradeDate,
     todayVector,
     historicalAnalogs,
   );

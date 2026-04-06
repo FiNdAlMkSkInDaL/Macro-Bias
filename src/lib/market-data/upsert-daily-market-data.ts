@@ -618,6 +618,9 @@ function buildEngineInputsPayload(
   lookbackDays: number,
 ) {
   return {
+    metadata: {
+      decay_lambda: ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+    },
     tradeWindow: {
       lookbackDays,
       latestTradeDate,

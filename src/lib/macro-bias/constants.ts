@@ -1,3 +1,5 @@
+import { DEFAULT_TEMPORAL_DECAY_LAMBDA } from "../../utils/knn";
+
 // The model only scores these ETFs. Keeping the list in one place prevents drift
 // between the schema, ingestion job, and API formatting.
 export const TRACKED_TICKERS = ["SPY", "QQQ", "XLP", "TLT", "GLD"] as const;
@@ -27,6 +29,7 @@ export const ANALOG_MODEL_SETTINGS = {
   blendedReturnScale: 2.75,
   minimumHistoricalAnalogs: 20,
   nearestNeighborCount: 5,
+  temporalDecayLambda: DEFAULT_TEMPORAL_DECAY_LAMBDA,
   oneDayReturnScale: 2.5,
   threeDayReturnScale: 4.5,
   usoMomentumLookbackSessions: 5,

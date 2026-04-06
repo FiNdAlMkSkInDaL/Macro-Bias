@@ -3,7 +3,12 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 
+import {
+  deriveHistoricalAnalogs,
+  type HistoricalAnalogsPayload,
+} from '../../../../lib/market-data/derive-historical-analogs';
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
+import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
 import { getAppUrl } from '../../../../lib/server-env';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 
@@ -12,13 +17,13 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const MAX_HISTORY_ROWS = 180;
-const MIN_ANALOG_FEATURE_OVERLAP = 4;
 const DISCORD_PUBLISHING_ENABLED = false;
 
 type StoredBiasSnapshot = {
   trade_date: string;
   score: number;
   bias_label: BiasLabel;
+  component_scores: unknown;
   model_version: string | null;
   engine_inputs: unknown;
   technical_indicators: unknown;
@@ -26,18 +31,13 @@ type StoredBiasSnapshot = {
 
 type AnalogMatch = {
   tradeDate: string;
+  nextSessionDate: string;
   score: number | null;
   biasLabel: string | null;
-  similarity: number | null;
-  source: 'persisted' | 'derived';
-};
-
-type DerivedAnalogMatch = {
-  tradeDate: string;
-  score: number;
-  biasLabel: BiasLabel;
-  similarity: number;
-  source: 'derived';
+  matchConfidence: number;
+  intradayNet: number | null;
+  overnightGap: number | null;
+  sessionRange: number | null;
 };
 
 type PublishPayload = {
@@ -46,6 +46,7 @@ type PublishPayload = {
   discordText: string;
   headline: string;
   ogImageUrl: string;
+  playbookSummary: string | null;
   regimeSentence: string;
   shareUrl: string;
   xText: string;
@@ -58,43 +59,8 @@ type XCredentials = {
   apiSecret: string;
 };
 
-type ComparableFeature =
-  | 'score'
-  | 'SPY'
-  | 'QQQ'
-  | 'XLP'
-  | 'TLT'
-  | 'GLD'
-  | 'VIX'
-  | 'HYG'
-  | 'CPER'
-  | 'spyRsi14'
-  | 'spyDistanceFromSma';
-
-const FEATURE_CONFIG: Record<ComparableFeature, { scale: number; weight: number }> = {
-  score: { scale: 25, weight: 2.4 },
-  SPY: { scale: 2.5, weight: 1.2 },
-  QQQ: { scale: 2.75, weight: 1.1 },
-  XLP: { scale: 1.75, weight: 0.9 },
-  TLT: { scale: 1.75, weight: 1 },
-  GLD: { scale: 2, weight: 0.9 },
-  VIX: { scale: 10, weight: 1.8 },
-  HYG: { scale: 1.5, weight: 1.3 },
-  CPER: { scale: 2, weight: 1 },
-  spyRsi14: { scale: 18, weight: 1.1 },
-  spyDistanceFromSma: { scale: 2.5, weight: 1.4 },
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isIsoTradeDate(value: unknown): value is string {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function getString(value: unknown) {
-  return typeof value === 'string' ? value : null;
 }
 
 function getNumber(value: unknown) {
@@ -117,6 +83,18 @@ function formatSignedNumber(value: number) {
 function formatSignedPercent(value: number) {
   const roundedValue = Number(value.toFixed(2));
   return `${roundedValue > 0 ? '+' : ''}${roundedValue}%`;
+}
+
+function formatOptionalSignedPercent(value: number | null) {
+  return value == null ? 'n/a' : formatSignedPercent(value);
+}
+
+function formatOptionalUnsignedPercent(value: number | null) {
+  if (value == null) {
+    return 'n/a';
+  }
+
+  return `${Math.abs(Number(value.toFixed(2)))}%`;
 }
 
 function getRegimeTone(label: BiasLabel) {
@@ -257,187 +235,45 @@ function getTickerPercentChange(
   return getNumber(tickerValue.percentChange);
 }
 
-function getSpyTechnicalIndicator(technicalIndicators: unknown, key: 'rsi14' | 'distanceFromSmaPercent') {
-  if (!isRecord(technicalIndicators)) {
-    return null;
-  }
-
-  const spyIndicators = technicalIndicators.SPY;
-
-  if (!isRecord(spyIndicators)) {
-    return null;
-  }
-
-  return getNumber(spyIndicators[key]);
-}
-
-function buildFeatureVector(snapshot: StoredBiasSnapshot): Partial<Record<ComparableFeature, number>> {
-  return {
-    score: snapshot.score,
-    SPY: getTickerPercentChange(snapshot.engine_inputs, 'coreTickerChanges', 'SPY') ?? undefined,
-    QQQ: getTickerPercentChange(snapshot.engine_inputs, 'coreTickerChanges', 'QQQ') ?? undefined,
-    XLP: getTickerPercentChange(snapshot.engine_inputs, 'coreTickerChanges', 'XLP') ?? undefined,
-    TLT: getTickerPercentChange(snapshot.engine_inputs, 'coreTickerChanges', 'TLT') ?? undefined,
-    GLD: getTickerPercentChange(snapshot.engine_inputs, 'coreTickerChanges', 'GLD') ?? undefined,
-    VIX: getTickerPercentChange(snapshot.engine_inputs, 'supplementalTickerChanges', 'VIX') ?? undefined,
-    HYG: getTickerPercentChange(snapshot.engine_inputs, 'supplementalTickerChanges', 'HYG') ?? undefined,
-    CPER: getTickerPercentChange(snapshot.engine_inputs, 'supplementalTickerChanges', 'CPER') ?? undefined,
-    spyRsi14: getSpyTechnicalIndicator(snapshot.technical_indicators, 'rsi14') ?? undefined,
-    spyDistanceFromSma:
-      getSpyTechnicalIndicator(snapshot.technical_indicators, 'distanceFromSmaPercent') ?? undefined,
-  };
-}
-
-function computeAnalogDistance(
-  latestVector: Partial<Record<ComparableFeature, number>>,
-  candidateVector: Partial<Record<ComparableFeature, number>>,
+function buildPublishedAnalogs(
+  historicalAnalogs: HistoricalAnalogsPayload | null,
+  snapshotsByDate: Map<string, StoredBiasSnapshot>,
 ) {
-  let weightedDistance = 0;
-  let totalWeight = 0;
-  let sharedFeatureCount = 0;
-
-  (Object.keys(FEATURE_CONFIG) as ComparableFeature[]).forEach((feature) => {
-    const latestValue = latestVector[feature];
-    const candidateValue = candidateVector[feature];
-
-    if (latestValue == null || candidateValue == null) {
-      return;
-    }
-
-    const { scale, weight } = FEATURE_CONFIG[feature];
-    const normalizedDifference = Math.min(Math.abs(latestValue - candidateValue) / scale, 3);
-
-    weightedDistance += normalizedDifference * weight;
-    totalWeight += weight;
-    sharedFeatureCount += 1;
-  });
-
-  if (sharedFeatureCount < MIN_ANALOG_FEATURE_OVERLAP || totalWeight === 0) {
-    return null;
+  if (!historicalAnalogs) {
+    return [] as AnalogMatch[];
   }
 
-  return weightedDistance / totalWeight;
-}
+  return historicalAnalogs.topMatches.map((analog) => {
+    const snapshot = snapshotsByDate.get(analog.tradeDate);
 
-function parseAnalogMatch(value: unknown): AnalogMatch | null {
-  if (isIsoTradeDate(value)) {
     return {
-      tradeDate: value,
-      score: null,
-      biasLabel: null,
-      similarity: null,
-      source: 'persisted',
-    };
-  }
-
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const tradeDate =
-    getString(value.tradeDate) ??
-    getString(value.trade_date) ??
-    getString(value.date) ??
-    getString(value.analogDate) ??
-    getString(value.analog_trade_date);
-
-  if (!isIsoTradeDate(tradeDate)) {
-    return null;
-  }
-
-  return {
-    tradeDate,
-    score:
-      getNumber(value.score) ??
-      getNumber(value.analogScore) ??
-      getNumber(value.biasScore) ??
-      null,
-    biasLabel:
-      getString(value.biasLabel) ??
-      getString(value.bias_label) ??
-      getString(value.label) ??
-      getString(value.regime) ??
-      null,
-    similarity:
-      getNumber(value.similarity) ??
-      getNumber(value.confidence) ??
-      getNumber(value.matchScore) ??
-      null,
-    source: 'persisted',
-  };
+      tradeDate: analog.tradeDate,
+      nextSessionDate: analog.nextSessionDate,
+      score: snapshot?.score ?? null,
+      biasLabel: snapshot?.bias_label ?? null,
+      matchConfidence: analog.matchConfidence,
+      intradayNet: analog.intradayNet,
+      overnightGap: analog.overnightGap,
+      sessionRange: analog.sessionRange,
+    } satisfies AnalogMatch;
+  });
 }
 
-function collectPersistedAnalogs(value: unknown, path: string[] = []): AnalogMatch[] {
-  if (Array.isArray(value)) {
-    const isAnalogPath = path.some((segment) => segment.toLowerCase().includes('analog'));
-
-    if (!isAnalogPath) {
-      return [];
-    }
-
-    return value.map(parseAnalogMatch).filter((match): match is AnalogMatch => Boolean(match));
-  }
-
-  if (!isRecord(value) || path.length > 8) {
-    return [];
-  }
-
-  return Object.entries(value).flatMap(([key, childValue]) =>
-    collectPersistedAnalogs(childValue, [...path, key]),
-  );
-}
-
-function enrichAnalogMatches(analogs: AnalogMatch[], snapshotsByDate: Map<string, StoredBiasSnapshot>) {
-  const seenTradeDates = new Set<string>();
-
-  return analogs
-    .map((analog) => {
-      if (seenTradeDates.has(analog.tradeDate)) {
-        return null;
-      }
-
-      seenTradeDates.add(analog.tradeDate);
-
-      const snapshot = snapshotsByDate.get(analog.tradeDate);
-
-      return {
-        ...analog,
-        score: analog.score ?? snapshot?.score ?? null,
-        biasLabel: analog.biasLabel ?? snapshot?.bias_label ?? null,
-      };
-    })
-    .filter((analog): analog is AnalogMatch => Boolean(analog));
-}
-
-function deriveAnalogMatches(
-  latestSnapshot: StoredBiasSnapshot,
-  historicalSnapshots: StoredBiasSnapshot[],
+function buildPlaybookSummary(
+  historicalAnalogs: HistoricalAnalogsPayload | null,
+  variant: 'discord' | 'x',
 ) {
-  const latestVector = buildFeatureVector(latestSnapshot);
+  if (!historicalAnalogs || historicalAnalogs.topMatches.length === 0) {
+    return null;
+  }
 
-  return historicalSnapshots
-    .map((snapshot) => {
-      const distance = computeAnalogDistance(latestVector, buildFeatureVector(snapshot));
+  const analogCount = historicalAnalogs.topMatches.length;
+  const prefix =
+    variant === 'x'
+      ? `Decayed KNN playbook avg (${analogCount})`
+      : `Decayed KNN playbook avg across ${analogCount} exact analogs`;
 
-      if (distance == null) {
-        return null;
-      }
-
-      return {
-        tradeDate: snapshot.trade_date,
-        score: snapshot.score,
-        biasLabel: snapshot.bias_label,
-        similarity: Number((1 / (1 + distance)).toFixed(3)),
-        source: 'derived' as const,
-      };
-    })
-    .filter((analog): analog is DerivedAnalogMatch => Boolean(analog))
-    .sort((left, right) => {
-      const leftSimilarity = left.similarity ?? 0;
-      const rightSimilarity = right.similarity ?? 0;
-      return rightSimilarity - leftSimilarity;
-    })
-    .slice(0, 2);
+  return `${prefix}: Gap ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.overnightGap)} | Intraday Drift ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.intradayNet)} | Session Range ${formatOptionalUnsignedPercent(historicalAnalogs.clusterAveragePlaybook.sessionRange)}`;
 }
 
 function buildAnalogSection(analogs: AnalogMatch[]) {
@@ -449,7 +285,7 @@ function buildAnalogSection(analogs: AnalogMatch[]) {
     .map((analog, index) => {
       const scoreText = analog.score == null ? '' : ` ${formatSignedNumber(analog.score)}`;
       const labelText = analog.biasLabel ? ` ${analog.biasLabel.replace(/_/g, ' ')}` : '';
-      return `${index + 1}. ${formatDisplayDate(analog.tradeDate)}${labelText}${scoreText}`;
+      return `${index + 1}. ${formatDisplayDate(analog.tradeDate)}${labelText}${scoreText} (${analog.matchConfidence}%)`;
     })
     .join(' | ');
 }
@@ -467,7 +303,11 @@ function buildSignalContext(snapshot: StoredBiasSnapshot) {
   return contextFragments.join(' | ');
 }
 
-function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[]) {
+function buildPublishPayload(
+  snapshot: StoredBiasSnapshot,
+  historicalAnalogs: HistoricalAnalogsPayload | null,
+  analogs: AnalogMatch[],
+) {
   const appUrl = getAppUrl();
   const dashboardUrl = new URL('/dashboard', appUrl).toString();
   const ogImageUrl = new URL('/api/og', appUrl).toString();
@@ -479,11 +319,14 @@ function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[
   const regimeSentence = getRegimeSentence(snapshot.bias_label);
   const signalContext = buildSignalContext(snapshot);
   const analogSection = buildAnalogSection(analogs);
+  const discordPlaybookSummary = buildPlaybookSummary(historicalAnalogs, 'discord');
+  const xPlaybookSummary = buildPlaybookSummary(historicalAnalogs, 'x');
   const discordText = [
     `**${headline}**`,
     `${formattedDate}`,
     regimeTone,
     signalContext ? `Signal tape: ${signalContext}` : null,
+    discordPlaybookSummary,
     `Closest historical analogs: ${analogSection}`,
     `Open the live dashboard: ${dashboardUrl}`,
   ]
@@ -492,6 +335,7 @@ function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[
   const xText = [
     `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)}`,
     `Regime: ${regimeSentence}`,
+    xPlaybookSummary,
     shareUrl,
   ]
     .filter((line): line is string => Boolean(line))
@@ -503,6 +347,7 @@ function buildPublishPayload(snapshot: StoredBiasSnapshot, analogs: AnalogMatch[
     discordText,
     headline,
     ogImageUrl,
+    playbookSummary: discordPlaybookSummary,
     regimeSentence,
     shareUrl,
     xText,
@@ -565,15 +410,13 @@ async function publishToX(credentials: XCredentials, payload: PublishPayload) {
   try {
     await xClient.v2.tweet(payload.xText);
   } catch (err: unknown) {
-    // Surface the full Twitter API error (HTTP status + error codes) so the
-    // publish-failure response includes actionable detail rather than just
-    // "Request failed with code 403".
-    if (isRecord(err) && (isRecord(err['data']) || isRecord(err['errors']))) {
-      const twitterData = isRecord(err['data']) ? err['data'] : err['errors'];
+    if (isRecord(err) && (isRecord(err.data) || isRecord(err.errors))) {
+      const twitterData = isRecord(err.data) ? err.data : err.errors;
       const detail = JSON.stringify(twitterData).slice(0, 500);
-      const status = typeof err['code'] === 'number' ? err['code'] : 'unknown';
+      const status = typeof err.code === 'number' ? err.code : 'unknown';
       throw new Error(`Twitter API error (HTTP ${status}): ${detail}`);
     }
+
     throw err;
   }
 }
@@ -582,7 +425,7 @@ async function getRecentSnapshots() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('macro_bias_scores')
-    .select('trade_date, score, bias_label, model_version, engine_inputs, technical_indicators')
+    .select('trade_date, score, bias_label, component_scores, model_version, engine_inputs, technical_indicators')
     .order('trade_date', { ascending: false })
     .limit(MAX_HISTORY_ROWS);
 
@@ -593,10 +436,6 @@ async function getRecentSnapshots() {
   return (data as StoredBiasSnapshot[] | null) ?? [];
 }
 
-/**
- * All known bias label values. A snapshot missing any of these fields was
- * written during a market-holiday sync run and must be skipped.
- */
 const VALID_BIAS_LABELS = new Set<BiasLabel>([
   'EXTREME_RISK_OFF',
   'RISK_OFF',
@@ -605,12 +444,6 @@ const VALID_BIAS_LABELS = new Set<BiasLabel>([
   'EXTREME_RISK_ON',
 ]);
 
-/**
- * Returns true only when a snapshot was produced from a real trading session
- * (i.e. has a recognised bias label, a finite score, and populated engine inputs).
- * On market holidays the sync job may store a row whose payload is null or
- * empty, and those rows must be stepped over before publishing.
- */
 function isValidSnapshot(snapshot: StoredBiasSnapshot): boolean {
   return (
     VALID_BIAS_LABELS.has(snapshot.bias_label) &&
@@ -626,7 +459,8 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Temporarily bypass Discord publishing for launch stability.
+    await upsertDailyMarketData();
+
     const discordWebhookUrl = DISCORD_PUBLISHING_ENABLED
       ? getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL')
       : null;
@@ -648,18 +482,14 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'No macro bias snapshots are available to publish.' }, { status: 404 });
     }
 
-    // Step back through recent snapshots to find the most recent one from a
-    // real trading session. On market holidays (e.g. Good Friday) the daily
-    // sync job may store a row with null engine_inputs / bias_label because
-    // the market data provider returns no OHLC data for that day. We walk
-    // backwards one day at a time until we land on a complete record.
     let latestSnapshotIndex = 0;
+
     while (
       latestSnapshotIndex < snapshots.length &&
       !isValidSnapshot(snapshots[latestSnapshotIndex])
     ) {
       console.warn(
-        `[publish-cron] Skipping snapshot for ${snapshots[latestSnapshotIndex].trade_date} — missing or incomplete data (market holiday?). Stepping back to prior session.`,
+        `[publish-cron] Skipping snapshot for ${snapshots[latestSnapshotIndex].trade_date} - missing or incomplete data (market holiday?). Stepping back to prior session.`,
       );
       latestSnapshotIndex += 1;
     }
@@ -672,25 +502,14 @@ async function handlePublish(request: NextRequest) {
     }
 
     const latestSnapshot = snapshots[latestSnapshotIndex];
-    const historicalSnapshots = snapshots.slice(latestSnapshotIndex + 1);
     const snapshotsByDate = new Map(snapshots.map((snapshot) => [snapshot.trade_date, snapshot]));
-    const persistedAnalogs = enrichAnalogMatches(
-      [
-        ...collectPersistedAnalogs(latestSnapshot.engine_inputs),
-        ...collectPersistedAnalogs(latestSnapshot.technical_indicators),
-      ],
-      snapshotsByDate,
-    ).slice(0, 2);
-    const derivedAnalogs = deriveAnalogMatches(latestSnapshot, historicalSnapshots);
-    const analogs = [...persistedAnalogs, ...derivedAnalogs]
-      .filter(
-        (analog, index, allAnalogs) =>
-          allAnalogs.findIndex(
-            (candidateAnalog) => candidateAnalog.tradeDate === analog.tradeDate,
-          ) === index,
-      )
-      .slice(0, 2);
-    const publishPayload = buildPublishPayload(latestSnapshot, analogs);
+    const historicalAnalogs = deriveHistoricalAnalogs(
+      latestSnapshot.engine_inputs,
+      latestSnapshot.component_scores,
+      latestSnapshot.technical_indicators,
+    );
+    const analogs = buildPublishedAnalogs(historicalAnalogs, snapshotsByDate);
+    const publishPayload = buildPublishPayload(latestSnapshot, historicalAnalogs, analogs);
     const publishJobs = [
       DISCORD_PUBLISHING_ENABLED && discordWebhookUrl
         ? publishToDiscord(discordWebhookUrl, latestSnapshot, publishPayload).then(() => 'discord')
@@ -716,6 +535,7 @@ async function handlePublish(request: NextRequest) {
           failures,
           preview: publishPayload.xText,
           analogs,
+          playbook: historicalAnalogs?.clusterAveragePlaybook ?? null,
         },
         { status: 502 },
       );
@@ -725,6 +545,7 @@ async function handlePublish(request: NextRequest) {
       ok: true,
       publishedTo,
       analogs,
+      playbook: historicalAnalogs?.clusterAveragePlaybook ?? null,
       preview: publishPayload.xText,
       tradeDate: latestSnapshot.trade_date,
     });

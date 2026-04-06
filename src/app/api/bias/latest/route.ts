@@ -211,7 +211,11 @@ export async function GET() {
       );
     }
 
-    const historicalAnalogs = deriveHistoricalAnalogs(snapshot.engine_inputs);
+    const historicalAnalogs = deriveHistoricalAnalogs(
+      snapshot.engine_inputs,
+      snapshot.component_scores,
+      snapshot.technical_indicators,
+    );
 
     return NextResponse.json({
       data: {
