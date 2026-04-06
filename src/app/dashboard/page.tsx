@@ -83,6 +83,52 @@ type DashboardDataResult = {
   snapshot: ApiBiasSnapshot | null;
 };
 
+type CrossAssetMapTicker = BiasAsset["ticker"] | "IWM" | "HYG" | "VIX" | "UUP" | "USO";
+
+type CrossAssetMapAsset = {
+  currentPrice: number | null;
+  dailyChangePercent: number | null;
+  ticker: CrossAssetMapTicker;
+};
+
+type YahooChartQuote = {
+  close?: Array<number | null>;
+};
+
+type YahooChartResult = {
+  timestamp?: number[];
+  indicators?: {
+    quote?: YahooChartQuote[];
+  };
+};
+
+type YahooChartResponse = {
+  chart?: {
+    result?: YahooChartResult[];
+  };
+};
+
+const CROSS_ASSET_MAP_TICKERS = [
+  "SPY",
+  "QQQ",
+  "XLP",
+  "TLT",
+  "GLD",
+  "IWM",
+  "HYG",
+  "VIX",
+  "UUP",
+  "USO",
+] as const satisfies readonly CrossAssetMapTicker[];
+
+const SUPPLEMENTAL_CROSS_ASSET_MAP_TICKERS = [
+  ["IWM", "IWM"],
+  ["HYG", "HYG"],
+  ["^VIX", "VIX"],
+  ["UUP", "UUP"],
+  ["USO", "USO"],
+] as const satisfies readonly (readonly [string, CrossAssetMapTicker])[];
+
 const priceFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -297,6 +343,96 @@ function getRangeTone(value: number | null): string {
   return "text-sky-300";
 }
 
+function roundTo(value: number, decimals = 2) {
+  return Number(value.toFixed(decimals));
+}
+
+function subtractDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setUTCDate(nextDate.getUTCDate() - days);
+  return nextDate;
+}
+
+function buildYahooChartUrl(ticker: string) {
+  const period2 = new Date();
+  const period1 = subtractDays(period2, 10);
+  const url = new URL(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`,
+  );
+
+  url.searchParams.set("interval", "1d");
+  url.searchParams.set("includeAdjustedClose", "false");
+  url.searchParams.set("period1", String(Math.floor(period1.getTime() / 1000)));
+  url.searchParams.set("period2", String(Math.floor(period2.getTime() / 1000)));
+
+  return url;
+}
+
+async function fetchSupplementalCrossAsset(
+  sourceTicker: string,
+  displayTicker: CrossAssetMapTicker,
+): Promise<CrossAssetMapAsset | null> {
+  try {
+    const response = await fetch(buildYahooChartUrl(sourceTicker), {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as YahooChartResponse;
+    const result = payload.chart?.result?.[0];
+    const timestamps = result?.timestamp ?? [];
+    const closes = result?.indicators?.quote?.[0]?.close ?? [];
+    const points = timestamps
+      .map((timestamp, index) => {
+        const close = closes[index];
+
+        if (close == null) {
+          return null;
+        }
+
+        return {
+          close,
+          timestamp,
+        };
+      })
+      .filter((point): point is { close: number; timestamp: number } => point !== null)
+      .sort((left, right) => left.timestamp - right.timestamp);
+
+    if (points.length < 2) {
+      return null;
+    }
+
+    const latestPoint = points.at(-1)!;
+    const previousPoint = points.at(-2)!;
+
+    return {
+      currentPrice: roundTo(latestPoint.close),
+      dailyChangePercent: roundTo(
+        ((latestPoint.close - previousPoint.close) / previousPoint.close) * 100,
+      ),
+      ticker: displayTicker,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function getSupplementalCrossAssetMapAssets() {
+  const assets = await Promise.all(
+    SUPPLEMENTAL_CROSS_ASSET_MAP_TICKERS.map(([sourceTicker, displayTicker]) =>
+      fetchSupplementalCrossAsset(sourceTicker, displayTicker),
+    ),
+  );
+
+  return assets.filter((asset): asset is CrossAssetMapAsset => asset !== null);
+}
+
 async function getRequestBaseUrl() {
   const headerStore = await headers();
   const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
@@ -384,9 +520,10 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
 export default async function DashboardPage() {
   noStore();
 
-  const [baseUrl, { isPro, subscriptionStatus, user }] = await Promise.all([
+  const [baseUrl, { isPro, subscriptionStatus, user }, supplementalCrossAssetMapAssets] = await Promise.all([
     getRequestBaseUrl(),
     getUserSubscriptionStatus(),
+    getSupplementalCrossAssetMapAssets(),
   ]);
   const landingPageUrl = new URL("/#auth-console", baseUrl).toString();
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
@@ -426,9 +563,31 @@ export default async function DashboardPage() {
   const analogSummaryCopy = historicalAnalogs
     ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
     : "historical analog engine warming up";
-  const moduleClassName = "border border-white/10 p-5 sm:p-6";
+  const terminalBorderClassName = "border-[0.5px] border-white/10 md:border";
+  const terminalDividerClassName = "border-t-[0.5px] border-white/10 md:border-t";
+  const terminalTableDividerClassName = "border-b-[0.5px] border-white/10 md:border-b";
+  const moduleClassName = `${terminalBorderClassName} min-w-0 p-4 sm:p-5 md:p-6`;
   const footerModuleClassName =
-    "border border-white/10 p-5 text-sm leading-6 text-zinc-500 sm:p-6";
+    `${terminalBorderClassName} min-w-0 p-4 text-sm leading-6 text-zinc-500 sm:p-5 md:p-6`;
+  const crossAssetMapAssets = CROSS_ASSET_MAP_TICKERS.map((ticker) => {
+    const coreAsset = biasData.assets.find((asset) => asset.ticker === ticker);
+
+    if (coreAsset) {
+      return {
+        currentPrice: coreAsset.currentPrice,
+        dailyChangePercent: coreAsset.dailyChangePercent,
+        ticker,
+      } satisfies CrossAssetMapAsset;
+    }
+
+    return (
+      supplementalCrossAssetMapAssets.find((asset) => asset.ticker === ticker) ?? {
+        currentPrice: null,
+        dailyChangePercent: null,
+        ticker,
+      }
+    );
+  });
   const shareCopy = [
     `Macro Bias | ${targetSessionDate}`,
     `Data as of ${snapshotDateLabel}`,
@@ -447,7 +606,7 @@ export default async function DashboardPage() {
     <main
       className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans font-[family:var(--font-heading)] text-zinc-100`}
     >
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
@@ -462,7 +621,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex flex-col gap-4 md:min-w-0 md:flex-shrink-0 md:items-end">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Date
@@ -516,10 +675,12 @@ export default async function DashboardPage() {
           </section>
         ) : null}
 
-        <section className="grid grid-cols-1 gap-6 py-6 lg:grid-cols-2">
-          <div className="grid grid-cols-1 gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
-            <section className={moduleClassName}>
-              <BiasGauge biasScore={biasData.biasScore} />
+        <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
+          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+            <section className={`${moduleClassName} overflow-hidden`}>
+              <div className="mx-auto w-full max-w-[17rem] min-[360px]:max-w-full md:mx-0 md:max-w-none">
+                <BiasGauge biasScore={biasData.biasScore} />
+              </div>
             </section>
 
             <section className={moduleClassName}>
@@ -535,8 +696,8 @@ export default async function DashboardPage() {
                 </p>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="border-t border-white/10 pt-3">
+              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className={`${terminalDividerClassName} pt-3`}>
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     Strongest
                   </p>
@@ -548,7 +709,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="border-t border-white/10 pt-3">
+                <div className={`${terminalDividerClassName} pt-3`}>
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     Weakest
                   </p>
@@ -560,7 +721,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="border-t border-white/10 pt-3">
+                <div className={`${terminalDividerClassName} pt-3`}>
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     Breadth
                   </p>
@@ -587,21 +748,21 @@ export default async function DashboardPage() {
             </section>
           ) : null}
 
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="space-y-4 md:space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
                   <section className={`${moduleClassName} h-full`}>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                       <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.32em] text-zinc-500 sm:text-[10px] sm:tracking-[0.36em]">
                           Signal Breakdown
                         </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        <h3 className="mt-2 text-[clamp(1.05rem,4vw,1.125rem)] font-semibold tracking-tight text-white">
                           Context Engine
                         </h3>
                       </div>
-                      <p className="max-w-md text-sm leading-6 text-zinc-500">
+                      <p className="max-w-md text-[clamp(0.8125rem,2.8vw,0.875rem)] leading-[1.75] text-zinc-500">
                         Weighted pillar contribution to the composite score.
                       </p>
                     </div>
@@ -614,33 +775,33 @@ export default async function DashboardPage() {
 
                         return (
                           <article
-                            className="border-t border-white/10 py-3 first:border-t-0 first:pt-0 last:pb-0"
+                            className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
                             key={pillar.key}
                           >
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
-                                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.28em] text-zinc-500 sm:text-[10px] sm:tracking-[0.32em]">
                                   {pillar.label}
                                 </p>
-                                <p className="mt-1 text-sm font-medium text-white">{pillar.symbol}</p>
+                                <p className="mt-1 text-[15px] font-medium text-white sm:text-sm">{pillar.symbol}</p>
                               </div>
 
-                              <div className="text-right">
+                              <div className="sm:text-right">
                                 <p
-                                  className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] ${disposition.tone}`}
+                                  className={`font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] sm:text-[10px] sm:tracking-[0.28em] ${disposition.tone}`}
                                 >
                                   {disposition.label}
                                 </p>
-                                <p className="mt-2 font-[family:var(--font-data)] text-base text-white">
+                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-white sm:text-base">
                                   {formatContribution(score?.contribution)}
                                 </p>
-                                <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                <p className="mt-1 font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] text-zinc-500 sm:text-[10px] sm:tracking-[0.28em]">
                                   of {formatWeight(score?.weight)} pts
                                 </p>
                               </div>
                             </div>
 
-                            <p className="mt-3 text-sm leading-6 text-zinc-400">
+                            <p className="mt-3 max-w-[65ch] text-[clamp(0.8125rem,2.9vw,0.875rem)] leading-[1.75] text-zinc-400">
                               {detailedScore?.summary ?? "Waiting for the next model sync to publish this pillar's narrative read."}
                             </p>
                           </article>
@@ -650,29 +811,29 @@ export default async function DashboardPage() {
                   </section>
 
                   <section className={`${moduleClassName} h-full`}>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                       <div>
                         <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                          Cross-Asset Map
+                          Cross-Asset Regime
                         </p>
                         <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
                           Market Internals
                         </h3>
                       </div>
                       <p className="max-w-md text-sm leading-6 text-zinc-500">
-                        Live confirmation across the core ETF basket feeding the composite bias.
+                        Macro scope across equities, credit, volatility, dollar, and energy leadership.
                       </p>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {biasData.assets.map((asset) => (
-                        <article className="border border-white/10 p-4" key={asset.ticker}>
+                    <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                      {crossAssetMapAssets.map((asset) => (
+                        <article className={`${terminalBorderClassName} bg-white/[0.01] p-4`} key={asset.ticker}>
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                                 {asset.ticker}
                               </p>
-                              <p className="mt-2 text-sm font-medium text-white">
+                              <p className="mt-2 text-base font-medium text-white">
                                 {formatPrice(asset.currentPrice)}
                               </p>
                             </div>
@@ -687,7 +848,7 @@ export default async function DashboardPage() {
                 </div>
 
                 <section className={moduleClassName}>
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                       <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                         Historical Analogs
@@ -704,10 +865,10 @@ export default async function DashboardPage() {
                   </div>
 
                   {historicalAnalogs ? (
-                    <div className="overflow-hidden">
-                      <table className="min-w-full table-fixed border-collapse text-left">
+                    <div className="-mx-4 overflow-x-auto whitespace-nowrap px-4 md:mx-0 md:px-0">
+                      <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
                         <thead>
-                          <tr className="border-b border-white/10">
+                          <tr className={terminalTableDividerClassName}>
                             <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               Matched date
                             </th>
@@ -728,7 +889,7 @@ export default async function DashboardPage() {
                         <tbody>
                           {topAnalogMatches.map((match) => (
                             <tr
-                              className="border-b border-white/10 even:bg-white/[0.02] last:border-b-0"
+                              className={`${terminalTableDividerClassName} even:bg-white/[0.02] last:border-b-0`}
                               key={match.tradeDate}
                             >
                               <td className="py-5 pr-6 align-middle">
@@ -763,7 +924,7 @@ export default async function DashboardPage() {
                       </table>
                     </div>
                   ) : (
-                    <div className="border border-white/10 bg-white/[0.01] p-4">
+                    <div className={`${terminalBorderClassName} bg-white/[0.01] p-4`}>
                       <p className="max-w-2xl text-sm leading-6 text-zinc-500">
                         The analog engine has not yet produced a complete intraday playbook for this snapshot. Additional aligned price history is required before the next-session gap, intraday drift, and range profile can be computed.
                       </p>
@@ -774,7 +935,7 @@ export default async function DashboardPage() {
             </PaywallWrapper>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:col-span-2 lg:grid-cols-2">
+          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
             <section className={footerModuleClassName}>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                 Macro Summary
@@ -785,7 +946,7 @@ export default async function DashboardPage() {
 
               {isProUser ? (
                 <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[11px]">
-                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3 first:pt-0">
+                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
                     <p className="uppercase tracking-[0.28em] text-zinc-500">Aligned Sessions</p>
                     <p className="text-sm text-white">
                       {historicalAnalogs
@@ -794,7 +955,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3">
+                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
                     <p className="uppercase tracking-[0.28em] text-zinc-500">Usable Matches</p>
                     <p className="text-sm text-white">
                       {historicalAnalogs
@@ -803,21 +964,21 @@ export default async function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3">
+                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
                     <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Overnight Gap</p>
                     <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}>
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3">
+                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
                     <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Intraday Net</p>
                     <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}>
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}
                     </p>
                   </div>
 
-                  <div className="flex items-end justify-between gap-4 border-t border-white/10 pt-3">
+                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
                     <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Session Range</p>
                     <p className={getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}>
                       {formatUnsignedPercent(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}
@@ -843,11 +1004,11 @@ export default async function DashboardPage() {
               </p>
 
               <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[11px] text-zinc-500">
-                <div className="flex items-end justify-between gap-4 border-t border-white/10 py-3 first:pt-0">
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
                   <p className="uppercase tracking-[0.28em]">Temporal Decay</p>
                   <p className="text-sm text-white">λ = 0.001</p>
                 </div>
-                <div className="flex items-end justify-between gap-4 border-t border-white/10 pt-3">
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
                   <p className="uppercase tracking-[0.28em]">Selection Logic</p>
                   <p className="text-right text-sm text-zinc-400">Exact decayed KNN top 5</p>
                 </div>

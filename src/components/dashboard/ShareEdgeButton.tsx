@@ -65,9 +65,9 @@ export function ShareEdgeButton({ copyText }: ShareEdgeButtonProps) {
   }
 
   return (
-    <div className="relative inline-flex flex-col items-start gap-2 md:items-end">
+    <div className="relative inline-flex w-full flex-col items-stretch gap-2 sm:w-auto md:items-end">
       <button
-        className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.06]"
+        className="inline-flex min-h-12 w-full items-center justify-center rounded-full border-[0.5px] border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-medium text-white transition hover:border-white/20 hover:bg-white/[0.06] sm:w-auto sm:px-4 sm:py-2.5 sm:text-sm md:border"
         onClick={handleClick}
         type="button"
       >
@@ -77,7 +77,7 @@ export function ShareEdgeButton({ copyText }: ShareEdgeButtonProps) {
       {status === "idle" ? null : (
         <p
           aria-live="polite"
-          className="rounded-full border border-white/10 bg-zinc-900/95 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300"
+          className="rounded-full border-[0.5px] border-white/10 bg-zinc-900/95 px-3 py-1.5 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300 md:border"
         >
           {status === "copied" ? "Copied to clipboard" : "Clipboard unavailable"}
         </p>
