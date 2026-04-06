@@ -649,6 +649,56 @@ export default async function DashboardPage() {
                       </div>
                     )}
                   </section>
+
+                  {isProUser ? (
+                    <section className="mt-12 border-t border-white/10 pt-4">
+                      <div className="flex flex-col gap-2">
+                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                          Methodology
+                        </p>
+                        <h3 className="text-lg font-semibold tracking-tight text-white">
+                          Signal Breakdown
+                        </h3>
+                        <p className="text-sm leading-6 text-zinc-500">
+                          Weighted pillar contribution to the composite score.
+                        </p>
+                      </div>
+
+                      <div className="mt-4 space-y-0">
+                        {proSignalPillars.map((pillar) => {
+                          const score = signalScoreByKey.get(pillar.key);
+                          const disposition = getSignalDisposition(score?.signal);
+
+                          return (
+                            <article className="border-b border-zinc-900 py-3 last:border-b-0" key={pillar.key}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                                    {pillar.label}
+                                  </p>
+                                  <p className="mt-1 text-sm font-medium text-white">{pillar.symbol}</p>
+                                </div>
+
+                                <div className="text-right">
+                                  <p
+                                    className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] ${disposition.tone}`}
+                                  >
+                                    {disposition.label}
+                                  </p>
+                                  <p className="mt-2 font-[family:var(--font-data)] text-base text-white">
+                                    {formatContribution(score?.contribution)}
+                                  </p>
+                                  <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                    of {formatWeight(score?.weight)} pts
+                                  </p>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
                 </div>
               </PaywallWrapper>
             </section>
@@ -829,55 +879,6 @@ export default async function DashboardPage() {
               </div>
             ) : null}
 
-            {isProUser ? (
-              <div className="border-t border-white/10 pt-4">
-                <div className="flex flex-col gap-2">
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                    Methodology
-                  </p>
-                  <h3 className="text-lg font-semibold tracking-tight text-white">
-                    Signal Breakdown
-                  </h3>
-                  <p className="text-sm leading-6 text-zinc-500">
-                    Weighted pillar contribution to the composite score.
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-0">
-                  {proSignalPillars.map((pillar) => {
-                    const score = signalScoreByKey.get(pillar.key);
-                    const disposition = getSignalDisposition(score?.signal);
-
-                    return (
-                      <article className="border-b border-zinc-900 py-3 last:border-b-0" key={pillar.key}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                              {pillar.label}
-                            </p>
-                            <p className="mt-1 text-sm font-medium text-white">{pillar.symbol}</p>
-                          </div>
-
-                          <div className="text-right">
-                            <p
-                              className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] ${disposition.tone}`}
-                            >
-                              {disposition.label}
-                            </p>
-                            <p className="mt-2 font-[family:var(--font-data)] text-base text-white">
-                              {formatContribution(score?.contribution)}
-                            </p>
-                            <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                              of {formatWeight(score?.weight)} pts
-                            </p>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
           </aside>
         </section>
       </div>
