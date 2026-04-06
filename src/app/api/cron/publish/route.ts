@@ -580,6 +580,33 @@ async function getRecentSnapshots() {
   return (data as StoredBiasSnapshot[] | null) ?? [];
 }
 
+/**
+ * All known bias label values. A snapshot missing any of these fields was
+ * written during a market-holiday sync run and must be skipped.
+ */
+const VALID_BIAS_LABELS = new Set<BiasLabel>([
+  'EXTREME_RISK_OFF',
+  'RISK_OFF',
+  'NEUTRAL',
+  'RISK_ON',
+  'EXTREME_RISK_ON',
+]);
+
+/**
+ * Returns true only when a snapshot was produced from a real trading session
+ * (i.e. has a recognised bias label, a finite score, and populated engine inputs).
+ * On market holidays the sync job may store a row whose payload is null or
+ * empty, and those rows must be stepped over before publishing.
+ */
+function isValidSnapshot(snapshot: StoredBiasSnapshot): boolean {
+  return (
+    VALID_BIAS_LABELS.has(snapshot.bias_label) &&
+    typeof snapshot.score === 'number' &&
+    Number.isFinite(snapshot.score) &&
+    isRecord(snapshot.engine_inputs)
+  );
+}
+
 async function handlePublish(request: NextRequest) {
   try {
     if (!isAuthorizedCronRequest(request)) {
@@ -608,7 +635,31 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'No macro bias snapshots are available to publish.' }, { status: 404 });
     }
 
-    const [latestSnapshot, ...historicalSnapshots] = snapshots;
+    // Step back through recent snapshots to find the most recent one from a
+    // real trading session. On market holidays (e.g. Good Friday) the daily
+    // sync job may store a row with null engine_inputs / bias_label because
+    // the market data provider returns no OHLC data for that day. We walk
+    // backwards one day at a time until we land on a complete record.
+    let latestSnapshotIndex = 0;
+    while (
+      latestSnapshotIndex < snapshots.length &&
+      !isValidSnapshot(snapshots[latestSnapshotIndex])
+    ) {
+      console.warn(
+        `[publish-cron] Skipping snapshot for ${snapshots[latestSnapshotIndex].trade_date} — missing or incomplete data (market holiday?). Stepping back to prior session.`,
+      );
+      latestSnapshotIndex += 1;
+    }
+
+    if (latestSnapshotIndex >= snapshots.length) {
+      return NextResponse.json(
+        { error: 'No valid macro bias snapshots found. The most recent trading sessions may all be missing data.' },
+        { status: 404 },
+      );
+    }
+
+    const latestSnapshot = snapshots[latestSnapshotIndex];
+    const historicalSnapshots = snapshots.slice(latestSnapshotIndex + 1);
     const snapshotsByDate = new Map(snapshots.map((snapshot) => [snapshot.trade_date, snapshot]));
     const persistedAnalogs = enrichAnalogMatches(
       [
