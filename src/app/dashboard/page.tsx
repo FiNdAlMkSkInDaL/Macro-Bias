@@ -224,6 +224,27 @@ function formatTradeDate(tradeDate?: string) {
   }).format(new Date(`${tradeDate}T12:00:00Z`));
 }
 
+function formatTargetSessionDate(date = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/New_York",
+  }).format(date);
+}
+
+function formatDataAsOfDate(tradeDate?: string) {
+  if (!tradeDate) {
+    return "Pending first sync";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(`${tradeDate}T12:00:00Z`));
+}
+
 function formatAnalogDate(tradeDate?: string) {
   if (!tradeDate) {
     return "Pending";
@@ -380,7 +401,8 @@ export default async function DashboardPage() {
   const advancingAssets = biasData.assets.filter(
     (asset) => asset.dailyChangePercent > 0,
   ).length;
-  const reportDate = formatTradeDate(snapshot?.tradeDate);
+  const targetSessionDate = formatTargetSessionDate();
+  const snapshotDateLabel = formatDataAsOfDate(snapshot?.tradeDate);
   const signalLabel = formatBiasLabel(snapshot?.label);
   const breadthSummary =
     biasData.assets.length > 0
@@ -402,7 +424,8 @@ export default async function DashboardPage() {
     ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
     : "historical analog engine warming up";
   const shareCopy = [
-    `Macro Bias | ${reportDate}`,
+    `Macro Bias | ${targetSessionDate}`,
+    `Data as of ${snapshotDateLabel}`,
     `${signalLabel} (${biasData.biasScore > 0 ? "+" : ""}${biasData.biasScore})`,
     breadthSummary,
     strongestAsset
@@ -439,7 +462,10 @@ export default async function DashboardPage() {
                   Date
                 </p>
                 <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {reportDate}
+                  {targetSessionDate}
+                </p>
+                <p className="mt-1 font-[family:var(--font-data)] text-[10px] text-zinc-500">
+                  Data as of: {snapshotDateLabel}
                 </p>
               </div>
               <div>
