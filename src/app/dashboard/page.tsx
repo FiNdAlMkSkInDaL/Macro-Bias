@@ -488,44 +488,44 @@ export default async function DashboardPage() {
           <div className="space-y-6 lg:col-span-8">
             <BiasGauge biasScore={biasData.biasScore} />
 
-            <section className="border-t border-white/5 pt-5">
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] lg:items-end">
-                <div>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                    Historical Analog Engine
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                    Closest historical tape
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                    {historicalAnalogs
-                      ? `Pattern matching identified ${historicalAnalogs.candidateCount.toLocaleString()} mathematical analogs. Upgrade to unlock the typical overnight gap, cash-session drift, and range expansion for the next SPY session.`
-                      : "Pattern library unavailable. Additional aligned history is required before next-session gap, intraday drift, and range tendencies can be computed."}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <div className="border-t border-white/10 pt-3">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Matching sessions
+            {!isProUser ? (
+              <section className="border-t border-white/5 pt-5">
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] lg:items-end">
+                  <div>
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                      Historical Analog Engine
                     </p>
-                    <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                    <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                      Closest historical tape
+                    </h2>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
                       {historicalAnalogs
-                        ? historicalAnalogs.candidateCount.toLocaleString()
-                        : "--"}
+                        ? `Pattern matching identified ${historicalAnalogs.candidateCount.toLocaleString()} mathematical analogs. Upgrade to unlock the typical overnight gap, cash-session drift, and range expansion for the next SPY session.`
+                        : "Pattern library unavailable. Additional aligned history is required before next-session gap, intraday drift, and range tendencies can be computed."}
                     </p>
                   </div>
 
-                  <div className="border-t border-white/10 pt-3">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Nearest cluster
-                    </p>
-                    <p className="mt-2 text-lg font-semibold tracking-tight text-white">
-                      {topAnalogMatches.length > 0 ? `${topAnalogMatches.length} sessions` : "--"}
-                    </p>
-                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="border-t border-white/10 pt-3">
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                        Matching sessions
+                      </p>
+                      <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        {historicalAnalogs
+                          ? historicalAnalogs.candidateCount.toLocaleString()
+                          : "--"}
+                      </p>
+                    </div>
 
-                  {!isProUser ? (
+                    <div className="border-t border-white/10 pt-3">
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                        Nearest cluster
+                      </p>
+                      <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        {topAnalogMatches.length > 0 ? `${topAnalogMatches.length} sessions` : "--"}
+                      </p>
+                    </div>
+
                     <div className="col-span-2 border-t border-white/10 pt-3 sm:col-span-1">
                       <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                         Next session playbook
@@ -536,10 +536,10 @@ export default async function DashboardPage() {
                         <li>Range ...</li>
                       </ul>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            ) : null}
 
             <section className="border-t border-white/5 pt-5">
               {isProUser ? (
