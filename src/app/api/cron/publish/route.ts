@@ -562,7 +562,20 @@ async function publishToX(credentials: XCredentials, payload: PublishPayload) {
     accessSecret: credentials.accessSecret,
   });
 
-  await xClient.v2.tweet(payload.xText);
+  try {
+    await xClient.v2.tweet(payload.xText);
+  } catch (err: unknown) {
+    // Surface the full Twitter API error (HTTP status + error codes) so the
+    // publish-failure response includes actionable detail rather than just
+    // "Request failed with code 403".
+    if (isRecord(err) && (isRecord(err['data']) || isRecord(err['errors']))) {
+      const twitterData = isRecord(err['data']) ? err['data'] : err['errors'];
+      const detail = JSON.stringify(twitterData).slice(0, 500);
+      const status = typeof err['code'] === 'number' ? err['code'] : 'unknown';
+      throw new Error(`Twitter API error (HTTP ${status}): ${detail}`);
+    }
+    throw err;
+  }
 }
 
 async function getRecentSnapshots() {
