@@ -525,22 +525,18 @@ export default async function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="border-t border-white/10 pt-3 sm:col-span-1 col-span-2">
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Next session playbook
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
-                        Gap •••
-                      </span>
-                      <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
-                        Intraday •••
-                      </span>
-                      <span className="rounded-full border border-white/10 px-3 py-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.24em] text-zinc-300">
-                        Range •••
-                      </span>
+                  {!isProUser ? (
+                    <div className="col-span-2 border-t border-white/10 pt-3 sm:col-span-1">
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                        Next session playbook
+                      </p>
+                      <ul className="mt-2 space-y-1 text-sm text-zinc-400">
+                        <li>Gap ...</li>
+                        <li>Intraday ...</li>
+                        <li>Range ...</li>
+                      </ul>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               </div>
             </section>
