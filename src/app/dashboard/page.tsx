@@ -749,7 +749,7 @@ export default async function DashboardPage() {
           ) : null}
 
           <div className="min-w-0 lg:col-span-2">
-            <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
+            {isProUser ? (
               <div className="space-y-4 md:space-y-6">
                 <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
                   <section className={`${moduleClassName} h-full`}>
@@ -932,7 +932,154 @@ export default async function DashboardPage() {
                   )}
                 </section>
               </div>
-            </PaywallWrapper>
+            ) : (
+              <PaywallWrapper initialIsPro={false} userId={user?.id ?? null}>
+                <div aria-hidden="true" className="space-y-4 md:space-y-6">
+                  <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
+                    <section className={`${moduleClassName} h-full`}>
+                      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div>
+                          <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.32em] text-zinc-500 sm:text-[10px] sm:tracking-[0.36em]">
+                            Signal Breakdown
+                          </p>
+                          <h3 className="mt-2 text-[clamp(1.05rem,4vw,1.125rem)] font-semibold tracking-tight text-white">
+                            Context Engine
+                          </h3>
+                        </div>
+                        <p className="max-w-md text-[clamp(0.8125rem,2.8vw,0.875rem)] leading-[1.75] text-zinc-500">
+                          Weighted pillar contribution and regime notes unlock with Pro.
+                        </p>
+                      </div>
+
+                      <div className="mt-4 space-y-0">
+                        {proSignalPillars.map((pillar) => (
+                          <article
+                            className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
+                            key={pillar.key}
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.28em] text-zinc-500 sm:text-[10px] sm:tracking-[0.32em]">
+                                  {pillar.label}
+                                </p>
+                                <p className="mt-1 text-[15px] font-medium text-white sm:text-sm">{pillar.symbol}</p>
+                              </div>
+
+                              <div className="sm:text-right">
+                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] text-zinc-500 sm:text-[10px] sm:tracking-[0.28em]">
+                                  Locked
+                                </p>
+                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-white sm:text-base">--</p>
+                              </div>
+                            </div>
+
+                            <p className="mt-3 max-w-[65ch] text-[clamp(0.8125rem,2.9vw,0.875rem)] leading-[1.75] text-zinc-500">
+                              Premium narrative commentary is hidden until the workspace is unlocked.
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className={`${moduleClassName} h-full`}>
+                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                        <div>
+                          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                            Cross-Asset Regime
+                          </p>
+                          <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                            Market Internals
+                          </h3>
+                        </div>
+                        <p className="max-w-md text-sm leading-6 text-zinc-500">
+                          Cross-asset internals and rotation cards unlock below the fold with Pro access.
+                        </p>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                        {CROSS_ASSET_MAP_TICKERS.map((ticker) => (
+                          <article className={`${terminalBorderClassName} bg-white/[0.01] p-4`} key={ticker}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                                  {ticker}
+                                </p>
+                                <p className="mt-2 text-base font-medium text-white">Restricted</p>
+                              </div>
+                              <p className="font-[family:var(--font-data)] text-sm text-zinc-500">--</p>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+
+                  <section className={moduleClassName}>
+                    <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                      <div>
+                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                          Historical Analogs
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                          Intraday Playbook
+                        </h3>
+                      </div>
+                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
+                        Premium access unlocks the exact analog table, next-session gap profile, and execution context.
+                      </p>
+                    </div>
+
+                    <div className="-mx-4 overflow-x-auto whitespace-nowrap px-4 md:mx-0 md:px-0">
+                      <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
+                        <thead>
+                          <tr className={terminalTableDividerClassName}>
+                            <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              Matched date
+                            </th>
+                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              Match confidence
+                            </th>
+                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              SPY Gap
+                            </th>
+                            <th className="w-[18%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              SPY Intraday (O-C)
+                            </th>
+                            <th className="w-[16%] py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              SPY Range
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: 3 }, (_, index) => (
+                            <tr
+                              className={`${terminalTableDividerClassName} even:bg-white/[0.02] last:border-b-0`}
+                              key={`locked-playbook-row-${index}`}
+                            >
+                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
+                                Restricted
+                              </td>
+                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
+                                --
+                              </td>
+                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
+                                --
+                              </td>
+                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
+                                --
+                              </td>
+                              <td className="py-5 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
+                                --
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                </div>
+              </PaywallWrapper>
+            )}
           </div>
 
           <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
