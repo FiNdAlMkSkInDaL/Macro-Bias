@@ -355,36 +355,47 @@ function allocatePillarContributions(score: number, similarityShares: Record<Bia
 function buildPillarSummary(
   pillar: BiasPillarKey,
   todayVector: AnalogStateVector,
-  rawNeighborCentroid: AnalogStateVector,
   expectancySummary: ExpectancySummary,
 ) {
   if (pillar === "trendAndMomentum") {
     return (
-      `Trend inputs matched today's SPY RSI ${roundTo(todayVector.spyRsi, 1)} ` +
-      `against an analog centroid of RSI ${roundTo(rawNeighborCentroid.spyRsi, 1)}. ` +
-      `Across the five nearest analogs, SPY averaged ${formatSignedPercent(expectancySummary.averageForward1DayReturn)} over 1 day and ${formatSignedPercent(expectancySummary.averageForward3DayReturn)} over 3 days.`
+      `SPY RSI is ${roundTo(todayVector.spyRsi, 1)}, which ` +
+      `${todayVector.spyRsi >= 60
+        ? "shows buyers still have control and keeps continuation setups in play. "
+        : todayVector.spyRsi <= 40
+          ? "shows momentum is soft, which raises the risk of failed bounces and heavier selling pressure. "
+          : "shows a mixed momentum backdrop, so follow-through may need stronger confirmation from price. "}` +
+      `In similar sessions, SPY averaged ${formatSignedPercent(expectancySummary.averageForward1DayReturn)} over 1 day and ${formatSignedPercent(expectancySummary.averageForward3DayReturn)} over 3 days.`
     );
   }
 
   if (pillar === "creditAndRiskSpreads") {
     return (
-      `Credit and growth proxies matched HYG/TLT ${roundTo(todayVector.hygTltRatio, 4)}, CPER/GLD ${roundTo(todayVector.cperGldRatio, 4)}, ` +
-      `and USO momentum ${formatSignedPercent(todayVector.usoMomentum)} against the nearest-neighbor cluster. ` +
-      `Those analogs were negative ${roundTo(expectancySummary.bearishHitRate1Day * 100, 0)}% of the time on a 1-day horizon and ${roundTo(expectancySummary.bearishHitRate3Day * 100, 0)}% of the time over 3 days.`
+      `HYG/TLT is ${roundTo(todayVector.hygTltRatio, 4)}, CPER/GLD is ${roundTo(todayVector.cperGldRatio, 4)}, and USO momentum is ${formatSignedPercent(todayVector.usoMomentum)}. ` +
+      `That mix helps show whether risk appetite is broadening or fading beneath the index. Firmer readings usually help breakouts hold, while weaker readings tend to produce thinner rallies and more defensive rotation. ` +
+      `In similar sessions, downside showed up ${roundTo(expectancySummary.bearishHitRate1Day * 100, 0)}% of the time over 1 day and ${roundTo(expectancySummary.bearishHitRate3Day * 100, 0)}% of the time over 3 days.`
     );
   }
 
   if (pillar === "positioning") {
     return (
-      `Positioning matched today's dealer gamma proxy of ${roundTo(todayVector.gammaExposure, 2)} ` +
-      `against an analog centroid of ${roundTo(rawNeighborCentroid.gammaExposure, 2)}. ` +
-      `That market-plumbing block stays orthogonal to the price-derived factors so the engine can separate inventory pressure from trend and credit conditions.`
+      `Dealer gamma exposure is ${roundTo(todayVector.gammaExposure, 2)}. ` +
+      `${todayVector.gammaExposure > 0
+        ? "That usually means options positioning is more likely to absorb moves, which can keep intraday swings tighter and favor mean reversion."
+        : todayVector.gammaExposure < 0
+          ? "That usually means options positioning can amplify moves, which raises the odds of fast trend days and wider intraday ranges."
+          : "That leaves options positioning close to neutral, so price is more likely to respond directly to incoming flow and headlines."}`
     );
   }
 
   return (
-    `Volatility matching compared today's VIX level of ${roundTo(todayVector.vixLevel, 2)} to an analog centroid of ${roundTo(rawNeighborCentroid.vixLevel, 2)}. ` +
-    `The analog cluster's blended forward expectancy is ${formatSignedPercent(expectancySummary.blendedForwardReturn)}, which is what the engine maps into the final bias score.`
+    `VIX is ${roundTo(todayVector.vixLevel, 2)}. ` +
+    `${todayVector.vixLevel >= 25
+      ? "That points to a stressed tape where intraday ranges can stay wide and reversals can come fast. "
+      : todayVector.vixLevel >= 18
+        ? "That keeps the tape sensitive, so moves may need wider risk limits and quicker profit-taking. "
+        : "That points to a calmer tape, which usually gives continuation setups a cleaner path. "}` +
+    `In similar volatility conditions, the blended short-term move leaned ${formatSignedPercent(expectancySummary.blendedForwardReturn)}.`
   );
 }
 
@@ -395,7 +406,6 @@ function buildComponentScores(
   standardizedTodayVector: AnalogStateVector,
   expectancySummary: ExpectancySummary,
 ) {
-  const rawNeighborCentroid = buildNeighborCentroid(nearestNeighbors, (neighbor) => neighbor.analog.vector);
   const standardizedNeighborCentroid = buildNeighborCentroid(
     nearestNeighbors,
     (neighbor) => neighbor.standardizedVector,
@@ -423,7 +433,7 @@ function buildComponentScores(
       key: pillar,
       pillar,
       signal: roundTo(signal, 4),
-      summary: buildPillarSummary(pillar, todayVector, rawNeighborCentroid, expectancySummary),
+      summary: buildPillarSummary(pillar, todayVector, expectancySummary),
       weight,
     };
   });

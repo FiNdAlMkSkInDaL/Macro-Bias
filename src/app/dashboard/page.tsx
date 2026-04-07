@@ -9,6 +9,7 @@ import {
 } from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
 import { getUserSubscriptionStatus, isSubscriptionActive } from "../../lib/billing/subscription";
+import type { BiasLabel } from "../../lib/macro-bias/types";
 import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
 
@@ -62,7 +63,7 @@ type ApiBiasSnapshot = {
       tradeDate: string;
     }>;
   } | null;
-  label: string;
+  label: BiasLabel;
   score: number;
   tickerChanges: Partial<Record<BiasAsset["ticker"], ApiTickerChange>>;
   tradeDate: string;
@@ -257,16 +258,39 @@ function formatBiasLabel(label: string | undefined): string {
   return label.toLowerCase().split("_").map((word) => word[0]?.toUpperCase() + word.slice(1)).join(" ");
 }
 
-function getForecastCopy(regime: "Risk-On" | "Neutral" | "Risk-Off"): string {
-  if (regime === "Risk-On") {
-    return "Execution Context: Positive regime. Favor continuation setups and reduce defensive exposure.";
-  }
+const STORM_FRONTS_COPY = {
+  neutral:
+    "Capital is rotating without committing. Breakouts are statistically likely to fail in this environment. Keep size small, tighten stops, and play the ranges.",
+  riskOff:
+    "Capital is actively seeking shelter. Structural distribution is driving the tape. Prioritize capital preservation, size down, and look to fade intraday bounces.",
+  riskOn:
+    "Risk assets are catching structural bids. The underlying tape is heavily accumulated. Look for relative strength, buy the dips, and extend your profit targets.",
+} as const;
 
-  if (regime === "Risk-Off") {
-    return "Execution Context: Defensive regime. Reduce gross exposure and tighten entry selection.";
-  }
+function getForecastCopy(
+  biasLabel: BiasLabel | undefined,
+  regime: "Risk-On" | "Neutral" | "Risk-Off",
+): string {
+  switch (biasLabel) {
+    case "RISK_ON":
+    case "EXTREME_RISK_ON":
+      return STORM_FRONTS_COPY.riskOn;
+    case "RISK_OFF":
+    case "EXTREME_RISK_OFF":
+      return STORM_FRONTS_COPY.riskOff;
+    case "NEUTRAL":
+      return STORM_FRONTS_COPY.neutral;
+    default:
+      if (regime === "Risk-On") {
+        return STORM_FRONTS_COPY.riskOn;
+      }
 
-  return "Execution Context: Low-conviction regime. Prioritize tactical position sizing over directional swings.";
+      if (regime === "Risk-Off") {
+        return STORM_FRONTS_COPY.riskOff;
+      }
+
+      return STORM_FRONTS_COPY.neutral;
+  }
 }
 
 function formatMove(value: number | null): string {
@@ -721,7 +745,7 @@ export default async function DashboardPage() {
                   {regime} backdrop
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  {errorMessage ?? getForecastCopy(regime)}
+                  {errorMessage ?? getForecastCopy(snapshot?.label, regime)}
                 </p>
               </div>
 
