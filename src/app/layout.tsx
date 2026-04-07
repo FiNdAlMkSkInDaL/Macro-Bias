@@ -103,56 +103,61 @@ const structuredData = {
   ],
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: SITE_TITLE,
-    template: "%s | Macro Bias",
-  },
-  description: SITE_DESCRIPTION,
-  keywords: SITE_KEYWORDS,
-  applicationName: SITE_NAME,
-  category: "finance",
-  icons: {
-    icon: [
-      {
-        url: "/favicon.ico",
-        sizes: "any",
-      },
-      {
-        url: "/icon.png",
-        type: "image/png",
-        sizes: "512x512",
-      },
-    ],
-    apple: [
-      {
-        url: "/apple-icon.png",
-        type: "image/png",
-        sizes: "180x180",
-      },
-    ],
-    shortcut: ["/favicon.ico"],
-  },
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: SITE_URL,
-    siteName: SITE_NAME,
-    title: SITE_TITLE,
+export async function generateMetadata(): Promise<Metadata> {
+  const cacheBuster = Date.now();
+  const ogImageUrl = `/api/og?ts=${cacheBuster}`;
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: SITE_TITLE,
+      template: "%s | Macro Bias",
+    },
     description: SITE_DESCRIPTION,
-    images: ["/api/og"],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: ["/api/og"],
-  },
-};
+    keywords: SITE_KEYWORDS,
+    applicationName: SITE_NAME,
+    category: "finance",
+    icons: {
+      icon: [
+        {
+          url: "/favicon.ico",
+          sizes: "any",
+        },
+        {
+          url: "/icon.png",
+          type: "image/png",
+          sizes: "512x512",
+        },
+      ],
+      apple: [
+        {
+          url: "/apple-icon.png",
+          type: "image/png",
+          sizes: "180x180",
+        },
+      ],
+      shortcut: ["/favicon.ico"],
+    },
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: SITE_URL,
+      siteName: SITE_NAME,
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      images: [ogImageUrl],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      images: [ogImageUrl],
+    },
+  };
+}
 
 type RootLayoutProps = {
   children: ReactNode;
