@@ -291,10 +291,10 @@ A `handle_new_user()` trigger automatically inserts a `users` row (or updates em
 RLS policy: users can `SELECT` their own row only (`auth.uid() = id`).
 
 ### `published_marketing_posts`
-| Column         | Type          | Notes                                           |
-| -------------- | ------------- | ----------------------------------------------- |
-| `slug`         | `text`        | PK, used as the deduplication key across posts  |
-| `published_at` | `timestamptz` | Default `now()`                                 |
+| Column         | Type          | Notes                                          |
+| -------------- | ------------- | ---------------------------------------------- |
+| `slug`         | `text`        | PK, used as the deduplication key across posts |
+| `published_at` | `timestamptz` | Default `now()`                                |
 
 RLS is disabled on this table. It is written by `GET /api/cron/marketing` through the service-role Supabase client to prevent reposting the same markdown slug.
 
