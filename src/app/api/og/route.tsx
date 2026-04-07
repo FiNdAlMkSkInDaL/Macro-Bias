@@ -12,6 +12,21 @@ const IMAGE_SIZE = {
   height: 630,
 } as const;
 
+const PANEL_BORDER = '1px solid rgba(255, 255, 255, 0.1)';
+const BACKGROUND_COLOR = '#09090b';
+const MONO_FONT_FAMILY = 'IBM Plex Mono';
+const HEADING_FONT_FAMILY = 'Space Grotesk';
+const SIGNAL_STACK = ['Volatility', 'Credit', 'Trend', 'Positioning'] as const;
+
+type OgFont = {
+  name: string;
+  data: ArrayBuffer;
+  weight: 500 | 700;
+  style: 'normal';
+};
+
+let ogFontsPromise: Promise<OgFont[]> | null = null;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -29,33 +44,98 @@ function formatScore(score: number) {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
+function formatBiasLabel(label: string) {
+  return label
+    .toLowerCase()
+    .split('_')
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 function getScoreAccent(score: number) {
   if (score >= 20) {
-    return '#22c55e';
+    return '#34d399';
   }
 
   if (score <= -20) {
-    return '#f97316';
+    return '#fb7185';
   }
 
-  return '#f8fafc';
+  return '#fafafa';
 }
 
 function getRegimeTagline(score: number) {
   if (score >= 20) {
-    return 'Risk appetite is expanding across the tape.';
+    return 'Structural bids are catching across risk assets. Lean into relative strength and buy clean pullbacks.';
   }
 
   if (score <= -20) {
-    return 'Defensive positioning is overpowering cyclical momentum.';
+    return 'Capital is seeking shelter. Protect gross exposure and fade reflex bounces into overhead supply.';
   }
 
-  return 'Cross-asset signals are split and conviction is selective.';
+  return 'Rotation is active without commitment. Keep size small and treat breakout attempts with skepticism.';
+}
+
+async function fetchFont(url: string) {
+  const response = await fetch(url, {
+    cache: 'force-cache',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch font: ${url}`);
+  }
+
+  return response.arrayBuffer();
+}
+
+async function loadOgFonts(): Promise<OgFont[]> {
+  try {
+    const [spaceGrotesk, ibmPlexMono] = await Promise.all([
+      fetchFont(
+        'https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf',
+      ),
+      fetchFont(
+        'https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Medium.ttf',
+      ),
+    ]);
+
+    const fonts: OgFont[] = [
+      {
+        name: HEADING_FONT_FAMILY,
+        data: spaceGrotesk,
+        weight: 700,
+        style: 'normal' as const,
+      },
+      {
+        name: MONO_FONT_FAMILY,
+        data: ibmPlexMono,
+        weight: 500,
+        style: 'normal' as const,
+      },
+    ];
+
+    return fonts;
+  } catch (error) {
+    console.error('Failed to load OG fonts.', error);
+    return [];
+  }
+}
+
+function getOgFonts(): Promise<OgFont[]> {
+  if (ogFontsPromise) {
+    return ogFontsPromise;
+  }
+
+  ogFontsPromise = loadOgFonts();
+  return ogFontsPromise;
 }
 
 export async function GET() {
   try {
-    const snapshot = await getLatestBiasSnapshot();
+    const [snapshot, fonts] = await Promise.all([
+      getLatestBiasSnapshot(),
+      getOgFonts(),
+    ]);
 
     if (!snapshot) {
       return new ImageResponse(
@@ -67,24 +147,29 @@ export async function GET() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#020617',
-              color: '#f8fafc',
+              background: BACKGROUND_COLOR,
+              color: '#fafafa',
+              fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
               fontSize: 42,
-              letterSpacing: '-0.04em',
+              fontWeight: 700,
+              letterSpacing: '-0.05em',
             }}
           >
-            Macro Bias is warming up today&apos;s weather report.
+            Macro Bias is warming up today&apos;s terminal readout.
           </div>
         ),
-        IMAGE_SIZE,
+        {
+          ...IMAGE_SIZE,
+          fonts,
+        },
       );
     }
 
     const score = clamp(snapshot.score, -100, 100);
-    const gaugeProgress = clamp(((score + 100) / 200) * 100, 0, 100);
     const scoreAccent = getScoreAccent(score);
-    const regimeLabel = snapshot.bias_label.replace(/_/g, ' ');
-    const gaugeNeedleLeft = `${clamp(gaugeProgress, 4, 96)}%`;
+    const gaugeProgress = clamp(((score + 100) / 200) * 100, 0, 100);
+    const gaugeNeedleLeft = `${clamp(gaugeProgress, 3, 97)}%`;
+    const regimeLabel = formatBiasLabel(snapshot.bias_label);
 
     return new ImageResponse(
       (
@@ -93,225 +178,308 @@ export async function GET() {
             width: '100%',
             height: '100%',
             display: 'flex',
-            position: 'relative',
-            overflow: 'hidden',
-            background: 'linear-gradient(145deg, #020617 0%, #0f172a 58%, #111827 100%)',
-            color: '#f8fafc',
-            fontFamily:
-              'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '48px 56px 80px',
+            background: BACKGROUND_COLOR,
+            color: '#fafafa',
+            fontFamily: 'ui-sans-serif, system-ui, sans-serif',
           }}
         >
           <div
             style={{
-              position: 'absolute',
-              top: -160,
-              right: -140,
-              width: 520,
-              height: 520,
-              display: 'flex',
-              borderRadius: 9999,
-              background: 'radial-gradient(circle, rgba(56,189,248,0.22) 0%, rgba(15,23,42,0) 72%)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: -220,
-              left: -120,
-              width: 520,
-              height: 520,
-              display: 'flex',
-              borderRadius: 9999,
-              background: 'radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(15,23,42,0) 70%)',
-            }}
-          />
-          <div
-            style={{
               width: '100%',
-              height: '100%',
               display: 'flex',
-              flexDirection: 'column',
               justifyContent: 'space-between',
-              padding: '54px 64px',
+              alignItems: 'flex-start',
+              gap: 28,
             }}
           >
             <div
               style={{
-                width: '100%',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
+                flexDirection: 'column',
+                maxWidth: 760,
               }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 760 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    fontSize: 20,
-                    letterSpacing: '0.28em',
-                    textTransform: 'uppercase',
-                    color: '#94a3b8',
-                  }}
-                >
-                  Macro Bias
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    marginTop: 18,
-                    fontSize: 66,
-                    fontWeight: 700,
-                    letterSpacing: '-0.05em',
-                    lineHeight: 1,
-                  }}
-                >
-                  Today&apos;s Macro Weather Report.
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    marginTop: 20,
-                    fontSize: 24,
-                    color: '#cbd5e1',
-                  }}
-                >
-                  Live cross-asset regime context for active traders and fast risk decisions.
-                </div>
+              <div
+                style={{
+                  display: 'flex',
+                  fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                  fontSize: 18,
+                  fontWeight: 500,
+                  letterSpacing: '0.32em',
+                  textTransform: 'uppercase',
+                  color: '#71717a',
+                }}
+              >
+                [ Regime Data Terminal ]
               </div>
               <div
                 style={{
                   display: 'flex',
+                  marginTop: 16,
+                  fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+                  fontSize: 70,
+                  fontWeight: 700,
+                  letterSpacing: '-0.06em',
+                  lineHeight: 1,
+                }}
+              >
+                Daily Macro Bias
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  marginTop: 18,
+                  maxWidth: 720,
+                  fontSize: 24,
+                  lineHeight: 1.35,
+                  color: '#a1a1aa',
+                }}
+              >
+                Institutional-grade macro regime context for active traders, delivered in a sharp pre-market terminal snapshot.
+              </div>
+            </div>
+
+            <div
+              style={{
+                width: 270,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: 12,
+                  gap: 8,
+                  border: PANEL_BORDER,
+                  padding: '16px 18px',
+                  background: 'rgba(255, 255, 255, 0.02)',
                 }}
               >
                 <div
                   style={{
                     display: 'flex',
-                    padding: '12px 18px',
-                    borderRadius: 9999,
-                    border: '1px solid rgba(148,163,184,0.22)',
-                    background: 'rgba(15,23,42,0.68)',
-                    fontSize: 18,
-                    color: '#e2e8f0',
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '0.28em',
+                    textTransform: 'uppercase',
+                    color: '#71717a',
                   }}
                 >
-                  {formatDisplayDate(snapshot.trade_date)}
+                  Data As Of
                 </div>
                 <div
                   style={{
                     display: 'flex',
-                    padding: '10px 16px',
-                    borderRadius: 9999,
-                    background: 'rgba(15,23,42,0.6)',
-                    border: `1px solid ${scoreAccent}`,
-                    fontSize: 18,
-                    color: scoreAccent,
+                    fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: '#fafafa',
+                  }}
+                >
+                  {formatDisplayDate(snapshot.trade_date)}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  border: `1px solid ${scoreAccent}`,
+                  padding: '16px 18px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '0.28em',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.18em',
+                    color: '#71717a',
+                  }}
+                >
+                  Bias Label
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 20,
+                    fontWeight: 500,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: scoreAccent,
                   }}
                 >
                   {regimeLabel}
                 </div>
               </div>
             </div>
+          </div>
 
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'stretch',
+              gap: 24,
+              marginTop: 28,
+            }}
+          >
             <div
               style={{
-                width: '100%',
+                flex: 1,
                 display: 'flex',
-                alignItems: 'stretch',
-                gap: 28,
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                border: PANEL_BORDER,
+                padding: '28px 30px 30px',
+                background: 'rgba(255, 255, 255, 0.02)',
               }}
             >
               <div
                 style={{
-                  flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
-                  borderRadius: 32,
-                  border: '1px solid rgba(148,163,184,0.18)',
-                  background: 'rgba(15,23,42,0.72)',
-                  padding: '30px 32px',
                 }}
               >
                 <div
                   style={{
                     display: 'flex',
-                    fontSize: 18,
-                    letterSpacing: '0.22em',
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 16,
+                    fontWeight: 500,
+                    letterSpacing: '0.28em',
                     textTransform: 'uppercase',
-                    color: '#94a3b8',
+                    color: '#71717a',
                   }}
                 >
-                  Macro Bias Gauge
+                  Bias Gauge
                 </div>
+
                 <div
                   style={{
                     display: 'flex',
-                    alignItems: 'baseline',
-                    gap: 20,
+                    alignItems: 'flex-end',
+                    gap: 24,
                     marginTop: 18,
                   }}
                 >
                   <div
                     style={{
                       display: 'flex',
-                      fontSize: 132,
-                      fontWeight: 800,
+                      fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+                      fontSize: 142,
+                      fontWeight: 700,
                       letterSpacing: '-0.08em',
+                      lineHeight: 0.88,
                       color: scoreAccent,
-                      lineHeight: 0.9,
                     }}
                   >
                     {formatScore(score)}
                   </div>
+
                   <div
                     style={{
                       display: 'flex',
-                      fontSize: 30,
-                      color: '#e2e8f0',
+                      flexDirection: 'column',
+                      marginBottom: 14,
+                      gap: 8,
                     }}
                   >
-                    {regimeLabel}
+                    <div
+                      style={{
+                        display: 'flex',
+                        fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        letterSpacing: '0.28em',
+                        textTransform: 'uppercase',
+                        color: '#71717a',
+                      }}
+                    >
+                      Execution State
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+                        fontSize: 32,
+                        fontWeight: 700,
+                        color: '#fafafa',
+                      }}
+                    >
+                      {regimeLabel}
+                    </div>
                   </div>
                 </div>
 
                 <div
                   style={{
+                    display: 'flex',
+                    marginTop: 18,
+                    maxWidth: 720,
+                    fontSize: 24,
+                    lineHeight: 1.4,
+                    color: '#d4d4d8',
+                  }}
+                >
+                  {getRegimeTagline(score)}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  marginTop: 26,
+                }}
+              >
+                <div
+                  style={{
                     position: 'relative',
                     width: '100%',
-                    height: 26,
+                    height: 22,
                     display: 'flex',
-                    marginTop: 28,
-                    borderRadius: 9999,
-                    background:
-                      'linear-gradient(90deg, #7f1d1d 0%, #ea580c 26%, #f8fafc 50%, #65a30d 74%, #166534 100%)',
+                    border: PANEL_BORDER,
                     overflow: 'hidden',
                   }}
                 >
+                  <div style={{ width: '33.333%', display: 'flex', background: '#7f1d1d' }} />
+                  <div style={{ width: '33.334%', display: 'flex', background: '#27272a' }} />
+                  <div style={{ width: '33.333%', display: 'flex', background: '#14532d' }} />
                   <div
                     style={{
                       position: 'absolute',
-                      inset: 2,
+                      top: -12,
+                      left: gaugeNeedleLeft,
+                      width: 2,
+                      height: 46,
                       display: 'flex',
-                      borderRadius: 9999,
-                      background: 'rgba(2,6,23,0.28)',
+                      marginLeft: -1,
+                      background: '#fafafa',
                     }}
                   />
                   <div
                     style={{
                       position: 'absolute',
-                      top: -10,
+                      top: -8,
                       left: gaugeNeedleLeft,
-                      width: 6,
-                      height: 46,
+                      width: 12,
+                      height: 12,
                       display: 'flex',
-                      marginLeft: -3,
-                      borderRadius: 9999,
-                      background: '#f8fafc',
-                      boxShadow: '0 0 0 4px rgba(15,23,42,0.5)',
+                      marginLeft: -6,
+                      border: '1px solid #fafafa',
+                      background: BACKGROUND_COLOR,
                     }}
                   />
                 </div>
@@ -321,95 +489,176 @@ export async function GET() {
                     width: '100%',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    marginTop: 16,
-                    fontSize: 18,
-                    color: '#94a3b8',
+                    marginTop: 14,
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: '#71717a',
                   }}
                 >
                   <div style={{ display: 'flex' }}>Risk Off</div>
                   <div style={{ display: 'flex' }}>Neutral</div>
                   <div style={{ display: 'flex' }}>Risk On</div>
                 </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                width: 304,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                border: PANEL_BORDER,
+                padding: '24px 24px 26px',
+                background: 'rgba(255, 255, 255, 0.02)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 16,
+                    fontWeight: 500,
+                    letterSpacing: '0.28em',
+                    textTransform: 'uppercase',
+                    color: '#71717a',
+                  }}
+                >
+                  Signal Stack
+                </div>
 
                 <div
                   style={{
                     display: 'flex',
-                    marginTop: 26,
-                    fontSize: 24,
-                    color: '#e2e8f0',
-                    lineHeight: 1.35,
+                    flexDirection: 'column',
+                    marginTop: 18,
                   }}
                 >
-                  {getRegimeTagline(score)}
+                  {SIGNAL_STACK.map((pillar, index) => (
+                    <div
+                      key={pillar}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '14px 0',
+                        borderTop: index === 0 ? 'none' : PANEL_BORDER,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 12,
+                          alignItems: 'baseline',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            minWidth: 26,
+                            fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            letterSpacing: '0.18em',
+                            textTransform: 'uppercase',
+                            color: '#71717a',
+                          }}
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+                            fontSize: 22,
+                            fontWeight: 700,
+                            color: '#fafafa',
+                          }}
+                        >
+                          {pillar}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                          fontSize: 13,
+                          fontWeight: 500,
+                          letterSpacing: '0.18em',
+                          textTransform: 'uppercase',
+                          color: '#a1a1aa',
+                        }}
+                      >
+                        25%
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div
                 style={{
-                  width: 290,
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  borderRadius: 32,
-                  border: '1px solid rgba(148,163,184,0.18)',
-                  background: 'rgba(15,23,42,0.72)',
-                  padding: '28px 26px',
+                  gap: 10,
+                  paddingTop: 18,
+                  borderTop: PANEL_BORDER,
                 }}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      fontSize: 16,
-                      letterSpacing: '0.22em',
-                      textTransform: 'uppercase',
-                      color: '#94a3b8',
-                    }}
-                  >
-                    Signal Stack
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', fontSize: 18, color: '#e2e8f0' }}>
-                      Volatility
-                    </div>
-                    <div style={{ display: 'flex', fontSize: 18, color: '#e2e8f0' }}>
-                      Credit
-                    </div>
-                    <div style={{ display: 'flex', fontSize: 18, color: '#e2e8f0' }}>
-                      Trend
-                    </div>
-                  </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    fontFamily: `${MONO_FONT_FAMILY}, ui-monospace, SFMono-Regular, monospace`,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '0.24em',
+                    textTransform: 'uppercase',
+                    color: '#71717a',
+                  }}
+                >
+                  Signal Position
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      fontSize: 54,
-                      fontWeight: 700,
-                      letterSpacing: '-0.05em',
-                      color: '#f8fafc',
-                    }}
-                  >
-                    {Math.round(gaugeProgress)}%
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      fontSize: 18,
-                      color: '#94a3b8',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    Signal position across the full -100 to +100 macro regime range.
-                  </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+                    fontSize: 54,
+                    fontWeight: 700,
+                    letterSpacing: '-0.05em',
+                    color: '#fafafa',
+                  }}
+                >
+                  {Math.round(gaugeProgress)}%
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    fontSize: 18,
+                    lineHeight: 1.45,
+                    color: '#a1a1aa',
+                  }}
+                >
+                  Four-pillar regime stack with equal 25% weighting across volatility, credit, trend, and positioning.
                 </div>
               </div>
             </div>
           </div>
         </div>
       ),
-      IMAGE_SIZE,
+      {
+        ...IMAGE_SIZE,
+        fonts,
+      },
     );
   } catch (error) {
     console.error('Failed to generate Macro Bias OG image.', error);
