@@ -14,7 +14,7 @@ export type SupplementalTicker = "HYG" | "CPER" | "^VIX" | "USO";
 
 export type AnalogFeatureKey =
   | "spyRsi"
-  | "qqqXlpRatio"
+  | "gammaExposure"
   | "hygTltRatio"
   | "cperGldRatio"
   | "usoMomentum"
@@ -75,6 +75,7 @@ export type HistoricalAnalogMatch = {
 
 export type ExpandedDailyBiasData = {
   cper?: SupplementalTickerSnapshot<"CPER">;
+  gammaExposure?: number;
   hyg?: SupplementalTickerSnapshot<"HYG">;
   historicalAnalogVectors?: HistoricalAnalogVector[];
   spy14DayRsi?: number;

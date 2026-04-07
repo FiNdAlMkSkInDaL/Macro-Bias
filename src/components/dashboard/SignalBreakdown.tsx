@@ -1,7 +1,10 @@
 export type SignalBreakdownPillarKey =
   | "volatility"
   | "creditAndRiskSpreads"
-  | "trendAndMomentum";
+  | "trendAndMomentum"
+  | "dealerPositioning"
+  | "positioning"
+  | "gammaExposure";
 
 export interface SignalBreakdownScore {
   contribution: number;
@@ -33,11 +36,38 @@ const PILLAR_CONFIG = [
   {
     key: "trendAndMomentum" as const,
     eyebrow: "Trend Exhaustion",
-    symbol: "SPY RSI / SMA",
+    symbol: "SPY RSI",
     methodology:
       "Measures whether SPY trend structure and momentum are aligned or exhausted, so the model can distinguish healthy continuation from fragile extension.",
   },
+  {
+    key: "positioning" as const,
+    eyebrow: "Market Plumbing",
+    symbol: "GEX Proxy",
+    methodology:
+      "Tracks dealer gamma exposure proxy so the model can distinguish supportive options-market inventory from positioning that can amplify index moves.",
+  },
 ] as const;
+
+function getPillarLookupKeys(key: SignalBreakdownPillarKey): readonly string[] {
+  if (key === "positioning" || key === "dealerPositioning" || key === "gammaExposure") {
+    return ["positioning", "dealerPositioning", "gammaExposure"];
+  }
+
+  return [key];
+}
+
+function getPillarScore<T>(scoreByKey: Map<string, T>, key: SignalBreakdownPillarKey) {
+  for (const lookupKey of getPillarLookupKeys(key)) {
+    const score = scoreByKey.get(lookupKey);
+
+    if (score !== undefined) {
+      return score;
+    }
+  }
+
+  return undefined;
+}
 
 function getDisposition(signal: number | undefined) {
   if (signal == null || Number.isNaN(signal)) {
@@ -95,7 +125,9 @@ function buildSubscoreCopy(
 }
 
 export function SignalBreakdown({ componentScores }: SignalBreakdownProps) {
-  const scoreByKey = new Map(componentScores.map((score) => [score.key, score]));
+  const scoreByKey = new Map<string, SignalBreakdownScore>(
+    componentScores.map((score) => [score.key, score]),
+  );
 
   return (
     <section className="border-t border-white/5 pt-5">
@@ -109,13 +141,13 @@ export function SignalBreakdown({ componentScores }: SignalBreakdownProps) {
           </h2>
         </div>
         <p className="max-w-lg text-sm leading-6 text-zinc-500">
-          Three weighted pillars roll into the composite bias. Each line shows the current disposition and its direct sub-score contribution.
+          Four weighted pillars roll into the composite bias. Each line shows the current disposition and its direct sub-score contribution.
         </p>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {PILLAR_CONFIG.map((pillar) => {
-          const score = scoreByKey.get(pillar.key);
+          const score = getPillarScore(scoreByKey, pillar.key);
           const disposition = getDisposition(score?.signal);
 
           return (

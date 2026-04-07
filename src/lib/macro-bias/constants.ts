@@ -7,9 +7,10 @@ export const TRACKED_TICKERS = ["SPY", "QQQ", "XLP", "TLT", "GLD"] as const;
 // Pillar weights describe the high-level regime model.
 // They sum to 100 and define how much each macro domain can influence the final score.
 export const BIAS_PILLAR_WEIGHTS = {
-  trendAndMomentum: 30,
-  creditAndRiskSpreads: 40,
-  volatility: 30,
+  trendAndMomentum: 25,
+  creditAndRiskSpreads: 25,
+  volatility: 25,
+  positioning: 25,
 } as const;
 
 // The Glass Box API still expects componentScores, so the KNN engine publishes
@@ -17,9 +18,10 @@ export const BIAS_PILLAR_WEIGHTS = {
 // weights even though the final score itself now comes from historical analog
 // forward-return expectancy rather than a linear weighted average.
 export const BIAS_SIGNAL_WEIGHTS = {
-  trendAndMomentum: 30,
-  creditAndRiskSpreads: 40,
-  volatility: 30,
+  trendAndMomentum: 25,
+  creditAndRiskSpreads: 25,
+  volatility: 25,
+  positioning: 25,
 } as const;
 
 // KNN engine settings.

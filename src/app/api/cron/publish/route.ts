@@ -17,6 +17,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const MAX_HISTORY_ROWS = 180;
+const MAX_ANALOG_LOOKBACK_YEARS = 10;
+const HISTORICAL_ANALOG_PAGE_SIZE = 500;
 const DISCORD_PUBLISHING_ENABLED = false;
 
 type StoredBiasSnapshot = {
@@ -28,6 +30,14 @@ type StoredBiasSnapshot = {
   engine_inputs: unknown;
   technical_indicators: unknown;
 };
+
+type HistoricalAnalogSnapshot = {
+  trade_date: string;
+  score: number;
+  bias_label: BiasLabel;
+};
+
+type SnapshotSummary = Pick<StoredBiasSnapshot, 'trade_date' | 'score' | 'bias_label'>;
 
 type AnalogMatch = {
   tradeDate: string;
@@ -151,6 +161,12 @@ function getOptionalServerEnv(name: string) {
   return value ? value : null;
 }
 
+function subtractYearsFromTradeDate(tradeDate: string, years: number) {
+  const referenceDate = new Date(`${tradeDate}T00:00:00Z`);
+  referenceDate.setUTCFullYear(referenceDate.getUTCFullYear() - years);
+  return referenceDate.toISOString().slice(0, 10);
+}
+
 function getRequiredXEnv(name: 'X_API_KEY' | 'X_API_SECRET' | 'X_ACCESS_TOKEN' | 'X_ACCESS_SECRET') {
   const value = getOptionalServerEnv(name);
 
@@ -245,7 +261,7 @@ function getTickerPercentChange(
 
 function buildPublishedAnalogs(
   historicalAnalogs: HistoricalAnalogsPayload | null,
-  snapshotsByDate: Map<string, StoredBiasSnapshot>,
+  snapshotsByDate: Map<string, SnapshotSummary>,
 ) {
   if (!historicalAnalogs) {
     return [] as AnalogMatch[];
@@ -449,6 +465,36 @@ async function safePublish(destination: PublishDestination, publish: () => Promi
   }
 }
 
+async function getHistoricalAnalogSnapshots(latestTradeDate: string) {
+  const supabase = createSupabaseAdminClient();
+  const tenYearsAgo = subtractYearsFromTradeDate(latestTradeDate, MAX_ANALOG_LOOKBACK_YEARS);
+  const historicalSnapshots: HistoricalAnalogSnapshot[] = [];
+
+  for (let offset = 0; ; offset += HISTORICAL_ANALOG_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('macro_bias_scores')
+      .select('trade_date, score, bias_label')
+      .gte('trade_date', tenYearsAgo)
+      .lte('trade_date', latestTradeDate)
+      .order('trade_date', { ascending: true })
+      .range(offset, offset + HISTORICAL_ANALOG_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = (data as HistoricalAnalogSnapshot[] | null) ?? [];
+
+    historicalSnapshots.push(...page.filter((snapshot) => VALID_BIAS_LABELS.has(snapshot.bias_label)));
+
+    if (page.length < HISTORICAL_ANALOG_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return historicalSnapshots;
+}
+
 async function getRecentSnapshots() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -530,11 +576,33 @@ async function handlePublish(request: NextRequest) {
     }
 
     const latestSnapshot = snapshots[latestSnapshotIndex];
-    const snapshotsByDate = new Map(snapshots.map((snapshot) => [snapshot.trade_date, snapshot]));
+    const historicalAnalogSnapshots = await getHistoricalAnalogSnapshots(latestSnapshot.trade_date);
+    const snapshotsByDate = new Map<string, SnapshotSummary>([
+      ...historicalAnalogSnapshots.map((snapshot) => [snapshot.trade_date, snapshot] as const),
+      ...snapshots.map(
+        (snapshot) =>
+          [
+            snapshot.trade_date,
+            {
+              trade_date: snapshot.trade_date,
+              score: snapshot.score,
+              bias_label: snapshot.bias_label,
+            },
+          ] as const,
+      ),
+    ]);
     const historicalAnalogs = deriveHistoricalAnalogs(
       latestSnapshot.engine_inputs,
       latestSnapshot.component_scores,
       latestSnapshot.technical_indicators,
+      {
+        applyRegimeFilter: true,
+        disablePersistedMatchFallback: true,
+        rollingWindowStartDate: subtractYearsFromTradeDate(
+          latestSnapshot.trade_date,
+          MAX_ANALOG_LOOKBACK_YEARS,
+        ),
+      },
     );
     const analogs = buildPublishedAnalogs(historicalAnalogs, snapshotsByDate);
     const publishPayload = buildPublishPayload(latestSnapshot, historicalAnalogs, analogs);

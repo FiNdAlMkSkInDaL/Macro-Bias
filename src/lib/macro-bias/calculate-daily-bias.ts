@@ -17,7 +17,7 @@ import type {
 
 const FEATURE_ORDER: AnalogFeatureKey[] = [
   "spyRsi",
-  "qqqXlpRatio",
+  "gammaExposure",
   "hygTltRatio",
   "cperGldRatio",
   "usoMomentum",
@@ -28,11 +28,12 @@ const PILLAR_ORDER: BiasPillarKey[] = [
   "trendAndMomentum",
   "creditAndRiskSpreads",
   "volatility",
+  "positioning",
 ];
 
 const FEATURE_TO_PILLAR: Record<AnalogFeatureKey, BiasPillarKey> = {
   spyRsi: "trendAndMomentum",
-  qqqXlpRatio: "trendAndMomentum",
+  gammaExposure: "positioning",
   hygTltRatio: "creditAndRiskSpreads",
   cperGldRatio: "creditAndRiskSpreads",
   usoMomentum: "creditAndRiskSpreads",
@@ -123,7 +124,8 @@ function assertFiniteNumber(value: number | undefined, label: string): number {
 
 // Today's vector is the market fingerprint the engine will match against history.
 // Ratios are level-based because they describe cross-asset leadership right now,
-// while USO uses a 5-session momentum term to reduce daily noise in the energy tape.
+// gamma captures market-plumbing positioning, and USO uses a 5-session momentum
+// term to reduce daily noise in the energy tape.
 function buildTodayStateVector(input: DailyBiasInput): AnalogStateVector {
   const expandedData = input.expandedData;
 
@@ -133,9 +135,10 @@ function buildTodayStateVector(input: DailyBiasInput): AnalogStateVector {
 
   return {
     spyRsi: assertFiniteNumber(expandedData.spy14DayRsi, "SPY RSI"),
-    qqqXlpRatio:
-      assertFiniteNumber(input.tickerChanges.QQQ.close, "QQQ close") /
-      assertFiniteNumber(input.tickerChanges.XLP.close, "XLP close"),
+    gammaExposure:
+      expandedData.gammaExposure == null
+        ? 0
+        : assertFiniteNumber(expandedData.gammaExposure, "dealer gamma exposure"),
     hygTltRatio:
       assertFiniteNumber(expandedData.hyg?.close, "HYG close") /
       assertFiniteNumber(input.tickerChanges.TLT.close, "TLT close"),
@@ -294,7 +297,7 @@ function buildAnalogMatches(nearestNeighbors: NeighborWithStandardizedVector[]):
 }
 
 // Even though the final score comes from KNN expectancy, the dashboard still needs
-// three Glass Box diagnostics. We allocate the final score across pillars according
+// four Glass Box diagnostics. We allocate the final score across pillars according
 // to how closely each pillar's feature block aligns with the centroid of the nearest
 // analog cluster in standardized feature space.
 function buildPillarSimilarityShares(
@@ -357,8 +360,8 @@ function buildPillarSummary(
 ) {
   if (pillar === "trendAndMomentum") {
     return (
-      `Trend inputs matched today's SPY RSI ${roundTo(todayVector.spyRsi, 1)} and QQQ/XLP ratio ${roundTo(todayVector.qqqXlpRatio, 4)} ` +
-      `against an analog centroid of RSI ${roundTo(rawNeighborCentroid.spyRsi, 1)} and QQQ/XLP ${roundTo(rawNeighborCentroid.qqqXlpRatio, 4)}. ` +
+      `Trend inputs matched today's SPY RSI ${roundTo(todayVector.spyRsi, 1)} ` +
+      `against an analog centroid of RSI ${roundTo(rawNeighborCentroid.spyRsi, 1)}. ` +
       `Across the five nearest analogs, SPY averaged ${formatSignedPercent(expectancySummary.averageForward1DayReturn)} over 1 day and ${formatSignedPercent(expectancySummary.averageForward3DayReturn)} over 3 days.`
     );
   }
@@ -368,6 +371,14 @@ function buildPillarSummary(
       `Credit and growth proxies matched HYG/TLT ${roundTo(todayVector.hygTltRatio, 4)}, CPER/GLD ${roundTo(todayVector.cperGldRatio, 4)}, ` +
       `and USO momentum ${formatSignedPercent(todayVector.usoMomentum)} against the nearest-neighbor cluster. ` +
       `Those analogs were negative ${roundTo(expectancySummary.bearishHitRate1Day * 100, 0)}% of the time on a 1-day horizon and ${roundTo(expectancySummary.bearishHitRate3Day * 100, 0)}% of the time over 3 days.`
+    );
+  }
+
+  if (pillar === "positioning") {
+    return (
+      `Positioning matched today's dealer gamma proxy of ${roundTo(todayVector.gammaExposure, 2)} ` +
+      `against an analog centroid of ${roundTo(rawNeighborCentroid.gammaExposure, 2)}. ` +
+      `That market-plumbing block stays orthogonal to the price-derived factors so the engine can separate inventory pressure from trend and credit conditions.`
     );
   }
 

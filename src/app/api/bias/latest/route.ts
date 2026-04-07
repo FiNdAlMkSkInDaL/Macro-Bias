@@ -14,12 +14,14 @@ const PILLAR_ORDER: BiasPillarKey[] = [
   "trendAndMomentum",
   "creditAndRiskSpreads",
   "volatility",
+  "positioning",
 ];
 
 const PILLAR_LABELS: Record<BiasPillarKey, string> = {
   trendAndMomentum: "Trend/Momentum",
   creditAndRiskSpreads: "Credit/Risk Spreads",
   volatility: "Volatility",
+  positioning: "Positioning",
 };
 
 type FrontendTickerChange = {

@@ -20,6 +20,7 @@ Macro Bias is a quantitative financial SaaS dashboard for day traders. It replac
 | Hosting & Cron      | Vercel (Serverless + Edge)     | —                      |
 | Payments            | Stripe                         | ^18.1.1                |
 | Social Distribution | X (Twitter) API v2             | twitter-api-v2 ^1.29.0 |
+| Content Parsing     | gray-matter                    | ^4.0.3                 |
 | OG Image Generation | @vercel/og (Edge Runtime)      | ^0.11.1                |
 | Charting            | Recharts                       | ^3.8.1                 |
 | Script Runner       | tsx                            | ^4.19.3                |
@@ -40,13 +41,15 @@ src/
     robots.ts                       # Crawl rules — disallows /dashboard and /auth/callback
     sitemap.ts                      # XML sitemap — single page, daily changeFrequency
     dashboard/
-      page.tsx                      # Pro dashboard (SSR, force-dynamic, revalidate=0)
+      page.tsx                      # Pro dashboard (server-rendered, force-dynamic + noStore)
     auth/
       callback/route.ts             # Supabase email-confirmation callback → redirect to /dashboard
     api/
       bias/latest/route.ts          # GET: latest bias snapshot + pillar breakdown + historical analogs
       checkout/route.ts             # POST: creates Stripe Checkout session (monthly or annual)
-      cron/publish/route.ts         # GET: daily engine — ingest, score, write DB, post to X
+      cron/
+        marketing/route.ts          # GET: scheduled X content publisher by campaignType
+        publish/route.ts            # GET: daily engine — ingest, score, write DB, post to X
       og/route.tsx                  # GET: dynamic 1200×630 OG image (Edge Runtime)
       stripe/portal/route.ts        # GET: redirects to Stripe billing portal
       webhooks/stripe/route.ts      # POST: Stripe webhook handler (Node.js runtime)
@@ -56,7 +59,10 @@ src/
       BiasGauge.tsx                 # Animated -100/+100 score bar with regime label
       AssetHeatmap.tsx              # Per-ticker price + daily change grid (SPY/QQQ/XLP/TLT/GLD)
       SignalBreakdown.tsx           # Three-pillar diagnostic card (VIX / HYG-TLT / SPY RSI)
-      ShareEdgeButton.tsx           # Share button linking to OG image / dashboard URL
+      ShareEdgeButton.tsx           # Share button that copies the dashboard share URL
+  content/
+    marketing/
+      *.md                          # Flat gray-matter X content files filtered by campaignType
   lib/
     server-env.ts                   # getRequiredServerEnv / getAppUrl helpers
     stripe.ts                       # Singleton Stripe client, plan price ID helpers
@@ -72,6 +78,8 @@ src/
       upsert-daily-market-data.ts   # Full sync pipeline: Yahoo → Supabase → calculateDailyBias
       get-latest-bias-snapshot.ts   # Single query: most recent macro_bias_scores row
       derive-historical-analogs.ts  # Post-score analog enrichment: overnightGap / intradayNet / sessionRange
+    marketing/
+      markdown-parser.ts            # Gray-matter parser for flat marketing content directory
     supabase/
       admin.ts                      # createSupabaseAdminClient (service-role key)
       browser.ts                    # createSupabaseBrowserClient (anon key, client-side)
@@ -82,6 +90,9 @@ src/
     index.ts                        # CORE_ASSET_TICKERS, AssetTicker, BiasAsset, BiasData
   scripts/
     run-daily-macro-bias-sync.ts    # Manual trigger for upsertDailyMarketData (npm run macro-bias:sync)
+  utils/
+    knn.ts                          # Shared KNN helper utilities
+    quantMath.ts                    # Quant math helpers used by publish-time analog logic
 supabase/
   migrations/
     20260405_init_macro_bias.sql                # Core tables: etf_daily_prices, macro_bias_scores
@@ -89,7 +100,8 @@ supabase/
     202604050002_upgrade_macro_model.sql        # Adds technical_indicators column, expands ticker constraint
     202604050003_add_uso_to_macro_model.sql     # Adds USO to ticker constraint
     202604050003_enable_knn_macro_model.sql     # Sets model_version default to macro-model-v3-knn
-vercel.json                                     # Cron schedule definition
+    202604070001_create_published_marketing_posts.sql # Marketing post publication ledger
+vercel.json                                     # Publish cron plus marketing distribution schedules
 ```
 
 ---
@@ -154,7 +166,7 @@ Ratios are level-based (not percent-change) to capture cross-asset leadership st
 
 ### 5.1 Daily Automated Run
 
-**Cron schedule:** `30 12 * * *` (UTC) = **8:30 AM EST**, one hour before the New York open.  
+**Cron schedule:** `30 12 * * *` (UTC) = **8:30 AM ET**, one hour before the New York open.  
 **Endpoint:** `GET /api/cron/publish`  
 **Runtime:** Node.js serverless function  
 **Auth:** `CRON_SECRET` (or `PUBLISH_CRON_SECRET`) via `Authorization: Bearer <secret>` header or `x-cron-secret` header, verified with `crypto.timingSafeEqual` to prevent timing attacks.
@@ -194,7 +206,28 @@ Vercel Cron → GET /api/cron/publish
   └─ 6. Return JSON publish summary
 ```
 
-### 5.2 Manual Sync Script
+### 5.2 Marketing Content Distribution
+
+Three additional cron routes manage evergreen educational and promotional X posts:
+
+- `GET /api/cron/marketing?type=weather` → `30 17 * * 1-5` (UTC) = **12:30 PM ET**, Monday-Friday
+- `GET /api/cron/marketing?type=close` → `15 20 * * 1-5` (UTC) = **3:15 PM ET**, Monday-Friday
+- `GET /api/cron/marketing?type=marketing` → `0 15 * * *` (UTC) = **10:00 AM ET**, daily
+
+Each marketing cron run:
+
+1. Validates `CRON_SECRET` / `PUBLISH_CRON_SECRET` using the same header flow as `/api/cron/publish`.
+2. Reads flat `.md` files from `src/content/marketing/` through `src/lib/marketing/markdown-parser.ts`.
+3. Parses gray-matter frontmatter and filters by `campaignType` (`weather`, `close`, or `marketing`).
+4. Loads previously published slugs from `published_marketing_posts` using the Supabase service-role client.
+5. Publishes the first available post to X via `twitter-api-v2`.
+6. Inserts `{ slug, published_at }` into `published_marketing_posts` to prevent duplicates.
+
+**Current content state (2026-04-07):** the flat content directory contains sample `weather` and `close` posts plus evergreen `marketing` posts. All three campaign types are wired through the same parser and cron route.
+
+Publishing state for the marketing cron is tracked in the database ledger, not in markdown frontmatter. The `published` field in content files is currently editorial metadata only.
+
+### 5.3 Manual Sync Script
 
 Run outside of the Vercel cron at any time for backfills or debugging:
 
@@ -204,7 +237,7 @@ npm run macro-bias:sync
 
 Executes `src/scripts/run-daily-macro-bias-sync.ts` via `tsx`, loads `.env.local` via `@next/env`, runs `upsertDailyMarketData()`, and pretty-prints `{ tradeDate, score, label }` to stdout.
 
-### 5.3 Data Source
+### 5.4 Data Source
 
 OHLCV data is fetched from the **Yahoo Finance Chart API** (`query2.finance.yahoo.com/v8/finance/chart/`). The raw response is typed as `YahooChartResponse` and mapped to `DailyPriceInsert` rows. Adjusted close is read from the `adjclose` indicator array.
 
@@ -212,7 +245,7 @@ OHLCV data is fetched from the **Yahoo Finance Chart API** (`query2.finance.yaho
 
 ## 6. Database Schema
 
-All tables live in the `public` schema. RLS is enabled on all tables. Server-side code uses the service-role key to bypass RLS; clients use the anon key.
+All tables live in the `public` schema. `etf_daily_prices`, `macro_bias_scores`, and `users` have RLS enabled. `published_marketing_posts` is a server-managed ledger with RLS disabled. Server-side code uses the service-role key when it needs to bypass RLS or write publication state; browser clients use the anon key.
 
 ### `etf_daily_prices`
 | Column                               | Type            | Notes                                                                   |
@@ -256,6 +289,14 @@ Index: `(trade_date DESC)`, `(model_version)`
 
 A `handle_new_user()` trigger automatically inserts a `users` row (or updates email) on every new `auth.users` insert.  
 RLS policy: users can `SELECT` their own row only (`auth.uid() = id`).
+
+### `published_marketing_posts`
+| Column         | Type          | Notes                                           |
+| -------------- | ------------- | ----------------------------------------------- |
+| `slug`         | `text`        | PK, used as the deduplication key across posts  |
+| `published_at` | `timestamptz` | Default `now()`                                 |
+
+RLS is disabled on this table. It is written by `GET /api/cron/marketing` through the service-role Supabase client to prevent reposting the same markdown slug.
 
 ### `profiles` (optional enrichment)
 Not created by a tracked migration, but referenced by the billing layer. Columns used: `id`, `is_pro` (boolean), `stripe_customer_id`. The billing code gracefully ignores missing-table errors (`42P01`, `PGRST204`, `PGRST205`).
@@ -314,9 +355,13 @@ User resolution waterfall (most → least reliable):
 ### `GET /api/cron/publish`
 See Section 5.1 — The Core Data Pipeline.
 
+### `GET /api/cron/marketing?type=weather|close|marketing`
+**Runtime:** Node.js  
+Validates the same cron secret as `/api/cron/publish`, loads flat markdown posts from `src/content/marketing/`, filters them by gray-matter `campaignType`, excludes any slug already present in `published_marketing_posts`, publishes the first available post to X, and then records the slug as published. Returns either a publish summary (`{ ok, published, slug, tweetId, type, publishedAt }`) or a no-op reason when no matching unpublished post exists.
+
 ### `GET /api/og`
 **Runtime:** Edge (`@vercel/og`)  
-Fetches the latest `macro_bias_scores` row from Supabase and renders a 1200×630 OG image using JSX-in-Edge. Visual elements: score (color-coded green/orange/white), gauge progress bar, regime label, trade date, and tagline. Falls back to a "warming up" placeholder if no snapshot exists. Used for social sharing and link unfurls.
+Fetches the latest `macro_bias_scores` row from Supabase and renders a 1200×630 OG image using JSX-in-Edge. Visual elements: score (color-coded green/orange/white), gauge progress bar, regime label, trade date, and tagline. Falls back to a "warming up" placeholder if no snapshot exists. Used by the publish cron payload and share assets; the default site metadata currently points at static OG/Twitter image files.
 
 ---
 
@@ -328,7 +373,7 @@ Client component. Handles both sign-in and sign-up in a single form via `mode: '
 Displays three marketing stat blocks and three "quant pillars" (Volatility / Credit Spreads / Trend) with methodology descriptions.
 
 ### 8.2 Dashboard Page (`/dashboard`)
-Server component, `force-dynamic`, `revalidate = 0`. Protected by middleware — unauthenticated users are redirected to `/?redirectTo=/dashboard`.
+Server component. Declares `export const dynamic = "force-dynamic"` and calls `noStore()` to force request-time data fetching. Protected by middleware — unauthenticated users are redirected to `/?redirectTo=/dashboard`.
 
 **Data flow:**
 1. Calls `getUserSubscriptionStatus()` server-side to determine `isPro`
@@ -364,7 +409,7 @@ Client component. Receives `initialIsPro` from server. Subscribes to real-time S
 - Shows: signal value, weight %, contribution points, methodology description, analog dates if available
 
 **`ShareEdgeButton`**
-- Copies the dashboard share URL to clipboard or opens the OG image in a new tab
+- Copies the dashboard share URL to the clipboard
 
 ---
 
@@ -429,16 +474,15 @@ Legacy aliases also accepted: `X_API_KEY_SECRET` (= `X_API_SECRET`), `X_ACCESS_T
 | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `NEXT_PUBLIC_APP_URL`         | Public-facing base URL. Defaults to `http://localhost:3000`                                           |
 | `DISCORD_PUBLISH_WEBHOOK_URL` | Discord channel webhook (publishing currently disabled in code: `DISCORD_PUBLISHING_ENABLED = false`) |
-| `X_PUBLISH_WEBHOOK_URL`       | X publish webhook (alternative to direct API posting)                                                 |
 
 ---
 
 ## 12. SEO, Crawl, and Social
 
-- **`layout.tsx`:** Exports Next.js `Metadata` with title, description, keywords, canonical URL (`https://macro-bias.com`), Open Graph tags (type: website, image: `/api/og`), Twitter card (`summary_large_image`), structured data (`SoftwareApplication` + `Product` + `WebSite` Schema.org graph in JSON-LD)
+- **`layout.tsx`:** Exports Next.js `Metadata` with title, description, keywords, canonical URL (`https://macro-bias.com`), static Open Graph image (`/opengraph-image.png`), static Twitter image (`/twitter-image.png`), and structured data (`SoftwareApplication` + `Product` Schema.org graph in JSON-LD)
 - **`robots.ts`:** Allows all crawlers on `/`, disallows `/dashboard` and `/auth/callback`. Points to `/sitemap.xml`
 - **`sitemap.ts`:** One entry for the root URL, `changeFrequency: 'daily'`, `priority: 1`
-- **`/api/og`:** Dynamic per-score OG image. Score-colored gauge bar, regime label, trade date. Used by Twitter/X link unfurls and social sharing
+- **`/api/og`:** Dynamic per-score OG image. Score-colored gauge bar, regime label, trade date. Used by the publish cron payload and manual share assets, not the default site-wide metadata image.
 
 ---
 
@@ -457,8 +501,9 @@ Legacy aliases also accepted: `X_API_KEY_SECRET` (= `X_API_SECRET`), `X_ACCESS_T
 ## 14. Known Edge Cases & Maintenance Notes
 
 - **X API rate limits:** The X Developer API Free Tier allows ~500 tweets/month. If exceeded, the cron publishes the DB write successfully but logs a `402 CreditsDepleted` error. The tweet is silently skipped until the monthly billing cycle resets.
-- **Stale frontend dates:** All dashboard and API routes use `force-dynamic` and `revalidate = 0` to disable the Next.js page cache. The `Data as of:` timestamp on the dashboard always reflects the latest Supabase row.
+- **Stale frontend dates:** The dashboard uses `force-dynamic` plus `noStore()`, and the relevant API routes use `force-dynamic` plus `revalidate = 0`, to disable caching. The `Data as of:` timestamp on the dashboard reflects the latest Supabase row.
 - **Stripe webhook redirect bug:** The production webhook URL must be `https://www.macro-bias.com/api/webhooks/stripe`. The apex domain `https://macro-bias.com/...` triggers a 307 redirect that breaks Stripe's raw-body signature verification before Next.js can handle it.
 - **Holiday/gap fallback:** `upsertDailyMarketData` steps back day-by-day to find the most recent valid trading session if Yahoo Finance returns null data for the previous calendar day (weekends, public holidays).
 - **Profiles table soft dependency:** The billing layer gracefully ignores Postgres error codes `42P01` (relation does not exist), `42703` (column does not exist), `PGRST204`, and `PGRST205` when querying `profiles`. The subscription system degrades gracefully to `users.subscription_status` alone if the `profiles` table has not been created.
 - **Model version tracking:** Every `macro_bias_scores` row is tagged with `model_version = 'macro-model-v3-knn'`. Historical rows written by earlier model versions (v1, v2) remain intact and are still used as analog candidates by the KNN engine — the feature vectors are re-constructed from the persisted `engine_inputs` JSONB column.
+- **Marketing cron coverage:** As of 2026-04-07, `src/content/marketing/` contains sample `weather` and `close` posts plus evergreen `marketing` posts. All three scheduled campaign types are active through the same flat-directory parser.

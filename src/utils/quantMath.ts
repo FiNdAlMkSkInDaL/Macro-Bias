@@ -1,12 +1,15 @@
-export type QuantitativePillarKey = "volatility" | "credit" | "trend";
+export type QuantitativePillarKey = "volatility" | "credit" | "trend" | "positioning";
 
 export interface QuantitativePillarValues {
   volatility: number;
   credit: number;
   trend: number;
+  positioning: number;
 }
 
-export interface HistoricalMarketDataRow extends QuantitativePillarValues {}
+export interface HistoricalMarketDataRow extends QuantitativePillarValues {
+  gammaExposure: number;
+}
 
 export interface QuantitativePillarStatistics {
   mean: QuantitativePillarValues;
@@ -21,6 +24,7 @@ const QUANTITATIVE_PILLAR_KEYS: readonly QuantitativePillarKey[] = [
   "volatility",
   "credit",
   "trend",
+  "positioning",
 ];
 
 const MIN_STANDARD_DEVIATION = 1e-12;
@@ -71,11 +75,13 @@ function calculatePillarStatistics<T extends HistoricalMarketDataRow>(
     volatility: 0,
     credit: 0,
     trend: 0,
+    positioning: 0,
   };
   const stdDev: QuantitativePillarValues = {
     volatility: 0,
     credit: 0,
     trend: 0,
+    positioning: 0,
   };
 
   for (const pillar of QUANTITATIVE_PILLAR_KEYS) {
@@ -118,6 +124,7 @@ export function normalizeDataset<T extends HistoricalMarketDataRow>(
       volatility: calculateZScore(row.volatility, mean.volatility, stdDev.volatility),
       credit: calculateZScore(row.credit, mean.credit, stdDev.credit),
       trend: calculateZScore(row.trend, mean.trend, stdDev.trend),
+      positioning: calculateZScore(row.positioning, mean.positioning, stdDev.positioning),
     },
   }));
 }

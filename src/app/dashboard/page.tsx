@@ -69,6 +69,8 @@ type ApiBiasSnapshot = {
   updatedAt: string;
 };
 
+type ApiDetailedComponentScore = NonNullable<ApiBiasSnapshot["detailedComponentScores"]>[number];
+
 type LatestBiasResponse =
   | {
       data: ApiBiasSnapshot;
@@ -150,13 +152,38 @@ const proSignalPillars = [
   {
     key: "trendAndMomentum" as const,
     label: "Trend Exhaustion",
-    symbol: "SPY RSI / SMA",
+    symbol: "SPY RSI",
+  },
+  {
+    key: "positioning" as const,
+    label: "Market Plumbing",
+    symbol: "GEX Proxy",
   },
 ] satisfies Array<{
   key: SignalBreakdownScore["key"];
   label: string;
   symbol: string;
 }>;
+
+function getSignalPillarLookupKeys(key: SignalBreakdownScore["key"]): readonly string[] {
+  if (key === "positioning" || key === "dealerPositioning" || key === "gammaExposure") {
+    return ["positioning", "dealerPositioning", "gammaExposure"];
+  }
+
+  return [key];
+}
+
+function getSignalPillarValue<T>(scoreByKey: Map<string, T>, key: SignalBreakdownScore["key"]) {
+  for (const lookupKey of getSignalPillarLookupKeys(key)) {
+    const score = scoreByKey.get(lookupKey);
+
+    if (score !== undefined) {
+      return score;
+    }
+  }
+
+  return undefined;
+}
 
 function formatPrice(value: number | null) {
   if (value === null) {
@@ -555,8 +582,10 @@ export default async function DashboardPage() {
       : "text-zinc-300";
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
   const componentScores = snapshot?.componentScores ?? [];
-  const signalScoreByKey = new Map(componentScores.map((score) => [score.key, score]));
-  const detailedSignalScoreByKey = new Map(
+  const signalScoreByKey = new Map<string, SignalBreakdownScore>(
+    componentScores.map((score) => [score.key, score]),
+  );
+  const detailedSignalScoreByKey = new Map<string, ApiDetailedComponentScore>(
     (snapshot?.detailedComponentScores ?? []).map((score) => [score.pillar ?? score.key, score]),
   );
   const topAnalogMatches = historicalAnalogs?.topMatches ?? [];
@@ -769,8 +798,8 @@ export default async function DashboardPage() {
 
                     <div className="mt-4 space-y-0">
                       {proSignalPillars.map((pillar) => {
-                        const score = signalScoreByKey.get(pillar.key);
-                        const detailedScore = detailedSignalScoreByKey.get(pillar.key);
+                        const score = getSignalPillarValue(signalScoreByKey, pillar.key);
+                        const detailedScore = getSignalPillarValue(detailedSignalScoreByKey, pillar.key);
                         const disposition = getSignalDisposition(score?.signal);
 
                         return (
@@ -1156,10 +1185,18 @@ export default async function DashboardPage() {
                   <p className="text-sm text-white">λ = 0.001</p>
                 </div>
                 <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em]">Regime Filter</p>
+                  <p className="text-right text-sm text-zinc-400">ACTIVE (HMM Proxy)</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
                   <p className="uppercase tracking-[0.28em]">Selection Logic</p>
                   <p className="text-right text-sm text-zinc-400">Exact decayed KNN top 5</p>
                 </div>
               </div>
+
+              <p className="mt-4 max-w-xl text-xs leading-5 text-zinc-600">
+                Dataset is hard-capped to a 10-year rolling window to prevent Z-score distortion, and pre-filtered by structural regime.
+              </p>
             </section>
           </div>
         </section>

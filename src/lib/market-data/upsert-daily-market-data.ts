@@ -92,8 +92,10 @@ type PersistedDailyPriceRow = {
 
 const SUPPLEMENTAL_TICKERS = ["^VIX", "HYG", "CPER", "USO"] as const satisfies readonly SupplementalTicker[];
 const ANALOG_CORE_TICKERS = ["USO"] as const satisfies readonly SupplementalTicker[];
-const MODEL_VERSION = "macro-model-v3-knn";
-const MIN_ANALOG_LOOKBACK_DAYS = 730;
+const MODEL_VERSION = "macro-model-v4-regime-gex";
+const MAX_ANALOG_LOOKBACK_YEARS = 10;
+const DEFAULT_ANALOG_LOOKBACK_DAYS = 3653;
+const MIN_ANALOG_LOOKBACK_DAYS = 45;
 
 function roundPrice(value: number) {
   return Number(value.toFixed(4));
@@ -107,6 +109,17 @@ function subtractDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setUTCDate(nextDate.getUTCDate() - days);
   return nextDate;
+}
+
+function subtractYears(date: Date, years: number) {
+  const nextDate = new Date(date);
+  nextDate.setUTCFullYear(nextDate.getUTCFullYear() - years);
+  return nextDate;
+}
+
+function calculateCalendarDayDifference(startDate: Date, endDate: Date) {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  return Math.ceil((endDate.getTime() - startDate.getTime()) / millisecondsPerDay);
 }
 
 function addDays(date: Date, days: number) {
@@ -408,35 +421,60 @@ function buildTradeDateLookup<TTicker extends MarketDataTicker>(
   return new Map(history.map((row) => [row.trade_date, row]));
 }
 
+function buildSessionPercentChangeByTradeDate<TTicker extends MarketDataTicker>(
+  history: HistoricalPriceRow<TTicker>[] | DailyPriceInsert[],
+  sortedCommonTradeDates: string[],
+  lookbackSessions: number,
+) {
+  const historyByTradeDate = buildTradeDateLookup(history);
+  const percentChangeByTradeDate: Record<string, number> = {};
+
+  for (let index = lookbackSessions; index < sortedCommonTradeDates.length; index += 1) {
+    const tradeDate = sortedCommonTradeDates[index];
+    const lookbackTradeDate = sortedCommonTradeDates[index - lookbackSessions];
+    const latestRow = historyByTradeDate.get(tradeDate);
+    const previousRow = historyByTradeDate.get(lookbackTradeDate);
+
+    if (!latestRow || !previousRow) {
+      continue;
+    }
+
+    percentChangeByTradeDate[tradeDate] = calculatePercentChange(
+      latestRow.close,
+      previousRow.close,
+    );
+  }
+
+  return percentChangeByTradeDate;
+}
+
 function buildUsoMomentumByTradeDate(
   usoHistory: HistoricalPriceRow<"USO">[],
   sortedCommonTradeDates: string[],
 ) {
-  const usoHistoryByTradeDate = buildTradeDateLookup(usoHistory);
-  const usoMomentumByTradeDate: Record<string, number> = {};
+  return buildSessionPercentChangeByTradeDate(
+    usoHistory,
+    sortedCommonTradeDates,
+    ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions,
+  );
+}
 
-  for (
-    let index = ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions;
-    index < sortedCommonTradeDates.length;
-    index += 1
-  ) {
-    const tradeDate = sortedCommonTradeDates[index];
-    const lookbackTradeDate =
-      sortedCommonTradeDates[index - ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions];
-    const latestUsoRow = usoHistoryByTradeDate.get(tradeDate);
-    const previousUsoRow = usoHistoryByTradeDate.get(lookbackTradeDate);
+function buildGammaExposureByTradeDate(
+  vixHistory: HistoricalPriceRow<"^VIX">[],
+  sortedCommonTradeDates: string[],
+) {
+  const vixRateOfChangeByTradeDate = buildSessionPercentChangeByTradeDate(
+    vixHistory,
+    sortedCommonTradeDates,
+    ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions,
+  );
 
-    if (!latestUsoRow || !previousUsoRow) {
-      continue;
-    }
-
-    usoMomentumByTradeDate[tradeDate] = calculatePercentChange(
-      latestUsoRow.close,
-      previousUsoRow.close,
-    );
-  }
-
-  return usoMomentumByTradeDate;
+  return Object.fromEntries(
+    Object.entries(vixRateOfChangeByTradeDate).map(([tradeDate, value]) => [
+      tradeDate,
+      Number((-value).toFixed(2)),
+    ]),
+  );
 }
 
 function buildHistoricalAnalogVectors(
@@ -449,11 +487,10 @@ function buildHistoricalAnalogVectors(
   },
   spyTechnicalIndicatorsByTradeDate: Record<string, PersistedTechnicalIndicators>,
   sortedCommonTradeDates: string[],
+  gammaExposureByTradeDate: Record<string, number>,
   usoMomentumByTradeDate: Record<string, number>,
 ): HistoricalAnalogVector[] {
   const spyHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.SPY);
-  const qqqHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.QQQ);
-  const xlpHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.XLP);
   const tltHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.TLT);
   const gldHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.GLD);
   const hygHistoryByTradeDate = buildTradeDateLookup(supplementalHistory.hyg);
@@ -472,14 +509,13 @@ function buildHistoricalAnalogVectors(
     const currentSpyRow = spyHistoryByTradeDate.get(tradeDate);
     const nextSpyRow = spyHistoryByTradeDate.get(nextTradeDate);
     const thirdForwardSpyRow = spyHistoryByTradeDate.get(thirdForwardTradeDate);
-    const qqqRow = qqqHistoryByTradeDate.get(tradeDate);
-    const xlpRow = xlpHistoryByTradeDate.get(tradeDate);
     const hygRow = hygHistoryByTradeDate.get(tradeDate);
     const tltRow = tltHistoryByTradeDate.get(tradeDate);
     const cperRow = cperHistoryByTradeDate.get(tradeDate);
     const gldRow = gldHistoryByTradeDate.get(tradeDate);
     const vixRow = vixHistoryByTradeDate.get(tradeDate);
     const spyIndicators = spyTechnicalIndicatorsByTradeDate[tradeDate] ?? {};
+    const gammaExposure = gammaExposureByTradeDate[tradeDate];
     const spyRsi = getNumericTechnicalIndicator(spyIndicators, "rsi14");
     const uso5DayMomentum = usoMomentumByTradeDate[tradeDate];
 
@@ -487,13 +523,12 @@ function buildHistoricalAnalogVectors(
       !currentSpyRow ||
       !nextSpyRow ||
       !thirdForwardSpyRow ||
-      !qqqRow ||
-      !xlpRow ||
       !hygRow ||
       !tltRow ||
       !cperRow ||
       !gldRow ||
       !vixRow ||
+      gammaExposure == null ||
       spyRsi == null ||
       uso5DayMomentum == null
     ) {
@@ -504,7 +539,7 @@ function buildHistoricalAnalogVectors(
       tradeDate,
       vector: {
         spyRsi,
-        qqqXlpRatio: qqqRow.close / xlpRow.close,
+        gammaExposure,
         hygTltRatio: hygRow.close / tltRow.close,
         cperGldRatio: cperRow.close / gldRow.close,
         usoMomentum: uso5DayMomentum,
@@ -529,6 +564,7 @@ function buildExpandedDailyBiasData(
     uso: HistoricalPriceRow<"USO">[];
     vix: HistoricalPriceRow<"^VIX">[];
   },
+  gammaExposureByTradeDate: Record<string, number>,
   historicalAnalogVectors: HistoricalAnalogVector[],
   usoMomentumByTradeDate: Record<string, number>,
   previousTradeDate: string,
@@ -538,11 +574,17 @@ function buildExpandedDailyBiasData(
 
   const spy20DaySma = getNumericTechnicalIndicator(latestSpyIndicators, "sma20");
   const spy14DayRsi = getNumericTechnicalIndicator(latestSpyIndicators, "rsi14");
+  const gammaExposure = gammaExposureByTradeDate[latestTradeDate];
   const uso5DayMomentum = usoMomentumByTradeDate[latestTradeDate];
 
-  if (spy20DaySma == null || spy14DayRsi == null || uso5DayMomentum == null) {
+  if (
+    spy20DaySma == null ||
+    spy14DayRsi == null ||
+    gammaExposure == null ||
+    uso5DayMomentum == null
+  ) {
     throw new Error(
-      "Not enough history to calculate SPY 20-day SMA, SPY 14-day RSI, and USO 5-day momentum.",
+      "Not enough history to calculate SPY 20-day SMA, SPY 14-day RSI, synthetic gamma exposure, and USO 5-day momentum.",
     );
   }
 
@@ -552,6 +594,7 @@ function buildExpandedDailyBiasData(
       previousTradeDate,
       latestTradeDate,
     ),
+    gammaExposure,
     hyg: buildSupplementalSnapshot(
       supplementalHistory.hyg,
       previousTradeDate,
@@ -620,6 +663,10 @@ function buildEngineInputsPayload(
   return {
     metadata: {
       decay_lambda: ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+      rolling_window_years: MAX_ANALOG_LOOKBACK_YEARS,
+    },
+    marketPlumbing: {
+      gammaExposure: expandedData.gammaExposure ?? 0,
     },
     tradeWindow: {
       lookbackDays,
@@ -666,9 +713,20 @@ export async function upsertDailyMarketData(
   options: DailySyncOptions = {},
 ): Promise<DailyBiasResult> {
   const supabase = await ensureMacroBiasTablesExist();
-  const lookbackDays = Math.max(options.lookbackDays ?? MIN_ANALOG_LOOKBACK_DAYS, 45);
   const asOfDate = options.asOfDate ?? new Date();
-  const period1 = subtractDays(asOfDate, lookbackDays);
+  const requestedLookbackDays = Math.max(
+    options.lookbackDays ?? DEFAULT_ANALOG_LOOKBACK_DAYS,
+    MIN_ANALOG_LOOKBACK_DAYS,
+  );
+  const maxRollingWindowStart = subtractYears(asOfDate, MAX_ANALOG_LOOKBACK_YEARS);
+  const requestedWindowStart = subtractDays(asOfDate, requestedLookbackDays);
+  const period1 = requestedWindowStart < maxRollingWindowStart
+    ? maxRollingWindowStart
+    : requestedWindowStart;
+  const lookbackDays = Math.max(
+    calculateCalendarDayDifference(period1, asOfDate),
+    MIN_ANALOG_LOOKBACK_DAYS,
+  );
   const period2 = addDays(asOfDate, 1);
 
   const [historyEntries, usoHistory, vixHistory, hygHistory, cperHistory] = await Promise.all([
@@ -709,6 +767,7 @@ export async function upsertDailyMarketData(
     });
   const tickerChanges = buildTickerChangeMap(rowsByTicker, previousTradeDate, latestTradeDate);
   const spyTechnicalIndicatorsByTradeDate = buildSpyTechnicalIndicatorsByTradeDate(rowsByTicker.SPY);
+  const gammaExposureByTradeDate = buildGammaExposureByTradeDate(vixHistory, sortedCommonTradeDates);
   const usoMomentumByTradeDate = buildUsoMomentumByTradeDate(usoHistory, sortedCommonTradeDates);
   const historicalSeriesSummary = buildHistoricalSeriesSummary({
     CPER: cperHistory,
@@ -731,6 +790,7 @@ export async function upsertDailyMarketData(
     },
     spyTechnicalIndicatorsByTradeDate,
     sortedCommonTradeDates,
+    gammaExposureByTradeDate,
     usoMomentumByTradeDate,
   );
   const historicalArrayPayload = buildHistoricalArrayPayload({
@@ -752,6 +812,7 @@ export async function upsertDailyMarketData(
       uso: usoHistory,
       vix: vixHistory,
     },
+    gammaExposureByTradeDate,
     historicalAnalogVectors,
     usoMomentumByTradeDate,
     previousTradeDate,
