@@ -3,10 +3,14 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 
-import {
-  deriveHistoricalAnalogs,
-  type HistoricalAnalogsPayload,
-} from '../../../../lib/market-data/derive-historical-analogs';
+import type { HistoricalAnalogsPayload } from '../../../../lib/market-data/derive-historical-analogs';
+import { generateDailyBriefing } from '../../../../lib/briefing/daily-brief-generator';
+import { persistDailyBriefing } from '../../../../lib/briefing/persist-daily-briefing';
+import type {
+  DailyBriefingAnalogMatch,
+  StoredBiasSnapshot,
+} from '../../../../lib/briefing/types';
+import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch';
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
 import { getAppUrl } from '../../../../lib/server-env';
@@ -17,41 +21,11 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const MAX_HISTORY_ROWS = 180;
-const MAX_ANALOG_LOOKBACK_YEARS = 10;
-const HISTORICAL_ANALOG_PAGE_SIZE = 500;
+const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 220;
 const DISCORD_PUBLISHING_ENABLED = false;
 
-type StoredBiasSnapshot = {
-  trade_date: string;
-  score: number;
-  bias_label: BiasLabel;
-  component_scores: unknown;
-  model_version: string | null;
-  engine_inputs: unknown;
-  technical_indicators: unknown;
-};
-
-type HistoricalAnalogSnapshot = {
-  trade_date: string;
-  score: number;
-  bias_label: BiasLabel;
-};
-
-type SnapshotSummary = Pick<StoredBiasSnapshot, 'trade_date' | 'score' | 'bias_label'>;
-
-type AnalogMatch = {
-  tradeDate: string;
-  nextSessionDate: string;
-  score: number | null;
-  biasLabel: string | null;
-  matchConfidence: number;
-  intradayNet: number | null;
-  overnightGap: number | null;
-  sessionRange: number | null;
-};
-
 type PublishPayload = {
-  analogs: AnalogMatch[];
+  analogs: DailyBriefingAnalogMatch[];
   dashboardUrl: string;
   discordText: string;
   headline: string;
@@ -69,7 +43,7 @@ type XCredentials = {
   apiSecret: string;
 };
 
-type PublishDestination = 'discord' | 'x';
+type PublishDestination = 'discord' | 'email' | 'x';
 
 type PublishResult = {
   destination: PublishDestination;
@@ -113,6 +87,16 @@ function formatOptionalUnsignedPercent(value: number | null) {
   }
 
   return `${Math.abs(Number(value.toFixed(2)))}%`;
+}
+
+function buildXSnippet(text: string, maxLength: number) {
+  const normalizedText = text.replace(/\s+/g, ' ').trim();
+
+  if (normalizedText.length <= maxLength) {
+    return normalizedText;
+  }
+
+  return `${normalizedText.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 function getRegimeTone(label: BiasLabel) {
@@ -159,12 +143,6 @@ function getColorForLabel(label: BiasLabel) {
 function getOptionalServerEnv(name: string) {
   const value = process.env[name]?.trim();
   return value ? value : null;
-}
-
-function subtractYearsFromTradeDate(tradeDate: string, years: number) {
-  const referenceDate = new Date(`${tradeDate}T00:00:00Z`);
-  referenceDate.setUTCFullYear(referenceDate.getUTCFullYear() - years);
-  return referenceDate.toISOString().slice(0, 10);
 }
 
 function getRequiredXEnv(name: 'X_API_KEY' | 'X_API_SECRET' | 'X_ACCESS_TOKEN' | 'X_ACCESS_SECRET') {
@@ -259,30 +237,6 @@ function getTickerPercentChange(
   return getNumber(tickerValue.percentChange);
 }
 
-function buildPublishedAnalogs(
-  historicalAnalogs: HistoricalAnalogsPayload | null,
-  snapshotsByDate: Map<string, SnapshotSummary>,
-) {
-  if (!historicalAnalogs) {
-    return [] as AnalogMatch[];
-  }
-
-  return historicalAnalogs.topMatches.map((analog) => {
-    const snapshot = snapshotsByDate.get(analog.tradeDate);
-
-    return {
-      tradeDate: analog.tradeDate,
-      nextSessionDate: analog.nextSessionDate,
-      score: snapshot?.score ?? null,
-      biasLabel: snapshot?.bias_label ?? null,
-      matchConfidence: analog.matchConfidence,
-      intradayNet: analog.intradayNet,
-      overnightGap: analog.overnightGap,
-      sessionRange: analog.sessionRange,
-    } satisfies AnalogMatch;
-  });
-}
-
 function buildPlaybookSummary(
   historicalAnalogs: HistoricalAnalogsPayload | null,
   variant: 'discord' | 'x',
@@ -300,7 +254,7 @@ function buildPlaybookSummary(
   return `${prefix}: Gap ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.overnightGap)} | Intraday Drift ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.intradayNet)} | Session Range ${formatOptionalUnsignedPercent(historicalAnalogs.clusterAveragePlaybook.sessionRange)}`;
 }
 
-function buildAnalogSection(analogs: AnalogMatch[]) {
+function buildAnalogSection(analogs: DailyBriefingAnalogMatch[]) {
   if (analogs.length === 0) {
     return 'Closest historical analogs are still warming up as more model history accumulates.';
   }
@@ -330,7 +284,7 @@ function buildSignalContext(snapshot: StoredBiasSnapshot) {
 function buildPublishPayload(
   snapshot: StoredBiasSnapshot,
   historicalAnalogs: HistoricalAnalogsPayload | null,
-  analogs: AnalogMatch[],
+  analogs: DailyBriefingAnalogMatch[],
 ) {
   const appUrl = getAppUrl();
   const dashboardUrl = new URL('/dashboard', appUrl).toString();
@@ -377,6 +331,22 @@ function buildPublishPayload(
     shareUrl: shareUrl.toString(),
     xText,
   } satisfies PublishPayload;
+}
+
+function buildMacroOverrideXText(
+  snapshot: StoredBiasSnapshot,
+  publishPayload: PublishPayload,
+  newsletterCopy: string,
+) {
+  const label = snapshot.bias_label.replace(/_/g, ' ');
+  const rationaleSnippet = buildXSnippet(newsletterCopy, MACRO_OVERRIDE_X_SNIPPET_LENGTH);
+
+  return [
+    'MACRO OVERRIDE ACTIVE',
+    `Today\'s Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
+    `Model break warning: ${rationaleSnippet}`,
+    publishPayload.shareUrl,
+  ].join('\n\n');
 }
 
 async function postJson(url: string, payload: unknown, destinationName: string) {
@@ -466,51 +436,6 @@ async function safePublish(destination: PublishDestination, publish: () => Promi
   }
 }
 
-async function getHistoricalAnalogSnapshots(latestTradeDate: string) {
-  const supabase = createSupabaseAdminClient();
-  const tenYearsAgo = subtractYearsFromTradeDate(latestTradeDate, MAX_ANALOG_LOOKBACK_YEARS);
-  const historicalSnapshots: HistoricalAnalogSnapshot[] = [];
-
-  for (let offset = 0; ; offset += HISTORICAL_ANALOG_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('macro_bias_scores')
-      .select('trade_date, score, bias_label')
-      .gte('trade_date', tenYearsAgo)
-      .lte('trade_date', latestTradeDate)
-      .order('trade_date', { ascending: true })
-      .range(offset, offset + HISTORICAL_ANALOG_PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const page = (data as HistoricalAnalogSnapshot[] | null) ?? [];
-
-    historicalSnapshots.push(...page.filter((snapshot) => VALID_BIAS_LABELS.has(snapshot.bias_label)));
-
-    if (page.length < HISTORICAL_ANALOG_PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return historicalSnapshots;
-}
-
-async function getLatestStoredTradeDate() {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('macro_bias_scores')
-    .select('trade_date')
-    .order('trade_date', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw error;
-  }
-
-  return ((data as Array<Pick<StoredBiasSnapshot, 'trade_date'>> | null) ?? [])[0]?.trade_date ?? null;
-}
-
 async function getRecentSnapshots() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -524,6 +449,22 @@ async function getRecentSnapshots() {
   }
 
   return (data as StoredBiasSnapshot[] | null) ?? [];
+}
+
+async function hasDailyBriefingForDate(briefingDate: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('daily_market_briefings')
+    .select('id')
+    .eq('briefing_date', briefingDate)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to check existing daily briefing state: ${error.message}`);
+  }
+
+  return Boolean(data);
 }
 
 const VALID_BIAS_LABELS = new Set<BiasLabel>([
@@ -549,33 +490,47 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const latestStoredTradeDateBeforeUpsert = await getLatestStoredTradeDate();
-    const upsertedBias = await upsertDailyMarketData();
+    const briefingDate = new Date().toISOString().slice(0, 10);
+    const briefingAlreadyGenerated = await hasDailyBriefingForDate(briefingDate);
 
-    if (
-      latestStoredTradeDateBeforeUpsert &&
-      upsertedBias.tradeDate <= latestStoredTradeDateBeforeUpsert
-    ) {
-      console.warn(
-        `[publish-cron] Skipping publish because trade date ${upsertedBias.tradeDate} did not advance beyond ${latestStoredTradeDateBeforeUpsert}.`,
+    if (briefingAlreadyGenerated) {
+      console.log(`[publish-cron] Briefing already generated for ${briefingDate}; skipping duplicate run.`);
+      return NextResponse.json(
+        {
+          briefingDate,
+          message: 'Briefing already generated for today.',
+          ok: true,
+          status: 'skipped',
+        },
+        { status: 200 },
       );
-
-      return NextResponse.json({
-        status: 'skipped',
-        reason: "Data vendor not yet updated for today's session",
-      });
     }
+
+    console.log('[publish-cron] Starting upsertDailyMarketData()');
+    const upsertedBias = await upsertDailyMarketData();
+    console.log(
+      `[publish-cron] Finished upsertDailyMarketData() with trade date ${upsertedBias.tradeDate}`,
+    );
 
     const discordWebhookUrl = DISCORD_PUBLISHING_ENABLED
       ? getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL')
       : null;
+    const emailDispatchEnabled = true;
+    const resendApiKeyConfigured = Boolean(getOptionalServerEnv('RESEND_API_KEY'));
     const xCredentials = getXCredentials();
 
-    if (!discordWebhookUrl && !xCredentials) {
+    if (emailDispatchEnabled && !resendApiKeyConfigured) {
+      return NextResponse.json(
+        { error: 'RESEND_API_KEY is required while shadow-run email dispatch is enabled.' },
+        { status: 500 },
+      );
+    }
+
+    if (!discordWebhookUrl && !emailDispatchEnabled && !xCredentials) {
       return NextResponse.json(
         {
           error:
-            'No active publish destinations are configured. Discord publishing is temporarily disabled, so configure the X API credentials to enable cron publishing.',
+            'No active publish destinations are configured. Discord publishing is temporarily disabled, so configure RESEND_API_KEY and/or the X API credentials to enable cron publishing.',
         },
         { status: 500 },
       );
@@ -607,58 +562,81 @@ async function handlePublish(request: NextRequest) {
     }
 
     const latestSnapshot = snapshots[latestSnapshotIndex];
-    const historicalAnalogSnapshots = await getHistoricalAnalogSnapshots(latestSnapshot.trade_date);
-    const snapshotsByDate = new Map<string, SnapshotSummary>([
-      ...historicalAnalogSnapshots.map((snapshot) => [snapshot.trade_date, snapshot] as const),
-      ...snapshots.map(
-        (snapshot) =>
-          [
-            snapshot.trade_date,
-            {
-              trade_date: snapshot.trade_date,
-              score: snapshot.score,
-              bias_label: snapshot.bias_label,
-            },
-          ] as const,
-      ),
-    ]);
-    const historicalAnalogs = deriveHistoricalAnalogs(
-      latestSnapshot.engine_inputs,
-      latestSnapshot.component_scores,
-      latestSnapshot.technical_indicators,
-      {
-        applyRegimeFilter: true,
-        disablePersistedMatchFallback: true,
-        rollingWindowStartDate: subtractYearsFromTradeDate(
-          latestSnapshot.trade_date,
-          MAX_ANALOG_LOOKBACK_YEARS,
-        ),
-      },
+    console.log('[publish-cron] Starting generateDailyBriefing()');
+    const dailyBriefing = await generateDailyBriefing(latestSnapshot, snapshots);
+    console.log(
+      `[publish-cron] Finished generateDailyBriefing() with overrideActive=${dailyBriefing.isOverrideActive} via ${dailyBriefing.generatedBy}`,
     );
-    const analogs = buildPublishedAnalogs(historicalAnalogs, snapshotsByDate);
-    const publishPayload = buildPublishPayload(latestSnapshot, historicalAnalogs, analogs);
-    const publishJobs: Array<Promise<PublishResult>> = [];
+
+    console.log('[publish-cron] Starting persistDailyBriefing()');
+    await persistDailyBriefing({
+      briefing: dailyBriefing,
+      briefingDate,
+    });
+    console.log(`[publish-cron] Finished persistDailyBriefing() for ${briefingDate}`);
+
+    const failures = [...dailyBriefing.warnings];
+    const publishPayload = buildPublishPayload(
+      latestSnapshot,
+      dailyBriefing.quant.historicalAnalogs,
+      dailyBriefing.quant.analogs,
+    );
+    const finalPublishPayload = dailyBriefing.isOverrideActive
+      ? {
+          ...publishPayload,
+          xText: buildMacroOverrideXText(
+            latestSnapshot,
+            publishPayload,
+            dailyBriefing.newsletterCopy,
+          ),
+        }
+      : publishPayload;
+    const publishResults: PublishResult[] = [];
 
     if (DISCORD_PUBLISHING_ENABLED && discordWebhookUrl) {
-      publishJobs.push(safePublish('discord', () => publishToDiscord(discordWebhookUrl, latestSnapshot, publishPayload)));
+      publishResults.push(
+        await safePublish('discord', () =>
+          publishToDiscord(discordWebhookUrl, latestSnapshot, finalPublishPayload),
+        ),
+      );
     }
 
     if (xCredentials) {
-      publishJobs.push(safePublish('x', () => publishToX(xCredentials, publishPayload)));
+      publishResults.push(await safePublish('x', () => publishToX(xCredentials, finalPublishPayload)));
     }
 
-    const publishResults = await Promise.all(publishJobs);
+    if (emailDispatchEnabled) {
+      publishResults.push(
+        await safePublish('email', async () => {
+          console.log('[publish-cron] Starting dispatchQuantBriefing()');
+          const dispatchResult = await dispatchQuantBriefing(
+            dailyBriefing.newsletterCopy,
+            dailyBriefing.quant.score,
+            dailyBriefing.quant.label,
+            dailyBriefing.isOverrideActive,
+          );
+          console.log(
+            `[publish-cron] Finished dispatchQuantBriefing() with ${dispatchResult.recipientCount} recipients across ${dispatchResult.batchCount} batches`,
+          );
+        }),
+      );
+    }
+
     const publishedTo = publishResults.flatMap((result) => (result.ok ? [result.destination] : []));
-    const failures = publishResults.flatMap((result) => (result.ok || !result.failure ? [] : [result.failure]));
+    failures.push(...publishResults.flatMap((result) => (result.ok || !result.failure ? [] : [result.failure])));
 
     return NextResponse.json({
       ok: true,
       publishedTo,
       failures,
-      analogs,
-      playbook: historicalAnalogs?.clusterAveragePlaybook ?? null,
-      preview: publishPayload.xText,
-      tradeDate: latestSnapshot.trade_date,
+      analogs: dailyBriefing.quant.analogs,
+      briefingGeneratedBy: dailyBriefing.generatedBy,
+      newsStatus: dailyBriefing.news.status,
+      newsSummary: dailyBriefing.news.summary,
+      playbook: dailyBriefing.quant.historicalAnalogs?.clusterAveragePlaybook ?? null,
+      preview: finalPublishPayload.xText,
+      tradeDate: dailyBriefing.quant.tradeDate,
+      overrideTriggered: dailyBriefing.isOverrideActive,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to publish the daily Macro Bias payload.';

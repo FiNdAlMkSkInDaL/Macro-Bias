@@ -90,12 +90,34 @@ type PersistedDailyPriceRow = {
   technical_indicators: PersistedTechnicalIndicators;
 };
 
+type MacroBiasAdminClient = ReturnType<typeof createSupabaseAdminClient>;
+
 const SUPPLEMENTAL_TICKERS = ["^VIX", "HYG", "CPER", "USO"] as const satisfies readonly SupplementalTicker[];
 const ANALOG_CORE_TICKERS = ["USO"] as const satisfies readonly SupplementalTicker[];
 const MODEL_VERSION = "macro-model-v4-regime-gex";
 const MAX_ANALOG_LOOKBACK_YEARS = 10;
 const DEFAULT_ANALOG_LOOKBACK_DAYS = 3653;
 const MIN_ANALOG_LOOKBACK_DAYS = 45;
+const PRICE_UPSERT_LOOKBACK_DAYS = 30;
+const UPSERT_BATCH_SIZE = 1000;
+
+function getMarketDataLogTimestamp() {
+  return new Date().toTimeString().slice(0, 8);
+}
+
+function logMarketData(message: string) {
+  console.log(`[${getMarketDataLogTimestamp()}] [market-data] ${message}`);
+}
+
+function chunkValues<T>(values: readonly T[], chunkSize: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += chunkSize) {
+    chunks.push(values.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
 
 function roundPrice(value: number) {
   return Number(value.toFixed(4));
@@ -308,6 +330,17 @@ async function fetchTickerHistory<TTicker extends MarketDataTicker>(
     })
     .filter((row): row is HistoricalPriceRow<TTicker> => row !== null)
     .sort((left, right) => left.trade_date.localeCompare(right.trade_date));
+}
+
+async function fetchTickerHistoryWithLogging<TTicker extends MarketDataTicker>(
+  ticker: TTicker,
+  period1: Date,
+  period2: Date,
+): Promise<HistoricalPriceRow<TTicker>[]> {
+  logMarketData(`Fetching ticker: ${ticker}...`);
+  const history = await fetchTickerHistory(ticker, period1, period2);
+  logMarketData(`Finished ticker: ${ticker}.`);
+  return history;
 }
 
 function findLatestCommonTradeDates(
@@ -649,6 +682,49 @@ function buildPersistedPriceRows(
   return [...coreRows, ...supplementalRows];
 }
 
+function filterRowsByRecentTradeDate<TRow extends { trade_date: string }>(
+  rows: readonly TRow[],
+  latestTradeDate: string,
+  lookbackDays: number,
+) {
+  const minimumTradeDate = formatTradeDate(
+    subtractDays(new Date(`${latestTradeDate}T00:00:00Z`), lookbackDays),
+  );
+
+  return {
+    minimumTradeDate,
+    rows: rows.filter((row) => row.trade_date >= minimumTradeDate),
+  };
+}
+
+async function upsertRowsInBatches<TRow extends Record<string, unknown>>(
+  supabase: MacroBiasAdminClient,
+  tableName: "etf_daily_prices" | "macro_bias_scores",
+  rows: readonly TRow[],
+  onConflict: string,
+) {
+  if (rows.length === 0) {
+    logMarketData(`No rows to upsert for ${tableName}.`);
+    return null;
+  }
+
+  const batches = chunkValues(rows, UPSERT_BATCH_SIZE);
+
+  for (let index = 0; index < batches.length; index += 1) {
+    logMarketData(`Upserting batch ${index + 1} of ${batches.length} to ${tableName}...`);
+
+    const { error } = await supabase.from(tableName).upsert(batches[index], {
+      onConflict,
+    });
+
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
+}
+
 function buildEngineInputsPayload(
   tickerChanges: TickerChangeMap,
   expandedData: ExpandedDailyBiasData,
@@ -712,6 +788,7 @@ function buildScoreTechnicalIndicatorsPayload(
 export async function upsertDailyMarketData(
   options: DailySyncOptions = {},
 ): Promise<DailyBiasResult> {
+  logMarketData("Entering upsertDailyMarketData().");
   const supabase = await ensureMacroBiasTablesExist();
   const asOfDate = options.asOfDate ?? new Date();
   const requestedLookbackDays = Math.max(
@@ -729,17 +806,24 @@ export async function upsertDailyMarketData(
   );
   const period2 = addDays(asOfDate, 1);
 
+  logMarketData(
+    `Backfilling trade date: ${formatTradeDate(period1)}...`,
+  );
+  logMarketData(
+    `Backfilling trade date: ${formatTradeDate(asOfDate)}...`,
+  );
+
   const [historyEntries, usoHistory, vixHistory, hygHistory, cperHistory] = await Promise.all([
     Promise.all(
       TRACKED_TICKERS.map(async (ticker) => {
-        const history = await fetchTickerHistory(ticker, period1, period2);
+        const history = await fetchTickerHistoryWithLogging(ticker, period1, period2);
         return [ticker, history] as const;
       }),
     ),
-    fetchTickerHistory("USO", period1, period2),
-    fetchTickerHistory("^VIX", period1, period2),
-    fetchTickerHistory("HYG", period1, period2),
-    fetchTickerHistory("CPER", period1, period2),
+    fetchTickerHistoryWithLogging("USO", period1, period2),
+    fetchTickerHistoryWithLogging("^VIX", period1, period2),
+    fetchTickerHistoryWithLogging("HYG", period1, period2),
+    fetchTickerHistoryWithLogging("CPER", period1, period2),
   ]);
 
   const rowsByTicker = Object.fromEntries(historyEntries) as Record<
@@ -828,6 +912,11 @@ export async function upsertDailyMarketData(
     },
     spyTechnicalIndicatorsByTradeDate,
   );
+  const recentPersistedPriceRows = filterRowsByRecentTradeDate(
+    persistedPriceRows,
+    latestTradeDate,
+    PRICE_UPSERT_LOOKBACK_DAYS,
+  );
   const engineInputs = buildEngineInputsPayload(
     tickerChanges,
     expandedData,
@@ -843,15 +932,32 @@ export async function upsertDailyMarketData(
     latestTradeDate,
     spyTechnicalIndicatorsByTradeDate,
   );
+  logMarketData("Starting calculateDailyBias().");
   const biasResult = calculateDailyBias({
     tradeDate: latestTradeDate,
     expandedData,
     tickerChanges,
   });
+  logMarketData(
+    `Finished calculateDailyBias() with trade date ${biasResult.tradeDate} and score ${biasResult.score}.`,
+  );
 
-  const { error: priceError } = await supabase.from("etf_daily_prices").upsert(persistedPriceRows, {
-    onConflict: "ticker,trade_date",
-  });
+  logMarketData(
+    `Limiting etf_daily_prices upsert to rows on or after ${recentPersistedPriceRows.minimumTradeDate} (${recentPersistedPriceRows.rows.length} rows).`,
+  );
+  logMarketData(
+    `Starting Supabase upsert for etf_daily_prices with ${recentPersistedPriceRows.rows.length} rows.`,
+  );
+  const priceError = await upsertRowsInBatches(
+    supabase,
+    "etf_daily_prices",
+    recentPersistedPriceRows.rows,
+    "ticker,trade_date",
+  );
+
+  if (!priceError) {
+    logMarketData("Finished Supabase upsert for etf_daily_prices.");
+  }
 
   if (priceError) {
     // The migration that widens the ticker constraint to include USO may not be
@@ -859,23 +965,28 @@ export async function upsertDailyMarketData(
     // raw price upsert without USO while still preserving its historical array in
     // macro_bias_scores.engine_inputs for the analog model.
     if (isTickerConstraintCompatibilityError(priceError)) {
-      const fallbackRows = persistedPriceRows.filter((row) => row.ticker !== "USO");
-      const { error: fallbackPriceError } = await supabase.from("etf_daily_prices").upsert(
+      const fallbackRows = recentPersistedPriceRows.rows.filter((row) => row.ticker !== "USO");
+      logMarketData(
+        `Starting fallback Supabase upsert for etf_daily_prices without USO using ${fallbackRows.length} rows.`,
+      );
+      const fallbackPriceError = await upsertRowsInBatches(
+        supabase,
+        "etf_daily_prices",
         fallbackRows,
-        {
-          onConflict: "ticker,trade_date",
-        },
+        "ticker,trade_date",
       );
 
       if (fallbackPriceError) {
         throw fallbackPriceError;
       }
+
+      logMarketData("Finished fallback Supabase upsert for etf_daily_prices.");
     } else {
       throw priceError;
     }
   }
 
-  const { error: scoreError } = await supabase.from("macro_bias_scores").upsert(
+  const scoreRows = [
     {
       trade_date: biasResult.tradeDate,
       score: biasResult.score,
@@ -886,10 +997,18 @@ export async function upsertDailyMarketData(
       engine_inputs: engineInputs,
       technical_indicators: technicalIndicators,
     },
-    {
-      onConflict: "trade_date",
-    },
+  ];
+  logMarketData("Starting Supabase upsert for macro_bias_scores.");
+  const scoreError = await upsertRowsInBatches(
+    supabase,
+    "macro_bias_scores",
+    scoreRows,
+    "trade_date",
   );
+
+  if (!scoreError) {
+    logMarketData("Finished Supabase upsert for macro_bias_scores.");
+  }
 
   if (scoreError) {
     throw scoreError;
