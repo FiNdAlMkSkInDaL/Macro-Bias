@@ -13,12 +13,14 @@ export type MarketingPost = {
   content: string;
   filePath: string;
   slug: string;
+  title: string;
   type: MarketingPostType;
 };
 
 type ParsedFrontmatter = {
   campaignType?: string;
   slug?: string;
+  title?: string;
 };
 
 const MARKETING_CONTENT_ROOT = path.join(process.cwd(), 'src', 'content', 'marketing');
@@ -49,8 +51,47 @@ function getSlug(value: unknown, fileName: string) {
   return fileName.replace(/\.md$/i, '');
 }
 
+function getTitle(value: unknown, slug: string) {
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
+  }
+
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function isMarketingPostType(value: string | null): value is MarketingPostType {
   return value != null && MARKETING_POST_TYPES.some((postType) => postType === value);
+}
+
+async function parseMarketingPost(entry: Dirent<string>, type: MarketingPostType): Promise<MarketingPost | null> {
+  const filePath = path.join(MARKETING_CONTENT_ROOT, entry.name);
+  const document = await readFile(filePath, 'utf8');
+  const { content, data } = matter(document);
+  const frontmatter = data as ParsedFrontmatter;
+  const campaignType = getCampaignType(frontmatter.campaignType);
+
+  if (campaignType !== type) {
+    return null;
+  }
+
+  const trimmedContent = content.trim();
+  const slug = getSlug(frontmatter.slug, entry.name);
+
+  if (!trimmedContent || !slug) {
+    return null;
+  }
+
+  return {
+    content: trimmedContent,
+    filePath,
+    slug,
+    title: getTitle(frontmatter.title, slug),
+    type: campaignType,
+  } satisfies MarketingPost;
 }
 
 export async function getAllMarketingPosts(type: MarketingPostType): Promise<MarketingPost[]> {
@@ -71,32 +112,17 @@ export async function getAllMarketingPosts(type: MarketingPostType): Promise<Mar
     .sort((left, right) => left.name.localeCompare(right.name));
 
   const posts = await Promise.all(
-    fileEntries.map(async (entry) => {
-      const filePath = path.join(MARKETING_CONTENT_ROOT, entry.name);
-      const document = await readFile(filePath, 'utf8');
-      const { content, data } = matter(document);
-      const frontmatter = data as ParsedFrontmatter;
-      const campaignType = getCampaignType(frontmatter.campaignType);
-
-      if (campaignType !== type) {
-        return null;
-      }
-
-      const trimmedContent = content.trim();
-      const slug = getSlug(frontmatter.slug, entry.name);
-
-      if (!trimmedContent || !slug) {
-        return null;
-      }
-
-      return {
-        content: trimmedContent,
-        filePath,
-        slug,
-        type: campaignType,
-      } satisfies MarketingPost;
-    }),
+    fileEntries.map((entry) => parseMarketingPost(entry, type)),
   );
 
   return posts.filter((post): post is MarketingPost => post !== null);
+}
+
+export async function getMarketingPostBySlug(
+  slug: string,
+  type: MarketingPostType,
+): Promise<MarketingPost | null> {
+  const posts = await getAllMarketingPosts(type);
+
+  return posts.find((post) => post.slug === slug) ?? null;
 }
