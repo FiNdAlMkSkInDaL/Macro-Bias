@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/publish",
-      "schedule": "30 12 * * *"
+      "schedule": "45 12 * * *"
     },
     {
       "path": "/api/cron/marketing?type=weather",

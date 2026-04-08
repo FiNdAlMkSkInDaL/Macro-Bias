@@ -335,7 +335,8 @@ function buildPublishPayload(
   const appUrl = getAppUrl();
   const dashboardUrl = new URL('/dashboard', appUrl).toString();
   const ogImageUrl = new URL('/api/og', appUrl).toString();
-  const shareUrl = 'https://macro-bias.com';
+  const shareUrl = new URL('/', appUrl);
+  shareUrl.searchParams.set('d', snapshot.trade_date);
   const formattedDate = formatDisplayDate(snapshot.trade_date);
   const label = snapshot.bias_label.replace(/_/g, ' ');
   const headline = `Today's Macro Weather Report: ${label} (${formatSignedNumber(snapshot.score)})`;
@@ -360,7 +361,7 @@ function buildPublishPayload(
     `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)}`,
     `Regime: ${regimeSentence}`,
     xPlaybookSummary,
-    shareUrl,
+    shareUrl.toString(),
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n');
@@ -373,7 +374,7 @@ function buildPublishPayload(
     ogImageUrl,
     playbookSummary: discordPlaybookSummary,
     regimeSentence,
-    shareUrl,
+    shareUrl: shareUrl.toString(),
     xText,
   } satisfies PublishPayload;
 }
@@ -495,6 +496,21 @@ async function getHistoricalAnalogSnapshots(latestTradeDate: string) {
   return historicalSnapshots;
 }
 
+async function getLatestStoredTradeDate() {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('macro_bias_scores')
+    .select('trade_date')
+    .order('trade_date', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data as Array<Pick<StoredBiasSnapshot, 'trade_date'>> | null) ?? [])[0]?.trade_date ?? null;
+}
+
 async function getRecentSnapshots() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -533,7 +549,22 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await upsertDailyMarketData();
+    const latestStoredTradeDateBeforeUpsert = await getLatestStoredTradeDate();
+    const upsertedBias = await upsertDailyMarketData();
+
+    if (
+      latestStoredTradeDateBeforeUpsert &&
+      upsertedBias.tradeDate <= latestStoredTradeDateBeforeUpsert
+    ) {
+      console.warn(
+        `[publish-cron] Skipping publish because trade date ${upsertedBias.tradeDate} did not advance beyond ${latestStoredTradeDateBeforeUpsert}.`,
+      );
+
+      return NextResponse.json({
+        status: 'skipped',
+        reason: "Data vendor not yet updated for today's session",
+      });
+    }
 
     const discordWebhookUrl = DISCORD_PUBLISHING_ENABLED
       ? getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL')
