@@ -6,7 +6,7 @@ import { getAppUrl, getRequiredServerEnv } from '../server-env';
 import { createSupabaseAdminClient } from '../supabase/admin';
 
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'] as const;
-const DEFAULT_FROM_ADDRESS = 'Macro Bias <onboarding@resend.dev>';
+const DEFAULT_FROM_ADDRESS = 'Macro Bias <briefing@macro-bias.com>';
 const EMAIL_BATCH_SIZE = 100;
 const RECIPIENT_PAGE_SIZE = 1000;
 
