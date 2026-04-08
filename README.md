@@ -156,14 +156,14 @@ supabase/
 
 ### File roles
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/briefing/daily-brief-generator.ts` | Coordinates the full daily synthesis flow. Runs the quant and news branches in parallel, calls Anthropic, and applies deterministic fallback logic if needed. |
-| `src/app/api/cron/publish/route.ts` | Secure cron entrypoint. Handles authorization, same-day skip protection, market-data refresh, persistence, and outbound publication. |
-| `src/lib/marketing/email-dispatch.ts` | Builds HTML and text emails and sends them through Resend. Supports shadow-run recipient locking for safe testing. |
-| `src/lib/briefing/daily-briefing-config.ts` | Centralizes the Anthropic model, output schema, prompt contract, and retry budgets. |
-| `src/lib/briefing/daily-briefing-strategies.ts` | Encapsulates fallback generation behavior for `news-aware` and `news-unavailable` states. |
-| `supabase/migrations/202604080001_create_daily_market_briefings.sql` | Creates the persistence table used for reporting history and same-day duplicate prevention. |
+| File                                                                 | Responsibility                                                                                                                                                |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/briefing/daily-brief-generator.ts`                          | Coordinates the full daily synthesis flow. Runs the quant and news branches in parallel, calls Anthropic, and applies deterministic fallback logic if needed. |
+| `src/app/api/cron/publish/route.ts`                                  | Secure cron entrypoint. Handles authorization, same-day skip protection, market-data refresh, persistence, and outbound publication.                          |
+| `src/lib/marketing/email-dispatch.ts`                                | Builds HTML and text emails and sends them through Resend. Supports shadow-run recipient locking for safe testing.                                            |
+| `src/lib/briefing/daily-briefing-config.ts`                          | Centralizes the Anthropic model, output schema, prompt contract, and retry budgets.                                                                           |
+| `src/lib/briefing/daily-briefing-strategies.ts`                      | Encapsulates fallback generation behavior for `news-aware` and `news-unavailable` states.                                                                     |
+| `supabase/migrations/202604080001_create_daily_market_briefings.sql` | Creates the persistence table used for reporting history and same-day duplicate prevention.                                                                   |
 
 ## Data Model
 
@@ -177,31 +177,31 @@ The daily briefing path relies on three primary datasets:
 
 ### Required for the daily briefing pipeline
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | Yes | Base URL for dashboard links and share links. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public Supabase client key for app auth flows. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side privileged database access. |
-| `CRON_SECRET` | Yes | Primary secret for `/api/cron/publish`. |
-| `PUBLISH_CRON_SECRET` | Optional | Backward-compatible fallback secret name. |
-| `FINNHUB_API_KEY` | Yes | Pre-market news source. |
-| `ANTHROPIC_API_KEY` | Yes | LLM synthesis and Macro Override evaluation. |
-| `RESEND_API_KEY` | Yes | Email dispatch provider key. |
-| `RESEND_FROM_ADDRESS` | Recommended | Production sender, ideally an authenticated `@macro-bias.com` address. |
-| `SHADOW_RUN_EMAIL` | Recommended for testing | Forces all briefing mail to one inbox during shadow runs and local validation. |
+| Variable                        | Required                | Purpose                                                                        |
+| ------------------------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_APP_URL`           | Yes                     | Base URL for dashboard links and share links.                                  |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Yes                     | Supabase project URL.                                                          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes                     | Public Supabase client key for app auth flows.                                 |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Yes                     | Server-side privileged database access.                                        |
+| `CRON_SECRET`                   | Yes                     | Primary secret for `/api/cron/publish`.                                        |
+| `PUBLISH_CRON_SECRET`           | Optional                | Backward-compatible fallback secret name.                                      |
+| `FINNHUB_API_KEY`               | Yes                     | Pre-market news source.                                                        |
+| `ANTHROPIC_API_KEY`             | Yes                     | LLM synthesis and Macro Override evaluation.                                   |
+| `RESEND_API_KEY`                | Yes                     | Email dispatch provider key.                                                   |
+| `RESEND_FROM_ADDRESS`           | Recommended             | Production sender, ideally an authenticated `@macro-bias.com` address.         |
+| `SHADOW_RUN_EMAIL`              | Recommended for testing | Forces all briefing mail to one inbox during shadow runs and local validation. |
 
 ### Optional secondary channels
 
-| Variable | Purpose |
-| --- | --- |
-| `X_API_KEY` | X API app key. |
-| `X_API_SECRET` | X API app secret. |
-| `X_ACCESS_TOKEN` | X user access token. |
-| `X_ACCESS_SECRET` | X user access secret. |
-| `X_API_KEY_SECRET` | Legacy fallback secret name supported by the route. |
-| `X_ACCESS_TOKEN_SECRET` | Legacy fallback token-secret name supported by the route. |
-| `DISCORD_PUBLISH_WEBHOOK_URL` | Optional Discord webhook if that channel is re-enabled. |
+| Variable                      | Purpose                                                   |
+| ----------------------------- | --------------------------------------------------------- |
+| `X_API_KEY`                   | X API app key.                                            |
+| `X_API_SECRET`                | X API app secret.                                         |
+| `X_ACCESS_TOKEN`              | X user access token.                                      |
+| `X_ACCESS_SECRET`             | X user access secret.                                     |
+| `X_API_KEY_SECRET`            | Legacy fallback secret name supported by the route.       |
+| `X_ACCESS_TOKEN_SECRET`       | Legacy fallback token-secret name supported by the route. |
+| `DISCORD_PUBLISH_WEBHOOK_URL` | Optional Discord webhook if that channel is re-enabled.   |
 
 The repository also contains Stripe billing infrastructure for the product surface, but the variables above are the critical set for the daily automated research pipeline.
 
