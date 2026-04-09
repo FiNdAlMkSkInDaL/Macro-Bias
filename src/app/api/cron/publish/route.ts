@@ -3,6 +3,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 
+import {
+  isSubscriptionActive,
+  type SubscriptionStatus,
+} from '../../../../lib/billing/subscription';
 import type { HistoricalAnalogsPayload } from '../../../../lib/market-data/derive-historical-analogs';
 import { generateDailyBriefing } from '../../../../lib/briefing/daily-brief-generator';
 import { persistDailyBriefing } from '../../../../lib/briefing/persist-daily-briefing';
@@ -20,6 +24,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const EMAIL_RECIPIENT_PAGE_SIZE = 1000;
 const MAX_HISTORY_ROWS = 180;
 const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 220;
 const DISCORD_PUBLISHING_ENABLED = false;
@@ -49,6 +54,22 @@ type PublishResult = {
   destination: PublishDestination;
   failure?: string;
   ok: boolean;
+};
+
+type BriefingRecipientRow = {
+  email: string | null;
+  subscription_status: SubscriptionStatus;
+};
+
+type FreeSubscriberRow = {
+  email: string | null;
+  status: 'active' | 'inactive' | null;
+  tier: 'free' | null;
+};
+
+type TieredQuantBriefingRecipients = {
+  freeRecipients: string[];
+  premiumRecipients: string[];
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -279,6 +300,97 @@ function buildSignalContext(snapshot: StoredBiasSnapshot) {
   ].filter((fragment): fragment is string => Boolean(fragment));
 
   return contextFragments.join(' | ');
+}
+
+async function getTieredQuantBriefingRecipients(): Promise<TieredQuantBriefingRecipients> {
+  const supabase = createSupabaseAdminClient();
+  const freeEmailsByNormalizedValue = new Map<string, string>();
+  const premiumEmailsByNormalizedValue = new Map<string, string>();
+
+  for (let offset = 0; ; offset += EMAIL_RECIPIENT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('email, subscription_status')
+      .in('subscription_status', ['active', 'trialing'])
+      .not('email', 'is', null)
+      .order('email', { ascending: true })
+      .range(offset, offset + EMAIL_RECIPIENT_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(`Failed to load email recipients for publish cron: ${error.message}`);
+    }
+
+    const rows = (data as BriefingRecipientRow[] | null) ?? [];
+    console.log(`[publish-cron] Loaded ${rows.length} user billing rows at offset ${offset}`);
+
+    for (const row of rows) {
+      if (typeof row.email !== 'string') {
+        continue;
+      }
+
+      const email = row.email.trim();
+
+      if (!email) {
+        continue;
+      }
+
+      const normalizedEmail = email.toLowerCase();
+      const subscriptionStatus = row.subscription_status ?? 'inactive';
+
+      if (isSubscriptionActive(subscriptionStatus)) {
+        premiumEmailsByNormalizedValue.set(normalizedEmail, email);
+        freeEmailsByNormalizedValue.delete(normalizedEmail);
+      }
+    }
+
+    if (rows.length < EMAIL_RECIPIENT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  for (let offset = 0; ; offset += EMAIL_RECIPIENT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('free_subscribers')
+      .select('email, status, tier')
+      .eq('status', 'active')
+      .eq('tier', 'free')
+      .order('email', { ascending: true })
+      .range(offset, offset + EMAIL_RECIPIENT_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(`Failed to load free subscriber recipients for publish cron: ${error.message}`);
+    }
+
+    const rows = (data as FreeSubscriberRow[] | null) ?? [];
+    console.log(`[publish-cron] Loaded ${rows.length} free subscriber rows at offset ${offset}`);
+
+    for (const row of rows) {
+      if (typeof row.email !== 'string') {
+        continue;
+      }
+
+      const email = row.email.trim();
+
+      if (!email) {
+        continue;
+      }
+
+      const normalizedEmail = email.toLowerCase();
+
+      if (!premiumEmailsByNormalizedValue.has(normalizedEmail)) {
+        freeEmailsByNormalizedValue.set(normalizedEmail, email);
+      }
+    }
+
+    if (rows.length < EMAIL_RECIPIENT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return {
+    freeRecipients: [...freeEmailsByNormalizedValue.values()],
+    premiumRecipients: [...premiumEmailsByNormalizedValue.values()],
+  };
 }
 
 function buildPublishPayload(
@@ -521,7 +633,7 @@ async function handlePublish(request: NextRequest) {
 
     if (emailDispatchEnabled && !resendApiKeyConfigured) {
       return NextResponse.json(
-        { error: 'RESEND_API_KEY is required while shadow-run email dispatch is enabled.' },
+        { error: 'RESEND_API_KEY is required while email dispatch is enabled.' },
         { status: 500 },
       );
     }
@@ -608,15 +720,39 @@ async function handlePublish(request: NextRequest) {
     if (emailDispatchEnabled) {
       publishResults.push(
         await safePublish('email', async () => {
-          console.log('[publish-cron] Starting dispatchQuantBriefing()');
-          const dispatchResult = await dispatchQuantBriefing(
+          const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
+
+          console.log(
+            `[publish-cron] Starting dispatchQuantBriefing() with ${premiumRecipients.length} premium recipients and ${freeRecipients.length} free recipients`,
+          );
+
+          const premiumDispatchResult = await dispatchQuantBriefing(
             dailyBriefing.newsletterCopy,
             dailyBriefing.quant.score,
             dailyBriefing.quant.label,
             dailyBriefing.isOverrideActive,
+            {
+              recipients: premiumRecipients,
+              tier: 'premium',
+            },
           );
+          const freeDispatchResult = await dispatchQuantBriefing(
+            dailyBriefing.newsletterCopy,
+            dailyBriefing.quant.score,
+            dailyBriefing.quant.label,
+            dailyBriefing.isOverrideActive,
+            {
+              recipients: freeRecipients,
+              tier: 'free',
+            },
+          );
+          const totalBatchCount =
+            premiumDispatchResult.batchCount + freeDispatchResult.batchCount;
+          const totalRecipientCount =
+            premiumDispatchResult.recipientCount + freeDispatchResult.recipientCount;
+
           console.log(
-            `[publish-cron] Finished dispatchQuantBriefing() with ${dispatchResult.recipientCount} recipients across ${dispatchResult.batchCount} batches`,
+            `[publish-cron] Finished dispatchQuantBriefing() with ${totalRecipientCount} recipients across ${totalBatchCount} batches (${premiumDispatchResult.recipientCount} premium, ${freeDispatchResult.recipientCount} free)`,
           );
         }),
       );

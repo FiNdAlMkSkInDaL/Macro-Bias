@@ -27,7 +27,19 @@ function getCheckoutPlan(request: Request): StripeBillingPlan {
   return requestedPlan === 'annual' ? 'annual' : 'monthly';
 }
 
-async function buildCheckoutSession(request: Request): Promise<CheckoutResult> {
+function buildCheckoutAuthRedirectUrl(request: Request) {
+  const requestUrl = new URL(request.url);
+  const signInUrl = new URL('/', getAppUrl(requestUrl.origin));
+
+  signInUrl.searchParams.set('redirectTo', `${requestUrl.pathname}${requestUrl.search}`);
+
+  return signInUrl;
+}
+
+async function buildCheckoutSession(
+  request: Request,
+  mode: 'json' | 'redirect',
+): Promise<CheckoutResult> {
   const stripe = getStripeClient();
   const plan = getCheckoutPlan(request);
   const stripePriceId = getStripePriceId(plan);
@@ -39,7 +51,10 @@ async function buildCheckoutSession(request: Request): Promise<CheckoutResult> {
 
   if (authError || !user) {
     return {
-      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+      error:
+        mode === 'redirect'
+          ? NextResponse.redirect(buildCheckoutAuthRedirectUrl(request), { status: 303 })
+          : NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     };
   }
 
@@ -130,7 +145,7 @@ async function buildCheckoutSession(request: Request): Promise<CheckoutResult> {
 
 async function createCheckoutResponse(request: Request, mode: 'json' | 'redirect') {
   try {
-    const result = await buildCheckoutSession(request);
+    const result = await buildCheckoutSession(request, mode);
 
     if ('error' in result) {
       return result.error;

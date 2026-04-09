@@ -11,11 +11,13 @@ import { getRequiredServerEnv } from "@/lib/server-env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 import {
+  DAILY_BRIEFING_MACRO_HEADER_TYPO,
   DAILY_BRIEFING_MAX_ANALOG_MATCHES,
   DAILY_BRIEFING_MAX_HEADLINES,
   DAILY_BRIEFING_MAX_TOKENS,
   DAILY_BRIEFING_MODEL,
   DAILY_BRIEFING_RESPONSE_SCHEMA,
+  DAILY_BRIEFING_SECTION_HEADERS,
   INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT,
   LLM_RETRY_OPTIONS,
   NEWS_RETRY_OPTIONS,
@@ -339,23 +341,121 @@ function isDailyBriefingLLMResponse(value: unknown): value is DailyBriefingLLMRe
   );
 }
 
-function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMResponse {
-  let parsedResponse: unknown;
+function normalizeNewsletterCopy(newsletterCopy: string) {
+  return newsletterCopy.replaceAll(
+    DAILY_BRIEFING_MACRO_HEADER_TYPO,
+    DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus,
+  );
+}
 
+function tryParseDailyBriefingJson(rawResponse: string) {
   try {
-    parsedResponse = JSON.parse(rawResponse);
+    const parsedResponse = JSON.parse(rawResponse);
+
+    return isDailyBriefingLLMResponse(parsedResponse) ? parsedResponse : null;
   } catch {
-    throw new Error("Anthropic daily briefing response was not valid JSON.");
+    return null;
+  }
+}
+
+function extractEmbeddedJson(rawResponse: string) {
+  const firstBraceIndex = rawResponse.indexOf("{");
+  const lastBraceIndex = rawResponse.lastIndexOf("}");
+
+  if (firstBraceIndex === -1 || lastBraceIndex === -1 || lastBraceIndex <= firstBraceIndex) {
+    return null;
   }
 
-  if (!isDailyBriefingLLMResponse(parsedResponse)) {
-    throw new Error("Anthropic daily briefing response did not match the required schema.");
+  return rawResponse.slice(firstBraceIndex, lastBraceIndex + 1);
+}
+
+function tryParsePseudoJsonDailyBriefing(rawResponse: string): DailyBriefingLLMResponse | null {
+  const overrideMatch = rawResponse.match(/"is_override_active"\s*:\s*(true|false)/i);
+  const newsletterMatch = rawResponse.match(/"newsletter_copy"\s*:\s*"([\s\S]*)"\s*}\s*$/);
+
+  if (!newsletterMatch) {
+    return null;
   }
+
+  const normalizedNewsletterCopy = normalizeNewsletterCopy(
+    newsletterMatch[1]
+      .replace(/\\r/g, "\r")
+      .replace(/\\n/g, "\n")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\"),
+  ).trim();
 
   return {
-    is_override_active: parsedResponse.is_override_active,
-    newsletter_copy: parsedResponse.newsletter_copy.trim(),
+    is_override_active: overrideMatch
+      ? overrideMatch[1].toLowerCase() === "true"
+      : inferOverrideFromNewsletterCopy(normalizedNewsletterCopy),
+    newsletter_copy: normalizedNewsletterCopy,
   };
+}
+
+function looksLikeNewsletterCopy(newsletterCopy: string) {
+  return Object.values(DAILY_BRIEFING_SECTION_HEADERS).every((sectionHeader) =>
+    newsletterCopy.includes(sectionHeader),
+  );
+}
+
+function inferOverrideFromNewsletterCopy(newsletterCopy: string) {
+  const lines = normalizeNewsletterCopy(newsletterCopy)
+    .split(/\r?\n/)
+    .map((line) => line.trim());
+  const macroProtocolIndex = lines.findIndex((line) =>
+    line.startsWith(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus),
+  );
+
+  if (macroProtocolIndex === -1) {
+    return false;
+  }
+
+  const macroProtocolWindow = lines.slice(macroProtocolIndex, macroProtocolIndex + 4).join(" ");
+
+  if (/\bINACTIVE\b/i.test(macroProtocolWindow)) {
+    return false;
+  }
+
+  return /\bACTIVE\b/i.test(macroProtocolWindow);
+}
+
+function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMResponse {
+  const parsedResponse = tryParseDailyBriefingJson(rawResponse);
+
+  if (parsedResponse) {
+    return {
+      is_override_active: parsedResponse.is_override_active,
+      newsletter_copy: normalizeNewsletterCopy(parsedResponse.newsletter_copy).trim(),
+    };
+  }
+
+  const embeddedJson = extractEmbeddedJson(rawResponse);
+  const parsedEmbeddedResponse = embeddedJson ? tryParseDailyBriefingJson(embeddedJson) : null;
+
+  if (parsedEmbeddedResponse) {
+    return {
+      is_override_active: parsedEmbeddedResponse.is_override_active,
+      newsletter_copy: normalizeNewsletterCopy(parsedEmbeddedResponse.newsletter_copy).trim(),
+    };
+  }
+
+  const pseudoJsonResponse = tryParsePseudoJsonDailyBriefing(rawResponse);
+
+  if (pseudoJsonResponse) {
+    return pseudoJsonResponse;
+  }
+
+  const normalizedNewsletter = normalizeNewsletterCopy(rawResponse).trim();
+
+  if (looksLikeNewsletterCopy(normalizedNewsletter)) {
+    return {
+      is_override_active: inferOverrideFromNewsletterCopy(normalizedNewsletter),
+      newsletter_copy: normalizedNewsletter,
+    };
+  }
+
+  throw new Error("Anthropic daily briefing response was not valid JSON.");
 }
 
 function getStrategyContext(
@@ -414,6 +514,48 @@ async function generateAnthropicBriefing(
   return parseDailyBriefingResponse(rawResponse);
 }
 
+async function synthesizeDailyBriefingFromContext(
+  quant: DailyBriefingQuantContext,
+  news: DailyBriefingNewsResult,
+  warnings: string[],
+): Promise<DailyBriefingResult> {
+  try {
+    const response = await generateAnthropicBriefing(quant, news);
+
+    return {
+      generatedBy: "anthropic",
+      isOverrideActive: response.is_override_active,
+      model: DAILY_BRIEFING_MODEL,
+      news,
+      newsletterCopy: response.newsletter_copy,
+      quant,
+      warnings,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown LLM generation failure.";
+    const strategyContext = getStrategyContext(quant, news);
+
+    warnings.push(`LLM synthesis degraded: ${message}`);
+
+    return {
+      generatedBy: "fallback",
+      isOverrideActive: strategyContext.suggestedOverrideActive,
+      model: "deterministic-fallback",
+      news,
+      newsletterCopy: strategyContext.strategy.buildFallbackBriefing(strategyContext),
+      quant,
+      warnings,
+    };
+  }
+}
+
+export async function generateDailyBriefingFromContext(
+  quant: DailyBriefingQuantContext,
+  news: DailyBriefingNewsResult,
+): Promise<DailyBriefingResult> {
+  return synthesizeDailyBriefingFromContext(quant, news, []);
+}
+
 export async function generateDailyBriefing(
   latestSnapshot: StoredBiasSnapshot,
   recentSnapshots: StoredBiasSnapshot[],
@@ -424,32 +566,5 @@ export async function generateDailyBriefing(
   ]);
   const warnings = [...newsOutcome.warnings, ...quantOutcome.warnings];
 
-  try {
-    const response = await generateAnthropicBriefing(quantOutcome.quant, newsOutcome.news);
-
-    return {
-      generatedBy: "anthropic",
-      isOverrideActive: response.is_override_active,
-      model: DAILY_BRIEFING_MODEL,
-      news: newsOutcome.news,
-      newsletterCopy: response.newsletter_copy,
-      quant: quantOutcome.quant,
-      warnings,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown LLM generation failure.";
-    const strategyContext = getStrategyContext(quantOutcome.quant, newsOutcome.news);
-
-    warnings.push(`LLM synthesis degraded: ${message}`);
-
-    return {
-      generatedBy: "fallback",
-      isOverrideActive: strategyContext.suggestedOverrideActive,
-      model: "deterministic-fallback",
-      news: newsOutcome.news,
-      newsletterCopy: strategyContext.strategy.buildFallbackBriefing(strategyContext),
-      quant: quantOutcome.quant,
-      warnings,
-    };
-  }
+  return synthesizeDailyBriefingFromContext(quantOutcome.quant, newsOutcome.news, warnings);
 }
