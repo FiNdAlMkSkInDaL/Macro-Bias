@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "macro-bias:sync": "tsx src/scripts/run-daily-macro-bias-sync.ts"
+    "macro-bias:sync": "tsx src/scripts/run-daily-macro-bias-sync.ts",
+    "social:arm-queue": "tsx src/scripts/arm-scheduled-social-queue.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.85.0",

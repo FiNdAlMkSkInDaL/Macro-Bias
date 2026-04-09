@@ -1,0 +1,182 @@
+[
+  {
+    "id": "daily-intercept-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged volatility compression in **$SPY**. Institutional flow keeps absorbing supply. Retail keeps fading the grind. That is how squeeze fuel gets built before expansion. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-10T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged credit thaw in **HYG** over **TLT**. Institutional flow is reopening risk. Retail is still positioned for panic. That gap is where regime shifts start. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-11T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "educational-fomo-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? They tell you what already happened. Historical analogs tell you what this regime usually does next. One is lag. One is context. That gap is edge.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-11T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged semis leadership in **$NVDA** and **$SOXX**. Institutional flow is paying for growth again. Retail is calling top too early. That is a trap. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-12T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "educational-fomo-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Momentum signals fire after the move. Analog clusters frame probability before the crowd sees it. Institutional flow trades regime. Retail trades lag. That is why one survives noise.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-12T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-04",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged energy pressure in **USO**. Institutional flow is repricing inflation risk. Retail still thinks the move is headline noise. Regime shifts do not ring bells. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-13T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-05",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged defensive rotation into **XLU**. Institutional flow is hiding without dumping index beta. Retail reads calm. The protocol reads stress under the surface. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-14T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "receipt-01",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. **RISK ON** printed on the open. **$SPY** reclaimed trend. Institutional flow kept bidding every pullback. Retail faded the move and got run over. The protocol had the map before the tape confirmed it.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-14T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-06",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged dollar softness in **DXY**. Institutional flow is leaning into duration and growth. Retail is still trading yesterday's fear. That lag becomes the trap. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-15T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-07",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged **HIGH ALERT** in **VIX** structure. Institutional flow stopped pressing upside beta. Retail still wants breakout continuation. That is how regime shifts punish late hands. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-16T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "receipt-02",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. **$NVDA** led. **$QQQ** followed. The model said growth would absorb macro noise if credit stayed open. It did. Institutional flow bought the dip. Retail waited for a cleaner chart that never came.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-16T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-08",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "The protocol just flagged breadth repair under **$SPY**. Institutional flow is rotating beneath the index, not chasing headlines. Retail sees chop. The model sees base-building. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-17T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "daily-intercept-09",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "The protocol just flagged failed downside acceptance in **$QQQ**. Institutional flow bought the air pocket fast. Retail kept pressing for follow-through. That is what a trap looks like. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-18T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "educational-fomo-03",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? A stretched oscillator does not tell you if **$SPY** is early trend or late trend. Historical analogs do. Regime context beats isolated signals. Every time.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-18T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "educational-fomo-04",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Indicators describe candles. Analog models compare today's tape to years of institutional behavior. That is how you separate real breakout fuel from retail bait.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-19T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "receipt-03",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. The system tagged a low-vol squeeze before **$SPY** broke higher. Institutional flow kept lifting offers. Retail kept shorting resistance. Same trap. Same outcome. Different day.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-21T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "receipt-04",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. The analog said do not fear the first red candle in a **RISK ON** regime. It was noise. **$QQQ** rotated higher by lunch. Institutional flow stayed in control. Retail sold the shakeout.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-23T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "educational-fomo-05",
+    "category": "educational_fomo",
+    "priority": "reserve",
+    "copy": "Why are you still trading 15m RSIs? The market does not pay for indicators. It pays for regime awareness. Historical analogs show when price action is normal, dangerous, or ready to trend. That is the difference.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-25T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "receipt-05",
+    "category": "receipt",
+    "priority": "reserve",
+    "copy": "The K-NN analog didn't miss. Credit held. Vol stayed contained. **$SPY** kept walking higher. The protocol expected continuation, not collapse. Institutional flow respected the regime. Retail argued with it.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-28T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "receipt-06",
+    "category": "receipt",
+    "priority": "reserve",
+    "copy": "The K-NN analog didn't miss. The model flagged semis before the catch-up trade hit **$QQQ**. Institutional flow moved first. Retail called it overextended. Then price proved who had the better data.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-30T16:00:00.000Z",
+    "status": "scheduled"
+  }
+]
