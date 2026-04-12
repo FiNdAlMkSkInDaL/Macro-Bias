@@ -28,6 +28,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 1,
     },
+    {
+      url: `${appUrl}/emails`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
     ...((publishedPosts as PublishedMarketingPost[] | null) ?? []).map((post) => ({
       url: `${appUrl}/intel/${post.slug}`,
       lastModified: new Date(post.published_at),

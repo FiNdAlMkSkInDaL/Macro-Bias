@@ -138,9 +138,6 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
       shortcut: ["/favicon.ico"],
     },
-    alternates: {
-      canonical: "/",
-    },
     openGraph: {
       type: "website",
       locale: "en_US",
