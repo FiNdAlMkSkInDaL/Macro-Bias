@@ -118,5 +118,71 @@
     "category": "educational_fomo",
     "priority": "reserve",
     "copy": "Why are you still trading 15m RSIs? The market does not pay for indicators. It pays for regime awareness. Historical analogs show when price action is normal, dangerous, or ready to trend. That is the difference."
+  },
+  {
+    "id": "daily-intercept-10",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged small cap divergence in **$IWM**. Institutional flow is rotating beneath the surface while the index stays flat. Retail sees dead tape. The model sees accumulation. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-11",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged gold acceleration in **$GLD**. Institutional flow is bidding protection while still pressing equity beta. Retail calls it hedging. The protocol calls it positioning for regime shift. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-12",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged tech concentration risk in **$QQQ**. Institutional flow is narrowing into three names. Retail is chasing the index. That is not a trend. That is a trap waiting for rotation. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-13",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged duration demand in **$TLT**. Institutional flow is adding bonds while equity stays bid. Retail reads bullish. The model reads insurance accumulation under the surface. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-14",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged energy divergence in **$XLE**. Institutional flow is paying for the complex while **$SPY** treads water. Retail ignores sector rotation. That is exactly when the energy trade works. macro-bias.com/emails"
+  },
+  {
+    "id": "educational-fomo-06",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Overbought means nothing without regime context. Historical analogs tell you if overbought is fuel or failure. That is the difference between noise and signal."
+  },
+  {
+    "id": "email-signup-01",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Every morning before the bell I send a free email.\n\nNo fluff. No upsell wall. Just the algo's macro bias score, the regime read, and what the K-NN model says today's tape looks like historically.\n\nTakes 90 seconds to read. Might save you from your worst trade of the day.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-02",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "I built an algo that compares today's market to 10 years of similar sessions.\n\nEvery morning it tells me: risk on, risk off, or neutral. Which sectors are leading. Where institutional flow is hiding.\n\nI send the output as a free daily email. No paywall on the core read.\n\nIf you trade US equities, this is the premarket context you're missing.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-03",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Most market newsletters give you someone's opinion.\n\nThis one gives you a number.\n\nThe Macro Bias score is calculated from 9 ETFs across equity, credit, volatility, commodities, and rates. The K-NN model matches today's regime to historical analogs. Then I write what it means in plain English.\n\nFree. Daily. Before the open.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-04",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Honest question: do you know what regime the market is in right now?\n\nNot what Twitter thinks. Not what CNBC says. What the cross-asset data actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-05",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "The best traders I know don't start the day with a chart.\n\nThey start with context. What is the regime? Where is flow going? What does the historical analog say?\n\nThat's what the Macro Bias daily email gives you. Free. No account needed. Just your email and you get the algo's read every morning.\n\nmacro-bias.com/emails"
   }
 ]

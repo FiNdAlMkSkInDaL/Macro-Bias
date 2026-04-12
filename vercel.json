@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/social-dispatch",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 17 * * *"
     }
   ]
 }

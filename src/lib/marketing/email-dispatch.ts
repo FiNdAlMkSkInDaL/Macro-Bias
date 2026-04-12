@@ -10,6 +10,7 @@ const EMAIL_BATCH_SIZE = 100;
 const FREE_TIER_LOCKED_PLAYBOOK_LINE = '🔒 **[LOCKED]**: Upgrade to view sector bias and algo catalyst.';
 const FREE_TIER_PAYWALL_MESSAGE =
   'Unlock the remaining sector scores, proprietary K-NN diagnostics, and Live Terminal access.';
+const UNSUBSCRIBE_PLACEHOLDER = '{{UNSUBSCRIBE_URL}}';
 const NEWSLETTER_SECTION_ORDER = [
   DAILY_BRIEFING_SECTION_HEADERS.bottomLine,
   DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook,
@@ -242,6 +243,12 @@ function parsePlaybookListItems(content: string): PlaybookListItem[] {
 
 function buildUpgradeUrl() {
   return new URL(PREMIUM_UPGRADE_PATH, getAppUrl()).toString();
+}
+
+function buildUnsubscribeUrl(email: string) {
+  const url = new URL('/api/subscribe/unsubscribe', getAppUrl());
+  url.searchParams.set('email', email);
+  return url.toString();
 }
 
 function formatPlaybookListItemMarkdown(item: PlaybookListItem) {
@@ -830,6 +837,9 @@ function buildEmailHtml(
                 <div style="margin-top: 32px;">
                   ${footerCtaHtml}
                 </div>
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #1e293b; text-align: center;">
+                  <a href="${UNSUBSCRIBE_PLACEHOLDER}" style="color: #475569; font-size: 11px; text-decoration: underline;">Unsubscribe from daily emails</a>
+                </div>
               </td>
             </tr>
           </table>
@@ -861,6 +871,7 @@ function buildEmailText(
     buildHeaderSummary(score, label, isOverrideActive),
     strippedBodyCopy,
     footerCallToAction,
+    `Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`,
   ]
     .filter((fragment) => fragment.length > 0)
     .join('\n\n');
@@ -918,13 +929,21 @@ export async function dispatchQuantBriefing(
 
   for (const recipientBatch of recipientBatches) {
     const response = await resend.batch.send(
-      recipientBatch.map((email) => ({
-        from: fromAddress,
-        to: [email],
-        subject: emailContent.subject,
-        html: emailContent.html,
-        text: emailContent.text,
-      })),
+      recipientBatch.map((email) => {
+        const unsubscribeUrl = buildUnsubscribeUrl(email);
+
+        return {
+          from: fromAddress,
+          to: [email],
+          subject: emailContent.subject,
+          html: emailContent.html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, escapeHtml(unsubscribeUrl)),
+          text: emailContent.text.replaceAll(UNSUBSCRIBE_PLACEHOLDER, unsubscribeUrl),
+          headers: {
+            'List-Unsubscribe': `<${unsubscribeUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+        };
+      }),
     );
 
     if (response.error) {

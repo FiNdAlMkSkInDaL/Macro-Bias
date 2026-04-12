@@ -22,6 +22,7 @@ import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 export const revalidate = 0;
 
 const EMAIL_RECIPIENT_PAGE_SIZE = 1000;

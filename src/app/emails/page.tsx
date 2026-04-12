@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import Link from "next/link";
 
 type SubmissionState = "idle" | "loading" | "success" | "error";
 
@@ -85,6 +86,13 @@ export default function EmailsPage() {
         <p className={`mt-3 text-sm ${statusColor}`} aria-live="polite">
           {statusMessage ?? " "}
         </p>
+
+        <Link
+          href="/"
+          className="mt-10 inline-block text-xs text-zinc-600 transition hover:text-zinc-400"
+        >
+          ← macro-bias.com
+        </Link>
       </div>
     </main>
   );

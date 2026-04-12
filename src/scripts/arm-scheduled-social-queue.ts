@@ -25,7 +25,7 @@ type ExistingScheduledPostRow = {
 };
 
 function getDeduplicationKey(postBody: string, scheduledAt: string) {
-  return `${scheduledAt}::${postBody}`;
+  return `${new Date(scheduledAt).toISOString()}::${postBody}`;
 }
 
 function validateScheduledQueueArtifact(value: unknown): value is ScheduledQueueArtifact {
@@ -65,10 +65,6 @@ async function loadScheduledQueueArtifacts() {
       throw new Error(`Scheduled post ${artifact.id} is empty.`);
     }
 
-    if (artifact.status !== 'scheduled') {
-      throw new Error(`Scheduled post ${artifact.id} must have status "scheduled".`);
-    }
-
     if (artifact.link !== CANONICAL_EMAIL_LINK) {
       throw new Error(`Scheduled post ${artifact.id} must use the canonical email link.`);
     }
@@ -78,7 +74,14 @@ async function loadScheduledQueueArtifacts() {
     }
   }
 
-  return artifacts;
+  const scheduledArtifacts = artifacts.filter((artifact) => artifact.status === 'scheduled');
+  const skippedCount = artifacts.length - scheduledArtifacts.length;
+
+  if (skippedCount > 0) {
+    console.log(`Skipping ${skippedCount} non-scheduled entries (status != "scheduled").`);
+  }
+
+  return scheduledArtifacts;
 }
 
 async function loadExistingScheduledPosts() {

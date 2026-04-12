@@ -146,7 +146,7 @@ async function publishToX(content: string) {
   }
 }
 
-async function getDueScheduledPost(nowIsoString: string) {
+async function getDueScheduledPosts(nowIsoString: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('scheduled_posts')
@@ -154,16 +154,13 @@ async function getDueScheduledPost(nowIsoString: string) {
     .eq('status', 'scheduled')
     .lte('scheduled_at', nowIsoString)
     .order('scheduled_at', { ascending: true })
-    .order('created_at', { ascending: true })
-    .limit(1);
+    .order('created_at', { ascending: true });
 
   if (error) {
     throw new RouteError(`Failed to load due scheduled posts: ${error.message}`);
   }
 
-  const rows = (data as ScheduledPostRow[] | null) ?? [];
-
-  return rows[0] ?? null;
+  return (data as ScheduledPostRow[] | null) ?? [];
 }
 
 async function markScheduledPostPublished(postId: string, publishedAt: string) {
@@ -189,34 +186,84 @@ async function markScheduledPostPublished(postId: string, publishedAt: string) {
   }
 }
 
-async function dispatchDueScheduledPost() {
-  const checkedAt = new Date().toISOString();
-  const duePost = await getDueScheduledPost(checkedAt);
+const INTER_TWEET_DELAY_MS = 5_000;
 
-  if (!duePost) {
+type DispatchedPost = {
+  id: string;
+  ok: boolean;
+  postBody: string | null;
+  publishedAt: string | null;
+  scheduledAt: string | null;
+  tweetId: string | null;
+  failure?: string;
+};
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function dispatchAllDueScheduledPosts() {
+  const checkedAt = new Date().toISOString();
+  const duePosts = await getDueScheduledPosts(checkedAt);
+
+  if (duePosts.length === 0) {
     return {
       checkedAt,
       ok: true,
-      published: false,
-      reason: 'No scheduled social post is due.',
+      published: 0,
+      results: [] as DispatchedPost[],
+      reason: 'No scheduled social posts are due.',
     };
   }
 
-  const tweetContent = buildTweetContent(duePost);
-  const tweetId = await publishToX(tweetContent);
-  const publishedAt = new Date().toISOString();
+  const results: DispatchedPost[] = [];
 
-  await markScheduledPostPublished(duePost.id, publishedAt);
+  for (let index = 0; index < duePosts.length; index += 1) {
+    const duePost = duePosts[index];
+
+    if (index > 0) {
+      await delay(INTER_TWEET_DELAY_MS);
+    }
+
+    try {
+      const tweetContent = buildTweetContent(duePost);
+      const tweetId = await publishToX(tweetContent);
+      const publishedAt = new Date().toISOString();
+
+      await markScheduledPostPublished(duePost.id, publishedAt);
+
+      results.push({
+        id: duePost.id,
+        ok: true,
+        postBody: duePost.post_body,
+        publishedAt,
+        scheduledAt: duePost.scheduled_at,
+        tweetId,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown dispatch failure.';
+      console.warn(`[social-dispatch] Failed to publish post ${duePost.id}: ${message}`);
+
+      results.push({
+        id: duePost.id,
+        ok: false,
+        postBody: duePost.post_body,
+        publishedAt: null,
+        scheduledAt: duePost.scheduled_at,
+        tweetId: null,
+        failure: message,
+      });
+    }
+  }
+
+  const published = results.filter((r) => r.ok).length;
 
   return {
     checkedAt,
-    id: duePost.id,
     ok: true,
-    postBody: duePost.post_body,
-    published: true,
-    publishedAt,
-    scheduledAt: duePost.scheduled_at,
-    tweetId,
+    published,
+    total: duePosts.length,
+    results,
   };
 }
 
@@ -226,7 +273,7 @@ export async function handleSocialDispatch(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await dispatchDueScheduledPost();
+    const result = await dispatchAllDueScheduledPosts();
     return NextResponse.json(result);
   } catch (error) {
     console.error('[social-dispatch] Failed to execute scheduled social dispatch.', error);
