@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getAppUrl } from "@/lib/server-env";
+import { ALL_REGIME_SLUGS } from "@/lib/regime/regime-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type PublishedMarketingPost = {
@@ -66,6 +67,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${appUrl}/regime`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    ...ALL_REGIME_SLUGS.map((slug) => ({
+      url: `${appUrl}/regime/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    })),
     ...uniqueBriefings.map((row) => ({
       url: `${appUrl}/briefings/${row.briefing_date}`,
       lastModified: new Date(row.generated_at),

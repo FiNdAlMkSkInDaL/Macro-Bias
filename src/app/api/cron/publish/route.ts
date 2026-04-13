@@ -19,6 +19,7 @@ import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
 import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
+import { getWeeklyDigestData } from '../../../../lib/briefing/weekly-digest-data';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -730,6 +731,21 @@ async function handlePublish(request: NextRequest) {
         await safePublish('email', async () => {
           const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
 
+          // On Mondays, fetch last week's data to embed in the daily email
+          const isMonday = new Date().getUTCDay() === 1;
+          let weeklyDigest = null;
+          if (isMonday) {
+            try {
+              weeklyDigest = await getWeeklyDigestData();
+              console.log(
+                `[publish-cron] Monday: embedding weekly recap (${weeklyDigest?.sessionCount ?? 0} sessions, avg ${weeklyDigest?.avgScore ?? 'n/a'})`,
+              );
+            } catch (error) {
+              const msg = error instanceof Error ? error.message : 'Unknown';
+              console.warn(`[publish-cron] Weekly digest fetch failed (non-fatal): ${msg}`);
+            }
+          }
+
           console.log(
             `[publish-cron] Starting dispatchQuantBriefing() with ${premiumRecipients.length} premium recipients and ${freeRecipients.length} free recipients`,
           );
@@ -742,6 +758,7 @@ async function handlePublish(request: NextRequest) {
             {
               recipients: premiumRecipients,
               tier: 'premium',
+              weeklyDigest,
             },
           );
           const freeDispatchResult = await dispatchQuantBriefing(
@@ -752,6 +769,7 @@ async function handlePublish(request: NextRequest) {
             {
               recipients: freeRecipients,
               tier: 'free',
+              weeklyDigest,
             },
           );
           const totalBatchCount =

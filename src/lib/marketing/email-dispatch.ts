@@ -3,6 +3,7 @@ import 'server-only';
 import { Resend } from 'resend';
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-config';
+import type { WeeklyDigestData, WeeklyBriefingRow } from '../briefing/weekly-digest-data';
 import { getAppUrl, getRequiredServerEnv } from '../server-env';
 
 const DEFAULT_FROM_ADDRESS = 'Macro Bias <briefing@macro-bias.com>';
@@ -49,6 +50,7 @@ export type QuantBriefingEmailContent = {
 type DispatchQuantBriefingOptions = {
   recipients: readonly string[];
   tier?: QuantBriefingTier;
+  weeklyDigest?: WeeklyDigestData | null;
 };
 
 function getConfiguredFromAddress() {
@@ -790,12 +792,211 @@ function renderNewsletterCopyHtml(
   return renderedSections.join('');
 }
 
+// ----- Weekly Recap Section (embedded into Monday daily email) -----
+
+function formatWeeklyShortDate(dateString: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(dateString));
+}
+
+function formatWeekRange(start: string, end: string) {
+  const s = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+    new Date(start),
+  );
+  const e = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(end));
+  return `${s} – ${e}`;
+}
+
+function getScoreBarColor(score: number) {
+  if (score >= 20) return '#22c55e';
+  if (score <= -20) return '#f97316';
+  return '#f59e0b';
+}
+
+function getTrendEmoji(trend: WeeklyDigestData['trendDirection']) {
+  switch (trend) {
+    case 'improving':
+      return '↗';
+    case 'deteriorating':
+      return '↘';
+    default:
+      return '→';
+  }
+}
+
+function getTrendLabel(trend: WeeklyDigestData['trendDirection']) {
+  switch (trend) {
+    case 'improving':
+      return 'Improving';
+    case 'deteriorating':
+      return 'Deteriorating';
+    default:
+      return 'Flat';
+  }
+}
+
+function renderWeeklyScoreBarHtml(score: number) {
+  const normalized = Math.round(((score + 100) / 200) * 100);
+  const width = Math.max(3, Math.min(97, normalized));
+  const color = getScoreBarColor(score);
+
+  return `<div style="position: relative; width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden;">
+    <div style="position: absolute; top: 0; left: 0; height: 100%; width: ${width}%; background: ${color}; border-radius: 4px;"></div>
+  </div>`;
+}
+
+function renderWeeklyDayRowHtml(briefing: WeeklyBriefingRow) {
+  const label = formatDisplayLabel(briefing.bias_label);
+  const score = formatSignedNumber(briefing.quant_score);
+  const accent = getAccentColor(briefing.bias_label);
+  const override = briefing.is_override_active
+    ? '<span style="color: #fca5a5; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; margin-left: 6px;">⚠ OVERRIDE</span>'
+    : '';
+
+  return `<tr>
+    <td style="padding: 10px 0; border-bottom: 1px solid #1e293b;">
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <span style="color: #e2e8f0; font-size: 13px; font-weight: 600; font-family: monospace, 'Courier New', Courier;">${escapeHtml(formatWeeklyShortDate(briefing.briefing_date))}</span>
+        <span style="color: ${accent}; font-size: 13px; font-weight: 700; font-family: monospace, 'Courier New', Courier;">${escapeHtml(label)} (${escapeHtml(score)})</span>${override}
+      </div>
+      <div style="margin-top: 6px;">${renderWeeklyScoreBarHtml(briefing.quant_score)}</div>
+    </td>
+  </tr>`;
+}
+
+function renderWeeklyStatCellHtml(label: string, value: string, valueColor = '#f8fafc') {
+  return `<td style="padding: 10px 12px; border: 1px solid #1e293b; text-align: center; width: 33%;">
+    <div style="color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;">${escapeHtml(label)}</div>
+    <div style="margin-top: 4px; color: ${valueColor}; font-size: 18px; font-weight: 700; font-family: monospace, 'Courier New', Courier;">${escapeHtml(value)}</div>
+  </td>`;
+}
+
+function buildWeeklyCommentary(digest: WeeklyDigestData): string {
+  const label = formatDisplayLabel(digest.dominantRegime);
+  const scores = digest.briefings.map((b) => b.quant_score);
+  const range = Math.max(...scores) - Math.min(...scores);
+  const parts: string[] = [];
+
+  parts.push(
+    `Dominant regime: <strong style="color: #f8fafc;">${escapeHtml(label)}</strong>, avg score <strong style="color: #f8fafc;">${escapeHtml(formatSignedNumber(digest.avgScore))}</strong>.`,
+  );
+
+  if (range >= 30) {
+    parts.push(`Elevated ${range}-point dispersion — regime instability.`);
+  } else if (range <= 10) {
+    parts.push(`Tight ${range}-point range — high conviction.`);
+  } else {
+    parts.push(`Moderate ${range}-point range — selective rotation.`);
+  }
+
+  if (digest.trendDirection === 'improving') {
+    parts.push('Week-over-week trajectory tilted positive.');
+  } else if (digest.trendDirection === 'deteriorating') {
+    parts.push('Trajectory deteriorated through the week.');
+  }
+
+  if (digest.overrideCount > 0) {
+    parts.push(
+      `<strong style="color: #fca5a5;">${digest.overrideCount} macro override${digest.overrideCount > 1 ? 's' : ''}</strong> flagged.`,
+    );
+  }
+
+  return parts.join(' ');
+}
+
+function buildWeeklyRecapSectionHtml(digest: WeeklyDigestData, tier: QuantBriefingTier): string {
+  const weekRange = formatWeekRange(digest.weekStart, digest.weekEnd);
+  const avgColor = getScoreBarColor(digest.avgScore);
+  const dominantLabel = formatDisplayLabel(digest.dominantRegime);
+  const dominantAccent = getAccentColor(digest.dominantRegime);
+  const trendEmoji = getTrendEmoji(digest.trendDirection);
+  const trendLabel = getTrendLabel(digest.trendDirection);
+  const scores = digest.briefings.map((b) => b.quant_score);
+
+  const dayRowsHtml = digest.briefings.map((b) => renderWeeklyDayRowHtml(b)).join('');
+
+  const statsHtml = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-top: 16px;">
+    <tr>
+      ${renderWeeklyStatCellHtml('Avg Score', formatSignedNumber(digest.avgScore), avgColor)}
+      ${renderWeeklyStatCellHtml('Regime', dominantLabel, dominantAccent)}
+      ${renderWeeklyStatCellHtml('Trend', `${trendEmoji} ${trendLabel}`)}
+    </tr>
+    <tr>
+      ${renderWeeklyStatCellHtml('Sessions', `${digest.sessionCount}`)}
+      ${renderWeeklyStatCellHtml('Overrides', `${digest.overrideCount}`, digest.overrideCount > 0 ? '#fca5a5' : '#f8fafc')}
+      ${renderWeeklyStatCellHtml('Range', `${Math.min(...scores)} / ${Math.max(...scores)}`)}
+    </tr>
+  </table>`;
+
+  const commentaryHtml =
+    tier === 'premium'
+      ? `<div style="margin-top: 18px;">
+          <div style="color: #7dd3fc; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;">Regime Commentary</div>
+          <p style="margin: 8px 0 0; color: #dbe4ee; font-size: 14px; line-height: 1.6;">${buildWeeklyCommentary(digest)}</p>
+        </div>`
+      : `<div style="margin-top: 18px; color: #475569; font-size: 12px; font-style: italic;">🔒 Weekly regime commentary and pattern analysis available for premium subscribers.</div>`;
+
+  return `<div style="margin-top: 36px; padding-top: 28px; border-top: 2px solid #1e293b;">
+    <div style="color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Last Week in Review</div>
+    <div style="margin-top: 4px; color: #64748b; font-size: 12px; font-weight: 600; letter-spacing: 0.1em;">${escapeHtml(weekRange)}</div>
+    ${statsHtml}
+    <div style="margin-top: 20px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+        ${dayRowsHtml}
+      </table>
+    </div>
+    ${commentaryHtml}
+  </div>`;
+}
+
+function buildWeeklyRecapSectionText(digest: WeeklyDigestData, tier: QuantBriefingTier): string {
+  const weekRange = formatWeekRange(digest.weekStart, digest.weekEnd);
+  const label = formatDisplayLabel(digest.dominantRegime);
+
+  const lines: string[] = [
+    '— LAST WEEK IN REVIEW —',
+    weekRange,
+    `Dominant: ${label} | Avg: ${formatSignedNumber(digest.avgScore)} | Trend: ${getTrendLabel(digest.trendDirection)} | Overrides: ${digest.overrideCount}`,
+    '',
+  ];
+
+  for (const b of digest.briefings) {
+    const override = b.is_override_active ? ' [OVERRIDE]' : '';
+    lines.push(
+      `${formatWeeklyShortDate(b.briefing_date)}: ${formatDisplayLabel(b.bias_label)} (${formatSignedNumber(b.quant_score)})${override}`,
+    );
+  }
+
+  if (tier === 'premium') {
+    const scores = digest.briefings.map((b) => b.quant_score);
+    const range = Math.max(...scores) - Math.min(...scores);
+    lines.push(
+      '',
+      `Commentary: ${label} dominated. ${range >= 30 ? 'High dispersion.' : range <= 10 ? 'High conviction.' : 'Moderate rotation.'}${digest.overrideCount > 0 ? ` ${digest.overrideCount} override(s).` : ''}`,
+    );
+  } else {
+    lines.push('', `Weekly commentary locked — upgrade: ${buildUpgradeUrl()}`);
+  }
+
+  return lines.join('\n');
+}
+
 function buildEmailHtml(
   newsletterCopy: string,
   score: number,
   label: string,
   isOverrideActive: boolean,
   tier: QuantBriefingTier,
+  weeklyDigest?: WeeklyDigestData | null,
 ) {
   const accentColor = getAccentColor(label);
   const dashboardUrl = escapeHtml(new URL('/dashboard', getAppUrl()).toString());
@@ -817,6 +1018,10 @@ function buildEmailHtml(
   );
   const footerCtaHtml =
     tier === 'free' ? buildFreeTierPaywallHtml(upgradeUrl) : buildDashboardCtaHtml(dashboardUrl);
+  const weeklyRecapHtml =
+    weeklyDigest && weeklyDigest.sessionCount > 0
+      ? buildWeeklyRecapSectionHtml(weeklyDigest, tier)
+      : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -834,6 +1039,7 @@ function buildEmailHtml(
                 <div style="margin-top: 28px;">
                   ${bodyCopyHtml}
                 </div>
+                ${weeklyRecapHtml}
                 <div style="margin-top: 32px;">
                   ${footerCtaHtml}
                 </div>
@@ -856,6 +1062,7 @@ function buildEmailText(
   label: string,
   isOverrideActive: boolean,
   tier: QuantBriefingTier,
+  weeklyDigest?: WeeklyDigestData | null,
 ) {
   const dashboardUrl = new URL('/dashboard', getAppUrl()).toString();
   const upgradeUrl = buildUpgradeUrl();
@@ -865,11 +1072,16 @@ function buildEmailText(
       ? `${FREE_TIER_PAYWALL_MESSAGE}\nUpgrade to Premium: ${upgradeUrl}`
       : `Live Terminal: ${dashboardUrl}`;
   const strippedBodyCopy = stripMarkdownBold(bodyCopy).trim();
+  const weeklyRecapText =
+    weeklyDigest && weeklyDigest.sessionCount > 0
+      ? buildWeeklyRecapSectionText(weeklyDigest, tier)
+      : '';
 
   return [
     'Macro Bias Daily Quant Briefing',
     buildHeaderSummary(score, label, isOverrideActive),
     strippedBodyCopy,
+    weeklyRecapText,
     footerCallToAction,
     `Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`,
   ]
@@ -883,13 +1095,18 @@ export function createQuantBriefingEmailContent(
   label: string,
   isOverrideActive: boolean,
   tier: QuantBriefingTier = 'premium',
+  weeklyDigest?: WeeklyDigestData | null,
 ): QuantBriefingEmailContent {
   const subjectPrefix = getMacroOverlayLabel(isOverrideActive);
+  const weeklyTag =
+    weeklyDigest && weeklyDigest.sessionCount > 0
+      ? ` + Weekly Recap ${getTrendEmoji(weeklyDigest.trendDirection)}`
+      : '';
 
   return {
-    html: buildEmailHtml(newsletterCopy, score, label, isOverrideActive, tier),
-    subject: `${subjectPrefix} | ${formatDisplayLabel(label)} ${formatSignedNumber(score)}`,
-    text: buildEmailText(newsletterCopy, score, label, isOverrideActive, tier),
+    html: buildEmailHtml(newsletterCopy, score, label, isOverrideActive, tier, weeklyDigest),
+    subject: `${subjectPrefix} | ${formatDisplayLabel(label)} ${formatSignedNumber(score)}${weeklyTag}`,
+    text: buildEmailText(newsletterCopy, score, label, isOverrideActive, tier, weeklyDigest),
   };
 }
 
@@ -920,6 +1137,7 @@ export async function dispatchQuantBriefing(
     label,
     isOverrideActive,
     tier,
+    options.weeklyDigest,
   );
   const emailIds: string[] = [];
   const recipientBatches = chunkValues(recipients, EMAIL_BATCH_SIZE);
