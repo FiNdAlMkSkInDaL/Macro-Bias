@@ -2,18 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
-
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
-
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 type BillingCycle = "monthly" | "annual";
 
@@ -67,18 +55,12 @@ export default function PricingPage() {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-[family:var(--font-heading)] text-zinc-100`}
+      className="min-h-screen font-[family:var(--font-heading)]"
     >
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16">
         {/* Header */}
         <header className="text-center">
-          <Link
-            href="/"
-            className="inline-block font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"
-          >
-            Macro Bias
-          </Link>
-          <h1 className="mt-8 font-[family:var(--font-heading)] text-4xl font-bold tracking-tighter text-white sm:text-5xl">
+          <h1 className="font-[family:var(--font-heading)] text-4xl font-bold tracking-tighter text-white sm:text-5xl">
             Simple pricing. No surprises.
           </h1>
           <p className="mt-4 text-lg leading-8 text-zinc-400">
@@ -95,6 +77,9 @@ export default function PricingPage() {
                   ? "bg-white text-black"
                   : "text-zinc-400 hover:text-white"
               }`}
+              data-analytics-event="pricing_cycle_selected"
+              data-analytics-label="Monthly"
+              data-analytics-location="pricing_toggle"
             >
               Monthly
             </button>
@@ -106,6 +91,9 @@ export default function PricingPage() {
                   ? "bg-white text-black"
                   : "text-zinc-400 hover:text-white"
               }`}
+              data-analytics-event="pricing_cycle_selected"
+              data-analytics-label="Annual"
+              data-analytics-location="pricing_toggle"
             >
               Annual
               <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 font-[family:var(--font-data)] text-[10px] font-bold text-emerald-400">
@@ -137,6 +125,9 @@ export default function PricingPage() {
             <Link
               href="/emails"
               className="mt-6 inline-flex items-center justify-center border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              data-analytics-event="pricing_cta_click"
+              data-analytics-label="Subscribe Free"
+              data-analytics-location="pricing_free_card"
             >
               Subscribe Free
             </Link>
@@ -189,6 +180,9 @@ export default function PricingPage() {
             <a
               href={checkoutHref}
               className="mt-6 inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
+              data-analytics-event="pricing_cta_click"
+              data-analytics-label="Start 7-Day Free Trial"
+              data-analytics-location="pricing_pro_card"
             >
               Start 7-Day Free Trial
             </a>
@@ -269,30 +263,6 @@ export default function PricingPage() {
             </div>
           </div>
         </section>
-
-        {/* Bottom nav */}
-        <nav className="mt-10 flex items-center justify-between">
-          <Link
-            href="/"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            ← macro-bias.com
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/track-record"
-              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-            >
-              Track Record
-            </Link>
-            <Link
-              href="/briefings"
-              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-            >
-              Briefing Archive →
-            </Link>
-          </div>
-        </nav>
       </div>
     </main>
   );

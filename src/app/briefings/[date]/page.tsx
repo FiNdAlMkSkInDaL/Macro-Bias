@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,16 +12,7 @@ import {
 import { DAILY_BRIEFING_SECTION_HEADERS } from "@/lib/briefing/daily-briefing-config";
 import { getAppUrl } from "@/lib/server-env";
 
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
 
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 const SITE_NAME = "Macro Bias";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -255,7 +245,7 @@ export default async function BriefingPage({ params }: PageProps) {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-[family:var(--font-heading)] text-zinc-100`}
+      className="min-h-screen font-[family:var(--font-heading)]"
     >
       <script
         type="application/ld+json"
@@ -365,22 +355,6 @@ export default async function BriefingPage({ params }: PageProps) {
             </Link>
           </div>
         </section>
-
-        {/* Archive link + nav */}
-        <nav className="mt-8 flex items-center justify-between">
-          <Link
-            href="/briefings"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            ← All Briefings
-          </Link>
-          <Link
-            href="/"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            macro-bias.com
-          </Link>
-        </nav>
       </div>
     </main>
   );

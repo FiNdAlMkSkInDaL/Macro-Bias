@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import {
@@ -19,16 +18,7 @@ import { getRegimeContent } from "@/lib/regime/regime-content";
 import { getAppUrl } from "@/lib/server-env";
 import { RegimeSignupForm } from "./signup-form";
 
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
 
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 const SITE_NAME = "Macro Bias";
 
@@ -177,7 +167,7 @@ export default async function RegimePage({ params }: PageProps) {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-[family:var(--font-heading)] text-zinc-100`}
+      className="min-h-screen font-[family:var(--font-heading)]"
     >
       <script
         type="application/ld+json"
@@ -379,22 +369,6 @@ export default async function RegimePage({ params }: PageProps) {
             </Link>
           </div>
         </section>
-
-        {/* ===== Nav ===== */}
-        <nav className="mt-8 flex items-center justify-between">
-          <Link
-            href="/regime"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            ← All Regimes
-          </Link>
-          <Link
-            href="/briefings"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            Briefing Archive →
-          </Link>
-        </nav>
       </div>
     </main>
   );

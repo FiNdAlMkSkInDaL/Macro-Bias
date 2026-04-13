@@ -2,7 +2,8 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
-import Link from "next/link";
+
+import { trackClientEvent } from "@/lib/analytics/client";
 
 type SubmissionState = "idle" | "loading" | "success" | "error";
 
@@ -27,7 +28,7 @@ export default function EmailsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, pagePath: window.location.pathname }),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -40,12 +41,25 @@ export default function EmailsPage() {
 
       setSubmissionState("success");
       setStatusMessage("Added to the list.");
+      trackClientEvent({
+        eventName: "email_signup_success",
+        metadata: {
+          location: "emails_page",
+        },
+      });
       setEmail("");
     } catch (error) {
       setSubmissionState("error");
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to add email.",
       );
+      trackClientEvent({
+        eventName: "email_signup_failure",
+        metadata: {
+          location: "emails_page",
+          message: error instanceof Error ? error.message : "Unable to add email.",
+        },
+      });
     }
   }
 
@@ -53,7 +67,7 @@ export default function EmailsPage() {
   const statusColor = submissionState === "error" ? "text-red-400" : "text-zinc-500";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
+    <main className="flex min-h-screen items-center justify-center px-6 text-white">
       <div className="w-full max-w-2xl text-center">
         <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
           Unlock Wall Street&apos;s Algorithmic Edge.
@@ -86,13 +100,6 @@ export default function EmailsPage() {
         <p className={`mt-3 text-sm ${statusColor}`} aria-live="polite">
           {statusMessage ?? " "}
         </p>
-
-        <Link
-          href="/"
-          className="mt-10 inline-block text-xs text-zinc-600 transition hover:text-zinc-400"
-        >
-          ← macro-bias.com
-        </Link>
       </div>
     </main>
   );

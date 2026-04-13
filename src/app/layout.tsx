@@ -1,7 +1,23 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+
+import { AnalyticsProvider } from "@/components/AnalyticsProvider";
+import { SiteNav } from "@/components/SiteNav";
+import { SiteFooter } from "@/components/SiteFooter";
 
 import "./globals.css";
+
+const headingFont = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-heading",
+});
+
+const dataFont = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-data",
+});
 
 const SITE_URL = "https://macro-bias.com";
 const SITE_NAME = "Macro Bias";
@@ -168,13 +184,20 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-50 antialiased">
+    <html lang="en" className={`${headingFont.variable} ${dataFont.variable}`}>
+      <body className="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-        {children}
+        <Suspense fallback={null}>
+          <AnalyticsProvider />
+        </Suspense>
+        <SiteNav />
+        <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </div>
       </body>
     </html>
   );

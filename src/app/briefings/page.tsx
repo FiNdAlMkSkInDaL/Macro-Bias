@@ -1,20 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { getAllBriefingDates } from "@/lib/briefing/get-public-briefing";
 import { getAppUrl } from "@/lib/server-env";
-
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
-
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 const SITE_URL = "https://macro-bias.com";
 
@@ -135,7 +123,7 @@ export default async function BriefingsArchivePage() {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-[family:var(--font-heading)] text-zinc-100`}
+      className="min-h-screen font-[family:var(--font-heading)]"
     >
       <script
         type="application/ld+json"
@@ -187,29 +175,6 @@ export default async function BriefingsArchivePage() {
             </Link>
           ))}
         </div>
-
-        <nav className="mt-8 flex items-center justify-between">
-          <Link
-            href="/emails"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            Get Free Daily Emails →
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/track-record"
-              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-            >
-              Track Record
-            </Link>
-            <Link
-              href="/"
-              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-            >
-              macro-bias.com
-            </Link>
-          </div>
-        </nav>
       </div>
     </main>
   );

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { logMarketingEvent } from '@/lib/analytics/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -27,16 +28,44 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
-    .from('free_subscribers')
-    .update({ status: 'inactive' })
-    .eq('email', email);
+  const [{ error: subscriberError }, { error: enrollmentError }, { error: deliveryError }] = await Promise.all([
+    supabase
+      .from('free_subscribers')
+      .update({ status: 'inactive' })
+      .eq('email', email),
+    supabase
+      .from('welcome_email_drip_enrollments')
+      .update({ status: 'unsubscribed' })
+      .eq('email', email),
+    supabase
+      .from('welcome_email_drip_deliveries')
+      .update({
+        error_message: 'Subscriber unsubscribed.',
+        status: 'cancelled',
+      })
+      .eq('email', email)
+      .eq('status', 'scheduled'),
+  ]);
 
-  if (error) {
+  if (subscriberError || enrollmentError || deliveryError) {
     return new NextResponse(buildResultHtml('Something went wrong. Try again later.', false), {
       status: 500,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
+  }
+
+  try {
+    await logMarketingEvent({
+      eventName: 'email_unsubscribed',
+      metadata: {
+        source: 'unsubscribe_route',
+      },
+      pagePath: request.nextUrl.pathname,
+      referrer: request.headers.get('referer'),
+      subscriberEmail: email,
+    });
+  } catch (analyticsError) {
+    console.error('[unsubscribe] analytics logging failed', analyticsError);
   }
 
   return new NextResponse(buildResultHtml('You have been unsubscribed.', true), {

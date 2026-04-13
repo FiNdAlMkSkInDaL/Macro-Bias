@@ -3,24 +3,13 @@
 import type { FormEvent } from "react";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
+import { trackClientEvent } from "../lib/analytics/client";
 import {
   createSupabaseBrowserClient,
   getMissingSupabasePublicEnvVars,
   getSupabaseBrowserClientConfigError,
 } from "../lib/supabase/browser";
-
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
-
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 type AuthMode = "signin" | "signup";
 type EmailSignupState = "idle" | "loading" | "success" | "error";
@@ -133,7 +122,7 @@ export default function HomePage() {
       const response = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newsletterEmail }),
+        body: JSON.stringify({ email: newsletterEmail, pagePath: window.location.pathname }),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -146,12 +135,25 @@ export default function HomePage() {
 
       setNewsletterState("success");
       setNewsletterMessage("You're in. First briefing arrives before the next open.");
+      trackClientEvent({
+        eventName: "email_signup_success",
+        metadata: {
+          location: "landing_hero",
+        },
+      });
       setNewsletterEmail("");
     } catch (error) {
       setNewsletterState("error");
       setNewsletterMessage(
         error instanceof Error ? error.message : "Unable to subscribe.",
       );
+      trackClientEvent({
+        eventName: "email_signup_failure",
+        metadata: {
+          location: "landing_hero",
+          message: error instanceof Error ? error.message : "Unable to subscribe.",
+        },
+      });
     }
   }
 
@@ -215,6 +217,12 @@ export default function HomePage() {
     setIsSubmitting(true);
     setErrorMessage(null);
     setStatusMessage(null);
+    trackClientEvent({
+      eventName: authMode === "signin" ? "auth_signin_started" : "auth_signup_started",
+      metadata: {
+        redirectPath,
+      },
+    });
 
     try {
       if (authMode === "signin") {
@@ -225,6 +233,12 @@ export default function HomePage() {
         }
 
         setStatusMessage("Authentication complete. Routing you to your dashboard.");
+        trackClientEvent({
+          eventName: "auth_signin_success",
+          metadata: {
+            redirectPath,
+          },
+        });
         startTransition(() => {
           router.replace(redirectPath);
           router.refresh();
@@ -249,6 +263,12 @@ export default function HomePage() {
 
       if (data.session?.user) {
         setStatusMessage("Account created. Routing you to your dashboard.");
+        trackClientEvent({
+          eventName: "auth_signup_success",
+          metadata: {
+            redirectPath,
+          },
+        });
         startTransition(() => {
           router.replace(redirectPath);
           router.refresh();
@@ -259,50 +279,33 @@ export default function HomePage() {
       setStatusMessage(
         "Account created. Check your email to verify your account, and the confirmation link will sign you in and send you straight to the dashboard.",
       );
+      trackClientEvent({
+        eventName: "auth_signup_verification_pending",
+        metadata: {
+          redirectPath,
+        },
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
           ? error.message
           : "Authentication failed. Please try again.",
       );
+      trackClientEvent({
+        eventName: authMode === "signin" ? "auth_signin_failure" : "auth_signup_failure",
+        metadata: {
+          message: error instanceof Error ? error.message : "Authentication failed. Please try again.",
+          redirectPath,
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans text-zinc-100`}
-    >
+    <main className="min-h-screen font-sans">
       <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-10">
-        <header className="flex h-16 items-center justify-between border-b border-white/10">
-          <a
-            className="font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"
-            href="#top"
-          >
-            Macro Bias
-          </a>
-          <nav className="flex items-center gap-6">
-            <a
-              className="text-sm font-medium text-zinc-500 transition hover:text-white"
-              href="/track-record"
-            >
-              Track Record
-            </a>
-            <a
-              className="text-sm font-medium text-zinc-500 transition hover:text-white"
-              href="/pricing"
-            >
-              Pricing
-            </a>
-            <a
-              className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
-              href="#auth-console"
-            >
-              Sign In
-            </a>
-          </nav>
-        </header>
 
         <section
           id="top"
@@ -323,12 +326,18 @@ export default function HomePage() {
             <a
               className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
               href="#auth-console"
+              data-analytics-event="landing_cta_click"
+              data-analytics-label="Access the Dashboard"
+              data-analytics-location="landing_hero"
             >
               Access the Dashboard
             </a>
             <a
               className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
               href="/track-record"
+              data-analytics-event="landing_cta_click"
+              data-analytics-label="View Track Record"
+              data-analytics-location="landing_hero"
             >
               View Track Record
             </a>

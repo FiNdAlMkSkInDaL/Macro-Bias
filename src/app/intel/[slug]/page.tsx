@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { stat } from "node:fs/promises";
 import Link from "next/link";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import ReactMarkdown from "react-markdown";
@@ -14,16 +14,7 @@ import {
 } from "@/lib/marketing/markdown-parser";
 import { getAppUrl } from "@/lib/server-env";
 
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
 
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 const SITE_NAME = "Macro Bias";
 
@@ -149,7 +140,7 @@ export default async function IntelArticlePage({ params }: PageProps) {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-[family:var(--font-heading)] text-zinc-100`}
+      className="min-h-screen font-[family:var(--font-heading)]"
     >
       <script
         type="application/ld+json"

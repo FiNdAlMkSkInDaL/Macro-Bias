@@ -1,6 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { BiasGauge } from "../../components/dashboard/BiasGauge";
 import { ShareEdgeButton } from "../../components/dashboard/ShareEdgeButton";
@@ -14,17 +13,6 @@ import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
 
 export const dynamic = "force-dynamic";
-
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
-
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 type ApiTickerChange = {
   close: number;
@@ -657,7 +645,7 @@ export default async function DashboardPage() {
 
   return (
     <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans font-[family:var(--font-heading)] text-zinc-100`}
+      className="min-h-screen font-sans font-[family:var(--font-heading)]"
     >
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
@@ -1287,20 +1275,6 @@ export default async function DashboardPage() {
           </PaywallWrapper>
           )}
         </section>
-        <nav className="mt-8 flex items-center justify-between border-t border-white/5 py-6">
-          <a
-            href="/"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            ← macro-bias.com
-          </a>
-          <a
-            href="/track-record"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            Track Record →
-          </a>
-        </nav>
       </div>
     </main>
   );

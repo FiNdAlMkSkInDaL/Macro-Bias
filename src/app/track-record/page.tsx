@@ -1,24 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { getBacktestData } from "@/lib/track-record/backtest-engine";
 import PerformanceChart from "@/components/track-record/PerformanceChart";
-
-/* ------------------------------------------------------------------ */
-/*  Fonts (same as landing + dashboard)                                */
-/* ------------------------------------------------------------------ */
-
-const headingFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
-
-const dataFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-data",
-});
 
 /* ------------------------------------------------------------------ */
 /*  SEO                                                                */
@@ -143,25 +127,8 @@ export default async function TrackRecordPage() {
   };
 
   return (
-    <main
-      className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-sans text-zinc-100`}
-    >
+    <main className="min-h-screen font-sans">
       <div className="mx-auto w-full max-w-7xl px-6 sm:px-8 lg:px-10">
-        {/* ---- Header bar ---- */}
-        <header className="flex h-16 items-center justify-between border-b border-white/10">
-          <Link
-            className="font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"
-            href="/"
-          >
-            Macro Bias
-          </Link>
-          <Link
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-zinc-300 transition hover:text-white"
-            href="/dashboard"
-          >
-            Dashboard
-          </Link>
-        </header>
 
         {/* ---- Hero ---- */}
         <section className="border-b border-white/10 py-16 sm:py-24">
@@ -344,12 +311,18 @@ export default async function TrackRecordPage() {
                 <Link
                   href="/pricing"
                   className="inline-flex min-w-[220px] items-center justify-center bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                  data-analytics-event="track_record_cta_click"
+                  data-analytics-label="Start Free Trial"
+                  data-analytics-location="track_record_footer_cta"
                 >
                   Start Free Trial
                 </Link>
                 <Link
                   href="/dashboard"
                   className="inline-flex min-w-[220px] items-center justify-center bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
+                  data-analytics-event="track_record_cta_click"
+                  data-analytics-label="View Dashboard"
+                  data-analytics-location="track_record_footer_cta"
                 >
                   View Dashboard
                 </Link>
@@ -363,22 +336,6 @@ export default async function TrackRecordPage() {
             </p>
           </section>
         )}
-
-        {/* ---- Footer ---- */}
-        <footer className="flex items-center justify-between border-t border-white/10 py-6">
-          <Link
-            href="/"
-            className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500 transition hover:text-white"
-          >
-            ← Home
-          </Link>
-          <Link
-            href="/dashboard"
-            className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500 transition hover:text-white"
-          >
-            Dashboard →
-          </Link>
-        </footer>
       </div>
     </main>
   );
