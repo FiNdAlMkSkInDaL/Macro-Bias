@@ -49,8 +49,8 @@ const USO_LOOKBACK = 5;
 const VIX_ROC_LOOKBACK = 5;
 const RSI_PERIOD = 14;
 
-/** Backtest start date — first trading day of 2026. */
-const BACKTEST_START = "2026-01-02";
+/** Backtest start date — first trading day of 2020. */
+const BACKTEST_START = "2020-01-02";
 
 /* ------------------------------------------------------------------ */
 /*  Bias label thresholds                                              */
@@ -423,25 +423,50 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
   });
 
   /* ---- Build equity curves (long/short strategy vs buy-and-hold) */
+  /*                                                                */
+  /* Strategy rules (matches the published regime thresholds):      */
+  /*  • LONG  when yesterday's score > 20  (RISK_ON / EXTREME_ON)  */
+  /*  • SHORT when yesterday's score < -20 (RISK_OFF / EXTREME_OFF)*/
+  /*  • CASH  when  -20 ≤ score ≤ 20       (NEUTRAL)               */
+  /*                                                                */
+  /* A flat per-trade friction of 5 bps is deducted on every       */
+  /* position change to reflect SPY spread + slippage.              */
+
+  const SCORE_THRESHOLD = 20;
+  const FRICTION_BPS = 5; // basis points per trade
+  const FRICTION = FRICTION_BPS / 10_000;
 
   const equityCurve: { date: string; spy: number; strategy: number }[] = [];
   let spyEquity = 100;
   let stratEquity = 100;
+  let prevPosition: "LONG" | "SHORT" | "CASH" = "CASH";
 
   for (let i = 0; i < backtestDays.length; i++) {
     const day = backtestDays[i];
     const dailyReturn = day.spyChangePercent / 100;
     spyEquity *= 1 + dailyReturn;
 
+    // Determine position from yesterday's score
+    let position: "LONG" | "SHORT" | "CASH" = "CASH";
     if (i > 0) {
       const prevScore = backtestDays[i - 1].score;
-      if (prevScore > 0) {
-        stratEquity *= 1 + dailyReturn; // long
-      } else if (prevScore < 0) {
-        stratEquity *= 1 - dailyReturn; // short
-      }
-      // neutral → cash
+      if (prevScore > SCORE_THRESHOLD) position = "LONG";
+      else if (prevScore < -SCORE_THRESHOLD) position = "SHORT";
     }
+
+    // Apply friction on position change
+    if (position !== prevPosition && i > 0) {
+      stratEquity *= 1 - FRICTION;
+    }
+
+    // Apply daily P&L
+    if (position === "LONG") {
+      stratEquity *= 1 + dailyReturn;
+    } else if (position === "SHORT") {
+      stratEquity *= 1 - dailyReturn;
+    }
+
+    prevPosition = position;
 
     equityCurve.push({
       date: day.tradeDate,
@@ -449,6 +474,18 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
       strategy: Number(stratEquity.toFixed(2)),
     });
   }
+
+  /* Downsample equity curve to weekly (every 5th trading day) +   */
+  /* always keep first and last point for a clean chart.            */
+  const sampledCurve =
+    equityCurve.length <= 300
+      ? equityCurve
+      : equityCurve.filter(
+          (_, i) =>
+            i === 0 ||
+            i === equityCurve.length - 1 ||
+            i % 5 === 0,
+        );
 
   return {
     days: [...backtestDays].reverse(),
@@ -468,7 +505,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     edgeSpread:
       avgBull !== null && avgBear !== null ? avgBull - avgBear : null,
     regimeDistribution,
-    equityCurve,
+    equityCurve: sampledCurve,
     strategyReturn: stratEquity - 100,
     spyReturn: spyEquity - 100,
   };
