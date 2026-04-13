@@ -12,90 +12,98 @@ const MORNING_DISPATCH_MINUTE_UTC = 5;
 const WELCOME_DRIP_STEPS = [
   {
     ctaHref: "/track-record",
-    ctaLabel: "View the track record",
+    ctaLabel: "See the proof now",
     dayOffset: 0,
     eyebrow: "[ Welcome Sequence 01 ]",
+    hook: "Most retail traders lose before their first trade of the day. The mistake is not entry quality. It is regime blindness.",
+    microChallenge: "Before your next session, write one sentence: 'If we open Risk-Off, I will reduce size by __% and skip __ setup.'",
     order: 1,
     secondaryHref: "/briefings",
-    secondaryLabel: "Browse free briefings",
-    subject: "Welcome to Macro Bias | Your pre-market edge starts here",
+    secondaryLabel: "See a real briefing",
+    subject: "You now have the unfair 8:57AM edge",
     summary:
-      "You are now on the list for the free daily regime signal. Each session, Macro Bias turns volatility, credit, rates, commodities, and trend into one actionable market-weather read before the bell.",
-    title: "Your daily macro edge is now live.",
+      "You are now on the list for the daily Macro Bias signal. Before the bell, we compress volatility, credit, rates, commodities, and trend into one executable regime call.",
+    title: "Welcome to your pre-market quant protocol.",
     bullets: [
-      "Risk-On: conditions favor pressing longs and momentum setups.",
-      "Neutral: odds are mixed, so size and selectivity matter more.",
-      "Risk-Off: the tape is hostile, and defensive posture usually wins.",
+      "Audited track record since 2020: +286% strategy return vs +111% SPY.",
+      "One daily score: Risk-On, Neutral, or Risk-Off.",
+      "Your edge is clarity before the open, not panic after it.",
     ],
     paragraphs: [
-      "Macro Bias is not another opinions newsletter. It is a daily operating layer for traders who want to know whether the environment is helping or hurting their setups before they put risk on.",
-      "Start with the track record page, then read a few archived briefings. Inside a few minutes, you will understand exactly what the product is built to do: keep you aligned with regime, not emotion.",
+      "Macro Bias is not a hype newsletter. It is a disciplined decision layer for traders who want to know whether the environment is helping or hurting them before they put capital at risk.",
+      "Start with the track record, then review two archived briefings. In 10 minutes, you will understand the full workflow: read regime, choose posture, execute with intent.",
     ],
   },
   {
     ctaHref: "/briefings",
-    ctaLabel: "See the briefing archive",
+    ctaLabel: "Steal this workflow",
     dayOffset: 1,
     eyebrow: "[ Welcome Sequence 02 ]",
+    hook: "The best traders are boring before the open and ruthless during it.",
+    microChallenge: "Tomorrow, run this in order: bias -> playbook -> sizing plan. Do not open social media first.",
     order: 2,
     secondaryHref: "/pricing",
-    secondaryLabel: "See what Premium unlocks",
-    subject: "The 90-second Macro Bias morning routine",
+    secondaryLabel: "See Premium unlocks",
+    subject: "The 90-second ritual that saves bad trading days",
     summary:
-      "The best way to use Macro Bias is simple: read the signal before the open, decide whether the day is for aggression or restraint, and only then build your plan.",
-    title: "Use the signal in under 90 seconds.",
+      "The highest-ROI way to use Macro Bias is simple: read the score before the open, decide if the day is for aggression or defense, then lock your plan before emotion starts.",
+    title: "Run this before every opening bell.",
     bullets: [
-      "Check the top-line bias first. That sets the tone for your day.",
-      "Read the playbook next. It tells you where strength or pressure is most likely to show up.",
-      "Let regime control your sizing. Most traders do the opposite and pay for it.",
+      "Step 1: Check top-line bias before chart overload.",
+      "Step 2: Read the playbook for likely pressure/leaders.",
+      "Step 3: Let regime set size ceilings, not confidence spikes.",
     ],
     paragraphs: [
-      "Macro Bias works best as a filter, not as a prediction machine. On strong days, it helps you press. On messy days, it helps you preserve capital and avoid forcing trades that never had the backdrop to work.",
-      "That one shift alone tends to improve decision quality faster than adding another indicator ever will.",
+      "Macro Bias is a context filter, not a crystal ball. On favorable days it tells you when to lean in with structure. On hostile days it protects you from forcing low-quality trades.",
+      "That one shift tends to improve consistency faster than adding another indicator, signal room, or guru feed.",
     ],
   },
   {
     ctaHref: "/regime",
-    ctaLabel: "Read the regime guide",
+    ctaLabel: "Read the regime map",
     dayOffset: 3,
     eyebrow: "[ Welcome Sequence 03 ]",
+    hook: "Most traders think they need better entries. They usually need better weather awareness.",
+    microChallenge: "Audit your last 10 losses: mark each one Risk-On, Neutral, or Risk-Off. You will see the pattern immediately.",
     order: 3,
     secondaryHref: "/track-record",
-    secondaryLabel: "Review the results",
-    subject: "Why regime beats gut feel",
+    secondaryLabel: "Review the audited results",
+    subject: "The expensive retail mistake nobody warns you about",
     summary:
-      "Most traders do not lose because they cannot find entries. They lose because they size up in the wrong environment. Macro Bias exists to fix that specific problem.",
-    title: "Stop trading the wrong weather.",
+      "Most traders do not fail from a lack of setups. They fail by sizing aggressively in hostile conditions. Macro Bias was built to solve that exact leak.",
+    title: "Stop guessing market weather.",
     bullets: [
-      "Bad regime turns A- setups into mediocre trades.",
-      "Good regime makes simple setups easier to hold and easier to size.",
-      "Context changes expectancy even when your entry pattern stays the same.",
+      "Bad regime can break even A+ setups.",
+      "Good regime makes plain setups easier to hold.",
+      "Expectancy changes before your entry trigger fires.",
     ],
     paragraphs: [
-      "The model watches cross-asset behavior because macro stress rarely announces itself in one chart. Credit, rates, volatility, commodities, and trend all move before traders emotionally catch up.",
-      "You do not need perfect foresight. You need to know whether the wind is at your back, in your face, or dead sideways. That is the job.",
+      "The model tracks cross-asset behavior because real stress rarely appears in one chart first. Credit, rates, volatility, commodities, and trend often shift before retail sentiment catches up.",
+      "You do not need perfect prediction. You need repeatable positioning rules that tell you when to press and when to protect your account.",
     ],
   },
   {
     ctaHref: "/pricing",
-    ctaLabel: "Start the 7-day free trial",
+    ctaLabel: "Start your 7-day trial",
     dayOffset: 7,
     eyebrow: "[ Welcome Sequence 04 ]",
+    hook: "If the free signal improved your decisions, the full terminal will feel like trading with x-ray vision.",
+    microChallenge: "Run one week with the full stack and score your decisions: better timing, better sizing, fewer forced trades.",
     order: 4,
     secondaryHref: "/dashboard",
-    secondaryLabel: "See the live terminal",
-    subject: "Ready for the full Macro Bias terminal?",
+    secondaryLabel: "Preview the live terminal",
+    subject: "Your trial starts when you’re ready to stop guessing",
     summary:
-      "The free list gives you the headline signal. Premium unlocks the full playbook: sector pressure map, regime diagnostics, historical analogs, and the live dashboard used to make the call.",
-    title: "Upgrade when you want the full playbook.",
+      "The free list gives you the headline call. Premium gives you the full execution map: sector pressure, regime diagnostics, historical analogs, and the live terminal behind each signal.",
+    title: "Move from headline signal to full quant map.",
     bullets: [
-      "Full morning briefing before the open.",
-      "Sector and cross-asset breakdowns behind the score.",
-      "Historical analogs and regime context for execution quality.",
+      "Pre-open briefing with detailed tactical context.",
+      "Sector and cross-asset decomposition behind the score.",
+      "Historical analog framework to pressure-test your plan.",
     ],
     paragraphs: [
-      "If the free signal already helps you frame the day, Premium gives you the detail behind that edge. You see what is driving the score, where the model sees pressure, and how comparable environments behaved in the past.",
-      "The offer is simple: 7-day free trial, then $25 per month or $190 per year. No complicated tiers and no hidden catches.",
+      "If the free signal already improves your posture, Premium gives you the detail that compounds the edge: what drives the score, where pressure is building, and how similar regimes behaved historically.",
+      "Start with a 7-day free trial. Then it is $25/month or $190/year. Keep it only if your execution improves.",
     ],
   },
 ] as const;
@@ -201,6 +209,12 @@ function createWelcomeDripEmailContent(step: WelcomeDripStep, recipientEmail: st
         <p style="margin: 0 0 16px; color: #71717a; font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;">${escapeHtml(step.eyebrow)}</p>
         <h1 style="margin: 0; color: #ffffff; font-size: 34px; line-height: 1.05; letter-spacing: -0.04em; font-weight: 700;">${escapeHtml(step.title)}</h1>
         <p style="margin: 18px 0 0; color: #d4d4d8; font-size: 16px; line-height: 1.8;">${escapeHtml(step.summary)}</p>
+        <p style="margin: 14px 0 0; color: #f4f4f5; font-size: 15px; line-height: 1.8; font-style: italic;">${escapeHtml(step.hook)}</p>
+
+        <div style="margin-top: 22px; border: 1px solid #3f3f46; background: #111113; padding: 14px 16px;">
+          <p style="margin: 0; color: #a1a1aa; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;">2-Minute Edge Challenge</p>
+          <p style="margin: 8px 0 0; color: #f4f4f5; font-size: 14px; line-height: 1.75;">${escapeHtml(step.microChallenge)}</p>
+        </div>
 
         <div style="margin-top: 28px; border-top: 1px solid #27272a; border-bottom: 1px solid #27272a; padding: 20px 0;">
           ${step.bullets
@@ -234,6 +248,10 @@ function createWelcomeDripEmailContent(step: WelcomeDripStep, recipientEmail: st
     step.title,
     "",
     step.summary,
+    "",
+    step.hook,
+    "",
+    `2-Minute Edge Challenge: ${step.microChallenge}`,
     "",
     ...step.bullets.map((bullet) => `- ${bullet}`),
     "",
