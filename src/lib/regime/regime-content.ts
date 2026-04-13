@@ -1,5 +1,4 @@
-import type { BiasLabel } from "@/lib/macro-bias/types";
-import type { RegimeSlug } from "./regime-data";
+import { ALL_REGIME_SLUGS, type RegimeSlug } from "./regime-data";
 
 // ----- Regime content definitions -----
 
