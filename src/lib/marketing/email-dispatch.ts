@@ -655,7 +655,7 @@ function buildFreeTierPaywallHtml(upgradeUrl: string) {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top: 22px; border-collapse: separate;">
       <tr>
         <td bgcolor="#0ea5e9" style="border: 1px solid #7dd3fc; border-radius: 14px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); box-shadow: 0 12px 32px rgba(56, 189, 248, 0.22);">
-          <a href="${upgradeUrl}" style="display: inline-block; padding: 16px 26px; color: #f8fafc; text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; mso-padding-alt: 16px 26px 16px 26px;">UPGRADE TO PREMIUM</a>
+          <a href="${upgradeUrl}" style="display: inline-block; padding: 16px 26px; color: #f8fafc; text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; mso-padding-alt: 16px 26px 16px 26px;">START 7-DAY FREE TRIAL</a>
         </td>
       </tr>
     </table>
@@ -1069,7 +1069,7 @@ function buildEmailText(
   const bodyCopy = tier === 'free' ? buildFreeTierNewsletterCopyText(newsletterCopy) : newsletterCopy;
   const footerCallToAction =
     tier === 'free'
-      ? `${FREE_TIER_PAYWALL_MESSAGE}\nUpgrade to Premium: ${upgradeUrl}`
+      ? `${FREE_TIER_PAYWALL_MESSAGE}\nStart 7-Day Free Trial: ${upgradeUrl}`
       : `Live Terminal: ${dashboardUrl}`;
   const strippedBodyCopy = stripMarkdownBold(bodyCopy).trim();
   const weeklyRecapText =

@@ -41,7 +41,7 @@ const heroStats = [
   },
   {
     label: "Price",
-    value: "$25 / month",
+    value: "$25/mo — 7-day free trial",
   },
 ] as const;
 

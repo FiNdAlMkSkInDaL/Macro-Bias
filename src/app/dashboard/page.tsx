@@ -1135,6 +1135,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          {isProUser ? (
           <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
             <section className={footerModuleClassName}>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
@@ -1223,6 +1224,68 @@ export default async function DashboardPage() {
               </p>
             </section>
           </div>
+          ) : (
+          <PaywallWrapper initialIsPro={false} userId={user?.id ?? null}>
+          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
+            <section className={footerModuleClassName}>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Macro Summary
+              </p>
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+                Cluster Averages
+              </h3>
+              <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[11px]">
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em] text-zinc-500">Aligned Sessions</p>
+                  <p className="text-sm text-white">--</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em] text-zinc-500">Usable Matches</p>
+                  <p className="text-sm text-white">--</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Overnight Gap</p>
+                  <p className="text-sm text-zinc-500">--</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Intraday Net</p>
+                  <p className="text-sm text-zinc-500">--</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Session Range</p>
+                  <p className="text-sm text-zinc-500">--</p>
+                </div>
+              </div>
+            </section>
+
+            <section className={footerModuleClassName}>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Model Integrity
+              </p>
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+                Microstructure Upgrade
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-zinc-500">
+                This score is generated from a K-Nearest Neighbors engine over aligned intermarket history.
+              </p>
+              <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[11px] text-zinc-500">
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em]">Temporal Decay</p>
+                  <p className="text-sm text-white">λ = 0.001</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em]">Regime Filter</p>
+                  <p className="text-right text-sm text-zinc-400">ACTIVE (HMM Proxy)</p>
+                </div>
+                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
+                  <p className="uppercase tracking-[0.28em]">Selection Logic</p>
+                  <p className="text-right text-sm text-zinc-400">Exact decayed KNN top 5</p>
+                </div>
+              </div>
+            </section>
+          </div>
+          </PaywallWrapper>
+          )}
         </section>
       </div>
     </main>

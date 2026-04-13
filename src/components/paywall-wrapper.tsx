@@ -225,8 +225,12 @@ export function PaywallWrapper({
             className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 sm:mt-8"
             href={checkoutHref}
           >
-            {isPending ? 'Refreshing access...' : 'Upgrade to Pro'}
+            {isPending ? 'Refreshing access...' : 'Start 7-Day Free Trial'}
           </a>
+
+          <p className="mt-2 text-center text-xs text-zinc-600">
+            Full access for 7 days. No charge until day 8. Cancel anytime.
+          </p>
         </div>
       </div>
     </div>
