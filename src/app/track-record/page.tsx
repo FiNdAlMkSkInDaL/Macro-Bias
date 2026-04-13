@@ -7,6 +7,7 @@ import {
   getTrackRecordData,
   type ScoreBucket,
 } from "@/lib/track-record/track-record-data";
+import { getBacktestData } from "@/lib/track-record/backtest-engine";
 import {
   formatDisplayLabel,
   getRegimeAccentClass,
@@ -38,7 +39,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Track Record — Live Algo Performance | Macro Bias",
   description:
-    "Every session scored by the Macro Bias algo, published before the opening bell, recorded without edits. Directional hit rates, regime accuracy, and full daily log — verifiable against public SPY data.",
+    "Every session scored by the Macro Bias algo, published before the opening bell, recorded without edits. Directional hit rates, regime accuracy, full daily log, and model backtest since Jan 2026 — all verifiable against public SPY data.",
   alternates: {
     canonical: `${SITE_URL}/track-record`,
   },
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
     siteName: "Macro Bias",
     title: "Track Record — Live Algo Performance | Macro Bias",
     description:
-      "Verifiable algo performance: directional hit rates, regime accuracy, and full session log. No backtests, no edits.",
+      "Verifiable algo performance: directional hit rates, regime accuracy, full session log, and model backtest since Jan 2026.",
   },
 };
 
@@ -287,8 +288,12 @@ function GradientRow({
 /* ================================================================== */
 
 export default async function TrackRecordPage() {
-  const data = await getTrackRecordData();
+  const [data, backtest] = await Promise.all([
+    getTrackRecordData(),
+    getBacktestData(),
+  ]);
   const hasData = data.totalDays > 0;
+  const hasBacktest = backtest.totalDays > 0;
 
   const bullishCount = data.days.filter((d) => d.score > 0).length;
   const bearishCount = data.days.filter((d) => d.score < 0).length;
@@ -344,6 +349,14 @@ export default async function TrackRecordPage() {
           text: "Yes. Every session lists the exact trade date, SPY closing price, and percentage move. Cross-reference any row against public SPY historical price data from Yahoo Finance, Google Finance, or any market data provider.",
         },
       },
+      {
+        "@type": "Question",
+        name: "How does the backtest work?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The backtest replays the exact same KNN algorithm, features, and parameters against every 2026 trading session. Each day's score uses only price data available before that session's open — no lookahead bias. The backtest shows what the model would have scored if it had been live since January 1, 2026.",
+        },
+      },
     ],
   };
 
@@ -391,7 +404,7 @@ export default async function TrackRecordPage() {
             Algo Performance
           </h1>
           <p className="mt-1 font-[family:var(--font-heading)] text-lg tracking-tight text-zinc-500 sm:text-xl">
-            Session by session. No edits. No backtests.
+            Session by session. No edits. Backtest included.
           </p>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">
             Every score below was published to subscribers before the opening
@@ -617,7 +630,7 @@ export default async function TrackRecordPage() {
 
           {hasData && (
             <div className="-mx-5 mt-6 overflow-x-auto px-5 sm:-mx-8 sm:px-8">
-              <table className="w-full min-w-[600px]">
+              <table className="w-full min-w-[660px]">
                 <thead>
                   <tr>
                     <th className="pb-2 text-left font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
@@ -641,13 +654,16 @@ export default async function TrackRecordPage() {
                     <th className="pb-2 text-center font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
                       Call
                     </th>
+                    <th className="pb-2 text-center font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                      Ovr
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
                   {data.days.map((day, idx) => (
                     <tr
                       key={day.tradeDate}
-                      className="transition-colors hover:bg-white/[0.02]"
+                      className={`transition-colors hover:bg-white/[0.02] ${day.isOverride ? "bg-amber-500/[0.04]" : ""}`}
                     >
                       <td className="py-2.5 font-[family:var(--font-data)] text-xs text-zinc-300">
                         {fmtDate(day.tradeDate)}
@@ -691,6 +707,20 @@ export default async function TrackRecordPage() {
                       <td className="py-2.5 text-center">
                         <CallBadge correct={day.sameDayCorrect} />
                       </td>
+                      <td className="py-2.5 text-center">
+                        {day.isOverride ? (
+                          <span
+                            className="inline-flex h-5 items-center rounded-sm bg-amber-500/15 px-1.5 font-[family:var(--font-data)] text-[9px] font-bold uppercase tracking-wider text-amber-400"
+                            title="Manual macro override was active"
+                          >
+                            OVR
+                          </span>
+                        ) : (
+                          <span className="font-[family:var(--font-data)] text-[10px] text-zinc-700">
+                            —
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -698,6 +728,207 @@ export default async function TrackRecordPage() {
             </div>
           )}
         </section>
+
+        {/* ============================================================ */}
+        {/*  BACKTEST: MODEL SIMULATION                                  */}
+        {/* ============================================================ */}
+        {hasBacktest && (
+          <section className="mt-4 border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.04] via-zinc-950 to-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
+            <div className="flex items-center gap-3">
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-violet-400/80">
+                [ Model Backtest ]
+              </p>
+              <span className="rounded-sm bg-violet-500/15 px-2 py-0.5 font-[family:var(--font-data)] text-[9px] font-bold uppercase tracking-wider text-violet-400">
+                Simulated
+              </span>
+            </div>
+            <h2 className="mt-4 font-[family:var(--font-heading)] text-xl font-bold tracking-tight text-white sm:text-2xl">
+              What if the model had been live since Jan 1?
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+              The exact same KNN algorithm, features, and parameters — replayed
+              against every 2026 trading session using only data available at the
+              time. No lookahead bias: each day&rsquo;s score uses only prior
+              closes as the analog pool.
+            </p>
+
+            {backtest.dateRange && (
+              <p className="mt-3 font-[family:var(--font-data)] text-xs text-zinc-600">
+                {fmtLongDate(backtest.dateRange.from)} —{" "}
+                {fmtLongDate(backtest.dateRange.to)} · {backtest.totalDays}{" "}
+                sessions simulated
+              </p>
+            )}
+
+            {/* Backtest KPIs */}
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              <KpiCard
+                label="Sessions"
+                value={backtest.totalDays.toString()}
+                sub="simulated since Jan 1"
+              />
+              <KpiCard
+                label="Hit Rate"
+                value={fmtPct(backtest.sameDayHitRate)}
+                sub="same-day directional"
+                accent={
+                  backtest.sameDayHitRate !== null &&
+                  backtest.sameDayHitRate >= 50
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                }
+              />
+              <KpiCard
+                label="Fwd 1D Hit"
+                value={fmtPct(backtest.forward1DHitRate)}
+                sub="next-day directional"
+                accent={
+                  backtest.forward1DHitRate !== null &&
+                  backtest.forward1DHitRate >= 50
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                }
+              />
+              <KpiCard
+                label="Edge Spread"
+                value={fmtReturn(backtest.edgeSpread)}
+                sub="bull avg − bear avg"
+                accent={
+                  backtest.edgeSpread !== null && backtest.edgeSpread > 0
+                    ? "text-cyan-400"
+                    : "text-zinc-400"
+                }
+              />
+            </div>
+
+            {/* Backtest regime distribution */}
+            <div className="mt-5">
+              <div className="flex h-2.5 w-full overflow-hidden rounded-[2px]">
+                {backtest.regimeDistribution
+                  .filter((d) => d.count > 0)
+                  .map((d) => (
+                    <div
+                      key={d.label}
+                      className={`${getDistBarClass(d.label)} transition-all`}
+                      style={{ width: `${d.pct}%` }}
+                      title={`${formatDisplayLabel(d.label)}: ${Math.round(d.pct)}%`}
+                    />
+                  ))}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {backtest.regimeDistribution
+                  .filter((d) => d.count > 0)
+                  .map((d) => (
+                    <span
+                      key={d.label}
+                      className="flex items-center gap-1.5 font-[family:var(--font-data)] text-[10px] text-zinc-500"
+                    >
+                      <span
+                        className={`inline-block h-1.5 w-1.5 rounded-full ${getDistDotClass(d.label)}`}
+                      />
+                      {formatDisplayLabel(d.label)} {Math.round(d.pct)}%
+                    </span>
+                  ))}
+              </div>
+            </div>
+
+            {/* Backtest session log (collapsible via details) */}
+            <details className="mt-6 group">
+              <summary className="cursor-pointer font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 transition hover:text-zinc-200">
+                Show full backtest log ({backtest.totalDays} sessions)
+              </summary>
+              <div className="-mx-5 mt-4 overflow-x-auto px-5 sm:-mx-8 sm:px-8">
+                <table className="w-full min-w-[560px]">
+                  <thead>
+                    <tr>
+                      <th className="pb-2 text-left font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        Date
+                      </th>
+                      <th className="pb-2 text-right font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        Score
+                      </th>
+                      <th className="pb-2 font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        &nbsp;
+                      </th>
+                      <th className="pb-2 text-left font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        Regime
+                      </th>
+                      <th className="pb-2 text-right font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        SPY Δ
+                      </th>
+                      <th className="pb-2 text-right font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        Fwd 1D
+                      </th>
+                      <th className="pb-2 text-center font-[family:var(--font-data)] text-[9px] font-normal uppercase tracking-[0.3em] text-zinc-600">
+                        Call
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {backtest.days.map((day, idx) => (
+                      <tr
+                        key={day.tradeDate}
+                        className="transition-colors hover:bg-white/[0.02]"
+                      >
+                        <td className="py-2 font-[family:var(--font-data)] text-xs text-zinc-300">
+                          {fmtDate(day.tradeDate)}
+                        </td>
+                        <td
+                          className={`py-2 text-right font-[family:var(--font-data)] text-xs font-bold ${getRegimeAccentClass(day.biasLabel)}`}
+                        >
+                          {fmtScore(day.score)}
+                        </td>
+                        <td className="py-2 pl-2">
+                          <ScoreBar score={day.score} label={day.biasLabel} />
+                        </td>
+                        <td
+                          className={`py-2 font-[family:var(--font-data)] text-[11px] ${getRegimeAccentClass(day.biasLabel)}`}
+                        >
+                          {formatDisplayLabel(day.biasLabel)}
+                        </td>
+                        <td
+                          className={`py-2 text-right font-[family:var(--font-data)] text-xs ${returnColor(day.spyChangePercent)}`}
+                        >
+                          {fmtReturn(day.spyChangePercent)}
+                        </td>
+                        <td
+                          className={`py-2 text-right font-[family:var(--font-data)] text-xs ${
+                            day.spyForward1DReturn !== null
+                              ? returnColor(day.spyForward1DReturn)
+                              : "text-zinc-700"
+                          }`}
+                        >
+                          {idx === 0 && day.spyForward1DReturn === null ? (
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-600">
+                              pending
+                            </span>
+                          ) : (
+                            fmtReturn(day.spyForward1DReturn)
+                          )}
+                        </td>
+                        <td className="py-2 text-center">
+                          <CallBadge correct={day.sameDayCorrect} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+
+            {/* Backtest caveat */}
+            <p className="mt-6 border-t border-violet-500/10 pt-4 text-xs leading-6 text-zinc-500">
+              <strong className="text-zinc-400">Caveat:</strong> This is a
+              simulation, not live production data. The backtest uses the same
+              model logic, parameters, and features as the live system. Each
+              session score is computed using only data available before that
+              session&rsquo;s open — no lookahead bias. However, backtested
+              results may differ from live results due to data revisions,
+              execution timing, and news-driven overrides that the model
+              cannot anticipate.
+            </p>
+          </section>
+        )}
 
         {/* ============================================================ */}
         {/*  DATA INTEGRITY                                              */}
@@ -818,11 +1049,10 @@ export default async function TrackRecordPage() {
                 Is this backtested or live?
               </h3>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                Every score on this page is from live production. The algo runs
-                before market open each trading day, using only prior-session
-                close data. Scores are published to subscribers and recorded in
-                the database before the bell. No retroactive changes are
-                possible.
+                The &ldquo;Live Sessions&rdquo; section is live production data.
+                The &ldquo;Model Backtest&rdquo; section replays the exact same
+                algo against 2026 trading sessions using only prior data — no
+                lookahead. Both are transparent and verifiable.
               </p>
             </div>
             <div className="py-5">
@@ -845,6 +1075,19 @@ export default async function TrackRecordPage() {
                 Yes. Each row shows the trade date, SPY closing price, and
                 session return. Pull the same dates from Yahoo Finance, Google
                 Finance, or any public data provider. The numbers should match.
+              </p>
+            </div>
+            <div className="py-5">
+              <h3 className="text-sm font-semibold text-white">
+                What does the override column mean?
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Some sessions are marked &ldquo;OVR&rdquo; — a manual macro
+                override was active. These are days where news-driven events
+                (tariffs, Fed announcements, geopolitical shifts) caused the
+                team to flag the model output. The override is noted for
+                transparency but the recorded score is the algo&rsquo;s
+                original output.
               </p>
             </div>
             <div className="py-5 last:pb-0">

@@ -24,6 +24,8 @@ export interface TrackRecordDay {
   sameDayCorrect: boolean | null;
   /** Did the score direction match the next-day SPY move? */
   forward1DCorrect: boolean | null;
+  /** Was a manual macro override active this session? */
+  isOverride: boolean;
   modelVersion: string;
 }
 
@@ -148,7 +150,7 @@ export const getTrackRecordData = cache(
   async (): Promise<TrackRecordData> => {
     const sb = createSupabaseAdminClient();
 
-    const [scoresRes, spyRes, overrideRes] = await Promise.all([
+    const [scoresRes, spyRes, overridesRes] = await Promise.all([
       sb
         .from("macro_bias_scores")
         .select("trade_date, score, bias_label, ticker_changes, model_version")
@@ -160,13 +162,17 @@ export const getTrackRecordData = cache(
         .order("trade_date", { ascending: true }),
       sb
         .from("daily_market_briefings")
-        .select("id", { count: "exact", head: true })
+        .select("trade_date, is_override_active")
         .eq("is_override_active", true),
     ]);
 
     const scores = (scoresRes.data ?? []) as ScoreRow[];
     const spyPrices = (spyRes.data ?? []) as SpyPriceRow[];
-    const overrideCount = overrideRes.count ?? 0;
+    const overrideDates = new Set(
+      ((overridesRes.data ?? []) as { trade_date: string; is_override_active: boolean }[])
+        .map((r) => r.trade_date),
+    );
+    const overrideCount = overrideDates.size;
 
     if (scores.length === 0) {
       return emptyTrackRecord(overrideCount);
@@ -208,6 +214,7 @@ export const getTrackRecordData = cache(
           spyForward1DReturn !== null
             ? directionCorrect(row.score, spyForward1DReturn)
             : null,
+        isOverride: overrideDates.has(row.trade_date),
         modelVersion: row.model_version,
       };
     });
