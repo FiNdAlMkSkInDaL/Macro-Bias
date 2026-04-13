@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { TwitterApi } from 'twitter-api-v2';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { isBlueskyConfigured, publishToBluesky } from './bluesky';
 
 const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails';
 const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/emails\b/gi;
@@ -195,6 +196,7 @@ type DispatchedPost = {
   publishedAt: string | null;
   scheduledAt: string | null;
   tweetId: string | null;
+  blueskyUri: string | null;
   failure?: string;
 };
 
@@ -205,6 +207,11 @@ function delay(ms: number) {
 async function dispatchAllDueScheduledPosts() {
   const checkedAt = new Date().toISOString();
   const duePosts = await getDueScheduledPosts(checkedAt);
+  const blueskyEnabled = isBlueskyConfigured();
+
+  if (blueskyEnabled) {
+    console.log('[social-dispatch] Bluesky is configured. Posts will be cross-posted.');
+  }
 
   if (duePosts.length === 0) {
     return {
@@ -228,6 +235,19 @@ async function dispatchAllDueScheduledPosts() {
     try {
       const tweetContent = buildTweetContent(duePost);
       const tweetId = await publishToX(tweetContent);
+
+      let blueskyUri: string | null = null;
+
+      if (blueskyEnabled) {
+        try {
+          blueskyUri = await publishToBluesky(tweetContent);
+          console.log(`[social-dispatch] Bluesky post published: ${blueskyUri}`);
+        } catch (bskyError) {
+          const bskyMessage = bskyError instanceof Error ? bskyError.message : 'Unknown Bluesky error';
+          console.warn(`[social-dispatch] Bluesky failed for post ${duePost.id} (X succeeded): ${bskyMessage}`);
+        }
+      }
+
       const publishedAt = new Date().toISOString();
 
       await markScheduledPostPublished(duePost.id, publishedAt);
@@ -239,6 +259,7 @@ async function dispatchAllDueScheduledPosts() {
         publishedAt,
         scheduledAt: duePost.scheduled_at,
         tweetId,
+        blueskyUri,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown dispatch failure.';
@@ -251,6 +272,7 @@ async function dispatchAllDueScheduledPosts() {
         publishedAt: null,
         scheduledAt: duePost.scheduled_at,
         tweetId: null,
+        blueskyUri: null,
         failure: message,
       });
     }

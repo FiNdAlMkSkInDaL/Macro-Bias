@@ -18,6 +18,7 @@ import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch'
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
 import { getAppUrl } from '../../../../lib/server-env';
+import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -49,7 +50,7 @@ type XCredentials = {
   apiSecret: string;
 };
 
-type PublishDestination = 'discord' | 'email' | 'x';
+type PublishDestination = 'bluesky' | 'discord' | 'email' | 'x';
 
 type PublishResult = {
   destination: PublishDestination;
@@ -716,6 +717,12 @@ async function handlePublish(request: NextRequest) {
 
     if (xCredentials) {
       publishResults.push(await safePublish('x', () => publishToX(xCredentials, finalPublishPayload)));
+    }
+
+    if (isBlueskyConfigured()) {
+      publishResults.push(
+        await safePublish('bluesky', () => publishToBluesky(finalPublishPayload.xText).then(() => undefined)),
+      );
     }
 
     if (emailDispatchEnabled) {
