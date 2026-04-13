@@ -1,7 +1,8 @@
 import { ImageResponse } from '@vercel/og';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 import { getLatestBiasSnapshot } from '../../../lib/market-data/get-latest-bias-snapshot';
+import { createSupabaseAdminClient } from '../../../lib/supabase/admin';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -76,6 +77,37 @@ function getRegimeTagline(score: number) {
   return 'Rotation is active without commitment. Keep size small and treat breakout attempts with skepticism.';
 }
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+type SnapshotLike = {
+  score: number;
+  bias_label: string;
+  trade_date: string;
+};
+
+async function getSnapshotForDate(date: string): Promise<SnapshotLike | null> {
+  if (!DATE_PATTERN.test(date) || Number.isNaN(Date.parse(date))) {
+    return null;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('daily_market_briefings')
+    .select('quant_score, bias_label, trade_date')
+    .eq('briefing_date', date)
+    .order('generated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    score: data.quant_score as number,
+    bias_label: data.bias_label as string,
+    trade_date: data.trade_date as string,
+  };
+}
+
 async function fetchFont(url: string) {
   const response = await fetch(url, {
     cache: 'force-cache',
@@ -130,10 +162,15 @@ function getOgFonts(): Promise<OgFont[]> {
   return ogFontsPromise;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const dateParam = request.nextUrl.searchParams.get('date');
+    const snapshotPromise = dateParam
+      ? getSnapshotForDate(dateParam)
+      : getLatestBiasSnapshot();
+
     const [snapshot, fonts] = await Promise.all([
-      getLatestBiasSnapshot(),
+      snapshotPromise,
       getOgFonts(),
     ]);
 

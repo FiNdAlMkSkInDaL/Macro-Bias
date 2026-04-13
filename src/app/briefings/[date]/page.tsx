@@ -143,6 +143,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalUrl = `${appUrl}/briefings/${date}`;
   const title = `${formatDisplayLabel(briefing.bias_label)} (${formatSignedScore(briefing.quant_score)}) — ${formatDisplayDate(briefing.briefing_date)}`;
   const description = buildBriefingDescription(briefing);
+  const ogImageUrl = `${appUrl}/api/og?date=${date}`;
 
   return {
     title,
@@ -155,11 +156,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       publishedTime: briefing.generated_at,
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [ogImageUrl],
     },
   };
 }
@@ -198,7 +201,56 @@ export default async function BriefingPage({ params }: PageProps) {
     url: canonicalUrl,
     articleSection: "Daily Macro Briefing",
     author: { "@type": "Organization", name: SITE_NAME },
-    publisher: { "@type": "Organization", name: SITE_NAME },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: appUrl,
+      logo: { "@type": "ImageObject", url: `${appUrl}/icon.png` },
+    },
+    isPartOf: {
+      "@type": "WebSite",
+      name: SITE_NAME,
+      url: appUrl,
+    },
+    about: {
+      "@type": "FinancialProduct",
+      name: "Macro Bias Daily Regime Score",
+      description: `Quantitative macro regime score of ${displayScore} (${displayLabel}) computed across SPY, TLT, GLD, USO, and HYG for ${displayDate}.`,
+      category: "Financial Analytics",
+    },
+    keywords: [
+      "macro bias",
+      "regime score",
+      displayLabel.toLowerCase(),
+      "day trading",
+      "macro regime",
+      briefing.briefing_date,
+    ],
+  };
+
+  const breadcrumbData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: appUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Briefings",
+        item: `${appUrl}/briefings`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: displayDate,
+        item: canonicalUrl,
+      },
+    ],
   };
 
   return (
@@ -208,6 +260,10 @@ export default async function BriefingPage({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbData) }}
       />
 
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-10">

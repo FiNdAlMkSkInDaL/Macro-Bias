@@ -153,6 +153,12 @@ export async function generateMetadata(): Promise<Metadata> {
       description: SITE_DESCRIPTION,
       images: [ogImageUrl],
     },
+    alternates: {
+      types: {
+        "application/rss+xml": "/feed.xml",
+        "application/feed+json": "/feed.json",
+      },
+    },
   };
 }
 

@@ -70,11 +70,81 @@ function getScoreColor(label: string) {
 
 export default async function BriefingsArchivePage() {
   const briefings = await getAllBriefingDates();
+  const appUrl = getAppUrl().replace(/\/$/, "");
+
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What is the Macro Bias score?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The Macro Bias score is a daily quantitative regime signal ranging from -100 to +100 that measures the net directional pressure across SPY, TLT, GLD, USO, and HYG. Positive scores indicate risk-on conditions; negative scores signal risk-off.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How often is the Macro Bias briefing updated?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The briefing updates every trading day. The algo recalculates after market data is available and publishes a fresh regime score, sector playbook, and K-NN diagnostics each session.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What does Risk On vs Risk Off mean for day traders?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Risk On means institutional capital is flowing into equities, credit, and commodities — continuation setups tend to work. Risk Off means capital is moving to bonds and gold — defensive postures and mean-reversion setups are favored.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What markets does the Macro Bias model track?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The model tracks five core ETFs: SPY (equities), TLT (bonds), GLD (gold), USO (oil), and HYG (high-yield credit). It also integrates VIX volatility and technical indicators like RSI, MACD, and moving average crossovers.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is the Macro Bias briefing free?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Each daily briefing includes a free preview with the regime score and top-line alpha protocol. The full briefing with sector scoring, K-NN diagnostics, and system risk protocol requires a premium subscription at $19/month.",
+        },
+      },
+    ],
+  };
+
+  const collectionStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Daily Briefing Archive",
+    description:
+      "Complete archive of daily macro regime briefings from the Macro Bias algo.",
+    url: `${appUrl}/briefings`,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "Macro Bias",
+      url: appUrl,
+    },
+  };
 
   return (
     <main
       className={`${headingFont.variable} ${dataFont.variable} min-h-screen bg-zinc-950 font-[family:var(--font-heading)] text-zinc-100`}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionStructuredData) }}
+      />
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-10">
         <header className="border border-white/10 bg-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
