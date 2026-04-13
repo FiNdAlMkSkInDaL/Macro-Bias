@@ -278,12 +278,20 @@ export default function PricingPage() {
           >
             ← macro-bias.com
           </Link>
-          <Link
-            href="/briefings"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            Briefing Archive →
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/track-record"
+              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Track Record
+            </Link>
+            <Link
+              href="/briefings"
+              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Briefing Archive →
+            </Link>
+          </div>
         </nav>
       </div>
     </main>

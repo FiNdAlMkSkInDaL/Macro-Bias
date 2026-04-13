@@ -282,12 +282,26 @@ export default function HomePage() {
           >
             Macro Bias
           </a>
-          <a
-            className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
-            href="#auth-console"
-          >
-            Sign In
-          </a>
+          <nav className="flex items-center gap-6">
+            <a
+              className="text-sm font-medium text-zinc-500 transition hover:text-white"
+              href="/track-record"
+            >
+              Track Record
+            </a>
+            <a
+              className="text-sm font-medium text-zinc-500 transition hover:text-white"
+              href="/pricing"
+            >
+              Pricing
+            </a>
+            <a
+              className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
+              href="#auth-console"
+            >
+              Sign In
+            </a>
+          </nav>
         </header>
 
         <section
@@ -314,9 +328,9 @@ export default function HomePage() {
             </a>
             <a
               className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
-              href="#the-edge"
+              href="/track-record"
             >
-              View the Model
+              View Track Record
             </a>
           </div>
 

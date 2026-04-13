@@ -195,12 +195,20 @@ export default async function BriefingsArchivePage() {
           >
             Get Free Daily Emails →
           </Link>
-          <Link
-            href="/"
-            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            macro-bias.com
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/track-record"
+              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Track Record
+            </Link>
+            <Link
+              href="/"
+              className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              macro-bias.com
+            </Link>
+          </div>
         </nav>
       </div>
     </main>

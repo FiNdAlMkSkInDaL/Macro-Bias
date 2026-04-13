@@ -1287,6 +1287,20 @@ export default async function DashboardPage() {
           </PaywallWrapper>
           )}
         </section>
+        <nav className="mt-8 flex items-center justify-between border-t border-white/5 py-6">
+          <a
+            href="/"
+            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
+          >
+            ← macro-bias.com
+          </a>
+          <a
+            href="/track-record"
+            className="font-[family:var(--font-data)] text-xs text-zinc-500 transition hover:text-zinc-300"
+          >
+            Track Record →
+          </a>
+        </nav>
       </div>
     </main>
   );
