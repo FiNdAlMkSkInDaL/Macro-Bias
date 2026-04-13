@@ -30,6 +30,12 @@ export interface BacktestSummary {
   avgReturnBearish: number | null;
   edgeSpread: number | null;
   regimeDistribution: { label: BiasLabel; count: number; pct: number }[];
+  /** Equity curves normalised to 100 on day 1 */
+  equityCurve: { date: string; spy: number; strategy: number }[];
+  /** Total strategy return (%) */
+  strategyReturn: number | null;
+  /** Total SPY buy-and-hold return (%) */
+  spyReturn: number | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -136,22 +142,34 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
   const sb = createSupabaseAdminClient();
 
   /* ---- Fetch all price data for the 7 required tickers --------- */
+  /* Supabase defaults to 1000 rows; we need ~2500 per ticker.     */
 
   const tickers = ["SPY", "TLT", "GLD", "USO", "HYG", "VIX", "CPER"] as const;
 
-  const results = await Promise.all(
-    tickers.map((t) =>
-      sb
+  async function fetchAllRows(ticker: string): Promise<PriceRow[]> {
+    const all: PriceRow[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+      const { data } = await sb
         .from("etf_daily_prices")
         .select("trade_date, close")
-        .eq("ticker", t)
-        .order("trade_date", { ascending: true }),
-    ),
-  );
+        .eq("ticker", ticker)
+        .order("trade_date", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (!data || data.length === 0) break;
+      all.push(...(data as PriceRow[]));
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  }
+
+  const results = await Promise.all(tickers.map((t) => fetchAllRows(t)));
 
   const pricesByTicker: Record<string, PriceRow[]> = {};
   tickers.forEach((t, i) => {
-    pricesByTicker[t] = (results[i].data ?? []) as PriceRow[];
+    pricesByTicker[t] = results[i];
   });
 
   /* ---- Build common trade-date intersection -------------------- */
@@ -404,6 +422,34 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     };
   });
 
+  /* ---- Build equity curves (long/short strategy vs buy-and-hold) */
+
+  const equityCurve: { date: string; spy: number; strategy: number }[] = [];
+  let spyEquity = 100;
+  let stratEquity = 100;
+
+  for (let i = 0; i < backtestDays.length; i++) {
+    const day = backtestDays[i];
+    const dailyReturn = day.spyChangePercent / 100;
+    spyEquity *= 1 + dailyReturn;
+
+    if (i > 0) {
+      const prevScore = backtestDays[i - 1].score;
+      if (prevScore > 0) {
+        stratEquity *= 1 + dailyReturn; // long
+      } else if (prevScore < 0) {
+        stratEquity *= 1 - dailyReturn; // short
+      }
+      // neutral → cash
+    }
+
+    equityCurve.push({
+      date: day.tradeDate,
+      spy: Number(spyEquity.toFixed(2)),
+      strategy: Number(stratEquity.toFixed(2)),
+    });
+  }
+
   return {
     days: [...backtestDays].reverse(),
     totalDays: backtestDays.length,
@@ -422,6 +468,9 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     edgeSpread:
       avgBull !== null && avgBear !== null ? avgBull - avgBear : null,
     regimeDistribution,
+    equityCurve,
+    strategyReturn: stratEquity - 100,
+    spyReturn: spyEquity - 100,
   };
 });
 
@@ -451,5 +500,8 @@ function emptyBacktest(): BacktestSummary {
       count: 0,
       pct: 0,
     })),
+    equityCurve: [],
+    strategyReturn: null,
+    spyReturn: null,
   };
 }
