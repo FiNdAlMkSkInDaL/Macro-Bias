@@ -23,6 +23,7 @@ const dataFont = IBM_Plex_Mono({
 });
 
 type AuthMode = "signin" | "signup";
+type EmailSignupState = "idle" | "loading" | "success" | "error";
 
 type Credentials = {
   email: string;
@@ -116,6 +117,43 @@ export default function HomePage() {
   const [redirectPath, setRedirectPath] = useState("/dashboard");
   const [isRedirecting, startTransition] = useTransition();
   const router = useRouter();
+
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterState, setNewsletterState] = useState<EmailSignupState>("idle");
+  const [newsletterMessage, setNewsletterMessage] = useState<string | null>(null);
+
+  async function handleNewsletterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (newsletterState === "loading") return;
+
+    setNewsletterState("loading");
+    setNewsletterMessage(null);
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newsletterEmail }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Unable to subscribe.");
+      }
+
+      setNewsletterState("success");
+      setNewsletterMessage("You're in. First briefing arrives before the next open.");
+      setNewsletterEmail("");
+    } catch (error) {
+      setNewsletterState("error");
+      setNewsletterMessage(
+        error instanceof Error ? error.message : "Unable to subscribe.",
+      );
+    }
+  }
 
   useEffect(() => {
     if (!supabase) {
@@ -280,6 +318,50 @@ export default function HomePage() {
             >
               View the Model
             </a>
+          </div>
+
+          <div className="mt-10 w-full max-w-xl">
+            <p className="mb-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              [ Free Daily Signal — No Account Required ]
+            </p>
+            <form
+              className="flex flex-col gap-3 sm:flex-row"
+              onSubmit={handleNewsletterSubmit}
+            >
+              <label className="sr-only" htmlFor="newsletter-email">
+                Email address
+              </label>
+              <input
+                id="newsletter-email"
+                type="email"
+                required
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                value={newsletterEmail}
+                onChange={(event) => setNewsletterEmail(event.target.value)}
+                className="h-12 flex-1 border border-zinc-800 bg-zinc-950 px-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+              />
+              <button
+                type="submit"
+                disabled={newsletterState === "loading"}
+                className="h-12 border border-white/20 bg-white/5 px-5 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {newsletterState === "loading" ? "Adding..." : "Get Free Alerts"}
+              </button>
+            </form>
+            <p
+              className={`mt-2 text-center text-xs ${
+                newsletterState === "error"
+                  ? "text-red-400"
+                  : newsletterState === "success"
+                    ? "text-emerald-400"
+                    : "text-zinc-600"
+              }`}
+              aria-live="polite"
+            >
+              {newsletterMessage ?? "Daily regime score + alpha protocol. Unsubscribe anytime."}
+            </p>
           </div>
 
           <div className="mt-16 grid w-full max-w-5xl gap-8 border-y border-white/10 py-6 sm:grid-cols-3">

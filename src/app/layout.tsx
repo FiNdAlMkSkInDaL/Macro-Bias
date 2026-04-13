@@ -50,7 +50,7 @@ const structuredData = {
         "@type": "Offer",
         "@id": `${SITE_URL}/#offer-monthly`,
         url: SITE_URL,
-        price: "19",
+        price: "25",
         priceCurrency: "USD",
         availability: "https://schema.org/InStock",
         category: "Subscription",
@@ -58,7 +58,7 @@ const structuredData = {
           "@type": "UnitPriceSpecification",
           billingIncrement: 1,
           billingDuration: 1,
-          price: "19",
+          price: "25",
           priceCurrency: "USD",
           unitCode: "MON",
         },
@@ -88,7 +88,7 @@ const structuredData = {
         {
           "@type": "PropertyValue",
           name: "Pricing model",
-          value: "$19 per month subscription",
+          value: "$25 per month subscription",
         },
         {
           "@type": "PropertyValue",

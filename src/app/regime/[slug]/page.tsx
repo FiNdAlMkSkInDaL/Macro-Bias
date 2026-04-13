@@ -375,7 +375,7 @@ export default async function RegimePage({ params }: PageProps) {
               className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-5 py-2.5 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
               href="/api/checkout?plan=monthly"
             >
-              Upgrade to Premium — $19/mo
+              Upgrade to Premium — $25/mo
             </Link>
           </div>
         </section>

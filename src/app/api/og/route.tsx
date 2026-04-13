@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getLatestBiasSnapshot } from '../../../lib/market-data/get-latest-bias-snapshot';
 import { createSupabaseAdminClient } from '../../../lib/supabase/admin';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
