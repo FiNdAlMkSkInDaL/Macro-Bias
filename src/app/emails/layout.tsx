@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 const SITE_URL = "https://macro-bias.com";
 
 export const metadata: Metadata = {
-  title: "Free Daily Macro Briefing | Macro Bias",
+  title: "Free Daily Market Briefing | Macro Bias",
   description:
-    "Get the algo's macro regime score, K-NN historical analog read, and sector playbook delivered to your inbox every morning before the open. Free.",
+    "Know what the market is doing before you trade. Free daily email with the directional bias, sector breakdown, and historical context. 90 seconds, every morning before the bell.",
   alternates: {
     canonical: `${SITE_URL}/emails`,
   },
@@ -14,15 +14,15 @@ export const metadata: Metadata = {
     type: "website",
     url: `${SITE_URL}/emails`,
     siteName: "Macro Bias",
-    title: "Free Daily Macro Briefing | Macro Bias",
+    title: "Free Daily Market Briefing | Macro Bias",
     description:
-      "Get the algo's macro regime score, K-NN historical analog read, and sector playbook delivered to your inbox every morning before the open. Free.",
+      "Know what the market is doing before you trade. Free daily email with the directional bias, sector breakdown, and historical context. 90 seconds, every morning before the bell.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free Daily Macro Briefing | Macro Bias",
+    title: "Free Daily Market Briefing | Macro Bias",
     description:
-      "Get the algo's macro regime score, K-NN historical analog read, and sector playbook delivered to your inbox every morning before the open. Free.",
+      "Know what the market is doing before you trade. Free daily email with the directional bias, sector breakdown, and historical context. 90 seconds, every morning before the bell.",
   },
 };
 

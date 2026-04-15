@@ -33,7 +33,7 @@
     "id": "daily-intercept-06",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "$QQQ dipped and got bought right back. Bears pressed hard for follow-through and got nothing. That's not weakness — that's a failed breakdown. The model saw this coming."
+    "copy": "$QQQ dipped and got bought right back. Bears pressed hard for follow-through and got nothing. That's not weakness, that's a failed breakdown. The model saw this coming."
   },
   {
     "id": "daily-intercept-07",
@@ -51,7 +51,7 @@
     "id": "daily-intercept-09",
     "category": "daily_intercept",
     "priority": "reserve",
-    "copy": "$QQQ looks strong but zoom in — it's being carried by like 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, the whole index goes with them."
+    "copy": "$QQQ looks strong but zoom in. It's being carried by like 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, the whole index goes with them."
   },
   {
     "id": "daily-intercept-10",
@@ -105,7 +105,7 @@
     "id": "receipt-04",
     "category": "receipt",
     "priority": "primary",
-    "copy": "First red candle of the rally and everyone panicked. The model said don't fear it — this pattern almost always recovers. $QQQ was green by lunch. Sometimes the best trade is just not selling the shakeout."
+    "copy": "First red candle of the rally and everyone panicked. The model said don't fear it, this pattern almost always recovers. $QQQ was green by lunch. Sometimes the best trade is just not selling the shakeout."
   },
   {
     "id": "receipt-05",
@@ -153,7 +153,7 @@
     "id": "educational-fomo-06",
     "category": "educational_fomo",
     "priority": "reserve",
-    "copy": "Every trader thinks their chart is unique. But the market has seen this tape before — hundreds of times. The question isn't what your indicator says. It's what happened next on the days that looked like this one."
+    "copy": "Every trader thinks their chart is unique. But the market has seen this tape before, hundreds of times. The question isn't what your indicator says. It's what happened next on the days that looked like this one."
   },
   {
     "id": "email-signup-01",
@@ -177,7 +177,7 @@
     "id": "email-signup-04",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "Honest question — do you actually know what the overall market is doing right now?\n\nNot what Twitter thinks. Not what CNBC says. What the data across stocks, bonds, and commodities actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails"
+    "copy": "Honest question: do you actually know what the overall market is doing right now?\n\nNot what Twitter thinks. Not what CNBC says. What the data across stocks, bonds, and commodities actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails"
   },
   {
     "id": "email-signup-05",

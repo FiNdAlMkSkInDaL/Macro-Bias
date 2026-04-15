@@ -3,7 +3,7 @@
     "id": "daily-intercept-01",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "The protocol just flagged volatility compression in **$SPY**. Institutional flow keeps absorbing supply. Retail keeps fading the grind. That is how squeeze fuel gets built before expansion. macro-bias.com/emails",
+    "copy": "$SPY is grinding higher and nobody believes it. Sellers keep trying to fade the move but buyers keep absorbing every dip. That's how squeezes build. The model caught it.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-10T13:15:00.000Z",
     "status": "expired"
@@ -12,7 +12,7 @@
     "id": "daily-intercept-02",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "The protocol just flagged credit thaw in **HYG** over **TLT**. Institutional flow is reopening risk. Retail is still positioned for panic. That gap is where regime shifts start. macro-bias.com/emails",
+    "copy": "Credit markets are quietly reopening for risk while everyone is still positioned for a crash. The gap between what bonds are saying and what Twitter is saying is where moves start.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-11T13:15:00.000Z",
     "status": "expired"
@@ -21,7 +21,7 @@
     "id": "educational-fomo-01",
     "category": "educational_fomo",
     "priority": "primary",
-    "copy": "Why are you still trading 15m RSIs? They tell you what already happened. Historical analogs tell you what this regime usually does next. One is lag. One is context. That gap is edge.",
+    "copy": "Why are you still trading 15m RSI? It tells you what already happened. Comparing today to 10 years of similar sessions tells you what usually happens next. One is lag, the other is context.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-11T15:00:00.000Z",
     "status": "expired"
@@ -30,7 +30,7 @@
     "id": "daily-intercept-03",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "The protocol just flagged semis leadership in **$NVDA** and **$SOXX**. Institutional flow is paying for growth again. Retail is calling top too early. That is a trap. macro-bias.com/emails",
+    "copy": "Semis are leading again. $NVDA and $SOXX are catching a bid while everyone is calling the top too early. When growth starts outperforming, fighting it usually costs money.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-12T13:15:00.000Z",
     "status": "expired"
@@ -39,7 +39,7 @@
     "id": "educational-fomo-02",
     "category": "educational_fomo",
     "priority": "primary",
-    "copy": "Why are you still trading 15m RSIs? Momentum signals fire after the move. Analog clusters frame probability before the crowd sees it. Institutional flow trades regime. Retail trades lag. That is why one survives noise.",
+    "copy": "Why are you still trading 15m RSI? Momentum signals fire after the move. Pattern data frames probability before anyone else sees it. One is reactive. The other is context. That's the edge.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-12T15:00:00.000Z",
     "status": "expired"
@@ -111,7 +111,7 @@
     "id": "daily-intercept-09",
     "category": "daily_intercept",
     "priority": "reserve",
-    "copy": "$QQQ dipped and got bought right back. Bears pressed hard for follow-through and got nothing. That's not weakness — that's a failed breakdown. The model saw this coming.",
+    "copy": "$QQQ dipped and got bought right back. Bears pressed hard for follow-through and got nothing. That's not weakness, that's a failed breakdown. The model saw this coming.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-18T13:15:00.000Z",
     "status": "scheduled"
@@ -147,7 +147,7 @@
     "id": "receipt-04",
     "category": "receipt",
     "priority": "primary",
-    "copy": "First red candle of the rally and everyone panicked. The model said don't fear it — this pattern almost always recovers. $QQQ was green by lunch. Sometimes the best trade is just not selling the shakeout.",
+    "copy": "First red candle of the rally and everyone panicked. The model said don't fear it, this pattern almost always recovers. $QQQ was green by lunch. Sometimes the best trade is just not selling the shakeout.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-23T16:00:00.000Z",
     "status": "scheduled"
@@ -201,7 +201,7 @@
     "id": "daily-intercept-12",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "$QQQ looks strong but zoom in — it's being carried by like 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, the whole index goes with them.",
+    "copy": "$QQQ looks strong but zoom in. It's being carried by like 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, the whole index goes with them.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-22T13:15:00.000Z",
     "status": "scheduled"
@@ -264,7 +264,7 @@
     "id": "email-signup-04",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "Honest question — do you actually know what the overall market is doing right now?\n\nNot what Twitter thinks. Not what CNBC says. What the data across stocks, bonds, and commodities actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails",
+    "copy": "Honest question: do you actually know what the overall market is doing right now?\n\nNot what Twitter thinks. Not what CNBC says. What the data across stocks, bonds, and commodities actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-22T14:30:00.000Z",
     "status": "scheduled"
@@ -276,6 +276,285 @@
     "copy": "The best traders I know don't start the day with a chart.\n\nThey start with context. Is the market risk-on or risk-off? Where is money actually flowing? What happened on days that looked like today?\n\nThat's what I send every morning for free. No account needed. Just your inbox.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-25T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Oil just moved and nobody's talking about it. $USO is quietly repricing inflation risk while everyone watches $SPY. The model caught this shift days ago. Most traders won't notice until it's too late.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-01T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-email-signup-01",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Every morning before the bell I send a free email.\n\nIt tells you one thing: is the market risk-on, risk-off, or neutral today? Based on 9 ETFs and 10 years of data, not vibes.\n\n90-second read. Might save you from your worst trade of the day.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-01T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Money is quietly moving into utilities ($XLU) while the indexes look fine on the surface. When the big money starts hiding before anything breaks, that's usually worth paying attention to.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-04T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-receipt-01",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "Yesterday the model said risk-on. $SPY gapped up and never looked back. Traders who faded the open got smoked. The data had the answer before the bell even rang. That's what 10 years of pattern matching does.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-04T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The dollar ($DXY) is weakening and that's usually good for growth stocks. The model flipped to this read two days ago. Most of Twitter still hasn't noticed.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-05T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-04",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "VIX structure just changed. The big players stopped pushing for more upside. Meanwhile everyone on here is still calling for breakout. That disconnect usually ends badly for late chasers.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-06T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-receipt-02",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "$NVDA led. $QQQ followed. The model said growth would hold as long as credit stayed open. It did. Dip buyers won. Everyone waiting for a \"cleaner entry\" is still waiting.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-06T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-educational-fomo-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "RSI overbought doesn't mean sell. $SPY has gone overbought and kept running for weeks during strong trends. The only way to know if it's early or late is comparing today to similar setups from the past 10 years.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-06T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-05",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Everyone sees $SPY chopping sideways and gets bored. But underneath, money is rotating into new sectors. The index looks dead. The internals look like a setup. The model sees it. Do you?",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-07T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-email-signup-02",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "I built a model that compares today's market to 10 years of similar sessions.\n\nEvery morning it tells me: risk-on, risk-off, or neutral. Which sectors are leading. Where the money is actually going.\n\nI send it as a free daily email. No paywall on the main read.\n\nIf you trade US stocks, this is the premarket context you're missing.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-07T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-06",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "$QQQ dipped and got bought right back. Bears pressed hard for follow-through and got nothing. That's not weakness, that's a failed breakdown. The model saw this coming.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-08T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-receipt-03",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The model tagged a low-vol squeeze setup before $SPY broke higher. Half of Twitter was shorting resistance. The pattern said squeeze. It squeezed. This is why you check the data before you take the trade.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-08T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-07",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "$IWM is diverging from $SPY. Small caps are quietly getting accumulated while the index goes nowhere. Most people tune out when the tape gets boring. That's usually where the next move starts.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-11T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-educational-fomo-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Indicators tell you what price already did. Pattern matching tells you what price usually does next.\n\nThat's the difference between reacting and anticipating. One of those makes money consistently.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-11T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-08",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "Gold ($GLD) is accelerating while stocks are still going up. That doesn't usually last. Someone big is buying protection while still riding equities. Worth watching closely.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-12T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-receipt-04",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "First red candle of the rally and everyone panicked. The model said don't fear it, this pattern almost always recovers. $QQQ was green by lunch. Sometimes the best trade is just not selling the shakeout.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-12T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-09",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "$QQQ looks strong but zoom in. It's being carried by like 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, the whole index goes with them.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-13T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-email-signup-03",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Most market newsletters give you someone's opinion.\n\nThis one gives you a number.\n\nIt's calculated from 9 ETFs across stocks, bonds, volatility, commodities, and credit. Matched against 10 years of similar days. Then I break down what it means in plain English.\n\nFree. Daily. Before the open.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-13T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-10",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "Bonds ($TLT) are getting bid while stocks are still green. The big money is quietly buying insurance. Surface says bullish. Bond market says be careful. I trust the bond market.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-14T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-receipt-05",
+    "category": "receipt",
+    "priority": "reserve",
+    "copy": "Credit held. Volatility stayed low. $SPY kept grinding higher. The model said continuation, not crash. That's exactly what happened. Bears have been calling the top for three weeks and losing money the whole time.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-14T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-educational-fomo-03",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "The market doesn't care about your favorite indicator. It rewards you for knowing when conditions are dangerous vs. when they're normal.\n\nThat's what 10 years of pattern data gives you. Context your chart can't.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-14T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-11",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "Energy ($XLE) is waking up while $SPY goes nowhere. Nobody's paying attention to sector rotation right now. That's exactly when it works.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-15T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-12",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "Credit spreads ($HYG vs $TLT) just tightened while everyone is still positioned for panic. The bond market is telling you the risk-off trade is getting crowded. Most traders won't see this for days.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-18T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-receipt-06",
+    "category": "receipt",
+    "priority": "reserve",
+    "copy": "The model flagged semis before the move hit $QQQ. By the time Twitter saw it, the easy money was made. That's the problem with trading what already happened instead of what usually happens next.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-18T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-13",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "Copper ($CPER) just broke out and that usually leads the broader market by a few days. Nobody on FinTwit is watching base metals right now. That's exactly why it matters.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-19T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-educational-fomo-04",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "\"RSI is overbought so I'm shorting.\"\n\nHow many times has that cost you money? Overbought can stay overbought for weeks in a strong market. The only way to know is to compare today's setup to what actually happened in similar ones.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-19T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-email-signup-04",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Honest question: do you actually know what the overall market is doing right now?\n\nNot what Twitter thinks. Not what CNBC says. What the data across stocks, bonds, and commodities actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-19T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-daily-intercept-14",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "$SPY is flat on the day but the internals are a mess. Advancers vs. decliners don't match the surface. The model reads this as distribution, not consolidation. Big difference.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-20T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-educational-fomo-05",
+    "category": "educational_fomo",
+    "priority": "reserve",
+    "copy": "You don't need more indicators. You need to know if today looks like a day that usually rips or usually fades. That's it. That's the whole edge.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-22T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-email-signup-05",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "The best traders I know don't start the day with a chart.\n\nThey start with context. Is the market risk-on or risk-off? Where is money actually flowing? What happened on days that looked like today?\n\nThat's what I send every morning for free. No account needed. Just your inbox.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-25T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "draft-educational-fomo-06",
+    "category": "educational_fomo",
+    "priority": "reserve",
+    "copy": "Every trader thinks their chart is unique. But the market has seen this tape before, hundreds of times. The question isn't what your indicator says. It's what happened next on the days that looked like this one.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-27T15:00:00.000Z",
     "status": "scheduled"
   }
 ]
