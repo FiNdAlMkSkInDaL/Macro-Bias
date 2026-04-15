@@ -1,0 +1,47 @@
+﻿[
+  {
+    "id": "daily-intercept-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged volatility compression in **$SPY**. Institutional flow keeps absorbing supply. Retail keeps fading the grind. That is how squeeze fuel gets built before expansion. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-10T13:15:00.000Z",
+    "status": "expired"
+  },
+  {
+    "id": "daily-intercept-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged credit thaw in **HYG** over **TLT**. Institutional flow is reopening risk. Retail is still positioned for panic. That gap is where regime shifts start. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-11T13:15:00.000Z",
+    "status": "expired"
+  },
+  {
+    "id": "educational-fomo-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? They tell you what already happened. Historical analogs tell you what this regime usually does next. One is lag. One is context. That gap is edge.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-11T15:00:00.000Z",
+    "status": "expired"
+  },
+  {
+    "id": "daily-intercept-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged semis leadership in **$NVDA** and **$SOXX**. Institutional flow is paying for growth again. Retail is calling top too early. That is a trap. macro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-12T13:15:00.000Z",
+    "status": "expired"
+  },
+  {
+    "id": "educational-fomo-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Momentum signals fire after the move. Analog clusters frame probability before the crowd sees it. Institutional flow trades regime. Retail trades lag. That is why one survives noise.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-12T15:00:00.000Z",
+    "status": "expired"
+  }
+]

@@ -48,7 +48,7 @@
     "id": "daily-intercept-04",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "Oil just moved and nobody's talking about it. $USO is quietly repricing inflation risk while everyone watches $SPY. The model caught this shift days ago. Most traders won't notice until it's too late.",
+    "copy": "The protocol just flagged energy pressure in **USO**. Institutional flow is repricing inflation risk. Retail still thinks the move is headline noise. Regime shifts do not ring bells. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-13T13:15:00.000Z",
     "status": "scheduled"
@@ -57,7 +57,7 @@
     "id": "daily-intercept-05",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "Money is quietly moving into utilities ($XLU) while the indexes look fine on the surface. When the big money starts hiding before anything breaks, that's usually worth paying attention to.",
+    "copy": "The protocol just flagged defensive rotation into **XLU**. Institutional flow is hiding without dumping index beta. Retail reads calm. The protocol reads stress under the surface. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-14T13:15:00.000Z",
     "status": "scheduled"
@@ -66,7 +66,7 @@
     "id": "receipt-01",
     "category": "receipt",
     "priority": "primary",
-    "copy": "Yesterday the model said risk-on. $SPY gapped up and never looked back. Traders who faded the open got smoked. The data had the answer before the bell even rang. That's what 10 years of pattern matching does.",
+    "copy": "The K-NN analog didn't miss. **RISK ON** printed on the open. **$SPY** reclaimed trend. Institutional flow kept bidding every pullback. Retail faded the move and got run over. The protocol had the map before the tape confirmed it.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-14T16:00:00.000Z",
     "status": "scheduled"
@@ -75,7 +75,7 @@
     "id": "daily-intercept-06",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "The dollar ($DXY) is weakening and that's usually good for growth stocks. The model flipped to this read two days ago. Most of Twitter still hasn't noticed.",
+    "copy": "The protocol just flagged dollar softness in **DXY**. Institutional flow is leaning into duration and growth. Retail is still trading yesterday's fear. That lag becomes the trap. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-15T13:15:00.000Z",
     "status": "scheduled"
@@ -84,7 +84,7 @@
     "id": "daily-intercept-07",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "VIX structure just changed. The big players stopped pushing for more upside. Meanwhile everyone on here is still calling for breakout. That disconnect usually ends badly for late chasers.",
+    "copy": "The protocol just flagged **HIGH ALERT** in **VIX** structure. Institutional flow stopped pressing upside beta. Retail still wants breakout continuation. That is how regime shifts punish late hands. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-16T13:15:00.000Z",
     "status": "scheduled"
@@ -93,7 +93,7 @@
     "id": "receipt-02",
     "category": "receipt",
     "priority": "primary",
-    "copy": "$NVDA led. $QQQ followed. The model said growth would hold as long as credit stayed open. It did. Dip buyers won. Everyone waiting for a \"cleaner entry\" is still waiting.",
+    "copy": "The K-NN analog didn't miss. **$NVDA** led. **$QQQ** followed. The model said growth would absorb macro noise if credit stayed open. It did. Institutional flow bought the dip. Retail waited for a cleaner chart that never came.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-16T16:00:00.000Z",
     "status": "scheduled"
@@ -102,7 +102,7 @@
     "id": "daily-intercept-08",
     "category": "daily_intercept",
     "priority": "reserve",
-    "copy": "Everyone sees $SPY chopping sideways and gets bored. But underneath, money is rotating into new sectors. The index looks dead. The internals look like a setup. The model sees it. Do you?",
+    "copy": "The protocol just flagged breadth repair under **$SPY**. Institutional flow is rotating beneath the index, not chasing headlines. Retail sees chop. The model sees base-building. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-17T13:15:00.000Z",
     "status": "scheduled"
@@ -111,7 +111,7 @@
     "id": "daily-intercept-09",
     "category": "daily_intercept",
     "priority": "reserve",
-    "copy": "$QQQ dipped and got bought right back. Bears pressed hard for follow-through and got nothing. That's not weakness — that's a failed breakdown. The model saw this coming.",
+    "copy": "The protocol just flagged failed downside acceptance in **$QQQ**. Institutional flow bought the air pocket fast. Retail kept pressing for follow-through. That is what a trap looks like. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-18T13:15:00.000Z",
     "status": "scheduled"
@@ -120,7 +120,7 @@
     "id": "educational-fomo-03",
     "category": "educational_fomo",
     "priority": "primary",
-    "copy": "RSI overbought doesn't mean sell. $SPY has gone overbought and kept running for weeks during strong trends. The only way to know if it's early or late is comparing today to similar setups from the past 10 years.",
+    "copy": "Why are you still trading 15m RSIs? A stretched oscillator does not tell you if **$SPY** is early trend or late trend. Historical analogs do. Regime context beats isolated signals. Every time.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-18T15:00:00.000Z",
     "status": "scheduled"
@@ -129,7 +129,7 @@
     "id": "educational-fomo-04",
     "category": "educational_fomo",
     "priority": "primary",
-    "copy": "Indicators tell you what price already did. Pattern matching tells you what price usually does next.\n\nThat's the difference between reacting and anticipating. One of those makes money consistently.",
+    "copy": "Why are you still trading 15m RSIs? Indicators describe candles. Analog models compare today's tape to years of institutional behavior. That is how you separate real breakout fuel from retail bait.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-19T15:00:00.000Z",
     "status": "scheduled"
@@ -138,7 +138,7 @@
     "id": "receipt-03",
     "category": "receipt",
     "priority": "primary",
-    "copy": "The model tagged a low-vol squeeze setup before $SPY broke higher. Half of Twitter was shorting resistance. The pattern said squeeze. It squeezed. This is why you check the data before you take the trade.",
+    "copy": "The K-NN analog didn't miss. The system tagged a low-vol squeeze before **$SPY** broke higher. Institutional flow kept lifting offers. Retail kept shorting resistance. Same trap. Same outcome. Different day.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-21T16:00:00.000Z",
     "status": "scheduled"
@@ -147,7 +147,7 @@
     "id": "receipt-04",
     "category": "receipt",
     "priority": "primary",
-    "copy": "First red candle of the rally and everyone panicked. The model said don't fear it — this pattern almost always recovers. $QQQ was green by lunch. Sometimes the best trade is just not selling the shakeout.",
+    "copy": "The K-NN analog didn't miss. The analog said do not fear the first red candle in a **RISK ON** regime. It was noise. **$QQQ** rotated higher by lunch. Institutional flow stayed in control. Retail sold the shakeout.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-23T16:00:00.000Z",
     "status": "scheduled"
@@ -156,7 +156,7 @@
     "id": "educational-fomo-05",
     "category": "educational_fomo",
     "priority": "reserve",
-    "copy": "The market doesn't care about your favorite indicator. It rewards you for knowing when conditions are dangerous vs. when they're normal.\n\nThat's what 10 years of pattern data gives you. Context your chart can't.",
+    "copy": "Why are you still trading 15m RSIs? The market does not pay for indicators. It pays for regime awareness. Historical analogs show when price action is normal, dangerous, or ready to trend. That is the difference.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-25T15:00:00.000Z",
     "status": "scheduled"
@@ -165,7 +165,7 @@
     "id": "receipt-05",
     "category": "receipt",
     "priority": "reserve",
-    "copy": "Credit held. Volatility stayed low. $SPY kept grinding higher. The model said continuation, not crash. That's exactly what happened. Bears have been calling the top for three weeks and losing money the whole time.",
+    "copy": "The K-NN analog didn't miss. Credit held. Vol stayed contained. **$SPY** kept walking higher. The protocol expected continuation, not collapse. Institutional flow respected the regime. Retail argued with it.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-28T16:00:00.000Z",
     "status": "scheduled"
@@ -174,7 +174,7 @@
     "id": "receipt-06",
     "category": "receipt",
     "priority": "reserve",
-    "copy": "The model flagged semis before the move hit $QQQ. By the time Twitter saw it, the easy money was made. That's the problem with trading what already happened instead of what usually happens next.",
+    "copy": "The K-NN analog didn't miss. The model flagged semis before the catch-up trade hit **$QQQ**. Institutional flow moved first. Retail called it overextended. Then price proved who had the better data.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-30T16:00:00.000Z",
     "status": "scheduled"
@@ -183,7 +183,7 @@
     "id": "daily-intercept-10",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "$IWM is diverging from $SPY. Small caps are quietly getting accumulated while the index goes nowhere. Most people tune out when the tape gets boring. That's usually where the next move starts.",
+    "copy": "The protocol just flagged small cap divergence in **$IWM**. Institutional flow is rotating beneath the surface while the index stays flat. Retail sees dead tape. The model sees accumulation. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-20T13:15:00.000Z",
     "status": "scheduled"
@@ -192,7 +192,7 @@
     "id": "daily-intercept-11",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "Gold ($GLD) is accelerating while stocks are still going up. That doesn't usually last. Someone big is buying protection while still riding equities. Worth watching closely.",
+    "copy": "The protocol just flagged gold acceleration in **$GLD**. Institutional flow is bidding protection while still pressing equity beta. Retail calls it hedging. The protocol calls it positioning for regime shift. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-21T13:15:00.000Z",
     "status": "scheduled"
@@ -201,7 +201,7 @@
     "id": "daily-intercept-12",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "$QQQ looks strong but zoom in — it's being carried by like 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, the whole index goes with them.",
+    "copy": "The protocol just flagged tech concentration risk in **$QQQ**. Institutional flow is narrowing into three names. Retail is chasing the index. That is not a trend. That is a trap waiting for rotation. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-22T13:15:00.000Z",
     "status": "scheduled"
@@ -210,7 +210,7 @@
     "id": "daily-intercept-13",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "Bonds ($TLT) are getting bid while stocks are still green. The big money is quietly buying insurance. Surface says bullish. Bond market says be careful. I trust the bond market.",
+    "copy": "The protocol just flagged duration demand in **$TLT**. Institutional flow is adding bonds while equity stays bid. Retail reads bullish. The model reads insurance accumulation under the surface. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-23T13:15:00.000Z",
     "status": "scheduled"
@@ -219,7 +219,7 @@
     "id": "daily-intercept-14",
     "category": "daily_intercept",
     "priority": "primary",
-    "copy": "Energy ($XLE) is waking up while $SPY goes nowhere. Nobody's paying attention to sector rotation right now. That's exactly when it works.",
+    "copy": "The protocol just flagged energy divergence in **$XLE**. Institutional flow is paying for the complex while **$SPY** treads water. Retail ignores sector rotation. That is exactly when the energy trade works. macro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-24T13:15:00.000Z",
     "status": "scheduled"
@@ -228,7 +228,7 @@
     "id": "educational-fomo-06",
     "category": "educational_fomo",
     "priority": "primary",
-    "copy": "\"RSI is overbought so I'm shorting.\"\n\nHow many times has that cost you money? Overbought can stay overbought for weeks in a strong market. The only way to know is to compare today's setup to what actually happened in similar ones.",
+    "copy": "Why are you still trading 15m RSIs? Overbought means nothing without regime context. Historical analogs tell you if overbought is fuel or failure. That is the difference between noise and signal.",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-26T15:00:00.000Z",
     "status": "scheduled"
@@ -237,7 +237,7 @@
     "id": "email-signup-01",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "Every morning before the bell I send a free email.\n\nIt tells you one thing: is the market risk-on, risk-off, or neutral today? Based on 9 ETFs and 10 years of data, not vibes.\n\n90-second read. Might save you from your worst trade of the day.\n\nmacro-bias.com/emails",
+    "copy": "Every morning before the bell I send a free email.\n\nNo fluff. No upsell wall. Just the algo's macro bias score, the regime read, and what the K-NN model says today's tape looks like historically.\n\nTakes 90 seconds to read. Might save you from your worst trade of the day.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-14T14:30:00.000Z",
     "status": "scheduled"
@@ -246,7 +246,7 @@
     "id": "email-signup-02",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "I built a model that compares today's market to 10 years of similar sessions.\n\nEvery morning it tells me: risk-on, risk-off, or neutral. Which sectors are leading. Where the money is actually going.\n\nI send it as a free daily email. No paywall on the main read.\n\nIf you trade US stocks, this is the premarket context you're missing.\n\nmacro-bias.com/emails",
+    "copy": "I built an algo that compares today's market to 10 years of similar sessions.\n\nEvery morning it tells me: risk on, risk off, or neutral. Which sectors are leading. Where institutional flow is hiding.\n\nI send the output as a free daily email. No paywall on the core read.\n\nIf you trade US equities, this is the premarket context you're missing.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-16T14:30:00.000Z",
     "status": "scheduled"
@@ -255,7 +255,7 @@
     "id": "email-signup-03",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "Most market newsletters give you someone's opinion.\n\nThis one gives you a number.\n\nIt's calculated from 9 ETFs across stocks, bonds, volatility, commodities, and credit. Matched against 10 years of similar days. Then I break down what it means in plain English.\n\nFree. Daily. Before the open.\n\nmacro-bias.com/emails",
+    "copy": "Most market newsletters give you someone's opinion.\n\nThis one gives you a number.\n\nThe Macro Bias score is calculated from 9 ETFs across equity, credit, volatility, commodities, and rates. The K-NN model matches today's regime to historical analogs. Then I write what it means in plain English.\n\nFree. Daily. Before the open.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-19T14:00:00.000Z",
     "status": "scheduled"
@@ -264,7 +264,7 @@
     "id": "email-signup-04",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "Honest question — do you actually know what the overall market is doing right now?\n\nNot what Twitter thinks. Not what CNBC says. What the data across stocks, bonds, and commodities actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails",
+    "copy": "Honest question: do you know what regime the market is in right now?\n\nNot what Twitter thinks. Not what CNBC says. What the cross-asset data actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-22T14:30:00.000Z",
     "status": "scheduled"
@@ -273,7 +273,7 @@
     "id": "email-signup-05",
     "category": "email_signup",
     "priority": "primary",
-    "copy": "The best traders I know don't start the day with a chart.\n\nThey start with context. Is the market risk-on or risk-off? Where is money actually flowing? What happened on days that looked like today?\n\nThat's what I send every morning for free. No account needed. Just your inbox.\n\nmacro-bias.com/emails",
+    "copy": "The best traders I know don't start the day with a chart.\n\nThey start with context. What is the regime? Where is flow going? What does the historical analog say?\n\nThat's what the Macro Bias daily email gives you. Free. No account needed. Just your email and you get the algo's read every morning.\n\nmacro-bias.com/emails",
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-04-25T14:00:00.000Z",
     "status": "scheduled"

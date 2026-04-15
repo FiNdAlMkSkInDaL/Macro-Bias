@@ -608,89 +608,128 @@ async function handlePublish(request: NextRequest) {
     const briefingDate = new Date().toISOString().slice(0, 10);
     const briefingAlreadyGenerated = await hasDailyBriefingForDate(briefingDate);
 
-    if (briefingAlreadyGenerated) {
-      console.log(`[publish-cron] Briefing already generated for ${briefingDate}; skipping duplicate run.`);
-      return NextResponse.json(
-        {
-          briefingDate,
-          message: 'Briefing already generated for today.',
-          ok: true,
-          status: 'skipped',
-        },
-        { status: 200 },
-      );
-    }
-
-    console.log('[publish-cron] Starting upsertDailyMarketData()');
-    const upsertedBias = await upsertDailyMarketData();
-    console.log(
-      `[publish-cron] Finished upsertDailyMarketData() with trade date ${upsertedBias.tradeDate}`,
-    );
-
     const discordWebhookUrl = DISCORD_PUBLISHING_ENABLED
       ? getOptionalServerEnv('DISCORD_PUBLISH_WEBHOOK_URL')
       : null;
-    const emailDispatchEnabled = true;
     const resendApiKeyConfigured = Boolean(getOptionalServerEnv('RESEND_API_KEY'));
     const xCredentials = getXCredentials();
 
-    if (emailDispatchEnabled && !resendApiKeyConfigured) {
-      return NextResponse.json(
-        { error: 'RESEND_API_KEY is required while email dispatch is enabled.' },
-        { status: 500 },
-      );
-    }
-
-    if (!discordWebhookUrl && !emailDispatchEnabled && !xCredentials) {
+    if (!discordWebhookUrl && !resendApiKeyConfigured && !xCredentials && !isBlueskyConfigured()) {
       return NextResponse.json(
         {
           error:
-            'No active publish destinations are configured. Discord publishing is temporarily disabled, so configure RESEND_API_KEY and/or the X API credentials to enable cron publishing.',
+            'No active publish destinations are configured. Set RESEND_API_KEY, X API credentials, and/or Bluesky credentials to enable cron publishing.',
         },
         { status: 500 },
       );
     }
 
-    const snapshots = await getRecentSnapshots();
+    let dailyBriefing: Awaited<ReturnType<typeof generateDailyBriefing>>;
+    let latestSnapshot: StoredBiasSnapshot;
+    const warnings: string[] = [];
 
-    if (snapshots.length === 0) {
-      return NextResponse.json({ error: 'No macro bias snapshots are available to publish.' }, { status: 404 });
-    }
-
-    let latestSnapshotIndex = 0;
-
-    while (
-      latestSnapshotIndex < snapshots.length &&
-      !isValidSnapshot(snapshots[latestSnapshotIndex])
-    ) {
-      console.warn(
-        `[publish-cron] Skipping snapshot for ${snapshots[latestSnapshotIndex].trade_date} - missing or incomplete data (market holiday?). Stepping back to prior session.`,
+    if (briefingAlreadyGenerated) {
+      // Briefing already generated today – load it from the database for re-publishing.
+      // This handles the case where a previous run generated the briefing but publishing
+      // (email, X, or Bluesky) failed.
+      console.log(
+        `[publish-cron] Briefing already generated for ${briefingDate}; attempting to re-publish.`,
       );
-      latestSnapshotIndex += 1;
-    }
 
-    if (latestSnapshotIndex >= snapshots.length) {
-      return NextResponse.json(
-        { error: 'No valid macro bias snapshots found. The most recent trading sessions may all be missing data.' },
-        { status: 404 },
+      const snapshots = await getRecentSnapshots();
+
+      if (snapshots.length === 0) {
+        return NextResponse.json(
+          { error: 'Briefing generated but no macro bias snapshots available for publish payload.' },
+          { status: 404 },
+        );
+      }
+
+      let latestSnapshotIndex = 0;
+      while (
+        latestSnapshotIndex < snapshots.length &&
+        !isValidSnapshot(snapshots[latestSnapshotIndex])
+      ) {
+        latestSnapshotIndex += 1;
+      }
+
+      if (latestSnapshotIndex >= snapshots.length) {
+        return NextResponse.json(
+          { error: 'No valid macro bias snapshots found for re-publish.' },
+          { status: 404 },
+        );
+      }
+
+      latestSnapshot = snapshots[latestSnapshotIndex];
+
+      // Re-generate the briefing from context so we have all the data needed for publishing
+      dailyBriefing = await generateDailyBriefing(latestSnapshot, snapshots);
+      warnings.push('Re-publish run: briefing was already persisted from a prior invocation.');
+    } else {
+      // Normal flow: sync market data, generate, persist, then publish.
+      let upsertSucceeded = false;
+
+      try {
+        console.log('[publish-cron] Starting upsertDailyMarketData()');
+        const upsertedBias = await upsertDailyMarketData();
+        console.log(
+          `[publish-cron] Finished upsertDailyMarketData() with trade date ${upsertedBias.tradeDate}`,
+        );
+        upsertSucceeded = true;
+      } catch (upsertError) {
+        const upsertMessage = upsertError instanceof Error ? upsertError.message : 'Unknown market data sync failure.';
+        console.warn(`[publish-cron] upsertDailyMarketData() failed: ${upsertMessage}. Falling back to cached snapshots.`);
+        warnings.push(`Market data sync failed (falling back to cached data): ${upsertMessage}`);
+      }
+
+      const snapshots = await getRecentSnapshots();
+
+      if (snapshots.length === 0) {
+        return NextResponse.json(
+          {
+            error: upsertSucceeded
+              ? 'No macro bias snapshots are available to publish.'
+              : 'Market data sync failed and no cached snapshots are available.',
+          },
+          { status: 404 },
+        );
+      }
+
+      let latestSnapshotIndex = 0;
+
+      while (
+        latestSnapshotIndex < snapshots.length &&
+        !isValidSnapshot(snapshots[latestSnapshotIndex])
+      ) {
+        console.warn(
+          `[publish-cron] Skipping snapshot for ${snapshots[latestSnapshotIndex].trade_date} - missing or incomplete data (market holiday?). Stepping back to prior session.`,
+        );
+        latestSnapshotIndex += 1;
+      }
+
+      if (latestSnapshotIndex >= snapshots.length) {
+        return NextResponse.json(
+          { error: 'No valid macro bias snapshots found. The most recent trading sessions may all be missing data.' },
+          { status: 404 },
+        );
+      }
+
+      latestSnapshot = snapshots[latestSnapshotIndex];
+      console.log('[publish-cron] Starting generateDailyBriefing()');
+      dailyBriefing = await generateDailyBriefing(latestSnapshot, snapshots);
+      console.log(
+        `[publish-cron] Finished generateDailyBriefing() with overrideActive=${dailyBriefing.isOverrideActive} via ${dailyBriefing.generatedBy}`,
       );
+
+      console.log('[publish-cron] Starting persistDailyBriefing()');
+      await persistDailyBriefing({
+        briefing: dailyBriefing,
+        briefingDate,
+      });
+      console.log(`[publish-cron] Finished persistDailyBriefing() for ${briefingDate}`);
     }
 
-    const latestSnapshot = snapshots[latestSnapshotIndex];
-    console.log('[publish-cron] Starting generateDailyBriefing()');
-    const dailyBriefing = await generateDailyBriefing(latestSnapshot, snapshots);
-    console.log(
-      `[publish-cron] Finished generateDailyBriefing() with overrideActive=${dailyBriefing.isOverrideActive} via ${dailyBriefing.generatedBy}`,
-    );
-
-    console.log('[publish-cron] Starting persistDailyBriefing()');
-    await persistDailyBriefing({
-      briefing: dailyBriefing,
-      briefingDate,
-    });
-    console.log(`[publish-cron] Finished persistDailyBriefing() for ${briefingDate}`);
-
-    const failures = [...dailyBriefing.warnings];
+    const failures = [...warnings, ...dailyBriefing.warnings];
     const publishPayload = buildPublishPayload(
       latestSnapshot,
       dailyBriefing.quant.historicalAnalogs,
@@ -726,7 +765,7 @@ async function handlePublish(request: NextRequest) {
       );
     }
 
-    if (emailDispatchEnabled) {
+    if (resendApiKeyConfigured) {
       publishResults.push(
         await safePublish('email', async () => {
           const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
@@ -782,6 +821,9 @@ async function handlePublish(request: NextRequest) {
           );
         }),
       );
+    } else {
+      console.warn('[publish-cron] RESEND_API_KEY is not configured; skipping email dispatch.');
+      failures.push('Email dispatch skipped: RESEND_API_KEY is not configured.');
     }
 
     const publishedTo = publishResults.flatMap((result) => (result.ok ? [result.destination] : []));
@@ -802,6 +844,7 @@ async function handlePublish(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to publish the daily Macro Bias payload.';
+    console.error(`[publish-cron] Fatal error: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

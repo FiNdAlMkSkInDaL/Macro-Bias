@@ -1,0 +1,188 @@
+[
+  {
+    "id": "daily-intercept-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged volatility compression in **$SPY**. Institutional flow keeps absorbing supply. Retail keeps fading the grind. That is how squeeze fuel gets built before expansion. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged credit thaw in **HYG** over **TLT**. Institutional flow is reopening risk. Retail is still positioned for panic. That gap is where regime shifts start. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged semis leadership in **$NVDA** and **$SOXX**. Institutional flow is paying for growth again. Retail is calling top too early. That is a trap. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-04",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged energy pressure in **USO**. Institutional flow is repricing inflation risk. Retail still thinks the move is headline noise. Regime shifts do not ring bells. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-05",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged defensive rotation into **XLU**. Institutional flow is hiding without dumping index beta. Retail reads calm. The protocol reads stress under the surface. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-06",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged dollar softness in **DXY**. Institutional flow is leaning into duration and growth. Retail is still trading yesterday's fear. That lag becomes the trap. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-07",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged **HIGH ALERT** in **VIX** structure. Institutional flow stopped pressing upside beta. Retail still wants breakout continuation. That is how regime shifts punish late hands. macro-bias.com/emails"
+  },
+  {
+    "id": "receipt-01",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. **RISK ON** printed on the open. **$SPY** reclaimed trend. Institutional flow kept bidding every pullback. Retail faded the move and got run over. The protocol had the map before the tape confirmed it."
+  },
+  {
+    "id": "receipt-02",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. **$NVDA** led. **$QQQ** followed. The model said growth would absorb macro noise if credit stayed open. It did. Institutional flow bought the dip. Retail waited for a cleaner chart that never came."
+  },
+  {
+    "id": "receipt-03",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. The system tagged a low-vol squeeze before **$SPY** broke higher. Institutional flow kept lifting offers. Retail kept shorting resistance. Same trap. Same outcome. Different day."
+  },
+  {
+    "id": "receipt-04",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The K-NN analog didn't miss. The analog said do not fear the first red candle in a **RISK ON** regime. It was noise. **$QQQ** rotated higher by lunch. Institutional flow stayed in control. Retail sold the shakeout."
+  },
+  {
+    "id": "educational-fomo-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? They tell you what already happened. Historical analogs tell you what this regime usually does next. One is lag. One is context. That gap is edge."
+  },
+  {
+    "id": "educational-fomo-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Momentum signals fire after the move. Analog clusters frame probability before the crowd sees it. Institutional flow trades regime. Retail trades lag. That is why one survives noise."
+  },
+  {
+    "id": "educational-fomo-03",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? A stretched oscillator does not tell you if **$SPY** is early trend or late trend. Historical analogs do. Regime context beats isolated signals. Every time."
+  },
+  {
+    "id": "educational-fomo-04",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Indicators describe candles. Analog models compare today's tape to years of institutional behavior. That is how you separate real breakout fuel from retail bait."
+  },
+  {
+    "id": "daily-intercept-08",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "The protocol just flagged breadth repair under **$SPY**. Institutional flow is rotating beneath the index, not chasing headlines. Retail sees chop. The model sees base-building. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-09",
+    "category": "daily_intercept",
+    "priority": "reserve",
+    "copy": "The protocol just flagged failed downside acceptance in **$QQQ**. Institutional flow bought the air pocket fast. Retail kept pressing for follow-through. That is what a trap looks like. macro-bias.com/emails"
+  },
+  {
+    "id": "receipt-05",
+    "category": "receipt",
+    "priority": "reserve",
+    "copy": "The K-NN analog didn't miss. Credit held. Vol stayed contained. **$SPY** kept walking higher. The protocol expected continuation, not collapse. Institutional flow respected the regime. Retail argued with it."
+  },
+  {
+    "id": "receipt-06",
+    "category": "receipt",
+    "priority": "reserve",
+    "copy": "The K-NN analog didn't miss. The model flagged semis before the catch-up trade hit **$QQQ**. Institutional flow moved first. Retail called it overextended. Then price proved who had the better data."
+  },
+  {
+    "id": "educational-fomo-05",
+    "category": "educational_fomo",
+    "priority": "reserve",
+    "copy": "Why are you still trading 15m RSIs? The market does not pay for indicators. It pays for regime awareness. Historical analogs show when price action is normal, dangerous, or ready to trend. That is the difference."
+  },
+  {
+    "id": "daily-intercept-10",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged small cap divergence in **$IWM**. Institutional flow is rotating beneath the surface while the index stays flat. Retail sees dead tape. The model sees accumulation. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-11",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged gold acceleration in **$GLD**. Institutional flow is bidding protection while still pressing equity beta. Retail calls it hedging. The protocol calls it positioning for regime shift. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-12",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged tech concentration risk in **$QQQ**. Institutional flow is narrowing into three names. Retail is chasing the index. That is not a trend. That is a trap waiting for rotation. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-13",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged duration demand in **$TLT**. Institutional flow is adding bonds while equity stays bid. Retail reads bullish. The model reads insurance accumulation under the surface. macro-bias.com/emails"
+  },
+  {
+    "id": "daily-intercept-14",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The protocol just flagged energy divergence in **$XLE**. Institutional flow is paying for the complex while **$SPY** treads water. Retail ignores sector rotation. That is exactly when the energy trade works. macro-bias.com/emails"
+  },
+  {
+    "id": "educational-fomo-06",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Why are you still trading 15m RSIs? Overbought means nothing without regime context. Historical analogs tell you if overbought is fuel or failure. That is the difference between noise and signal."
+  },
+  {
+    "id": "email-signup-01",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Every morning before the bell I send a free email.\n\nNo fluff. No upsell wall. Just the algo's macro bias score, the regime read, and what the K-NN model says today's tape looks like historically.\n\nTakes 90 seconds to read. Might save you from your worst trade of the day.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-02",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "I built an algo that compares today's market to 10 years of similar sessions.\n\nEvery morning it tells me: risk on, risk off, or neutral. Which sectors are leading. Where institutional flow is hiding.\n\nI send the output as a free daily email. No paywall on the core read.\n\nIf you trade US equities, this is the premarket context you're missing.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-03",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Most market newsletters give you someone's opinion.\n\nThis one gives you a number.\n\nThe Macro Bias score is calculated from 9 ETFs across equity, credit, volatility, commodities, and rates. The K-NN model matches today's regime to historical analogs. Then I write what it means in plain English.\n\nFree. Daily. Before the open.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-04",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Honest question: do you know what regime the market is in right now?\n\nNot what Twitter thinks. Not what CNBC says. What the cross-asset data actually shows.\n\nI send a free daily email with the answer. One read. 90 seconds. Before you place a single trade.\n\nmacro-bias.com/emails"
+  },
+  {
+    "id": "email-signup-05",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "The best traders I know don't start the day with a chart.\n\nThey start with context. What is the regime? Where is flow going? What does the historical analog say?\n\nThat's what the Macro Bias daily email gives you. Free. No account needed. Just your email and you get the algo's read every morning.\n\nmacro-bias.com/emails"
+  }
+]

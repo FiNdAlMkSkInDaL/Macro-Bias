@@ -268,6 +268,9 @@ async function ensureMacroBiasTablesExist() {
   return supabase;
 }
 
+const YAHOO_FETCH_MAX_ATTEMPTS = 3;
+const YAHOO_FETCH_BASE_DELAY_MS = 1_500;
+
 async function fetchTickerHistory<TTicker extends MarketDataTicker>(
   ticker: TTicker,
   period1: Date,
@@ -282,18 +285,50 @@ async function fetchTickerHistory<TTicker extends MarketDataTicker>(
   url.searchParams.set("period1", String(Math.floor(period1.getTime() / 1000)));
   url.searchParams.set("period2", String(Math.floor(period2.getTime() / 1000)));
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    throw new Error(`Yahoo chart API request failed for ${ticker}: ${response.status}.`);
+  for (let attempt = 1; attempt <= YAHOO_FETCH_MAX_ATTEMPTS; attempt += 1) {
+    if (attempt > 1) {
+      const delayMs = YAHOO_FETCH_BASE_DELAY_MS * Math.pow(2, attempt - 2);
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      logMarketData(`Retrying ${ticker} (attempt ${attempt}/${YAHOO_FETCH_MAX_ATTEMPTS})...`);
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        },
+        cache: "no-store",
+      });
+
+      if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+        lastError = new Error(`Yahoo chart API request failed for ${ticker}: ${response.status}.`);
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Yahoo chart API request failed for ${ticker}: ${response.status}.`);
+      }
+
+      return parseYahooChartResponse<TTicker>(ticker, await response.json());
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(`Unknown fetch error for ${ticker}`);
+      if (attempt < YAHOO_FETCH_MAX_ATTEMPTS) {
+        continue;
+      }
+    }
   }
 
-  const payload = (await response.json()) as YahooChartResponse;
+  throw lastError ?? new Error(`Yahoo chart API request failed for ${ticker} after ${YAHOO_FETCH_MAX_ATTEMPTS} attempts.`);
+}
+
+function parseYahooChartResponse<TTicker extends MarketDataTicker>(
+  ticker: TTicker,
+  payload: YahooChartResponse,
+): HistoricalPriceRow<TTicker>[] {
+
   const errorMessage = payload.chart?.error?.description;
   const result = payload.chart?.result?.[0];
   const timestamps = result?.timestamp ?? [];
@@ -813,18 +848,29 @@ export async function upsertDailyMarketData(
     `Backfilling trade date: ${formatTradeDate(asOfDate)}...`,
   );
 
-  const [historyEntries, usoHistory, vixHistory, hygHistory, cperHistory] = await Promise.all([
-    Promise.all(
-      TRACKED_TICKERS.map(async (ticker) => {
+  // Stagger fetches in two sequential groups (max 2 concurrent requests) to
+  // avoid Yahoo Finance rate-limiting from cloud IPs.
+  const [historyEntries, supplementalResults] = await Promise.all([
+    (async () => {
+      const entries: Array<readonly [TrackedTicker, HistoricalPriceRow<TrackedTicker>[]]> = [];
+      for (const ticker of TRACKED_TICKERS) {
         const history = await fetchTickerHistoryWithLogging(ticker, period1, period2);
-        return [ticker, history] as const;
-      }),
-    ),
-    fetchTickerHistoryWithLogging("USO", period1, period2),
-    fetchTickerHistoryWithLogging("^VIX", period1, period2),
-    fetchTickerHistoryWithLogging("HYG", period1, period2),
-    fetchTickerHistoryWithLogging("CPER", period1, period2),
+        entries.push([ticker, history] as const);
+      }
+      return entries;
+    })(),
+    (async () => {
+      const uso = await fetchTickerHistoryWithLogging("USO" as const, period1, period2);
+      const vix = await fetchTickerHistoryWithLogging("^VIX" as const, period1, period2);
+      const hyg = await fetchTickerHistoryWithLogging("HYG" as const, period1, period2);
+      const cper = await fetchTickerHistoryWithLogging("CPER" as const, period1, period2);
+      return { uso, vix, hyg, cper };
+    })(),
   ]);
+  const usoHistory = supplementalResults.uso;
+  const vixHistory = supplementalResults.vix;
+  const hygHistory = supplementalResults.hyg;
+  const cperHistory = supplementalResults.cper;
 
   const rowsByTicker = Object.fromEntries(historyEntries) as Record<
     TrackedTicker,
