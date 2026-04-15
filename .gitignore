@@ -7,3 +7,4 @@ out
 .env.production.local
 
 !.env.example
+tsconfig.tsbuildinfo
