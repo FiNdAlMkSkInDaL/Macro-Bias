@@ -8,3 +8,5 @@ out
 
 !.env.example
 tsconfig.tsbuildinfo
+.vercel
+.env*.local
