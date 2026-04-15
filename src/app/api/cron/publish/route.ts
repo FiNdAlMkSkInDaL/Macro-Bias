@@ -113,8 +113,12 @@ function formatOptionalUnsignedPercent(value: number | null) {
   return `${Math.abs(Number(value.toFixed(2)))}%`;
 }
 
+function stripMarkdownBold(text: string) {
+  return text.replace(/\*\*/g, '');
+}
+
 function buildXSnippet(text: string, maxLength: number) {
-  const normalizedText = text.replace(/\s+/g, ' ').trim();
+  const normalizedText = stripMarkdownBold(text).replace(/\s+/g, ' ').trim();
 
   if (normalizedText.length <= maxLength) {
     return normalizedText;
@@ -127,27 +131,27 @@ function getRegimeTone(label: BiasLabel) {
   switch (label) {
     case 'EXTREME_RISK_ON':
     case 'RISK_ON':
-      return 'Risk appetite is broadening and continuation setups have room to breathe.';
+      return 'Buyers are in control and the market has room to run.';
     case 'EXTREME_RISK_OFF':
     case 'RISK_OFF':
-      return 'Defensive flows are taking control and loose risk is getting punished quickly.';
+      return 'Sellers are in control and risk is getting punished.';
     default:
-      return 'Cross-asset signals are mixed, so the tape still demands selectivity and discipline.';
+      return 'Signals are mixed, so being selective matters more than usual.';
   }
 }
 
 function getRegimeSentence(label: BiasLabel) {
   switch (label) {
     case 'EXTREME_RISK_ON':
-      return 'The tape is explosive. Risk-on leadership is widening fast.';
+      return 'The market is running hot. Aggressive buying across the board.';
     case 'RISK_ON':
-      return 'Risk appetite is widening. Buyers still have control.';
+      return 'Buyers are stepping in. Momentum is building.';
     case 'EXTREME_RISK_OFF':
-      return 'The tape is breaking down. Defensive leadership is taking over.';
+      return 'Selling is accelerating. Defensive names are leading.';
     case 'RISK_OFF':
-      return 'The tape is heavy. Risk-off leadership is taking over.';
+      return 'The market is heavy. Money is rotating into safety.';
     default:
-      return 'The tape is split. Selectivity matters more than conviction.';
+      return 'No clear direction. Picking your spots carefully matters here.';
   }
 }
 
@@ -272,15 +276,15 @@ function buildPlaybookSummary(
   const analogCount = historicalAnalogs.topMatches.length;
   const prefix =
     variant === 'x'
-      ? `Decayed KNN playbook avg (${analogCount})`
-      : `Decayed KNN playbook avg across ${analogCount} exact analogs`;
+      ? `Historical pattern avg (${analogCount} matches)`
+      : `Historical pattern avg across ${analogCount} closest matches`;
 
-  return `${prefix}: Gap ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.overnightGap)} | Intraday Drift ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.intradayNet)} | Session Range ${formatOptionalUnsignedPercent(historicalAnalogs.clusterAveragePlaybook.sessionRange)}`;
+  return `${prefix}: Gap ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.overnightGap)}, Intraday ${formatOptionalSignedPercent(historicalAnalogs.clusterAveragePlaybook.intradayNet)}, Range ${formatOptionalUnsignedPercent(historicalAnalogs.clusterAveragePlaybook.sessionRange)}`;
 }
 
 function buildAnalogSection(analogs: DailyBriefingAnalogMatch[]) {
   if (analogs.length === 0) {
-    return 'Closest historical analogs are still warming up as more model history accumulates.';
+    return 'Not enough history yet to show pattern matches. More data is accumulating.';
   }
 
   return analogs
@@ -426,14 +430,14 @@ function buildPublishPayload(
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n');
-  const xText = [
+  const xText = stripMarkdownBold([
     `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)}`,
     `Regime: ${regimeSentence}`,
     xPlaybookSummary,
     shareUrl.toString(),
   ]
     .filter((line): line is string => Boolean(line))
-    .join('\n\n');
+    .join('\n\n'));
 
   return {
     analogs,
@@ -456,12 +460,12 @@ function buildMacroOverrideXText(
   const label = snapshot.bias_label.replace(/_/g, ' ');
   const rationaleSnippet = buildXSnippet(newsletterCopy, MACRO_OVERRIDE_X_SNIPPET_LENGTH);
 
-  return [
+  return stripMarkdownBold([
     'MACRO OVERRIDE ACTIVE',
     `Today\'s Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
-    `Model break warning: ${rationaleSnippet}`,
+    rationaleSnippet,
     publishPayload.shareUrl,
-  ].join('\n\n');
+  ].join('\n\n'));
 }
 
 async function postJson(url: string, payload: unknown, destinationName: string) {

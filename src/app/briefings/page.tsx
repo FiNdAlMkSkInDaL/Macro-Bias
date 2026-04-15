@@ -101,7 +101,7 @@ export default async function BriefingsArchivePage() {
         name: "Is the Macro Bias briefing free?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Each daily briefing includes a free preview with the regime score and top-line alpha protocol. The full briefing with sector scoring, K-NN diagnostics, and system risk protocol requires a premium subscription at $25/month.",
+          text: "Each daily briefing includes a free preview with the regime score and bottom line summary. The full briefing with sector breakdown, model notes, and risk check requires a premium subscription at $25/month.",
         },
       },
     ],

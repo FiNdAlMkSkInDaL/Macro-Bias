@@ -108,7 +108,7 @@ const REGIME_CONTENT: Record<RegimeSlug, RegimeContent> = {
       {
         question: "How do I get daily Risk On/Risk Off alerts?",
         answer:
-          "Sign up for the free Macro Bias daily email. You'll receive the algo's regime score every trading day before the bell. Premium subscribers get the full briefing with sector scoring, K-NN diagnostics, and system risk protocol.",
+          "Sign up for the free Macro Bias daily email. You'll receive the algo's regime score every trading day before the bell. Premium subscribers get the full briefing with sector breakdown, model notes, and risk check.",
       },
     ],
     seoTitle: "Risk On Regime — Daily Macro Bias Signal for Day Traders",

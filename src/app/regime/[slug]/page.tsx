@@ -355,9 +355,9 @@ export default async function RegimePage({ params }: PageProps) {
             Know the regime before the open.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-            Free subscribers get the daily regime score and top-line alpha
-            protocol every trading day. Premium unlocks the full briefing with
-            sector scoring, K-NN diagnostics, and system risk protocol.
+            Free subscribers get the daily regime score and bottom line
+            summary every trading day. Premium unlocks the full briefing with
+            sector breakdown, model notes, and risk check.
           </p>
           <RegimeSignupForm regime={content.headline} />
           <div className="mt-4 flex items-center gap-4">

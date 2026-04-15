@@ -82,7 +82,7 @@ export default async function RegimeIndexPage() {
         name: "Can I get alerts when the regime changes?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes. Free subscribers receive a daily email with the regime score and top-line alpha protocol. Premium subscribers get the full briefing with sector scoring, K-NN diagnostics, and system risk protocol before the opening bell.",
+          text: "Yes. Free subscribers receive a daily email with the regime score and bottom line summary. Premium subscribers get the full briefing with sector breakdown, model notes, and risk check before the opening bell.",
         },
       },
     ],

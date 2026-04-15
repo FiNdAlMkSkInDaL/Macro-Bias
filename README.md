@@ -116,10 +116,10 @@ The LLM is required to return strict JSON in this shape:
 
 The generated briefing must contain these four sections in this order:
 
-1. `THE ALPHA PROTOCOL`
-2. `SECTOR SCORING (ALGO OUTPUT)`
-3. `SYSTEM RISK PROTOCOL`
-4. `K-NN DIAGNOSTICS (UNDER THE HOOD)`
+1. `BOTTOM LINE`
+2. `SECTOR BREAKDOWN`
+3. `RISK CHECK`
+4. `MODEL NOTES`
 
 That stable contract makes the output auditable, renderable, and testable across email, social previews, and future analytics workflows.
 

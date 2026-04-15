@@ -338,7 +338,7 @@ export default async function BriefingPage({ params }: PageProps) {
             Unlock the full briefing.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-            Get remaining sector scores, K-NN diagnostics, system risk protocol, and Live Terminal access.
+            Get remaining sector breakdown, model notes, risk check, and Live Terminal access.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link

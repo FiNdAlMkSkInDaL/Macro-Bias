@@ -8,9 +8,9 @@ import { getAppUrl, getRequiredServerEnv } from '../server-env';
 
 const DEFAULT_FROM_ADDRESS = 'Macro Bias <briefing@macro-bias.com>';
 const EMAIL_BATCH_SIZE = 100;
-const FREE_TIER_LOCKED_PLAYBOOK_LINE = '🔒 **[LOCKED]**: Upgrade to view sector bias and algo catalyst.';
+const FREE_TIER_LOCKED_PLAYBOOK_LINE = '🔒 **[LOCKED]**: Upgrade to see the full sector breakdown and model notes.';
 const FREE_TIER_PAYWALL_MESSAGE =
-  'Unlock the remaining sector scores, proprietary K-NN diagnostics, and Live Terminal access.';
+  'Unlock the full briefing with sector breakdown, risk check, and model notes.';
 const UNSUBSCRIBE_PLACEHOLDER = '{{UNSUBSCRIBE_URL}}';
 const NEWSLETTER_SECTION_ORDER = [
   DAILY_BRIEFING_SECTION_HEADERS.bottomLine,

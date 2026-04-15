@@ -24,9 +24,10 @@ function formatScore(score: number) {
 
 function getFreeTierSnippet(briefContent: string) {
   const lines = briefContent.split("\n");
-  const alphaIndex = lines.findIndex((l) =>
-    l.replace(/\*\*/g, "").trim().startsWith("THE ALPHA PROTOCOL"),
-  );
+  const alphaIndex = lines.findIndex((l) => {
+    const clean = l.replace(/\*\*/g, "").trim();
+    return clean.startsWith("BOTTOM LINE") || clean.startsWith("THE ALPHA PROTOCOL");
+  });
   if (alphaIndex === -1) return briefContent.slice(0, 300);
   return lines
     .slice(alphaIndex, alphaIndex + 6)

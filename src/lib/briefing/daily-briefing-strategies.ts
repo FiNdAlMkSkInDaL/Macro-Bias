@@ -22,7 +22,7 @@ type SectorRow = {
   sectorBias: "Strong" | "Neutral" | "Under Pressure";
 };
 
-const PLAYBOOK_BULLET_SEPARATOR = "\u2014";
+const PLAYBOOK_BULLET_SEPARATOR = "--";
 
 function formatBiasLabel(label: BiasLabel) {
   return label.replace(/_/g, " ");
@@ -73,7 +73,7 @@ function buildPlaybookList(label: BiasLabel, catalyst: string) {
 }
 
 function getPortfolioPostureLine() {
-  return "Treat the tape as a retail trap until volatility normalizes and price action confirms the model's edge again.";
+  return "The pattern is unreliable right now. Wait for things to settle before trusting the historical playbook again.";
 }
 
 function formatSignedPercent(value: number | null | undefined) {
@@ -108,7 +108,7 @@ function buildQuantCorner(context: DailyBriefingStrategyContext) {
       ? ` ${getPortfolioPostureLine()}`
       : "";
 
-    return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: The K-NN archive is thin today, so the live score and sector concentration are carrying the algorithmic edge. ${buildModelDiagnostics(context)} ${actionabilitySuffix}`.trim();
+    return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: Not enough historical matches today, so the score is leaning on the live data and sector readings instead. ${buildModelDiagnostics(context)} ${actionabilitySuffix}`.trim();
   }
 
   const analogReference = getAnalogReferenceText(context.quant);
@@ -117,21 +117,21 @@ function buildQuantCorner(context: DailyBriefingStrategyContext) {
     ? ` ${getPortfolioPostureLine()}`
     : "";
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: Closest analog: ${analogReference}. ${context.suggestedOverrideActive ? "The model is flagging that institutional flow has broken the historical script, which raises retail-trap risk even though the analog still matters as a reference." : "The analog still maps cleanly enough to today's tape to suggest the algorithmic edge is intact while institutional flow remains orderly."} ${buildModelDiagnostics(context)}${actionabilitySuffix ? ` ${actionabilitySuffix}` : ""}`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: Closest analog: ${analogReference}. ${context.suggestedOverrideActive ? "Today's news has broken the historical pattern enough that this match is less trustworthy than usual." : "This historical match still lines up with what we are seeing today, so the pattern data remains useful."} ${buildModelDiagnostics(context)}${actionabilitySuffix ? ` ${actionabilitySuffix}` : ""}`;
 }
 
 function buildBottomLine(context: DailyBriefingStrategyContext) {
   const labelText = formatBiasLabel(context.quant.label);
 
   if (context.suggestedOverrideActive) {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} is still the raw algo bias with score ${context.quant.score}, but the black-box model is warning that ${context.catalyst ?? "fresh news flow is distorting institutional flow"}. That turns the open into a higher-risk retail trap regime, so the edge only comes back once price action re-confirms the setup.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: The model reads ${labelText} with a score of ${context.quant.score}, but ${context.catalyst ?? "breaking news is shaking things up"}. That makes the historical pattern less reliable today, so the numbers deserve extra skepticism until things calm down.`;
   }
 
   if (context.news.status === "unavailable") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} is the live algo bias with score ${context.quant.score}, and the model still sees a usable algorithmic edge in the K-NN stack. News is unavailable, so the signal is leaning harder on sector concentration, relative strength, and model diagnostics instead of any one headline catalyst.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: The model reads ${labelText} with a score of ${context.quant.score}. News is unavailable today, so the signal is relying on sector data, relative strength, and the historical pattern rather than any specific headline.`;
   }
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} is the live algo bias with score ${context.quant.score}, and the historical analog set is still producing an actionable algorithmic edge. Institutional flow is acting as confirmation rather than disruption, which lowers the odds of a crowded retail trap and keeps asymmetric opportunities alive.`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: The model reads ${labelText} with a score of ${context.quant.score}, and the historical pattern still matches what we are seeing in the market. The news is confirming the score rather than contradicting it, which makes the setup more trustworthy than usual.`;
 }
 
 class NewsAwareBriefingStrategy implements DailyBriefingStrategy {
@@ -142,16 +142,16 @@ class NewsAwareBriefingStrategy implements DailyBriefingStrategy {
       "Validated news is available for this briefing.",
       `Use this news summary as the institutional-flow overlay: ${context.news.summary}`,
       context.suggestedOverrideActive
-        ? `A likely retail-trap catalyst is present: ${context.catalyst}. Confirm or reject that risk explicitly and explain whether the black-box edge is breaking.`
-        : "The current news tape does not obviously invalidate the algo baseline. Confirm whether the K-NN edge still holds and whether institutional flow is helping or fading the setup.",
+        ? `There is a potential disruption: ${context.catalyst}. Assess whether this changes the picture enough to override the historical pattern, and explain your reasoning clearly.`
+        : "The news does not obviously contradict the model. Assess whether the historical pattern still holds and whether today's headlines support or weaken the setup.",
     ].join(" ");
   }
 
   buildFallbackBriefing(context: DailyBriefingStrategyContext) {
     const catalyst = context.catalyst ?? context.news.summary;
     const macroOverrideStatus = context.suggestedOverrideActive
-      ? `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: ACTIVE. ${catalyst} is disrupting institutional flow enough to weaken the historical K-NN script and increase retail-trap risk.`
-      : `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: INACTIVE. ${context.news.summary} is not strong enough to break the model's baseline analog edge.`;
+      ? `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: ACTIVE. ${catalyst} is a big enough deal to make the historical pattern unreliable today. The model's read deserves extra caution.`
+      : `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: INACTIVE. ${context.news.summary} is not enough to break the historical pattern the model is following.`;
 
     return [
       buildBottomLine(context),
@@ -172,9 +172,9 @@ class NewsUnavailableBriefingStrategy implements DailyBriefingStrategy {
   buildPromptContext(context: DailyBriefingStrategyContext) {
     return [
       "The news feed is unavailable after retries.",
-      "You must still produce the full report from quant context and model diagnostics.",
+      "Still produce the full report using the quantitative data and model diagnostics.",
       `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus} must include this disclaimer verbatim: ${context.news.summary}`,
-      "Default to is_override_active=false unless the structured quant context itself clearly implies the analog set is unusable or the setup looks like a retail trap.",
+      "Default to is_override_active=false unless the quantitative data itself suggests the historical pattern is broken.",
     ].join(" ");
   }
 

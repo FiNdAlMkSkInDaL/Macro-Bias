@@ -7,15 +7,15 @@ type BillingCycle = "monthly" | "annual";
 
 const features = [
   { name: "Daily macro regime score", free: true, pro: true },
-  { name: "Top-line alpha protocol", free: true, pro: true },
+  { name: "Top-line market summary", free: true, pro: true },
   { name: "Regime classification (5 states)", free: true, pro: true },
   { name: "Daily email briefing", free: "Preview", pro: true },
-  { name: "Full sector scoring breakdown", free: false, pro: true },
-  { name: "K-NN historical analogs", free: false, pro: true },
+  { name: "Full sector breakdown", free: false, pro: true },
+  { name: "Historical pattern analysis", free: false, pro: true },
   { name: "Cluster averages & confidence", free: false, pro: true },
   { name: "Cross-asset regime heatmap", free: false, pro: true },
   { name: "Intraday playbook & positioning", free: false, pro: true },
-  { name: "System risk protocol", free: false, pro: true },
+  { name: "Risk check & model notes", free: false, pro: true },
   { name: "Weekly regime recap digest", free: false, pro: true },
 ] as const;
 
@@ -214,7 +214,7 @@ export default function PricingPage() {
               </h3>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
                 You get full Premium access instantly — the complete daily
-                briefing, K-NN analogs, sector scoring, and system risk protocol.
+                briefing, historical pattern analysis, sector breakdown, and risk check.
                 Your card is not charged until day 8. Cancel in one click from
                 your account settings.
               </p>
