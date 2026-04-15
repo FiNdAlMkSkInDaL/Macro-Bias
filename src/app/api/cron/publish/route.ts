@@ -29,7 +29,7 @@ export const revalidate = 0;
 
 const EMAIL_RECIPIENT_PAGE_SIZE = 1000;
 const MAX_HISTORY_ROWS = 180;
-const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 220;
+const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 150;
 const DISCORD_PUBLISHING_ENABLED = false;
 
 type PublishPayload = {
@@ -605,6 +605,7 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const skipEmail = request.nextUrl.searchParams.get('skipEmail') === 'true';
     const briefingDate = new Date().toISOString().slice(0, 10);
     const briefingAlreadyGenerated = await hasDailyBriefingForDate(briefingDate);
 
@@ -765,7 +766,7 @@ async function handlePublish(request: NextRequest) {
       );
     }
 
-    if (resendApiKeyConfigured) {
+    if (resendApiKeyConfigured && !skipEmail) {
       publishResults.push(
         await safePublish('email', async () => {
           const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
@@ -822,8 +823,13 @@ async function handlePublish(request: NextRequest) {
         }),
       );
     } else {
-      console.warn('[publish-cron] RESEND_API_KEY is not configured; skipping email dispatch.');
-      failures.push('Email dispatch skipped: RESEND_API_KEY is not configured.');
+      if (skipEmail) {
+        console.log('[publish-cron] skipEmail=true; skipping email dispatch.');
+        failures.push('Email dispatch skipped: skipEmail param set.');
+      } else {
+        console.warn('[publish-cron] RESEND_API_KEY is not configured; skipping email dispatch.');
+        failures.push('Email dispatch skipped: RESEND_API_KEY is not configured.');
+      }
     }
 
     const publishedTo = publishResults.flatMap((result) => (result.ok ? [result.destination] : []));
