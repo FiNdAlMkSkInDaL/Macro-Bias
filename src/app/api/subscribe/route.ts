@@ -14,7 +14,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type SubscribeRequestBody = {
   email?: unknown;
   pagePath?: unknown;
+  stocksOptedIn?: unknown;
+  cryptoOptedIn?: unknown;
 };
+
+function parseBooleanPreference(value: unknown, defaultValue: boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  return defaultValue;
+}
 
 function normalizeEmail(value: unknown) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -53,6 +60,8 @@ export async function POST(request: Request) {
   const email = normalizeEmail(payload.email);
   const referrer = request.headers.get('referer');
   const pagePath = normalizePagePath(payload.pagePath) ?? getReferrerPagePath(referrer) ?? '/emails';
+  const stocksOptedIn = parseBooleanPreference(payload.stocksOptedIn, true);
+  const cryptoOptedIn = parseBooleanPreference(payload.cryptoOptedIn, false);
 
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
@@ -64,6 +73,8 @@ export async function POST(request: Request) {
       email,
       status: 'active',
       tier: 'free',
+      stocks_opted_in: stocksOptedIn,
+      crypto_opted_in: cryptoOptedIn,
     },
     {
       onConflict: 'email',

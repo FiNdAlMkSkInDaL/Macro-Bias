@@ -9,13 +9,17 @@ type SubmissionState = "idle" | "loading" | "success" | "error";
 
 export default function EmailsPage() {
   const [email, setEmail] = useState("");
+  const [stocksOptedIn, setStocksOptedIn] = useState(true);
+  const [cryptoOptedIn, setCryptoOptedIn] = useState(true);
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const neitherSelected = !stocksOptedIn && !cryptoOptedIn;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (submissionState === "loading") {
+    if (submissionState === "loading" || neitherSelected) {
       return;
     }
 
@@ -28,7 +32,12 @@ export default function EmailsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, pagePath: window.location.pathname }),
+        body: JSON.stringify({
+          email,
+          pagePath: window.location.pathname,
+          stocksOptedIn,
+          cryptoOptedIn,
+        }),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -45,6 +54,8 @@ export default function EmailsPage() {
         eventName: "email_signup_success",
         metadata: {
           location: "emails_page",
+          stocks: stocksOptedIn ? "true" : "false",
+          crypto: cryptoOptedIn ? "true" : "false",
         },
       });
       setEmail("");
@@ -95,31 +106,78 @@ export default function EmailsPage() {
           />
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || neitherSelected}
             className="h-12 border border-white px-5 text-sm font-medium text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? "Adding..." : "Get the daily briefing"}
           </button>
         </form>
 
+        {/* Newsletter preference checkboxes */}
+        <div className="mx-auto mt-4 flex max-w-xl items-center justify-center gap-6">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
+            <input
+              type="checkbox"
+              checked={stocksOptedIn}
+              onChange={(e) => setStocksOptedIn(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-white accent-white"
+            />
+            Stocks
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
+            <input
+              type="checkbox"
+              checked={cryptoOptedIn}
+              onChange={(e) => setCryptoOptedIn(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-white accent-white"
+            />
+            Crypto
+          </label>
+        </div>
+        {neitherSelected && (
+          <p className="mt-2 text-center text-xs text-red-400">Select at least one newsletter.</p>
+        )}
+
         <p className={`mt-3 text-center text-sm ${statusColor}`} aria-live="polite">
           {statusMessage ?? "\u00A0"}
         </p>
 
-        {/* Track Record Stat */}
-        <div className="mx-auto mt-12 flex max-w-md items-center justify-center gap-8 border border-zinc-800 bg-zinc-950/60 px-6 py-5">
-          <div className="text-center">
-            <p className="text-2xl font-semibold text-white">+286%</p>
-            <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Macro Bias</p>
+        {/* Track Record Stats */}
+        <div className="mx-auto mt-12 grid max-w-lg gap-4 sm:grid-cols-2">
+          {/* Stocks stat */}
+          <div className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/60 px-6 py-5">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-white">+286%</p>
+                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Macro Bias</p>
+              </div>
+              <div className="text-center text-zinc-600">vs</div>
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-zinc-400">+111%</p>
+                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">S&amp;P 500</p>
+              </div>
+            </div>
+            <a href="/track-record" className="text-xs text-zinc-500 underline hover:text-zinc-300">
+              Stocks
+            </a>
           </div>
-          <div className="text-center text-zinc-600">vs</div>
-          <div className="text-center">
-            <p className="text-2xl font-semibold text-zinc-400">+111%</p>
-            <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">S&amp;P 500</p>
+          {/* Crypto stat */}
+          <div className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/60 px-6 py-5">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <p className="text-xl font-semibold text-white">+41,576%</p>
+                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Long Only</p>
+              </div>
+              <div className="text-center text-zinc-600">vs</div>
+              <div className="text-center">
+                <p className="text-xl font-semibold text-zinc-400">+944%</p>
+                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">BTC</p>
+              </div>
+            </div>
+            <a href="/crypto/track-record" className="text-xs text-zinc-500 underline hover:text-zinc-300">
+              Crypto
+            </a>
           </div>
-          <a href="/track-record" className="ml-auto text-xs text-zinc-500 underline hover:text-zinc-300">
-            Full backtest
-          </a>
         </div>
 
         {/* What You Get */}
@@ -144,6 +202,12 @@ export default function EmailsPage() {
               <span className="mt-0.5 text-zinc-600">&#9656;</span>
               <span><strong className="text-white">Historical context</strong> &mdash; How similar market conditions played out in the past, so you know what to expect.</span>
             </li>
+            {cryptoOptedIn && (
+              <li className="flex gap-3">
+                <span className="mt-0.5 text-zinc-600">&#9656;</span>
+                <span><strong className="text-white">Crypto regime scoring</strong> &mdash; Daily BTC bias with market breakdown, risk check, and model notes — same discipline, tuned for crypto volatility.</span>
+              </li>
+            )}
           </ul>
         </div>
 

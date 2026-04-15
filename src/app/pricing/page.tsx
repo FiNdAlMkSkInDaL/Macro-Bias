@@ -17,6 +17,8 @@ const features = [
   { name: "Intraday playbook & positioning", free: false, pro: true },
   { name: "Risk check & model notes", free: false, pro: true },
   { name: "Weekly regime recap digest", free: false, pro: true },
+  { name: "Daily crypto regime score & briefing", free: "Preview", pro: true },
+  { name: "Full crypto market breakdown", free: false, pro: true },
 ] as const;
 
 function renderFeatureValue(value: boolean | string) {

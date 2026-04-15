@@ -8,6 +8,11 @@ import {
 } from "@/lib/crypto-briefing/crypto-brief-generator";
 import { upsertCryptoMarketData } from "@/lib/crypto-market-data/upsert-crypto-market-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  isSubscriptionActive,
+  type SubscriptionStatus,
+} from "@/lib/billing/subscription";
+import { getAppUrl } from "@/lib/server-env";
 import type {
   BiasLabel,
   CryptoBiasScoreRow,
@@ -225,6 +230,87 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
       <p style="margin:0;font-size:10px;color:#3f3f46;">
         You're receiving this because you opted into Crypto Briefings.
       </p>
+      <p style="margin:8px 0 0;font-size:10px;color:#3f3f46;">
+        <a href="{{UNSUBSCRIBE_URL}}" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
+function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: number, label: BiasLabel): string {
+  const signedScore = score > 0 ? `+${score}` : `${score}`;
+  const labelText = label.replace(/_/g, " ");
+  const scoreColor =
+    label === "EXTREME_RISK_ON" || label === "RISK_ON" ? "#4ade80"
+    : label === "EXTREME_RISK_OFF" || label === "RISK_OFF" ? "#fb923c"
+    : "#fbbf24";
+
+  const sections = parseCryptoEmailSections(newsletterCopy);
+  const bottomLine = sections.find((s) => s.title === "BOTTOM LINE");
+  const marketBreakdown = sections.find((s) => s.title === "MARKET BREAKDOWN");
+
+  // Render bottom line section
+  const bottomLineHtml = bottomLine
+    ? renderCryptoSectionHtml("BOTTOM LINE", bottomLine.content, "#7dd3fc", 0)
+    : "";
+
+  // Render first bullet/paragraph of market breakdown
+  let marketPreviewHtml = "";
+  if (marketBreakdown) {
+    const lines = marketBreakdown.content.split("\n").filter((l) => l.trim());
+    const firstLine = lines[0] ?? "";
+    if (firstLine) {
+      marketPreviewHtml = renderCryptoSectionHtml("MARKET BREAKDOWN", firstLine, "#a78bfa", 28);
+    }
+  }
+
+  const upgradeUrl = escapeHtml(new URL("/api/checkout?plan=monthly", getAppUrl()).toString());
+
+  const paywallHtml = `
+<div style="margin-top:28px;border:1px solid #38bdf8;border-radius:12px;padding:24px;background:linear-gradient(135deg, rgba(56,189,248,0.12) 0%, rgba(9,9,11,0.96) 60%);">
+  <p style="margin:0;color:#7dd3fc;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;">Premium Access Required</p>
+  <p style="margin:12px 0 0;color:#f8fafc;font-size:18px;font-weight:700;">Unlock the full crypto briefing with market breakdown, risk check, and model notes.</p>
+  <a href="${upgradeUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#0ea5e9;color:#fff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border-radius:8px;">START 7-DAY FREE TRIAL</a>
+</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#09090b;font-family:ui-sans-serif,system-ui,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+
+    <!-- Header -->
+    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:28px 32px;margin-bottom:4px;">
+      <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;">
+        [ Crypto Regime Briefing ]
+      </p>
+      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};letter-spacing:-0.02em;">
+        ${escapeHtml(labelText)}
+        <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
+      </p>
+    </div>
+
+    <!-- Body -->
+    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:28px 32px;margin-bottom:4px;">
+      ${bottomLineHtml}
+      ${marketPreviewHtml}
+      ${paywallHtml}
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:20px 0;text-align:center;">
+      <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;">
+        <a href="https://macro-bias.com/crypto" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
+      </p>
+      <p style="margin:0;font-size:10px;color:#3f3f46;">
+        You're receiving this because you opted into Crypto Briefings.
+      </p>
+      <p style="margin:8px 0 0;font-size:10px;color:#3f3f46;">
+        <a href="{{UNSUBSCRIBE_URL}}" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
+      </p>
     </div>
 
   </div>
@@ -233,8 +319,41 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
 }
 
 /* ------------------------------------------------------------------ */
-/*  Email dispatch to crypto-opted-in subscribers                      */
+/*  Email dispatch to crypto subscribers (tiered)                      */
 /* ------------------------------------------------------------------ */
+
+const CRYPTO_EMAIL_BATCH_SIZE = 100;
+const DEFAULT_CRYPTO_FROM_ADDRESS = "Macro Bias <briefing@macro-bias.com>";
+const CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE = 1000;
+
+type BriefingRecipientRow = {
+  email: string | null;
+  subscription_status: SubscriptionStatus;
+};
+
+function getCryptoFromAddress() {
+  return getOptionalServerEnv("RESEND_FROM_ADDRESS") ?? DEFAULT_CRYPTO_FROM_ADDRESS;
+}
+
+function getShadowRunRecipient() {
+  const configuredRecipient = process.env.SHADOW_RUN_EMAIL?.trim();
+  return configuredRecipient || null;
+}
+
+function applyShadowRunOverride(emails: string[]) {
+  const shadow = getShadowRunRecipient();
+  if (!shadow) return emails;
+  const normalized = shadow.toLowerCase();
+  const match = emails.find((e) => e.toLowerCase() === normalized);
+  console.log(`[crypto-publish] Shadow run override: forcing delivery to ${match ?? shadow}`);
+  return [match ?? shadow];
+}
+
+function buildUnsubscribeUrl(email: string) {
+  const url = new URL("/api/subscribe/unsubscribe", getAppUrl());
+  url.searchParams.set("email", email);
+  return url.toString();
+}
 
 async function dispatchCryptoBriefingEmails(
   newsletterCopy: string,
@@ -244,28 +363,59 @@ async function dispatchCryptoBriefingEmails(
   const resendApiKey = getOptionalServerEnv("RESEND_API_KEY");
   if (!resendApiKey) {
     console.log("[crypto-publish] No RESEND_API_KEY configured; skipping email.");
-    return { sent: 0, skipped: true };
+    return { premiumSent: 0, freeSent: 0, skipped: true };
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data: subscribers, error } = await supabase
+
+  /* --- Load premium recipients from users table --- */
+  const premiumEmails = new Map<string, string>();
+  for (let offset = 0; ; offset += CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("users")
+      .select("email, subscription_status")
+      .in("subscription_status", ["active", "trialing"])
+      .not("email", "is", null)
+      .order("email", { ascending: true })
+      .range(offset, offset + CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE - 1);
+
+    if (error) throw new Error(`Failed to load premium recipients: ${error.message}`);
+    const rows = (data as BriefingRecipientRow[] | null) ?? [];
+
+    for (const row of rows) {
+      if (typeof row.email !== "string") continue;
+      const email = row.email.trim();
+      if (!email) continue;
+      if (isSubscriptionActive(row.subscription_status ?? "inactive")) {
+        premiumEmails.set(email.toLowerCase(), email);
+      }
+    }
+
+    if (rows.length < CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE) break;
+  }
+
+  /* --- Load free crypto-opted-in subscribers, excluding premium --- */
+  const { data: subscribers, error: freeError } = await supabase
     .from("free_subscribers")
     .select("email")
     .eq("status", "active")
     .eq("crypto_opted_in", true);
 
-  if (error) {
-    console.warn(`[crypto-publish] Failed to load crypto subscribers: ${error.message}`);
-    return { sent: 0, skipped: true };
+  if (freeError) {
+    console.warn(`[crypto-publish] Failed to load crypto subscribers: ${freeError.message}`);
+    return { premiumSent: 0, freeSent: 0, skipped: true };
   }
 
-  const emails = (subscribers ?? [])
+  const freeEmails = (subscribers ?? [])
     .map((r: { email: string | null }) => r.email?.trim())
-    .filter((e): e is string => Boolean(e));
+    .filter((e): e is string => Boolean(e))
+    .filter((e) => !premiumEmails.has(e.toLowerCase()));
 
-  if (emails.length === 0) {
-    console.log("[crypto-publish] No crypto-opted-in subscribers found.");
-    return { sent: 0, skipped: false };
+  const premiumList = [...premiumEmails.values()];
+
+  if (premiumList.length === 0 && freeEmails.length === 0) {
+    console.log("[crypto-publish] No crypto recipients found.");
+    return { premiumSent: 0, freeSent: 0, skipped: false };
   }
 
   const { Resend } = await import("resend");
@@ -273,29 +423,83 @@ async function dispatchCryptoBriefingEmails(
 
   const signedLabel = score > 0 ? `+${score}` : `${score}`;
   const subject = `[CRYPTO] ${label.replace(/_/g, " ")} (${signedLabel}) — Daily Crypto Bias`;
-  const html = buildCryptoBriefingEmailHtml(newsletterCopy, score, label);
+  const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label);
+  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label);
+  const fromAddress = getCryptoFromAddress();
 
-  const BATCH_SIZE = 50;
-  let totalSent = 0;
+  let premiumSent = 0;
+  let freeSent = 0;
 
-  for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-    const batch = emails.slice(i, i + BATCH_SIZE);
-    try {
-      await resend.emails.send({
-        from: getOptionalServerEnv("RESEND_FROM_EMAIL") ?? "crypto@macrobias.io",
-        to: batch,
-        subject,
-        html,
-      });
-      totalSent += batch.length;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown";
-      console.warn(`[crypto-publish] Batch email failed: ${msg}`);
+  /* --- Dispatch premium emails --- */
+  const premiumRecipients = applyShadowRunOverride(premiumList);
+  if (premiumRecipients.length > 0) {
+    for (let i = 0; i < premiumRecipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
+      const batch = premiumRecipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
+      try {
+        const response = await resend.batch.send(
+          batch.map((email) => {
+            const unsubUrl = buildUnsubscribeUrl(email);
+            return {
+              from: fromAddress,
+              to: [email],
+              subject,
+              html: premiumHtml.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
+              headers: {
+                "List-Unsubscribe": `<${unsubUrl}>`,
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+              },
+            };
+          }),
+        );
+        if (response.error) {
+          console.warn(`[crypto-publish] Premium batch send failed: ${response.error.message}`);
+        } else {
+          premiumSent += batch.length;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown";
+        console.warn(`[crypto-publish] Premium batch email failed: ${msg}`);
+      }
     }
+    console.log(`[crypto-publish] Sent ${premiumSent} premium crypto emails.`);
   }
 
-  console.log(`[crypto-publish] Emailed ${totalSent} crypto subscribers.`);
-  return { sent: totalSent, skipped: false };
+  /* --- Dispatch free emails --- */
+  const freeRecipients = applyShadowRunOverride(freeEmails);
+  if (freeRecipients.length > 0) {
+    for (let i = 0; i < freeRecipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
+      const batch = freeRecipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
+      try {
+        const response = await resend.batch.send(
+          batch.map((email) => {
+            const unsubUrl = buildUnsubscribeUrl(email);
+            return {
+              from: fromAddress,
+              to: [email],
+              subject,
+              html: freeHtml.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
+              headers: {
+                "List-Unsubscribe": `<${unsubUrl}>`,
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+              },
+            };
+          }),
+        );
+        if (response.error) {
+          console.warn(`[crypto-publish] Free batch send failed: ${response.error.message}`);
+        } else {
+          freeSent += batch.length;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown";
+        console.warn(`[crypto-publish] Free batch email failed: ${msg}`);
+      }
+    }
+    console.log(`[crypto-publish] Sent ${freeSent} free crypto emails.`);
+  }
+
+  console.log(`[crypto-publish] Emailed ${premiumSent} premium + ${freeSent} free crypto subscribers.`);
+  return { premiumSent, freeSent, skipped: false };
 }
 
 /* ------------------------------------------------------------------ */
@@ -372,7 +576,7 @@ async function handleCryptoPublish(request: NextRequest) {
     }
 
     /* Step 4: Email dispatch */
-    let emailResult = { sent: 0, skipped: true };
+    let emailResult = { premiumSent: 0, freeSent: 0, skipped: true };
     if (!skipEmail) {
       emailResult = await dispatchCryptoBriefingEmails(
         briefingResult.newsletterCopy,
@@ -390,7 +594,8 @@ async function handleCryptoPublish(request: NextRequest) {
       biasLabel: latestSnapshot.bias_label,
       briefingGeneratedBy: briefingResult.generatedBy,
       overrideActive: briefingResult.isOverrideActive,
-      emailsSent: emailResult.sent,
+      premiumEmailsSent: emailResult.premiumSent,
+      freeEmailsSent: emailResult.freeSent,
       warnings: [...warnings, ...briefingResult.warnings],
     });
   } catch (error) {

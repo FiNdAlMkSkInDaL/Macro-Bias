@@ -110,6 +110,23 @@ const WELCOME_DRIP_STEPS = [
 
 type WelcomeDripStep = (typeof WELCOME_DRIP_STEPS)[number];
 
+type MutableWelcomeDripStep = {
+  ctaHref: string;
+  ctaLabel: string;
+  dayOffset: number;
+  eyebrow: string;
+  hook: string;
+  microChallenge: string;
+  order: number;
+  secondaryHref: string;
+  secondaryLabel: string;
+  subject: string;
+  summary: string;
+  title: string;
+  bullets: string[];
+  paragraphs: string[];
+};
+
 type PendingDeliveryRow = {
   email: string;
   id: string;
@@ -197,7 +214,72 @@ function renderButton(href: string, label: string, isPrimary: boolean) {
   return `<a href="${escapeHtml(href)}" style="display: inline-block; margin-right: 12px; margin-bottom: 12px; padding: 12px 18px; border: 1px solid ${isPrimary ? "#ffffff" : "#27272a"}; background: ${isPrimary ? "#ffffff" : "#09090b"}; color: ${isPrimary ? "#09090b" : "#f4f4f5"}; text-decoration: none; font-size: 13px; font-weight: 600;">${escapeHtml(label)}</a>`;
 }
 
-function createWelcomeDripEmailContent(step: WelcomeDripStep, recipientEmail: string) {
+async function getSubscriberPreferences(email: string): Promise<{ stocks_opted_in: boolean; crypto_opted_in: boolean }> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("free_subscribers")
+    .select("stocks_opted_in, crypto_opted_in")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { stocks_opted_in: true, crypto_opted_in: false };
+  }
+
+  return {
+    stocks_opted_in: data.stocks_opted_in ?? true,
+    crypto_opted_in: data.crypto_opted_in ?? false,
+  };
+}
+
+function personalizeWelcomeStep1(step: WelcomeDripStep, prefs: { stocks_opted_in: boolean; crypto_opted_in: boolean }): MutableWelcomeDripStep {
+  const mutable: MutableWelcomeDripStep = {
+    ctaHref: step.ctaHref,
+    ctaLabel: step.ctaLabel,
+    dayOffset: step.dayOffset,
+    eyebrow: step.eyebrow,
+    hook: step.hook,
+    microChallenge: step.microChallenge,
+    order: step.order,
+    secondaryHref: step.secondaryHref,
+    secondaryLabel: step.secondaryLabel,
+    subject: step.subject,
+    summary: step.summary,
+    title: step.title,
+    bullets: [...step.bullets],
+    paragraphs: [...step.paragraphs],
+  };
+
+  if (prefs.stocks_opted_in && prefs.crypto_opted_in) {
+    mutable.summary =
+      "You are on the list. Every morning before the bell, you will get the market's directional bias for stocks — and a separate crypto briefing too.";
+    mutable.bullets = [
+      ...mutable.bullets,
+      "Plus: daily crypto regime scoring for BTC — same discipline, tuned for crypto volatility.",
+    ];
+  } else if (prefs.crypto_opted_in && !prefs.stocks_opted_in) {
+    mutable.summary =
+      "You are on the list. Every morning you will get the crypto market's directional bias, what is driving it, and what to watch for.";
+    mutable.ctaHref = "/crypto/track-record";
+    mutable.ctaLabel = "See the crypto track record";
+    mutable.secondaryHref = "/crypto/briefings";
+    mutable.secondaryLabel = "Read a crypto briefing";
+    mutable.bullets = [
+      "Backtested since 2020: +41,576% long-only strategy return vs +944% BTC buy-and-hold.",
+      "One daily call: Risk-On, Neutral, or Risk-Off — tuned for crypto volatility.",
+      "90 seconds to read. Before you place a single trade.",
+    ];
+    mutable.paragraphs = [
+      "This is not a hype newsletter. There are no hot coin picks, no urgent alerts, no breathless calls to action. Just a clear daily read on what the crypto market is actually doing across BTC, ETH, and key on-chain metrics.",
+      "Start with the track record to see how the model has performed. Then read a couple of archived briefings to see the format. You will know in 10 minutes if this is useful to you.",
+    ];
+  }
+  // stocks_opted_in && !crypto_opted_in → no changes (current behavior)
+
+  return mutable;
+}
+
+function createWelcomeDripEmailContent(step: WelcomeDripStep | MutableWelcomeDripStep, recipientEmail: string) {
   const unsubscribeUrl = buildUnsubscribeUrl(recipientEmail);
   const primaryHref = new URL(step.ctaHref, getAppUrl()).toString();
   const secondaryHref = step.secondaryHref ? new URL(step.secondaryHref, getAppUrl()).toString() : null;
@@ -457,15 +539,21 @@ export async function dispatchPendingWelcomeDripEmails(
   let failedCount = 0;
 
   for (const batch of chunkValues(eligibleRows, EMAIL_BATCH_SIZE)) {
-    const batchPayload = batch.map((row) => {
+    const batchPayload = await Promise.all(batch.map(async (row) => {
       const step = getWelcomeStep(row.sequence_order);
 
       if (!step) {
         throw new Error(`No welcome drip step found for sequence order ${row.sequence_order}.`);
       }
 
+      let finalStep: WelcomeDripStep | MutableWelcomeDripStep = step;
+      if (step.order === 1) {
+        const prefs = await getSubscriberPreferences(row.email);
+        finalStep = personalizeWelcomeStep1(step, prefs);
+      }
+
       const recipient = shadowRunRecipient ?? row.email;
-      const emailContent = createWelcomeDripEmailContent(step, row.email);
+      const emailContent = createWelcomeDripEmailContent(finalStep, row.email);
 
       return {
         from: fromAddress,
@@ -479,7 +567,7 @@ export async function dispatchPendingWelcomeDripEmails(
         text: emailContent.text,
         to: [recipient],
       };
-    });
+    }));
 
     const response = await resend.batch.send(
       batchPayload.map(({ from, headers, html, subject, text, to }) => ({

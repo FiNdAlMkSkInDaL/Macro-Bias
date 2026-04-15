@@ -361,6 +361,7 @@ async function getTieredQuantBriefingRecipients(): Promise<TieredQuantBriefingRe
       .select('email, status, tier')
       .eq('status', 'active')
       .eq('tier', 'free')
+      .eq('stocks_opted_in', true)
       .order('email', { ascending: true })
       .range(offset, offset + EMAIL_RECIPIENT_PAGE_SIZE - 1);
 
