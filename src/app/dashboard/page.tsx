@@ -7,6 +7,7 @@ import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
+import { AssetToggle } from "../../components/AssetToggle";
 import { getUserSubscriptionStatus, isSubscriptionActive } from "../../lib/billing/subscription";
 import type { BiasLabel } from "../../lib/macro-bias/types";
 import { getAppUrl } from "../../lib/server-env";
@@ -650,9 +651,12 @@ export default async function DashboardPage() {
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Regime Data Terminal ]
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                [ Regime Data Terminal ]
+              </p>
+              <AssetToggle />
+            </div>
             <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
               Daily Macro Bias
             </h1>

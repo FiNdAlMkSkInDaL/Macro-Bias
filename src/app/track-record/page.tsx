@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getBacktestData } from "@/lib/track-record/backtest-engine";
 import PerformanceChart from "@/components/track-record/PerformanceChart";
+import { AssetToggle } from "@/components/AssetToggle";
 
 /* ------------------------------------------------------------------ */
 /*  SEO                                                                */
@@ -132,9 +133,12 @@ export default async function TrackRecordPage() {
 
         {/* ---- Hero ---- */}
         <section className="border-b border-white/10 py-16 sm:py-24">
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            [ Track Record ]
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              [ Track Record ]
+            </p>
+            <AssetToggle />
+          </div>
           <h1 className="mt-6 max-w-4xl font-[family:var(--font-heading)] text-4xl font-bold tracking-tighter text-white md:text-5xl">
             Model vs S&amp;P 500
           </h1>

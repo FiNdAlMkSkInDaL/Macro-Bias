@@ -14,11 +14,16 @@ type BriefingDateRow = {
   generated_at: string;
 };
 
+type CryptoBriefingDateRow = {
+  trade_date: string;
+  created_at: string;
+};
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getAppUrl().replace(/\/$/, "");
   const supabase = createSupabaseAdminClient();
 
-  const [postsResult, briefingsResult] = await Promise.all([
+  const [postsResult, briefingsResult, cryptoBriefingsResult] = await Promise.all([
     supabase
       .from("published_marketing_posts")
       .select("slug, published_at")
@@ -27,6 +32,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from("daily_market_briefings")
       .select("briefing_date, generated_at")
       .order("briefing_date", { ascending: false }),
+    supabase
+      .from("crypto_daily_briefings")
+      .select("trade_date, created_at")
+      .order("trade_date", { ascending: false }),
   ]);
 
   if (postsResult.error) {
@@ -39,6 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const publishedPosts = (postsResult.data as PublishedMarketingPost[] | null) ?? [];
   const briefingRows = (briefingsResult.data as BriefingDateRow[] | null) ?? [];
+  const cryptoBriefingRows = (cryptoBriefingsResult.data as CryptoBriefingDateRow[] | null) ?? [];
 
   // Deduplicate briefing dates (keep latest generated_at per date)
   const seenDates = new Set<string>();
@@ -94,6 +104,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...uniqueBriefings.map((row) => ({
       url: `${appUrl}/briefings/${row.briefing_date}`,
       lastModified: new Date(row.generated_at),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
+    // Crypto routes
+    {
+      url: `${appUrl}/crypto/dashboard`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${appUrl}/crypto/track-record`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${appUrl}/crypto/briefings`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    ...cryptoBriefingRows.map((row) => ({
+      url: `${appUrl}/crypto/briefings/${row.trade_date}`,
+      lastModified: new Date(row.created_at),
       changeFrequency: "daily" as const,
       priority: 0.7,
     })),

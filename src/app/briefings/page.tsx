@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getAllBriefingDates } from "@/lib/briefing/get-public-briefing";
 import { getAppUrl } from "@/lib/server-env";
+import { AssetToggle } from "@/components/AssetToggle";
 
 const SITE_URL = "https://macro-bias.com";
 
@@ -135,9 +136,12 @@ export default async function BriefingsArchivePage() {
       />
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-10">
         <header className="border border-white/10 bg-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            [ Briefing Archive ]
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              [ Briefing Archive ]
+            </p>
+            <AssetToggle />
+          </div>
           <h1 className="mt-4 font-[family:var(--font-heading)] text-4xl font-semibold tracking-[-0.06em] text-white sm:text-5xl">
             Daily Macro Briefings
           </h1>

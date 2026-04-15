@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const NAV_LINKS = [
-  { href: "/track-record", label: "Track Record" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/briefings", label: "Briefings" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/track-record", label: "Track Record" },
+  { href: "/briefings", label: "Briefings" },
+  { href: "/pricing", label: "Pricing" },
 ] as const;
 
 export function SiteNav() {
