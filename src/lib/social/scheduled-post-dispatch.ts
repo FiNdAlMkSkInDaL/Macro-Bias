@@ -8,6 +8,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isBlueskyConfigured, publishToBluesky } from './bluesky';
 import { sanitizeForSocial } from './sanitize';
+import { isThreadsConfigured, publishToThreads } from './threads';
 
 const CANONICAL_EMAIL_LINK = 'https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled';
 const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/emails\b/gi;
@@ -213,6 +214,7 @@ type DispatchedPost = {
   scheduledAt: string | null;
   tweetId: string | null;
   blueskyUri: string | null;
+  threadsId: string | null;
   failure?: string;
 };
 
@@ -224,9 +226,14 @@ async function dispatchAllDueScheduledPosts() {
   const checkedAt = new Date().toISOString();
   const duePosts = await getDueScheduledPosts(checkedAt);
   const blueskyEnabled = isBlueskyConfigured();
+  const threadsEnabled = isThreadsConfigured();
 
   if (blueskyEnabled) {
     console.log('[social-dispatch] Bluesky is configured. Posts will be cross-posted.');
+  }
+
+  if (threadsEnabled) {
+    console.log('[social-dispatch] Threads is configured. Posts will be cross-posted.');
   }
 
   if (duePosts.length === 0) {
@@ -253,6 +260,7 @@ async function dispatchAllDueScheduledPosts() {
       const tweetId = await publishToX(tweetContent);
 
       let blueskyUri: string | null = null;
+      let threadsId: string | null = null;
 
       if (blueskyEnabled) {
         try {
@@ -261,6 +269,16 @@ async function dispatchAllDueScheduledPosts() {
         } catch (bskyError) {
           const bskyMessage = bskyError instanceof Error ? bskyError.message : 'Unknown Bluesky error';
           console.warn(`[social-dispatch] Bluesky failed for post ${duePost.id} (X succeeded): ${bskyMessage}`);
+        }
+      }
+
+      if (threadsEnabled) {
+        try {
+          threadsId = await publishToThreads(tweetContent);
+          console.log(`[social-dispatch] Threads post published: ${threadsId}`);
+        } catch (threadsError) {
+          const threadsMessage = threadsError instanceof Error ? threadsError.message : 'Unknown Threads error';
+          console.warn(`[social-dispatch] Threads failed for post ${duePost.id} (X succeeded): ${threadsMessage}`);
         }
       }
 
@@ -276,6 +294,7 @@ async function dispatchAllDueScheduledPosts() {
         scheduledAt: duePost.scheduled_at,
         tweetId,
         blueskyUri,
+        threadsId,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown dispatch failure.';
@@ -289,6 +308,7 @@ async function dispatchAllDueScheduledPosts() {
         scheduledAt: duePost.scheduled_at,
         tweetId: null,
         blueskyUri: null,
+        threadsId: null,
         failure: message,
       });
     }

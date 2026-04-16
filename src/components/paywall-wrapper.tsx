@@ -207,7 +207,7 @@ export function PaywallWrapper({
         {children}
       </div>
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 text-center sm:p-4 lg:p-6">
+      <div className="absolute inset-0 z-10 flex items-center justify-center p-3 text-center sm:p-4 lg:p-6">
         <div aria-hidden="true" className="absolute inset-0 bg-black/38 backdrop-blur-[1px]" />
 
         <div className="relative w-full max-w-[min(22rem,calc(100vw-2rem))] max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.52)] backdrop-blur-xl sm:max-w-sm sm:p-6 lg:max-w-md lg:p-8">

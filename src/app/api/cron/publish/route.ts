@@ -23,6 +23,7 @@ import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
 import { sanitizeForSocial } from '../../../../lib/social/sanitize';
 import { isTelegramConfigured, publishToTelegram } from '../../../../lib/social/telegram';
+import { isThreadsConfigured, publishToThreads } from '../../../../lib/social/threads';
 import { getWeeklyDigestData } from '../../../../lib/briefing/weekly-digest-data';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 
@@ -55,7 +56,7 @@ type XCredentials = {
   apiSecret: string;
 };
 
-type PublishDestination = 'bluesky' | 'discord' | 'email' | 'telegram' | 'x';
+type PublishDestination = 'bluesky' | 'discord' | 'email' | 'telegram' | 'threads' | 'x';
 
 type PublishResult = {
   destination: PublishDestination;
@@ -778,6 +779,12 @@ async function handlePublish(request: NextRequest) {
     if (isTelegramConfigured()) {
       publishResults.push(
         await safePublish('telegram', () => publishToTelegram(finalPublishPayload.xText).then(() => undefined)),
+      );
+    }
+
+    if (isThreadsConfigured()) {
+      publishResults.push(
+        await safePublish('threads', () => publishToThreads(finalPublishPayload.xText).then(() => undefined)),
       );
     }
 

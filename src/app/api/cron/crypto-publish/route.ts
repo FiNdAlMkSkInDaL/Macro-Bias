@@ -19,6 +19,7 @@ import { getAppUrl } from "@/lib/server-env";
 import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
 import { sanitizeForSocial } from "@/lib/social/sanitize";
 import { isTelegramConfigured, publishToTelegram } from "@/lib/social/telegram";
+import { isThreadsConfigured, publishToThreads } from "@/lib/social/threads";
 import type {
   BiasLabel,
   CryptoBiasScoreRow,
@@ -605,11 +606,12 @@ async function publishCryptoToSocial(
   score: number,
   label: BiasLabel,
   newsletterCopy: string,
-): Promise<{ xPosted: boolean; blueskyPosted: boolean; telegramPosted: boolean }> {
+): Promise<{ xPosted: boolean; blueskyPosted: boolean; telegramPosted: boolean; threadsPosted: boolean }> {
   const xText = buildCryptoXText(score, label, newsletterCopy);
   let xPosted = false;
   let blueskyPosted = false;
   let telegramPosted = false;
+  let threadsPosted = false;
 
   // Post to X
   const xCreds = getXCredentials();
@@ -654,7 +656,19 @@ async function publishCryptoToSocial(
     }
   }
 
-  return { xPosted, blueskyPosted, telegramPosted };
+  // Post to Threads
+  if (isThreadsConfigured()) {
+    try {
+      await publishToThreads(xText);
+      threadsPosted = true;
+      console.log("[crypto-publish] Posted to Threads.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown";
+      console.warn(`[crypto-publish] Threads post failed: ${msg}`);
+    }
+  }
+
+  return { xPosted, blueskyPosted, telegramPosted, threadsPosted };
 }
 
 /* ------------------------------------------------------------------ */
@@ -746,7 +760,7 @@ async function handleCryptoPublish(request: NextRequest) {
     }
 
     /* Step 5: Social posting (X + Bluesky + Telegram) */
-    let socialResult = { xPosted: false, blueskyPosted: false, telegramPosted: false };
+    let socialResult = { xPosted: false, blueskyPosted: false, telegramPosted: false, threadsPosted: false };
     try {
       socialResult = await publishCryptoToSocial(
         latestSnapshot.score,
@@ -770,6 +784,7 @@ async function handleCryptoPublish(request: NextRequest) {
       xPosted: socialResult.xPosted,
       blueskyPosted: socialResult.blueskyPosted,
       telegramPosted: socialResult.telegramPosted,
+      threadsPosted: socialResult.threadsPosted,
       warnings: [...warnings, ...briefingResult.warnings],
     });
   } catch (error) {

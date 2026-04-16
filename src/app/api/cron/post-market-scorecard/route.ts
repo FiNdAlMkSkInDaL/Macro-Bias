@@ -11,6 +11,10 @@ import {
   isBlueskyConfigured,
   publishToBluesky,
 } from '@/lib/social/bluesky';
+import {
+  isThreadsConfigured,
+  publishToThreads,
+} from '@/lib/social/threads';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -189,6 +193,26 @@ async function handlePostMarketScorecard(request: NextRequest) {
         results.push({ destination: 'bluesky', ok: false, failure: msg });
         console.warn(
           `[post-market-scorecard] Bluesky publish failed: ${msg}`,
+        );
+      }
+    }
+
+    // Publish to Threads
+    if (isThreadsConfigured()) {
+      try {
+        const threadsId = await publishToThreads(postContent);
+        results.push({ destination: 'threads', ok: true });
+        console.log(
+          `[post-market-scorecard] Published to Threads: ${threadsId}`,
+        );
+      } catch (threadsErr) {
+        const msg =
+          threadsErr instanceof Error
+            ? threadsErr.message
+            : 'Unknown Threads error.';
+        results.push({ destination: 'threads', ok: false, failure: msg });
+        console.warn(
+          `[post-market-scorecard] Threads publish failed: ${msg}`,
         );
       }
     }
