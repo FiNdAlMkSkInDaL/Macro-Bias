@@ -870,22 +870,20 @@ export default async function DashboardPage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+                    <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 xl:gap-3">
                       {crossAssetMapAssets.map((asset) => (
-                        <article className={`${terminalBorderClassName} bg-white/[0.01] p-4`} key={asset.ticker}>
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                                {asset.ticker}
-                              </p>
-                              <p className="mt-2 text-base font-medium text-white">
-                                {formatPrice(asset.currentPrice)}
-                              </p>
-                            </div>
-                            <p className={`font-[family:var(--font-data)] text-sm ${getMoveTone(asset.dailyChangePercent)}`}>
+                        <article className={`${terminalBorderClassName} overflow-hidden bg-white/[0.01] p-2.5 xl:p-3`} key={asset.ticker}>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              {asset.ticker}
+                            </p>
+                            <p className={`shrink-0 font-[family:var(--font-data)] text-[11px] ${getMoveTone(asset.dailyChangePercent)}`}>
                               {formatMove(asset.dailyChangePercent)}
                             </p>
                           </div>
+                          <p className="mt-1.5 text-sm font-medium text-white">
+                            {formatPrice(asset.currentPrice)}
+                          </p>
                         </article>
                       ))}
                     </div>
