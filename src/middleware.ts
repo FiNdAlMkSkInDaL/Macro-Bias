@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
 function isProtectedPath(pathname: string) {
-  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+  return (
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/analytics' ||
+    pathname.startsWith('/analytics/')
+  );
 }
 
 function buildRedirectUrl(request: NextRequest) {

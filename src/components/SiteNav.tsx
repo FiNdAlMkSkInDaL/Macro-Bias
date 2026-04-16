@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { createSupabaseBrowserClient } from "../lib/supabase/browser";
+import { getSupabaseBrowserClientConfigError } from "../lib/supabase/browser";
+
+const ADMIN_EMAIL = "finphillips21@gmail.com";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -14,6 +19,15 @@ const NAV_LINKS = [
 
 export function SiteNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (getSupabaseBrowserClientConfigError()) return;
+    const supabase = createSupabaseBrowserClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email === ADMIN_EMAIL) setIsAdmin(true);
+    });
+  }, []);
 
   return (
     <header className="border-b border-white/10">
@@ -40,6 +54,17 @@ export function SiteNav() {
               {label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              href="/analytics"
+              className="hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 sm:inline"
+              data-analytics-event="nav_link_click"
+              data-analytics-label="Analytics"
+              data-analytics-location="site_nav"
+            >
+              Analytics
+            </Link>
+          )}
           <Link
             href="/emails"
             className="inline-flex items-center rounded-md bg-white/[0.04] px-3.5 py-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
@@ -84,6 +109,18 @@ export function SiteNav() {
                 {label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                href="/analytics"
+                className="min-h-[44px] flex items-center text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300"
+                onClick={() => setMobileMenuOpen(false)}
+                data-analytics-event="nav_link_click"
+                data-analytics-label="Analytics"
+                data-analytics-location="site_nav_mobile"
+              >
+                Analytics
+              </Link>
+            )}
             <Link
               href="/emails"
               className="mt-2 mb-1 inline-flex min-h-[44px] items-center justify-center rounded-md bg-white/[0.04] px-3.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
