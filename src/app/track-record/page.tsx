@@ -157,28 +157,28 @@ export default async function TrackRecordPage() {
         {hasData ? (
           <>
             {/* ---- Stats strip ---- */}
-            <section className="grid grid-cols-3 border-b border-white/10">
-              <div className="border-r border-white/10 py-6 px-3 sm:px-6 sm:pr-6">
+            <section className="grid grid-cols-1 min-[420px]:grid-cols-3 border-b border-white/10">
+              <div className="border-b min-[420px]:border-b-0 min-[420px]:border-r border-white/10 py-4 min-[420px]:py-6 px-0 min-[420px]:px-3 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Macro Bias
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-xl font-bold text-white sm:text-2xl md:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-2xl md:text-3xl">
                   {fmtReturn(stratReturn)}
                 </p>
               </div>
-              <div className="border-r border-white/10 py-6 px-3 sm:px-6">
+              <div className="border-b min-[420px]:border-b-0 min-[420px]:border-r border-white/10 py-4 min-[420px]:py-6 px-0 min-[420px]:px-3 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   S&amp;P 500
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-xl font-bold text-zinc-300 sm:text-2xl md:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-zinc-300 sm:text-2xl md:text-3xl">
                   {fmtReturn(spyReturn)}
                 </p>
               </div>
-              <div className="py-6 px-3 sm:px-6">
+              <div className="py-4 min-[420px]:py-6 px-0 min-[420px]:px-3 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Alpha
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-xl font-bold text-white sm:text-2xl md:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-2xl md:text-3xl">
                   {outperformance !== null
                     ? `${outperformance > 0 ? "+" : ""}${outperformance.toFixed(2)}%`
                     : "—"}

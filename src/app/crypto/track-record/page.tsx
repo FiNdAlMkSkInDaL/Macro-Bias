@@ -85,36 +85,36 @@ export default async function CryptoTrackRecordPage() {
         {hasData ? (
           <>
             {/* Stats */}
-            <section className="grid grid-cols-2 border-b border-white/10 sm:grid-cols-4">
-              <div className="border-r border-white/10 py-6 pr-6">
+            <section className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-4 border-b border-white/10">
+              <div className="border-b min-[420px]:border-b-0 min-[420px]:border-r border-white/10 py-4 min-[420px]:py-6 pr-0 min-[420px]:pr-4 sm:pr-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Long Only
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-emerald-400 sm:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-emerald-400 sm:text-3xl">
                   {fmtReturn(longOnlyReturn)}
                 </p>
               </div>
-              <div className="border-r border-white/10 py-6 px-6">
+              <div className="border-b min-[420px]:border-b-0 sm:border-r border-white/10 py-4 min-[420px]:py-6 px-0 min-[420px]:px-4 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Long/Short
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
                   {fmtReturn(stratReturn)}
                 </p>
               </div>
-              <div className="border-r border-white/10 py-6 px-6">
+              <div className="border-b min-[420px]:border-b-0 min-[420px]:border-r border-white/10 py-4 min-[420px]:py-6 px-0 min-[420px]:px-4 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   BTC Buy &amp; Hold
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-zinc-300 sm:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-zinc-300 sm:text-3xl">
                   {fmtReturn(btcReturn)}
                 </p>
               </div>
-              <div className="py-6 pl-6">
+              <div className="py-4 min-[420px]:py-6 pl-0 min-[420px]:pl-4 sm:pl-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Long Only Alpha
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
                   {longOnlyAlpha !== null
                     ? `${longOnlyAlpha > 0 ? "+" : ""}${longOnlyAlpha.toFixed(2)}%`
                     : "—"}
@@ -132,7 +132,7 @@ export default async function CryptoTrackRecordPage() {
 
             {/* Chart */}
             <section className="border-b border-white/10 py-8">
-              <div className="mb-5 flex items-center gap-6">
+              <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2">
                 <span className="flex items-center gap-2 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   <span className="inline-block h-px w-4 bg-white" />
                   Long/Short
