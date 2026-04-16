@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getAllBriefingDates } from "@/lib/briefing/get-public-briefing";
 import { getAppUrl } from "@/lib/server-env";
 import { AssetToggle } from "@/components/AssetToggle";
+import { ReferralPromoCard } from "@/components/ReferralPromoCard";
 
 const SITE_URL = "https://macro-bias.com";
 
@@ -179,6 +180,13 @@ export default async function BriefingsArchivePage() {
             </Link>
           ))}
         </div>
+
+        <ReferralPromoCard
+          className="mt-8"
+          ctaLabel="Get your referral link"
+          location="briefings_archive"
+          title="Use the archive? Invite other traders and earn Premium."
+        />
       </div>
     </main>
   );

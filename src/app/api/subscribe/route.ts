@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { logMarketingEvent } from '@/lib/analytics/server';
 import { enrollSubscriberInWelcomeDrip, dispatchPendingWelcomeDripEmails } from '@/lib/marketing/welcome-drip';
+import { REFERRAL_CODE_MAX_LENGTH } from '@/lib/referral/constants';
+import { generateReferralCode } from '@/lib/referral/generate-referral-code';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -16,6 +20,7 @@ type SubscribeRequestBody = {
   pagePath?: unknown;
   stocksOptedIn?: unknown;
   cryptoOptedIn?: unknown;
+  ref?: unknown;
 };
 
 function parseBooleanPreference(value: unknown, defaultValue: boolean): boolean {
@@ -88,6 +93,40 @@ export async function POST(request: Request) {
     );
   }
 
+  // Generate referral code for new subscriber (if they don't already have one)
+  try {
+    const newReferralCode = generateReferralCode();
+    const { error: codeError } = await supabase
+      .from('free_subscribers')
+      .update({ referral_code: newReferralCode })
+      .eq('email', email)
+      .is('referral_code', null);
+
+    if (codeError) {
+      // Retry once with a new code in case of collision
+      const retryCode = generateReferralCode();
+      await supabase
+        .from('free_subscribers')
+        .update({ referral_code: retryCode })
+        .eq('email', email)
+        .is('referral_code', null);
+    }
+  } catch (codeGenError) {
+    console.error('[subscribe] referral code generation failed', codeGenError);
+  }
+
+  // Process referral attribution (if ref param provided)
+  const refCode = typeof payload.ref === 'string'
+    ? payload.ref.trim().toLowerCase().slice(0, REFERRAL_CODE_MAX_LENGTH)
+    : null;
+  if (refCode) {
+    try {
+      await processReferralAttribution(supabase, email, refCode, pagePath);
+    } catch (refError) {
+      console.error('[subscribe] referral attribution failed (non-fatal)', refError);
+    }
+  }
+
   const sideEffects = await Promise.allSettled([
     enrollSubscriberInWelcomeDrip(email),
     logMarketingEvent({
@@ -114,4 +153,72 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ message: SUBSCRIBE_SUCCESS_MESSAGE, ok: true }, { status: 200 });
+}
+
+async function processReferralAttribution(
+  supabase: SupabaseClient,
+  referredEmail: string,
+  referralCode: string,
+  landingPagePath: string,
+) {
+  // 1. Look up referrer by code
+  const { data: referrer } = await supabase
+    .from('free_subscribers')
+    .select('email, status')
+    .eq('referral_code', referralCode)
+    .single();
+
+  if (!referrer || referrer.status !== 'active') {
+    console.log('[subscribe] invalid or inactive referral code:', referralCode);
+    return;
+  }
+
+  // 2. Prevent self-referral
+  if (referrer.email === referredEmail) {
+    console.log('[subscribe] self-referral blocked:', referredEmail);
+    return;
+  }
+
+  // 3. Check if this email was already referred by someone
+  const { data: existingReferral } = await supabase
+    .from('referrals')
+    .select('id')
+    .eq('referred_email', referredEmail)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingReferral) {
+    console.log('[subscribe] email already referred, skipping:', referredEmail);
+    return;
+  }
+
+  // 4. Create the referral record
+  const { error } = await supabase.from('referrals').insert({
+    referrer_email: referrer.email,
+    referred_email: referredEmail,
+    status: 'pending',
+  });
+
+  if (error) {
+    console.error('[subscribe] referral insert failed', error);
+    return;
+  }
+
+  // 5. Set referred_by on the subscriber
+  await supabase
+    .from('free_subscribers')
+    .update({ referred_by: referrer.email })
+    .eq('email', referredEmail);
+
+  // 6. Log analytics event
+  await logMarketingEvent({
+    eventName: 'referral_attributed',
+    pagePath: landingPagePath,
+    subscriberEmail: referredEmail,
+    metadata: {
+      landing_page_path: landingPagePath,
+      referrer_email: referrer.email,
+      referral_code: referralCode,
+    },
+  });
 }

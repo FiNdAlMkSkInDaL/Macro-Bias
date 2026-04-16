@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "referral:report": "tsx src/scripts/report-referral-funnel.ts",
     "typecheck": "tsc --noEmit",
     "macro-bias:sync": "tsx src/scripts/run-daily-macro-bias-sync.ts",
     "social:arm-queue": "tsx src/scripts/arm-scheduled-social-queue.ts"

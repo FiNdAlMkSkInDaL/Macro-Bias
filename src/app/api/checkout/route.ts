@@ -41,7 +41,9 @@ async function buildCheckoutSession(
   mode: 'json' | 'redirect',
 ): Promise<CheckoutResult> {
   const stripe = getStripeClient();
+  const searchParams = new URL(request.url).searchParams;
   const plan = getCheckoutPlan(request);
+  const coupon = searchParams.get('coupon');
   const stripePriceId = getStripePriceId(plan);
   const supabase = await createSupabaseServerClient();
   const {
@@ -118,6 +120,7 @@ async function buildCheckoutSession(
         quantity: 1,
       },
     ],
+    ...(coupon ? { discounts: [{ coupon }] } : {}),
     metadata: {
       billingPlan: plan,
       supabaseUUID: user.id,

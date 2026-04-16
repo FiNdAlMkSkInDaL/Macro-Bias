@@ -17,6 +17,8 @@ import type {
 import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch';
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
+import { partitionUnlockedSubscribers } from '../../../../lib/referral/premium-unlock';
+import { verifyPendingReferrals } from '../../../../lib/referral/verify-referrals';
 import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
 import { getWeeklyDigestData } from '../../../../lib/briefing/weekly-digest-data';
@@ -774,6 +776,7 @@ async function handlePublish(request: NextRequest) {
     if (resendApiKeyConfigured && !skipEmail) {
       publishResults.push(
         await safePublish('email', async () => {
+          const supabase = createSupabaseAdminClient();
           const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
 
           // On Mondays, fetch last week's data to embed in the daily email
@@ -795,6 +798,11 @@ async function handlePublish(request: NextRequest) {
             `[publish-cron] Starting dispatchQuantBriefing() with ${premiumRecipients.length} premium recipients and ${freeRecipients.length} free recipients`,
           );
 
+          const { unlockedEmails, regularFreeEmails } = await partitionUnlockedSubscribers(
+            supabase,
+            freeRecipients,
+          );
+
           const premiumDispatchResult = await dispatchQuantBriefing(
             dailyBriefing.newsletterCopy,
             dailyBriefing.quant.score,
@@ -806,24 +814,48 @@ async function handlePublish(request: NextRequest) {
               weeklyDigest,
             },
           );
-          const freeDispatchResult = await dispatchQuantBriefing(
-            dailyBriefing.newsletterCopy,
-            dailyBriefing.quant.score,
-            dailyBriefing.quant.label,
-            dailyBriefing.isOverrideActive,
-            {
-              recipients: freeRecipients,
-              tier: 'free',
-              weeklyDigest,
-            },
-          );
+          const unlockedDispatchResult =
+            unlockedEmails.length > 0
+              ? await dispatchQuantBriefing(
+                  dailyBriefing.newsletterCopy,
+                  dailyBriefing.quant.score,
+                  dailyBriefing.quant.label,
+                  dailyBriefing.isOverrideActive,
+                  {
+                    recipients: unlockedEmails,
+                    tier: 'premium',
+                    weeklyDigest,
+                  },
+                )
+              : { batchCount: 0, emailIds: [], recipientCount: 0 };
+          const freeDispatchResult =
+            regularFreeEmails.length > 0
+              ? await dispatchQuantBriefing(
+                  dailyBriefing.newsletterCopy,
+                  dailyBriefing.quant.score,
+                  dailyBriefing.quant.label,
+                  dailyBriefing.isOverrideActive,
+                  {
+                    recipients: regularFreeEmails,
+                    tier: 'free',
+                    weeklyDigest,
+                  },
+                )
+              : { batchCount: 0, emailIds: [], recipientCount: 0 };
+
+          await verifyPendingReferrals(supabase);
+
           const totalBatchCount =
-            premiumDispatchResult.batchCount + freeDispatchResult.batchCount;
+            premiumDispatchResult.batchCount +
+            unlockedDispatchResult.batchCount +
+            freeDispatchResult.batchCount;
           const totalRecipientCount =
-            premiumDispatchResult.recipientCount + freeDispatchResult.recipientCount;
+            premiumDispatchResult.recipientCount +
+            unlockedDispatchResult.recipientCount +
+            freeDispatchResult.recipientCount;
 
           console.log(
-            `[publish-cron] Finished dispatchQuantBriefing() with ${totalRecipientCount} recipients across ${totalBatchCount} batches (${premiumDispatchResult.recipientCount} premium, ${freeDispatchResult.recipientCount} free)`,
+            `[publish-cron] Finished dispatchQuantBriefing() with ${totalRecipientCount} recipients across ${totalBatchCount} batches (${premiumDispatchResult.recipientCount} premium, ${unlockedDispatchResult.recipientCount} unlocked, ${freeDispatchResult.recipientCount} free)`,
           );
         }),
       );

@@ -70,6 +70,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
+      url: `${appUrl}/today`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.95,
+    },
+    {
       url: `${appUrl}/emails`,
       lastModified: new Date(),
       changeFrequency: "monthly",

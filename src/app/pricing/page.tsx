@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { ReferralPromoCard } from "@/components/ReferralPromoCard";
+
 type BillingCycle = "monthly" | "annual";
 
 const features = [
@@ -204,6 +206,13 @@ export default function PricingPage() {
           </div>
         </div>
 
+        <ReferralPromoCard
+          className="mt-10"
+          ctaLabel="See how referrals work"
+          location="pricing_page"
+          title="Already know traders who would use this? Let referrals pay for Premium."
+        />
+
         {/* FAQ */}
         <section className="mt-16 border border-white/10 bg-zinc-950 px-6 py-10 sm:px-10">
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
@@ -261,6 +270,15 @@ export default function PricingPage() {
                 the briefing is published before the US equity open every trading
                 day. Premium subscribers receive the full briefing via email and
                 in the dashboard.
+              </p>
+            </div>
+            <div className="py-5 last:pb-0">
+              <h3 className="text-sm font-semibold text-white">
+                Can referrals unlock Premium for free?
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Yes. Every subscriber gets a referral link. Three verified referrals unlock 7 days of Premium,
+                seven unlock a free month, and 15 unlock a free annual plan.
               </p>
             </div>
           </div>

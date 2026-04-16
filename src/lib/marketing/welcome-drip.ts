@@ -56,6 +56,7 @@ const WELCOME_DRIP_STEPS = [
     paragraphs: [
       "Think of the daily briefing as a weather report for the market. You would not plan a beach day without checking the forecast. Same idea here. On strong days, it tells you to lean in. On rough days, it tells you to sit tight or go small.",
       "That one shift, matching your aggression to the environment, tends to improve consistency faster than any new indicator or signal service.",
+      "One more thing: every subscriber gets a unique referral link. Three verified referrals unlock 7 days of Premium, 7 unlock a free month, and 15 unlock a free annual plan. Check your referral status at macro-bias.com/refer.",
     ],
   },
   {

@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { trackClientEvent } from "@/lib/analytics/client";
+import { useReferralCode } from "@/lib/referral/client";
 
 type SubmissionState = "idle" | "loading" | "success" | "error";
 
@@ -12,6 +13,7 @@ export default function CryptoLandingPage() {
   const [email, setEmail] = useState("");
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const refCode = useReferralCode();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,9 +28,10 @@ export default function CryptoLandingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          pagePath: "/crypto",
+          pagePath: window.location.pathname,
           stocksOptedIn: false,
           cryptoOptedIn: true,
+          ref: refCode,
         }),
       });
 
@@ -111,6 +114,35 @@ export default function CryptoLandingPage() {
           >
             {statusMessage ?? "\u00A0"}
           </p>
+          <p className="mt-1 text-center text-xs text-zinc-500">
+            Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
+            <a
+              href="/refer"
+              className="text-sky-400 underline"
+              data-analytics-event="referral_cta_click"
+              data-analytics-label="Crypto Page Referral Teaser"
+              data-analytics-location="crypto_page"
+            >
+              See referral rewards
+            </a>
+          </p>
+          {submissionState === "success" && (
+            <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 text-center">
+              <p className="text-sm text-zinc-400">Know other crypto traders who would use this?</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Invite 3 traders, unlock 7 days of Premium {"->"}{" "}
+                <a
+                  href="/refer"
+                  className="text-sky-400 underline"
+                  data-analytics-event="referral_cta_click"
+                  data-analytics-label="Crypto Signup Success"
+                  data-analytics-location="crypto_page"
+                >
+                  See referral program
+                </a>
+              </p>
+            </div>
+          )}
           <p className="mt-1 text-xs text-zinc-600">
             Free daily email. No account required. Unsubscribe anytime.
           </p>

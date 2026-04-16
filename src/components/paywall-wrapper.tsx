@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -231,6 +232,19 @@ export function PaywallWrapper({
           <p className="mt-2 text-center text-xs text-zinc-600">
             Full access for 7 days. No charge until day 8. Cancel anytime.
           </p>
+
+          <p className="mt-3 text-center text-xs text-zinc-500">
+            Or invite 3 traders and unlock 7 days of Premium free.
+          </p>
+          <Link
+            href="/refer"
+            className="mt-3 inline-flex items-center justify-center text-xs font-medium text-sky-400 underline underline-offset-4"
+            data-analytics-event="referral_cta_click"
+            data-analytics-label="Paywall Referral Link"
+            data-analytics-location="paywall_wrapper"
+          >
+            See referral rewards
+          </Link>
         </div>
       </div>
     </div>

@@ -12,6 +12,8 @@ import {
   isSubscriptionActive,
   type SubscriptionStatus,
 } from "@/lib/billing/subscription";
+import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
+import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
 import { getAppUrl } from "@/lib/server-env";
 import type {
   BiasLabel,
@@ -243,6 +245,7 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
 function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: number, label: BiasLabel): string {
   const signedScore = score > 0 ? `+${score}` : `${score}`;
   const labelText = label.replace(/_/g, " ");
+  const referralPageUrl = escapeHtml(new URL("/refer", getAppUrl()).toString());
   const scoreColor =
     label === "EXTREME_RISK_ON" || label === "RISK_ON" ? "#4ade80"
     : label === "EXTREME_RISK_OFF" || label === "RISK_OFF" ? "#fb923c"
@@ -275,6 +278,12 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
   <p style="margin:12px 0 0;color:#f8fafc;font-size:18px;font-weight:700;">Unlock the full crypto briefing with market breakdown, risk check, and model notes.</p>
   <a href="${upgradeUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#0ea5e9;color:#fff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border-radius:8px;">START 7-DAY FREE TRIAL</a>
 </div>`;
+  const referralWidgetHtml = `
+<div style="margin-top:24px;padding:16px 20px;border:1px solid rgba(56,189,248,0.2);border-radius:8px;background:rgba(56,189,248,0.04);text-align:center;">
+  <p style="margin:0;color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Refer &amp; Earn</p>
+  <p style="margin:6px 0 0;color:#e2e8f0;font-size:14px;line-height:1.6;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
+  <a href="${referralPageUrl}" style="display:inline-block;margin-top:10px;color:#38bdf8;font-size:12px;font-weight:600;text-decoration:underline;">Get your referral link & rewards &rarr;</a>
+</div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -299,6 +308,8 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
       ${marketPreviewHtml}
       ${paywallHtml}
     </div>
+
+    ${referralWidgetHtml}
 
     <!-- Footer -->
     <div style="padding:20px 0;text-align:center;">
@@ -411,9 +422,14 @@ async function dispatchCryptoBriefingEmails(
     .filter((e): e is string => Boolean(e))
     .filter((e) => !premiumEmails.has(e.toLowerCase()));
 
-  const premiumList = [...premiumEmails.values()];
+  const { unlockedEmails, regularFreeEmails } = await partitionUnlockedSubscribers(
+    supabase,
+    freeEmails,
+  );
 
-  if (premiumList.length === 0 && freeEmails.length === 0) {
+  const premiumList = [...premiumEmails.values(), ...unlockedEmails];
+
+  if (premiumList.length === 0 && regularFreeEmails.length === 0) {
     console.log("[crypto-publish] No crypto recipients found.");
     return { premiumSent: 0, freeSent: 0, skipped: false };
   }
@@ -465,7 +481,7 @@ async function dispatchCryptoBriefingEmails(
   }
 
   /* --- Dispatch free emails --- */
-  const freeRecipients = applyShadowRunOverride(freeEmails);
+  const freeRecipients = applyShadowRunOverride(regularFreeEmails);
   if (freeRecipients.length > 0) {
     for (let i = 0; i < freeRecipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
       const batch = freeRecipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
@@ -498,7 +514,7 @@ async function dispatchCryptoBriefingEmails(
     console.log(`[crypto-publish] Sent ${freeSent} free crypto emails.`);
   }
 
-  console.log(`[crypto-publish] Emailed ${premiumSent} premium + ${freeSent} free crypto subscribers.`);
+  console.log(`[crypto-publish] Emailed ${premiumSent} premium/unlocked + ${freeSent} free crypto subscribers.`);
   return { premiumSent, freeSent, skipped: false };
 }
 
@@ -583,6 +599,9 @@ async function handleCryptoPublish(request: NextRequest) {
         latestSnapshot.score,
         latestSnapshot.bias_label,
       );
+      if (!emailResult.skipped) {
+        await verifyPendingReferrals(createSupabaseAdminClient());
+      }
     } else {
       warnings.push("Email skipped: skipEmail param set.");
     }

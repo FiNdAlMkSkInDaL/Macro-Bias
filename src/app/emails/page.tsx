@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 
 import { trackClientEvent } from "@/lib/analytics/client";
+import { useReferralCode } from "@/lib/referral/client";
 
 type SubmissionState = "idle" | "loading" | "success" | "error";
 
@@ -13,6 +14,7 @@ export default function EmailsPage() {
   const [cryptoOptedIn, setCryptoOptedIn] = useState(true);
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const refCode = useReferralCode();
 
   const neitherSelected = !stocksOptedIn && !cryptoOptedIn;
 
@@ -37,6 +39,7 @@ export default function EmailsPage() {
           pagePath: window.location.pathname,
           stocksOptedIn,
           cryptoOptedIn,
+          ref: refCode,
         }),
       });
 
@@ -141,6 +144,36 @@ export default function EmailsPage() {
         <p className={`mt-3 text-center text-sm ${statusColor}`} aria-live="polite">
           {statusMessage ?? "\u00A0"}
         </p>
+        <p className="mt-1 text-center text-xs text-zinc-500">
+          Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
+          <a
+            href="/refer"
+            className="text-sky-400 underline"
+            data-analytics-event="referral_cta_click"
+            data-analytics-label="Emails Page Referral Teaser"
+            data-analytics-location="emails_page"
+          >
+            See referral rewards
+          </a>
+        </p>
+
+        {submissionState === "success" && (
+          <div className="mx-auto mt-6 max-w-xl rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-center">
+            <p className="text-sm text-zinc-400">Know someone who'd find this useful?</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Invite 3 traders, unlock 7 days of Premium {"->"}{" "}
+              <a
+                href="/refer"
+                className="text-sky-400 underline"
+                data-analytics-event="referral_cta_click"
+                data-analytics-label="Emails Signup Success"
+                data-analytics-location="emails_page"
+              >
+                See referral program
+              </a>
+            </p>
+          </div>
+        )}
 
         {/* Track Record Stats */}
         <div className="mx-auto mt-12 grid max-w-lg gap-4 sm:grid-cols-2">

@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { trackClientEvent } from "../lib/analytics/client";
+import { useReferralCode } from "../lib/referral/client";
 import {
   createSupabaseBrowserClient,
   getMissingSupabasePublicEnvVars,
@@ -110,6 +111,7 @@ export default function HomePage() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterState, setNewsletterState] = useState<EmailSignupState>("idle");
   const [newsletterMessage, setNewsletterMessage] = useState<string | null>(null);
+  const refCode = useReferralCode();
 
   async function handleNewsletterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -122,7 +124,13 @@ export default function HomePage() {
       const response = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newsletterEmail, pagePath: window.location.pathname, stocksOptedIn: true, cryptoOptedIn: true }),
+        body: JSON.stringify({
+          email: newsletterEmail,
+          pagePath: window.location.pathname,
+          stocksOptedIn: true,
+          cryptoOptedIn: true,
+          ref: refCode,
+        }),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -385,6 +393,32 @@ export default function HomePage() {
             >
               {newsletterMessage ?? "Stocks + crypto regime scores. Daily. Free. Unsubscribe anytime."}
             </p>
+            <p className="mt-2 text-center text-xs text-zinc-500">
+              Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
+              <a
+                href="/refer"
+                className="text-sky-400 underline"
+                data-analytics-event="referral_cta_click"
+                data-analytics-label="Landing Hero Referral Teaser"
+                data-analytics-location="landing_hero"
+              >
+                See referral rewards
+              </a>
+            </p>
+            {newsletterState === "success" && (
+              <p className="mt-2 text-center text-xs text-zinc-500">
+                Invite 3 traders, unlock 7 days of Premium {"->"}{" "}
+                <a
+                  href="/refer"
+                  className="text-sky-400 underline"
+                  data-analytics-event="referral_cta_click"
+                  data-analytics-label="Landing Signup Success"
+                  data-analytics-location="landing_hero"
+                >
+                  See referral program
+                </a>
+              </p>
+            )}
           </div>
 
           <div className="mt-16 grid w-full max-w-5xl gap-8 border-y border-white/10 py-6 sm:grid-cols-3">

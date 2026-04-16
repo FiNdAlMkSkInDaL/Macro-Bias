@@ -4,6 +4,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/track-record", label: "Track Record" },
   { href: "/briefings", label: "Briefings" },
+  { href: "/refer", label: "Refer & Earn" },
   { href: "/pricing", label: "Pricing" },
 ] as const;
 
@@ -26,9 +27,9 @@ export function SiteNav() {
               key={href}
               href={href}
               className="hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"
-              data-analytics-event="nav_link_click"
+              data-analytics-event={href === "/refer" ? "referral_cta_click" : "nav_link_click"}
               data-analytics-label={label}
-              data-analytics-location="site_nav"
+              data-analytics-location={href === "/refer" ? "site_nav" : "site_nav"}
             >
               {label}
             </Link>

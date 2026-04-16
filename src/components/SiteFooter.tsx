@@ -5,6 +5,7 @@ const FOOTER_LINKS = [
   { href: "/pricing", label: "Pricing" },
   { href: "/briefings", label: "Briefings" },
   { href: "/regime", label: "Regimes" },
+  { href: "/refer", label: "Refer & Earn" },
   { href: "/emails", label: "Free Signals" },
 ] as const;
 
@@ -27,7 +28,7 @@ export function SiteFooter() {
               key={href}
               href={href}
               className="font-[family:var(--font-data)] text-[11px] text-zinc-600 transition hover:text-zinc-300"
-              data-analytics-event="footer_link_click"
+              data-analytics-event={href === "/refer" ? "referral_cta_click" : "footer_link_click"}
               data-analytics-label={label}
               data-analytics-location="site_footer"
             >

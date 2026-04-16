@@ -1000,6 +1000,8 @@ function buildEmailHtml(
 ) {
   const accentColor = getAccentColor(label);
   const dashboardUrl = escapeHtml(new URL('/dashboard', getAppUrl()).toString());
+  const cryptoBriefingUrl = escapeHtml(new URL('/crypto', getAppUrl()).toString());
+  const referralPageUrl = escapeHtml(new URL('/refer', getAppUrl()).toString());
   const upgradeUrl = escapeHtml(buildUpgradeUrl());
   const headerSummary = escapeHtml(buildHeaderSummary(score, label, isOverrideActive));
   const overrideStatusColor = getOverrideStatusColor(isOverrideActive);
@@ -1022,6 +1024,17 @@ function buildEmailHtml(
     weeklyDigest && weeklyDigest.sessionCount > 0
       ? buildWeeklyRecapSectionHtml(weeklyDigest, tier)
       : '';
+  const referralWidgetHtml =
+    tier === 'free'
+      ? `<div style="margin-top: 32px; padding: 16px 20px; border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; background: rgba(56,189,248,0.04); text-align: center;">
+                  <p style="margin: 0; color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">Refer &amp; Earn</p>
+                  <p style="margin: 6px 0 0; color: #e2e8f0; font-size: 14px; line-height: 1.65;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
+                  <a href="${referralPageUrl}" style="display: inline-block; margin-top: 10px; color: #38bdf8; font-size: 12px; font-weight: 600; text-decoration: underline;">Get your referral link & rewards &rarr;</a>
+                </div>
+                <div style="margin-top: 12px; text-align: center;">
+                  <a href="${cryptoBriefingUrl}" style="color: #475569; font-size: 11px; text-decoration: underline;">Also available: Daily Crypto Regime Briefing</a>
+                </div>`
+      : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -1043,11 +1056,7 @@ function buildEmailHtml(
                 <div style="margin-top: 32px;">
                   ${footerCtaHtml}
                 </div>
-                <div style="margin-top: 32px; padding: 16px 20px; border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; background: rgba(56,189,248,0.04); text-align: center;">
-                  <p style="margin: 0; color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">Now Available</p>
-                  <p style="margin: 6px 0 0; color: #e2e8f0; font-size: 14px;">Daily Crypto Regime Briefing — same model, tuned for BTC.</p>
-                  <a href="${escapeHtml(new URL('/emails', getAppUrl()).toString())}" style="display: inline-block; margin-top: 10px; color: #38bdf8; font-size: 12px; font-weight: 600; text-decoration: underline;">Add it to your inbox &rarr;</a>
-                </div>
+                ${referralWidgetHtml}
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #1e293b; text-align: center;">
                   <a href="${UNSUBSCRIBE_PLACEHOLDER}" style="color: #475569; font-size: 11px; text-decoration: underline;">Unsubscribe from daily emails</a>
                 </div>
@@ -1070,6 +1079,8 @@ function buildEmailText(
   weeklyDigest?: WeeklyDigestData | null,
 ) {
   const dashboardUrl = new URL('/dashboard', getAppUrl()).toString();
+  const cryptoBriefingUrl = new URL('/crypto', getAppUrl()).toString();
+  const referralPageUrl = new URL('/refer', getAppUrl()).toString();
   const upgradeUrl = buildUpgradeUrl();
   const bodyCopy = tier === 'free' ? buildFreeTierNewsletterCopyText(newsletterCopy) : newsletterCopy;
   const footerCallToAction =
@@ -1081,6 +1092,14 @@ function buildEmailText(
     weeklyDigest && weeklyDigest.sessionCount > 0
       ? buildWeeklyRecapSectionText(weeklyDigest, tier)
       : '';
+  const referralText =
+    tier === 'free'
+      ? [
+          `Refer & Earn: 3 verified referrals unlock 7 days of Premium. 7 unlock a free month. 15 unlock a free annual plan.`,
+          `Get your referral link and rewards: ${referralPageUrl}`,
+          `Also available: Daily Crypto Regime Briefing: ${cryptoBriefingUrl}`,
+        ]
+      : [];
 
   return [
     'Macro Bias Daily Quant Briefing',
@@ -1088,7 +1107,7 @@ function buildEmailText(
     strippedBodyCopy,
     weeklyRecapText,
     footerCallToAction,
-    `Now available: Daily Crypto Regime Briefing. Add it to your inbox: ${new URL('/emails', getAppUrl()).toString()}`,
+    ...referralText,
     `Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`,
   ]
     .filter((fragment) => fragment.length > 0)
