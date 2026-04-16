@@ -45,7 +45,7 @@ function buildShareHref(kind: "x" | "email" | "sms", referralLink: string) {
   }
 
   if (kind === "email") {
-    return `mailto:?subject=${encodeURIComponent("Daily market regime briefings")}&body=${encodeURIComponent(`${inviteMessage}\n\n3 referrals unlock 7 days of Premium.`)}`;
+    return `mailto:?subject=${encodeURIComponent("Daily market regime briefings")}&body=${encodeURIComponent(`${inviteMessage}\n\n1 referral unlocks 7 days of Premium.`)}`;
   }
 
   return `sms:?&body=${encodeURIComponent(inviteMessage)}`;
