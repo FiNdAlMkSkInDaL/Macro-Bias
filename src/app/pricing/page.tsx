@@ -108,7 +108,7 @@ export default function PricingPage() {
         </header>
 
         {/* Pricing cards */}
-        <div className="mt-12 grid gap-6 lg:grid-cols-2">
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
           {/* Free tier */}
           <div className="flex flex-col border border-white/10 bg-zinc-950 p-8">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">

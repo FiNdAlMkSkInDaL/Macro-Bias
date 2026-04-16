@@ -170,7 +170,7 @@ export default function ReferPageClient() {
   }, [data?.referralLink]);
 
   return (
-    <main className="flex min-h-screen items-start justify-center px-6 py-20 text-white">
+    <main className="flex min-h-screen items-start justify-center px-6 py-12 sm:py-20 text-white">
       <div className="w-full max-w-4xl">
         <header className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.42em] text-sky-400/70">
@@ -272,7 +272,7 @@ export default function ReferPageClient() {
             </section>
 
             {data.referralLink && (
-              <section className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+              <section className="grid gap-6 md:grid-cols-[1.3fr_0.9fr]">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
                   <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">
                     Your referral link
@@ -285,13 +285,13 @@ export default function ReferPageClient() {
                       <button
                         type="button"
                         onClick={handleCopyLink}
-                        className="shrink-0 rounded-md border border-sky-400/40 bg-sky-500/10 px-4 py-2 text-xs font-semibold text-sky-300 transition hover:bg-sky-500/20"
+                        className="shrink-0 rounded-md border border-sky-400/40 bg-sky-500/10 px-4 py-2.5 min-h-[44px] text-xs font-semibold text-sky-300 transition hover:bg-sky-500/20"
                       >
                         {copiedLink ? "Copied!" : "Copy Link"}
                       </button>
                       <Link
                         href={data.referralLink}
-                        className="shrink-0 rounded-md border border-zinc-700 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+                        className="shrink-0 rounded-md border border-zinc-700 px-4 py-2.5 min-h-[44px] text-xs font-semibold text-zinc-300 transition hover:border-zinc-500 hover:text-white"
                         data-analytics-event="referral_share_clicked"
                         data-analytics-label="Open Referral Landing"
                         data-analytics-location="referral_hub"
@@ -401,7 +401,7 @@ export default function ReferPageClient() {
                       key={`${referral.referredEmail}-${index}`}
                       className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/30 px-4 py-2.5 text-sm"
                     >
-                      <span className="text-zinc-300">{referral.referredEmail}</span>
+                      <span className="truncate max-w-[180px] sm:max-w-none text-zinc-300">{referral.referredEmail}</span>
                       <div className="flex items-center gap-3">
                         <span className={referral.status === "verified" ? "text-emerald-400" : "text-zinc-500"}>
                           {referral.status}

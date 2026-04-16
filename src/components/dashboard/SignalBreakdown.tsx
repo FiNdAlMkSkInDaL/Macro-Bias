@@ -145,7 +145,7 @@ export function SignalBreakdown({ componentScores }: SignalBreakdownProps) {
         </p>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {PILLAR_CONFIG.map((pillar) => {
           const score = getPillarScore(scoreByKey, pillar.key);
           const disposition = getDisposition(score?.signal);
@@ -153,7 +153,7 @@ export function SignalBreakdown({ componentScores }: SignalBreakdownProps) {
           return (
             <article key={pillar.key} className="border-t border-white/10 pt-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                     {pillar.eyebrow}
                   </p>

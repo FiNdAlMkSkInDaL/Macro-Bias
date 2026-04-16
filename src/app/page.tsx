@@ -317,7 +317,7 @@ export default function HomePage() {
 
         <section
           id="top"
-          className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-24 text-center"
+          className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-16 sm:py-24 text-center"
         >
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
             [ Live Macro Regime Engine ]
@@ -332,7 +332,7 @@ export default function HomePage() {
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+              className="inline-flex w-full sm:w-auto sm:min-w-[220px] items-center justify-center rounded-md bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
               href="#auth-console"
               data-analytics-event="landing_cta_click"
               data-analytics-label="Access the Dashboard"
@@ -341,7 +341,7 @@ export default function HomePage() {
               Access the Dashboard
             </a>
             <a
-              className="inline-flex min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
+              className="inline-flex w-full sm:w-auto sm:min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
               href="/track-record"
               data-analytics-event="landing_cta_click"
               data-analytics-label="View Track Record"
@@ -435,7 +435,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="the-edge" className="py-24">
+        <section id="the-edge" className="py-16 sm:py-24">
           <div className="max-w-3xl">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
               The Edge
@@ -448,7 +448,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-14 lg:grid-cols-3 lg:gap-10">
+          <div className="mt-16 grid gap-14 md:grid-cols-3 lg:gap-10">
             {quantPillars.map((pillar) => (
               <article key={pillar.title} className="border-t border-white/10 pt-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-300/70">
@@ -473,8 +473,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="auth-console" className="border-t border-white/10 py-24">
-          <div className="grid gap-16 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+        <section id="auth-console" className="border-t border-white/10 py-16 sm:py-24">
+          <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
             <div className="max-w-3xl">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
                 Access Console

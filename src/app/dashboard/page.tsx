@@ -605,9 +605,9 @@ export default async function DashboardPage() {
   const analogSummaryCopy = historicalAnalogs
     ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
     : "historical analog engine warming up";
-  const terminalBorderClassName = "border-[0.5px] border-white/10 md:border";
-  const terminalDividerClassName = "border-t-[0.5px] border-white/10 md:border-t";
-  const terminalTableDividerClassName = "border-b-[0.5px] border-white/10 md:border-b";
+  const terminalBorderClassName = "border border-white/5";
+  const terminalDividerClassName = "border-t border-white/5";
+  const terminalTableDividerClassName = "border-b border-white/5";
   const moduleClassName = `${terminalBorderClassName} min-w-0 p-4 sm:p-5 md:p-6`;
   const footerModuleClassName =
     `${terminalBorderClassName} min-w-0 p-4 text-sm leading-6 text-zinc-500 sm:p-5 md:p-6`;
@@ -666,7 +666,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex flex-col gap-4 md:min-w-0 md:flex-shrink-0 md:items-end">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-6">
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Date
@@ -870,7 +870,7 @@ export default async function DashboardPage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                       {crossAssetMapAssets.map((asset) => (
                         <article className={`${terminalBorderClassName} bg-white/[0.01] p-4`} key={asset.ticker}>
                           <div className="flex items-start justify-between gap-4">
@@ -910,23 +910,25 @@ export default async function DashboardPage() {
                   </div>
 
                   {historicalAnalogs ? (
-                    <div className="-mx-4 overflow-x-auto whitespace-nowrap px-4 md:mx-0 md:px-0">
+                    <div className="w-full">
+                      <p className="text-[10px] text-zinc-500 sm:hidden">&larr; scroll to see all columns &rarr;</p>
+                      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                       <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
                         <thead>
                           <tr className={terminalTableDividerClassName}>
-                            <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[34%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               Matched date
                             </th>
-                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               Match confidence
                             </th>
-                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               SPY Gap
                             </th>
-                            <th className="w-[18%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[18%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               SPY Intraday (O-C)
                             </th>
-                            <th className="w-[16%] py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               SPY Range
                             </th>
                           </tr>
@@ -967,6 +969,7 @@ export default async function DashboardPage() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
                     </div>
                   ) : (
                     <div className={`${terminalBorderClassName} bg-white/[0.01] p-4`}>
@@ -1041,7 +1044,7 @@ export default async function DashboardPage() {
                         </p>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                         {CROSS_ASSET_MAP_TICKERS.map((ticker) => (
                           <article className={`${terminalBorderClassName} bg-white/[0.01] p-4`} key={ticker}>
                             <div className="flex items-start justify-between gap-4">
@@ -1074,23 +1077,25 @@ export default async function DashboardPage() {
                       </p>
                     </div>
 
-                    <div className="-mx-4 overflow-x-auto whitespace-nowrap px-4 md:mx-0 md:px-0">
+                    <div className="w-full">
+                      <p className="text-[10px] text-zinc-500 sm:hidden">&larr; scroll to see all columns &rarr;</p>
+                      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                       <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
                         <thead>
                           <tr className={terminalTableDividerClassName}>
-                            <th className="w-[34%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[34%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               Matched date
                             </th>
-                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               Match confidence
                             </th>
-                            <th className="w-[16%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               SPY Gap
                             </th>
-                            <th className="w-[18%] py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[18%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               SPY Intraday (O-C)
                             </th>
-                            <th className="w-[16%] py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                               SPY Range
                             </th>
                           </tr>
@@ -1120,6 +1125,7 @@ export default async function DashboardPage() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
                     </div>
                   </section>
                 </div>

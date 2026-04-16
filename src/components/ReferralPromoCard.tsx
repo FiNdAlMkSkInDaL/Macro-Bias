@@ -33,7 +33,7 @@ export function ReferralPromoCard({
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
           href="/refer"
-          className="inline-flex items-center rounded-md border border-sky-400/40 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20"
+          className="inline-flex items-center rounded-md border border-sky-400/40 bg-sky-500/10 px-4 py-2.5 min-h-[44px] text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 w-full sm:w-auto"
           data-analytics-event="referral_cta_click"
           data-analytics-label={ctaLabel}
           data-analytics-location={location}
@@ -42,7 +42,7 @@ export function ReferralPromoCard({
         </Link>
         <Link
           href="/today"
-          className="inline-flex items-center rounded-md border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-600 hover:text-white"
+          className="inline-flex items-center rounded-md border border-zinc-800 px-4 py-2.5 min-h-[44px] text-sm font-medium text-zinc-300 transition hover:border-zinc-600 hover:text-white w-full sm:w-auto"
           data-analytics-event="referral_cta_click"
           data-analytics-label="See Referral Landing"
           data-analytics-location={location}

@@ -273,13 +273,13 @@ export default async function RegimeIndexPage() {
           </p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <Link
-              className="inline-flex items-center justify-center border border-white/20 bg-white/5 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-white/10"
+              className="w-full sm:w-auto inline-flex items-center justify-center border border-white/20 bg-white/5 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-white/10"
               href="/emails"
             >
               Subscribe Free
             </Link>
             <Link
-              className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
+              className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
               href="/api/checkout?plan=monthly"
             >
               Start 7-Day Free Trial

@@ -78,7 +78,7 @@ export default function PerformanceChart({ data }: { data: DataPoint[] }) {
   const min = Math.floor(Math.min(...allValues) - 0.5);
   const max = Math.ceil(Math.max(...allValues) + 0.5);
 
-  const tickInterval = Math.max(1, Math.floor(data.length / 6));
+  const tickInterval = Math.max(1, Math.floor(data.length / 4));
   const xTicks = data
     .filter((_, i) => i % tickInterval === 0 || i === data.length - 1)
     .map((d) => d.date);
@@ -88,7 +88,7 @@ export default function PerformanceChart({ data }: { data: DataPoint[] }) {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
-          margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+          margin={{ top: 8, right: 8, left: 4, bottom: 0 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -106,9 +106,11 @@ export default function PerformanceChart({ data }: { data: DataPoint[] }) {
             ticks={xTicks}
             axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
             tickLine={false}
+            angle={0}
           />
           <YAxis
             domain={[min, max]}
+            width={48}
             tick={{
               fontSize: 10,
               fill: "#52525b",

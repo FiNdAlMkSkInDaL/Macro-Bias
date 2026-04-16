@@ -158,27 +158,27 @@ export default async function TrackRecordPage() {
           <>
             {/* ---- Stats strip ---- */}
             <section className="grid grid-cols-3 border-b border-white/10">
-              <div className="border-r border-white/10 py-6 pr-6">
+              <div className="border-r border-white/10 py-6 px-3 sm:px-6 sm:pr-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Macro Bias
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
+                <p className="mt-3 font-[family:var(--font-data)] text-xl font-bold text-white sm:text-2xl md:text-3xl">
                   {fmtReturn(stratReturn)}
                 </p>
               </div>
-              <div className="border-r border-white/10 py-6 px-6">
+              <div className="border-r border-white/10 py-6 px-3 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   S&amp;P 500
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-zinc-300 sm:text-3xl">
+                <p className="mt-3 font-[family:var(--font-data)] text-xl font-bold text-zinc-300 sm:text-2xl md:text-3xl">
                   {fmtReturn(spyReturn)}
                 </p>
               </div>
-              <div className="py-6 pl-6">
+              <div className="py-6 px-3 sm:px-6">
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Alpha
                 </p>
-                <p className="mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
+                <p className="mt-3 font-[family:var(--font-data)] text-xl font-bold text-white sm:text-2xl md:text-3xl">
                   {outperformance !== null
                     ? `${outperformance > 0 ? "+" : ""}${outperformance.toFixed(2)}%`
                     : "—"}
@@ -195,7 +195,7 @@ export default async function TrackRecordPage() {
 
             {/* ---- Chart ---- */}
             <section className="border-b border-white/10 py-8">
-              <div className="mb-5 flex items-center gap-6">
+              <div className="mb-5 flex flex-wrap items-center gap-6">
                 <span className="flex items-center gap-2 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   <span className="inline-block h-px w-4 bg-white" />
                   Macro Bias Signal
@@ -216,7 +216,7 @@ export default async function TrackRecordPage() {
               <h2 className="mt-5 max-w-3xl font-[family:var(--font-heading)] text-3xl font-semibold tracking-tighter text-white md:text-4xl">
                 How it works
               </h2>
-              <div className="mt-8 grid gap-10 lg:grid-cols-3 lg:gap-8">
+              <div className="mt-8 grid gap-10 md:grid-cols-3 lg:gap-8">
                 <article className="border-t border-white/10 pt-5">
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                     01

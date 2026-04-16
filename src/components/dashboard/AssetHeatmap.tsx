@@ -57,7 +57,7 @@ function getTone(change: number) {
 
 export function AssetHeatmap({ assets }: AssetHeatmapProps) {
   return (
-    <section className="space-y-12">
+    <section className="space-y-6 sm:space-y-12">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
@@ -72,7 +72,7 @@ export function AssetHeatmap({ assets }: AssetHeatmapProps) {
         </p>
       </div>
 
-      <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {assets.map((asset) => {
           const tone = getTone(asset.dailyChangePercent);
 
@@ -83,7 +83,7 @@ export function AssetHeatmap({ assets }: AssetHeatmapProps) {
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
                     {asset.ticker}
                   </p>
-                  <p className="mt-5 text-2xl font-semibold tracking-tight text-white">
+                  <p className="mt-5 text-xl sm:text-2xl font-semibold tracking-tight text-white">
                     {currencyFormatter.format(asset.currentPrice)}
                   </p>
                 </div>

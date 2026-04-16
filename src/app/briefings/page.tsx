@@ -137,7 +137,7 @@ export default async function BriefingsArchivePage() {
       />
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-8 sm:px-6 sm:py-10">
         <header className="border border-white/10 bg-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
               [ Briefing Archive ]
             </p>
@@ -162,7 +162,7 @@ export default async function BriefingsArchivePage() {
             <Link
               key={b.briefing_date}
               href={`/briefings/${b.briefing_date}`}
-              className="flex items-center justify-between px-5 py-4 transition hover:bg-white/[0.03] sm:px-8"
+              className="flex items-center justify-between px-5 py-3 min-h-[44px] transition hover:bg-white/[0.03] sm:px-8"
             >
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                 <span className="font-[family:var(--font-data)] text-xs text-zinc-400">
