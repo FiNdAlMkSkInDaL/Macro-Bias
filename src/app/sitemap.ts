@@ -46,6 +46,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     throw new Error(`Failed to load briefing dates for sitemap: ${briefingsResult.error.message}`);
   }
 
+  if (cryptoBriefingsResult.error) {
+    throw new Error(`Failed to load crypto briefing dates for sitemap: ${cryptoBriefingsResult.error.message}`);
+  }
+
   const publishedPosts = (postsResult.data as PublishedMarketingPost[] | null) ?? [];
   const briefingRows = (briefingsResult.data as BriefingDateRow[] | null) ?? [];
   const cryptoBriefingRows = (cryptoBriefingsResult.data as CryptoBriefingDateRow[] | null) ?? [];
@@ -108,6 +112,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     // Crypto routes
+    {
+      url: `${appUrl}/crypto`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
     {
       url: `${appUrl}/crypto/dashboard`,
       lastModified: new Date(),

@@ -362,6 +362,7 @@ function buildCryptoHistoricalAnalogVectors(
 
   const minLookback = Math.max(
     CRYPTO_ANALOG_MODEL_SETTINGS.dxyMomentumLookbackSessions,
+    CRYPTO_ANALOG_MODEL_SETTINGS.tltMomentumLookbackSessions,
     CRYPTO_ANALOG_MODEL_SETTINGS.btcRealizedVolWindow,
   );
 

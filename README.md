@@ -1,5 +1,307 @@
 # Macro Bias
 
+Macro Bias is an automated quantitative research desk that publishes daily pre-market regime scores for stocks and crypto.
+
+It runs two parallel pipelines — one for equities and one for crypto — each combining a K-Nearest Neighbors historical analog model with real-time geopolitical and financial news. The outputs are distributed as structured daily briefings via tiered email, with a web dashboard, track record, briefing archive, and scheduled social growth automation.
+
+The core product promise: do not trade the tape in isolation. Macro Bias provides a quantitative baseline, tests whether today's news flow confirms or invalidates that baseline, and publishes a research note that tells the user whether the math is still safe to trust.
+
+## What The System Produces
+
+### Stocks Briefing
+
+Every daily stocks briefing has three layers:
+
+1. A quantitative baseline from the K-NN regime score and historical analog set.
+2. A qualitative overlay from pre-market geopolitical and financial headlines.
+3. A final briefing synthesized by an LLM under a strict JSON schema acting as a structured risk manager.
+
+The finished note includes explicit regime language, a compact sector playbook, a system risk assessment, and raw model diagnostics. Sections: **Bottom Line**, **Sector Breakdown**, **Risk Check**, **Model Notes**.
+
+### Crypto Briefing
+
+The crypto briefing follows the same architecture, tuned for BTC, ETH, and altcoin volatility:
+
+1. A regime score from BTC realized volatility, ETH/BTC ratio, DXY correlation, funding rates, and TLT momentum.
+2. A market structure overlay covering Bitcoin, altcoins, DeFi/L1s, and stablecoin flows.
+3. LLM synthesis under a separate crypto-specific JSON schema.
+
+Sections: **Bottom Line**, **Market Breakdown**, **Risk Check**, **Model Notes**.
+
+## The Macro Override Engine
+
+The K-NN model is the baseline decision layer. It identifies historically similar sessions and calculates the day's regime score.
+
+The LLM is not used as a discretionary signal generator. It acts as a risk manager. Its job is to determine whether the current pre-market tape contains a structural break that invalidates the historical analog framework.
+
+Examples of structural breaks:
+
+- wars, missile strikes, ceasefires, sanctions, embargoes, and tariff shocks
+- banking stress, liquidity events, or credit accidents
+- abrupt policy surprises from central banks or governments
+- energy disruptions, shipping chokepoints, or commodity shocks
+
+When a structural break is detected, the system sets `is_override_active = true` and the briefing warns the user not to trade the baseline math blindly. Both stocks and crypto pipelines support this override logic.
+
+## Daily Architecture
+
+### Stocks pipeline (`/api/cron/publish`)
+
+```text
+Vercel Cron (12:45 UTC)
+  -> cron authorization
+  -> same-day publish guard
+  -> upsertDailyMarketData()
+  -> load recent macro_bias_scores
+  -> generateDailyBriefing()
+     -> Promise.all(fetchNews(), getQuantScore())
+     -> Anthropic synthesis or deterministic fallback
+  -> persistDailyBriefing()
+  -> dispatchQuantBriefing() (premium + free tiers)
+```
+
+### Crypto pipeline (`/api/cron/crypto-publish`)
+
+```text
+Vercel Cron (13:00 UTC)
+  -> cron authorization
+  -> same-day publish guard
+  -> upsertCryptoMarketData()
+  -> load recent crypto_bias_scores
+  -> generateCryptoDailyBriefing()
+     -> Anthropic synthesis or deterministic fallback
+  -> persist to crypto_daily_briefings
+  -> dispatchCryptoBriefingEmails() (premium + free preview tiers)
+```
+
+### Additional crons
+
+| Cron | Schedule (UTC) | Purpose |
+| --- | --- | --- |
+| `/api/cron/welcome-drip` | 10:00 daily | Sends personalized 4-step welcome sequence to new subscribers |
+| `/api/cron/social-dispatch` | 17:00 daily | Drains the scheduled social queue, publishing due posts to X |
+
+### Resilience and fallback design
+
+- `retry.ts` wraps external dependencies in exponential backoff.
+- `daily-briefing-strategies.ts` applies a Strategy Pattern for `news-aware` and `news-unavailable` behavior.
+- If Finnhub fails, a report is still generated from quant context with a news-unavailable disclaimer.
+- If the LLM fails, a deterministic fallback briefing is built from the latest quant context.
+
+## Newsletter Preferences
+
+Subscribers can opt into stocks, crypto, or both via checkboxes on the `/emails` signup page. Preferences are stored on the `free_subscribers` table as `stocks_opted_in` and `crypto_opted_in` booleans.
+
+- The stocks cron filters by `stocks_opted_in = true`.
+- The crypto cron filters by `crypto_opted_in = true`.
+- The welcome drip personalizes the first email based on which products were selected.
+- Every stocks email includes a crypto cross-sell banner.
+
+## Tiered Email Delivery
+
+Both stocks and crypto pipelines send tiered emails through Resend:
+
+- **Premium subscribers**: full briefing with all sections, dashboard link.
+- **Free subscribers**: paywalled preview with upgrade prompts (stocks) or a preview snippet (crypto).
+- `SHADOW_RUN_EMAIL` forces all mail to one inbox for safe testing.
+
+## Growth Automation
+
+### Scheduled social queue
+
+- `x-queue-scheduled.json` is the source of truth for social posts.
+- `arm-scheduled-social-queue.ts` validates and inserts posts into the `scheduled_posts` table.
+- `/api/cron/social-dispatch` drains the queue daily at 17:00 UTC.
+- Posts cover both stocks and crypto content, all linking to `/emails`.
+
+### Welcome drip
+
+A 4-step automated email sequence for new subscribers, personalized by product preference. Managed by `welcome-drip.ts` and triggered by the welcome-drip cron.
+
+### Blog / Intel
+
+Marketing posts are stored as markdown in `src/content/marketing/` and published to the `published_marketing_posts` table via `publish-marketing-posts.ts`. They are served at `/intel/[slug]`.
+
+## Persistence and Data Model
+
+| Table | Purpose |
+| --- | --- |
+| `etf_daily_prices` | Raw market history for the cross-asset feature space (stocks and crypto) |
+| `macro_bias_scores` | Daily stocks regime scores and model inputs |
+| `crypto_bias_scores` | Daily crypto regime scores, component scores, and ticker changes |
+| `daily_market_briefings` | Generated stocks briefing ledger |
+| `crypto_daily_briefings` | Generated crypto briefing ledger |
+| `free_subscribers` | Email subscribers with newsletter preferences |
+| `scheduled_posts` | Social post queue for X/Bluesky dispatch |
+| `published_marketing_posts` | Blog post publication records |
+| `marketing_analytics` | Signup event tracking |
+| `welcome_drip_deliveries` / `welcome_drip_enrollments` | Welcome email sequence state |
+
+## Repository Map
+
+```text
+src/
+  app/
+    api/
+      cron/
+        publish/route.ts          # Stocks daily pipeline
+        crypto-publish/route.ts   # Crypto daily pipeline
+        welcome-drip/route.ts     # Welcome email drip
+        social-dispatch/route.ts  # Scheduled X post dispatch
+      subscribe/route.ts          # Email signup endpoint
+      checkout/route.ts           # Stripe checkout
+      stripe/route.ts             # Stripe webhooks
+    briefings/                    # Stocks briefing archive
+    crypto/
+      page.tsx                    # Crypto landing page
+      dashboard/page.tsx          # Crypto live dashboard
+      track-record/page.tsx       # Crypto backtest equity curve
+      briefings/                  # Crypto briefing archive
+    dashboard/page.tsx            # Stocks live dashboard
+    track-record/page.tsx         # Stocks backtest equity curve
+    emails/page.tsx               # Newsletter signup page
+    pricing/page.tsx              # Pricing and plan comparison
+    regime/                       # Regime explainer pages
+    intel/[slug]/                 # Blog posts
+    feed.json/route.ts            # JSON Feed
+    feed.xml/route.ts             # RSS Feed
+  components/
+    AssetToggle.tsx               # Stocks / Crypto navigation toggle
+    SiteNav.tsx                   # Global navigation
+    SiteFooter.tsx                # Global footer
+    dashboard/                    # Gauge, heatmap, signal breakdown
+    track-record/
+      PerformanceChart.tsx        # Stocks equity curve chart
+      CryptoPerformanceChart.tsx  # Crypto equity curve chart
+  lib/
+    briefing/                     # Stocks briefing generator, config, strategies, retry
+    crypto-briefing/              # Crypto briefing generator and config
+    macro-bias/                   # Stocks bias calculation and types
+    crypto-bias/                  # Crypto bias calculation, constants, types
+    market-data/                  # Stocks market data sync and news fetch
+    crypto-market-data/           # Crypto market data sync (BTC, ETH, SOL, GLD, DXY, TLT)
+    track-record/                 # Stocks backtest engine
+    crypto-track-record/          # Crypto backtest engine
+    marketing/
+      email-dispatch.ts           # Stocks email builder and sender
+      welcome-drip.ts             # Welcome email sequence
+    billing/                      # Stripe subscription management
+    social/                       # Social post dispatcher
+    regime/                       # Regime content and classification
+    supabase/                     # Supabase client factories
+    analytics/                    # Client and server analytics
+  utils/
+    knn.ts                        # K-Nearest Neighbors implementation
+    quantMath.ts                  # Quantitative math utilities
+    regime-classifier.ts          # Stocks regime classifier
+    crypto-regime-classifier.ts   # Crypto regime classifier
+  scripts/
+    arm-scheduled-social-queue.ts
+    run-daily-macro-bias-sync.ts
+    publish-marketing-posts.ts
+    backfill-crypto-prices.ts
+    run-daily-crypto-bias-sync.ts
+    schedule-drafts.ts
+  content/
+    marketing/                    # Blog post markdown + social queue JSON
+
+supabase/
+  migrations/                     # Schema migrations (12 files)
+
+vercel.json                       # Cron schedule definitions
+```
+
+## Environment Variables
+
+### Core platform
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public Supabase client key for browser auth |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Privileged server-side database access |
+| `NEXT_PUBLIC_APP_URL` | Yes | Canonical base URL for links |
+| `CRON_SECRET` | Yes | Bearer secret for all cron routes |
+| `PUBLISH_CRON_SECRET` | Optional | Backward-compatible fallback secret |
+
+### Research generation
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `FINNHUB_API_KEY` | Yes | Pre-market news source |
+| `ANTHROPIC_API_KEY` | Yes | LLM synthesis and override evaluation |
+
+### Email delivery
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `RESEND_API_KEY` | Yes | Email transport |
+| `RESEND_FROM_ADDRESS` | Recommended | Authenticated `@macro-bias.com` sender |
+| `SHADOW_RUN_EMAIL` | Recommended for testing | Forces all mail to one inbox |
+
+### Billing
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes | Browser Stripe key |
+| `STRIPE_SECRET_KEY` | Yes | Server-side Stripe key |
+| `STRIPE_MONTHLY_PRICE_ID` | Yes | Monthly price ID |
+| `STRIPE_ANNUAL_PRICE_ID` | Yes | Annual price ID |
+| `STRIPE_WEBHOOK_SECRET` | Yes | Webhook signature verification |
+
+### Social channels
+
+| Variable | Purpose |
+| --- | --- |
+| `X_API_KEY` | X app key |
+| `X_API_SECRET` | X app secret |
+| `X_ACCESS_TOKEN` | X user access token |
+| `X_ACCESS_SECRET` | X user access secret |
+
+## Local Setup
+
+```bash
+npm install
+npm run dev
+npm run typecheck
+npm run build
+```
+
+### Operational commands
+
+```bash
+npm run macro-bias:sync                              # Refresh stocks market data
+npm run social:arm-queue                             # Insert social queue into DB
+npx tsx src/scripts/run-daily-crypto-bias-sync.ts    # Refresh crypto market data
+npx tsx src/scripts/publish-marketing-posts.ts       # Publish blog posts
+npx tsx src/scripts/backfill-crypto-prices.ts        # Backfill crypto price history
+```
+
+### Test cron routes locally
+
+```bash
+# Stocks publish
+curl -X POST http://localhost:3000/api/cron/publish \
+  -H "Authorization: Bearer <CRON_SECRET>"
+
+# Crypto publish
+curl -X POST http://localhost:3000/api/cron/crypto-publish \
+  -H "Authorization: Bearer <CRON_SECRET>"
+
+# Social dispatch
+curl -X GET http://localhost:3000/api/cron/social-dispatch \
+  -H "Authorization: Bearer <CRON_SECRET>"
+```
+
+## Deployment
+
+Runs on Vercel (Hobby plan) with four cron jobs defined in `vercel.json`. Supabase provides PostgreSQL. Resend handles email. Stripe manages billing.
+
+```bash
+vercel --prod
+```
+# Macro Bias
+
 Macro Bias is an automated quantitative research desk.
 
 It runs a daily pre-market pipeline that combines a K-Nearest Neighbors historical price analog with real-time geopolitical and financial news, then distributes the result as a production-grade sector bias briefing. The system is built as a SaaS operating model, not a personal script: it persists market state, synthesizes a structured daily report, logs every run for audit and backtesting, distributes tiered email output, and supports scheduled growth automation.
