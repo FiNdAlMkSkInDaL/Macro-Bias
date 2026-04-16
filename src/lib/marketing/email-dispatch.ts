@@ -121,11 +121,11 @@ function getMacroOverlayLabel(isOverrideActive: boolean) {
 }
 
 function buildHeaderSummary(score: number, label: string, isOverrideActive: boolean) {
-  return `[SYSTEM OUTPUT] ALGO BIAS: ${formatDisplayLabel(label)} (${formatSignedNumber(score)}) | [SYSTEM OUTPUT] OVERLAY: ${getMacroOverlayLabel(isOverrideActive)}`;
+  return `TODAY'S SCORE: ${formatDisplayLabel(label)} (${formatSignedNumber(score)}) | MACRO OVERLAY: ${getMacroOverlayLabel(isOverrideActive)}`;
 }
 
 function renderMonospaceSpan(value: string, color?: string) {
-  const colorStyle = color ? ` color: ${color};` : "";
+  const colorStyle = color ? ` color: ${color}; -webkit-text-fill-color: ${color};` : "";
 
   return `<span style="font-family: monospace, 'Courier New', Courier;${colorStyle}">${escapeHtml(value)}</span>`;
 }
@@ -137,7 +137,7 @@ function stripMarkdownBold(value: string) {
 function renderMarkdownInline(value: string) {
   return escapeHtml(value).replace(
     /\*\*([^*]+)\*\*/g,
-    '<strong style="font-weight: 700; color: #f8fafc;">$1</strong>',
+    '<strong style="font-weight: 700; color: #f8fafc; -webkit-text-fill-color: #f8fafc;">$1</strong>',
   );
 }
 
@@ -356,7 +356,8 @@ function renderPlaybookBiasHtml(value: string) {
       return match;
     }
 
-    return `<span style="font-weight: 700; color: ${getPlaybookBiasColor(normalizedBias)};">${escapeHtml(normalizedBias)}</span>`;
+    const biasColor = getPlaybookBiasColor(normalizedBias);
+    return `<span style="font-weight: 700; color: ${biasColor}; -webkit-text-fill-color: ${biasColor};">${escapeHtml(normalizedBias)}</span>`;
   });
 }
 
@@ -364,7 +365,7 @@ function renderParagraphsHtml(
   content: string,
   textColor = '#dbe4ee',
   fontSize = 16,
-  bottomMargin = 14,
+  bottomMargin = 16,
 ) {
   const paragraphs = content
     .split(/\n{2,}/)
@@ -375,7 +376,7 @@ function renderParagraphsHtml(
     .map((paragraph) => {
       const renderedParagraph = renderMarkdownInline(paragraph).replace(/\n/g, '<br />');
 
-      return `<p style="margin: 0 0 ${bottomMargin}px; color: ${textColor}; font-size: ${fontSize}px; line-height: 1.7;">${renderedParagraph}</p>`;
+      return `<p style="margin: 0 0 ${bottomMargin}px; color: ${textColor}; -webkit-text-fill-color: ${textColor}; font-size: ${fontSize}px; line-height: 1.7;">${renderedParagraph}</p>`;
     })
     .join('');
 }
@@ -390,9 +391,12 @@ function renderSectionBlock(
 ) {
   const marginTop = options?.marginTop ?? 28;
   const titleColor = options?.titleColor ?? '#94a3b8';
+  const dividerStyle = marginTop > 0
+    ? `margin-top: ${marginTop}px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.06);`
+    : `margin-top: ${marginTop}px;`;
 
-  return `<div style="margin-top: ${marginTop}px;">
-    <div style="color: ${titleColor}; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">${escapeHtml(title)}</div>
+  return `<div style="${dividerStyle}">
+    <div style="color: ${titleColor}; -webkit-text-fill-color: ${titleColor}; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">${escapeHtml(title)}</div>
     <div style="margin-top: 14px;">${bodyHtml}</div>
   </div>`;
 }
@@ -623,7 +627,7 @@ function buildHeaderTickerHtml(
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse;">
     <tr>
       <td style="padding: 0 0 14px;">
-        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">[SYSTEM OUTPUT] ALGO BIAS</div>
+        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">TODAY'S SCORE</div>
         <div class="email-heading" style="margin-top: 8px; color: #f8fafc; font-size: 30px; font-weight: 700; line-height: 1.2;">
           ${renderMonospaceSpan(baselineLabel)} <span style="color: ${accentColor};">${renderMonospaceSpan(`(${baselineScore})`)}</span>
         </div>
@@ -631,7 +635,7 @@ function buildHeaderTickerHtml(
     </tr>
     <tr>
       <td style="padding: 14px 0 0; border-top: 1px solid #1e293b;">
-        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">[SYSTEM OUTPUT] OVERLAY</div>
+        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">MACRO OVERLAY</div>
         <div style="margin-top: 8px; color: ${overrideStatusColor}; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.2;">${renderMonospaceSpan(overlayLabel, overrideStatusColor)}</div>
       </td>
     </tr>
@@ -650,8 +654,8 @@ function buildDashboardCtaHtml(dashboardUrl: string) {
 
 function buildFreeTierPaywallHtml(upgradeUrl: string) {
   return `<div style="border: 1px solid #38bdf8; border-radius: 22px; padding: 24px 22px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(15, 23, 42, 0.96) 58%, rgba(2, 6, 23, 1) 100%); box-shadow: 0 18px 48px rgba(14, 165, 233, 0.2);">
-    <div style="color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Premium Access Required</div>
-    <p style="margin: 14px 0 0; color: #f8fafc; font-size: 20px; font-weight: 700; line-height: 1.5;">${escapeHtml(FREE_TIER_PAYWALL_MESSAGE)}</p>
+    <div style="color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Premium Access Required</div>
+    <p style="margin: 14px 0 0; color: #f8fafc; -webkit-text-fill-color: #f8fafc; font-size: 20px; font-weight: 700; line-height: 1.5;">${escapeHtml(FREE_TIER_PAYWALL_MESSAGE)}</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top: 22px; border-collapse: separate;">
       <tr>
         <td bgcolor="#0ea5e9" style="border: 1px solid #7dd3fc; border-radius: 14px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); box-shadow: 0 12px 32px rgba(56, 189, 248, 0.22);">
@@ -663,14 +667,14 @@ function buildFreeTierPaywallHtml(upgradeUrl: string) {
 }
 
 function renderPlaybookListItemHtml(item: PlaybookListItem) {
-  return `<li style="margin: 0 0 14px; color: #dbe4ee; font-size: 16px; line-height: 1.8;">
-    <strong style="font-weight: 700; color: #f8fafc;">${escapeHtml(item.sector)}</strong>: ${renderPlaybookBiasHtml(item.sectorBias)} <span style="color: #64748b;">&mdash;</span> ${renderMarkdownInline(item.catalyst)}
+  return `<li style="margin: 0 0 18px; color: #dbe4ee; -webkit-text-fill-color: #dbe4ee; font-size: 16px; line-height: 1.8;">
+    <strong style="font-weight: 700; color: #f8fafc; -webkit-text-fill-color: #f8fafc;">${escapeHtml(item.sector)}</strong>: ${renderPlaybookBiasHtml(item.sectorBias)} <span style="color: #64748b; -webkit-text-fill-color: #64748b;">&mdash;</span> ${renderMarkdownInline(item.catalyst)}
   </li>`;
 }
 
 function renderFreeTierLockedPlaybookItemHtml() {
-  return `<li style="margin: 0 0 14px; color: #dbe4ee; font-size: 16px; line-height: 1.8;">
-    🔒 <strong style="font-weight: 700; color: #f8fafc;">[LOCKED]</strong>: Upgrade to view sector bias and algo catalyst.
+  return `<li style="margin: 0 0 14px; color: #dbe4ee; -webkit-text-fill-color: #dbe4ee; font-size: 16px; line-height: 1.8;">
+    🔒 <strong style="font-weight: 700; color: #f8fafc; -webkit-text-fill-color: #f8fafc;">[LOCKED]</strong>: Upgrade to view sector bias and algo catalyst.
   </li>`;
 }
 
@@ -1027,12 +1031,12 @@ function buildEmailHtml(
   const referralWidgetHtml =
     tier === 'free'
       ? `<div style="margin-top: 32px; padding: 16px 20px; border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; background: rgba(56,189,248,0.04); text-align: center;">
-                  <p style="margin: 0; color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">Refer &amp; Earn</p>
-                  <p style="margin: 6px 0 0; color: #e2e8f0; font-size: 14px; line-height: 1.65;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
-                  <a href="${referralPageUrl}" style="display: inline-block; margin-top: 10px; color: #38bdf8; font-size: 12px; font-weight: 600; text-decoration: underline;">Get your referral link & rewards &rarr;</a>
+                  <p style="margin: 0; color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">Refer &amp; Earn</p>
+                  <p style="margin: 6px 0 0; color: #e2e8f0; -webkit-text-fill-color: #e2e8f0; font-size: 14px; line-height: 1.65;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
+                  <a href="${referralPageUrl}" style="display: inline-block; margin-top: 10px; color: #38bdf8; -webkit-text-fill-color: #38bdf8; font-size: 12px; font-weight: 600; text-decoration: underline;">Get your referral link & rewards &rarr;</a>
                 </div>
                 <div style="margin-top: 12px; text-align: center;">
-                  <a href="${cryptoBriefingUrl}" style="color: #475569; font-size: 11px; text-decoration: underline;">Also available: Daily Crypto Regime Briefing</a>
+                  <a href="${cryptoBriefingUrl}" style="color: #475569; -webkit-text-fill-color: #475569; font-size: 11px; text-decoration: underline;">Also available: Daily Crypto Regime Briefing</a>
                 </div>`
       : '';
 
@@ -1047,9 +1051,9 @@ function buildEmailHtml(
           <table role="presentation" class="email-shell email-surface" bgcolor="#020617" width="100%" cellspacing="0" cellpadding="0" style="max-width: 720px; background: #020617; background-color: #020617; background-image: linear-gradient(#020617, #020617);">
             <tr>
               <td style="padding: 0 8px;">
-                <div class="email-eyebrow" style="color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Macro Bias Daily Quant Briefing</div>
+                <div class="email-eyebrow" style="color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Daily Macro Bias</div>
                 <div style="margin-top: 16px;">${headerTickerHtml}</div>
-                <div style="margin-top: 28px;">
+                <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid #1e293b;">
                   ${bodyCopyHtml}
                 </div>
                 ${weeklyRecapHtml}

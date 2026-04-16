@@ -162,11 +162,11 @@ function renderCryptoSectionHtml(title: string, content: string, titleColor: str
     if (!trimmed) return "";
     // Bullet list items
     if (trimmed.startsWith("- ")) {
-      const inner = escapeHtml(trimmed.slice(2)).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      return `<li style="margin-bottom:6px;color:#cbd5e1;">${inner}</li>`;
+      const inner = escapeHtml(trimmed.slice(2)).replace(/\*\*(.*?)\*\*/g, "<strong style='color:#f1f5f9;-webkit-text-fill-color:#f1f5f9;'>$1</strong>");
+      return `<li style="margin-bottom:10px;color:#cbd5e1;-webkit-text-fill-color:#cbd5e1;font-size:15px;line-height:1.7;">${inner}</li>`;
     }
-    const para = escapeHtml(trimmed).replace(/\*\*(.*?)\*\*/g, "<strong style='color:#f1f5f9;'>$1</strong>");
-    return `<p style="margin:0 0 10px;color:#cbd5e1;font-size:14px;line-height:1.7;">${para}</p>`;
+    const para = escapeHtml(trimmed).replace(/\*\*(.*?)\*\*/g, "<strong style='color:#f1f5f9;-webkit-text-fill-color:#f1f5f9;'>$1</strong>");
+    return `<p style="margin:0 0 12px;color:#cbd5e1;-webkit-text-fill-color:#cbd5e1;font-size:15px;line-height:1.7;">${para}</p>`;
   });
 
   const hasBullets = lines.some((l) => l.trim().startsWith("- "));
@@ -175,8 +175,8 @@ function renderCryptoSectionHtml(title: string, content: string, titleColor: str
     : rendered.filter(Boolean).join("");
 
   return `
-<div style="margin-top:${marginTop}px;">
-  <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:${titleColor};">
+<div style="margin-top:${marginTop}px;${marginTop > 0 ? 'padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);' : ''}">
+  <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:${titleColor};-webkit-text-fill-color:${titleColor};">
     ${escapeHtml(title)}
   </p>
   ${body}
@@ -204,36 +204,53 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
 
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background-color:#09090b;font-family:ui-sans-serif,system-ui,sans-serif;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    html, body { background-color: #09090b !important; color: #e4e4e7 !important; }
+    body, table, td, div, p, a, span, li { -webkit-text-size-adjust: 100% !important; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background-color: #09090b !important; color: #e4e4e7 !important; }
+    }
+    @media (prefers-color-scheme: light) {
+      html, body { background-color: #09090b !important; color: #e4e4e7 !important; }
+    }
+    [data-ogsc] body { background-color: #09090b !important; color: #e4e4e7 !important; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#09090b;color:#e4e4e7;-webkit-text-fill-color:#e4e4e7;font-family:ui-sans-serif,system-ui,sans-serif;-webkit-text-size-adjust:100%;">
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
 
     <!-- Header -->
-    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:28px 32px;margin-bottom:4px;">
-      <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;">
-        [ Crypto Regime Briefing ]
+    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:24px 20px;margin-bottom:4px;">
+      <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;-webkit-text-fill-color:#52525b;">
+        Daily Crypto Bias
       </p>
-      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};letter-spacing:-0.02em;">
+      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
         ${escapeHtml(labelText)}
         <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
       </p>
     </div>
 
     <!-- Body -->
-    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:28px 32px;margin-bottom:4px;">
+    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:24px 20px;margin-bottom:4px;">
       ${sectionHtml}
     </div>
 
     <!-- Footer -->
     <div style="padding:20px 0;text-align:center;">
-      <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;">
-        <a href="https://macro-bias.com/crypto/dashboard" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
+      <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;-webkit-text-fill-color:#3f3f46;">
+        <a href="https://macro-bias.com/crypto/dashboard" style="color:#7dd3fc;-webkit-text-fill-color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
       </p>
-      <p style="margin:0;font-size:10px;color:#3f3f46;">
+      <p style="margin:0;font-size:10px;color:#3f3f46;-webkit-text-fill-color:#3f3f46;">
         You're receiving this because you opted into Crypto Briefings.
       </p>
-      <p style="margin:8px 0 0;font-size:10px;color:#3f3f46;">
-        <a href="{{UNSUBSCRIBE_URL}}" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
+      <p style="margin:8px 0 0;font-size:10px;color:#3f3f46;-webkit-text-fill-color:#3f3f46;">
+        <a href="{{UNSUBSCRIBE_URL}}" style="color:#52525b;-webkit-text-fill-color:#52525b;text-decoration:underline;">Unsubscribe</a>
       </p>
     </div>
 
@@ -274,36 +291,53 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
 
   const paywallHtml = `
 <div style="margin-top:28px;border:1px solid #38bdf8;border-radius:12px;padding:24px;background:linear-gradient(135deg, rgba(56,189,248,0.12) 0%, rgba(9,9,11,0.96) 60%);">
-  <p style="margin:0;color:#7dd3fc;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;">Premium Access Required</p>
-  <p style="margin:12px 0 0;color:#f8fafc;font-size:18px;font-weight:700;">Unlock the full crypto briefing with market breakdown, risk check, and model notes.</p>
-  <a href="${upgradeUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#0ea5e9;color:#fff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border-radius:8px;">START 7-DAY FREE TRIAL</a>
+  <p style="margin:0;color:#7dd3fc;-webkit-text-fill-color:#7dd3fc;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;">Premium Access Required</p>
+  <p style="margin:12px 0 0;color:#f8fafc;-webkit-text-fill-color:#f8fafc;font-size:18px;font-weight:700;">Unlock the full crypto briefing with market breakdown, risk check, and model notes.</p>
+  <a href="${upgradeUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#0ea5e9;color:#fff;-webkit-text-fill-color:#fff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border-radius:8px;">START 7-DAY FREE TRIAL</a>
 </div>`;
   const referralWidgetHtml = `
 <div style="margin-top:24px;padding:16px 20px;border:1px solid rgba(56,189,248,0.2);border-radius:8px;background:rgba(56,189,248,0.04);text-align:center;">
-  <p style="margin:0;color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Refer &amp; Earn</p>
-  <p style="margin:6px 0 0;color:#e2e8f0;font-size:14px;line-height:1.6;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
-  <a href="${referralPageUrl}" style="display:inline-block;margin-top:10px;color:#38bdf8;font-size:12px;font-weight:600;text-decoration:underline;">Get your referral link & rewards &rarr;</a>
+  <p style="margin:0;color:#7dd3fc;-webkit-text-fill-color:#7dd3fc;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Refer &amp; Earn</p>
+  <p style="margin:6px 0 0;color:#e2e8f0;-webkit-text-fill-color:#e2e8f0;font-size:14px;line-height:1.6;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
+  <a href="${referralPageUrl}" style="display:inline-block;margin-top:10px;color:#38bdf8;-webkit-text-fill-color:#38bdf8;font-size:12px;font-weight:600;text-decoration:underline;">Get your referral link & rewards &rarr;</a>
 </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background-color:#09090b;font-family:ui-sans-serif,system-ui,sans-serif;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    html, body { background-color: #09090b !important; color: #e4e4e7 !important; }
+    body, table, td, div, p, a, span, li { -webkit-text-size-adjust: 100% !important; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background-color: #09090b !important; color: #e4e4e7 !important; }
+    }
+    @media (prefers-color-scheme: light) {
+      html, body { background-color: #09090b !important; color: #e4e4e7 !important; }
+    }
+    [data-ogsc] body { background-color: #09090b !important; color: #e4e4e7 !important; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#09090b;color:#e4e4e7;-webkit-text-fill-color:#e4e4e7;font-family:ui-sans-serif,system-ui,sans-serif;-webkit-text-size-adjust:100%;">
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
 
     <!-- Header -->
-    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:28px 32px;margin-bottom:4px;">
-      <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;">
-        [ Crypto Regime Briefing ]
+    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:24px 20px;margin-bottom:4px;">
+      <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;-webkit-text-fill-color:#52525b;">
+        Daily Crypto Bias
       </p>
-      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};letter-spacing:-0.02em;">
+      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
         ${escapeHtml(labelText)}
         <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
       </p>
     </div>
 
     <!-- Body -->
-    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:28px 32px;margin-bottom:4px;">
+    <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:24px 20px;margin-bottom:4px;">
       ${bottomLineHtml}
       ${marketPreviewHtml}
       ${paywallHtml}
@@ -313,14 +347,14 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
 
     <!-- Footer -->
     <div style="padding:20px 0;text-align:center;">
-      <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;">
-        <a href="https://macro-bias.com/crypto/dashboard" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
+      <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;-webkit-text-fill-color:#3f3f46;">
+        <a href="https://macro-bias.com/crypto/dashboard" style="color:#7dd3fc;-webkit-text-fill-color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
       </p>
-      <p style="margin:0;font-size:10px;color:#3f3f46;">
+      <p style="margin:0;font-size:10px;color:#3f3f46;-webkit-text-fill-color:#3f3f46;">
         You're receiving this because you opted into Crypto Briefings.
       </p>
-      <p style="margin:8px 0 0;font-size:10px;color:#3f3f46;">
-        <a href="{{UNSUBSCRIBE_URL}}" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
+      <p style="margin:8px 0 0;font-size:10px;color:#3f3f46;-webkit-text-fill-color:#3f3f46;">
+        <a href="{{UNSUBSCRIBE_URL}}" style="color:#52525b;-webkit-text-fill-color:#52525b;text-decoration:underline;">Unsubscribe</a>
       </p>
     </div>
 
@@ -438,7 +472,7 @@ async function dispatchCryptoBriefingEmails(
   const resend = new Resend(resendApiKey);
 
   const signedLabel = score > 0 ? `+${score}` : `${score}`;
-  const subject = `[CRYPTO] ${label.replace(/_/g, " ")} (${signedLabel}) — Daily Crypto Bias`;
+  const subject = `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel})`;
   const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label);
   const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label);
   const fromAddress = getCryptoFromAddress();
