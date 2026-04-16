@@ -1,20 +1,20 @@
 /**
  * Schedule draft social posts into the publishing queue.
  * 
- * Scheduling logic (2-3 posts per trading day):
- * - daily_intercept / crypto_intercept / contrarian: one per trading day at 13:15 UTC
- * - receipt: one every 2nd trading day at 16:00 UTC
+ * Scheduling logic (3-4 posts per trading day, engagement-heavy):
+ * - engagement: one EVERY trading day at 14:00 UTC (highest frequency)
+ * - daily_intercept / crypto_intercept / contrarian: one every 2nd trading day at 13:15 UTC
+ * - receipt: one every 3rd trading day at 16:00 UTC
  * - educational_fomo: one every 3rd trading day at 15:00 UTC
- * - email_signup: one every 4th trading day at 14:30 UTC
- * - engagement: one every 3rd trading day at 14:00 UTC
- * - referral: one every 5th trading day at 15:30 UTC
+ * - email_signup: one every 5th trading day at 14:30 UTC
+ * - referral: one every 7th trading day at 15:30 UTC
  * 
  * Starts from the next weekday after the last scheduled post.
- * Posts with their own link use that link. Posts without get the canonical link.
+ * Posts with their own link use that link. Posts without (engagement) post as-is.
  * 
  * Usage: npx tsx src/scripts/schedule-drafts.ts [drafts-file-name]
  *   default: x-queue-drafts.json
- *   example: npx tsx src/scripts/schedule-drafts.ts x-queue-drafts-v2.json
+ *   example: npx tsx src/scripts/schedule-drafts.ts x-queue-drafts-v3.json
  */
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -23,20 +23,24 @@ import path from "node:path";
 const draftsFileName = process.argv[2] ?? "x-queue-drafts.json";
 const DRAFTS_PATH = path.join(process.cwd(), "src", "content", "marketing", draftsFileName);
 const SCHEDULED_PATH = path.join(process.cwd(), "src", "content", "marketing", "x-queue-scheduled.json");
-const CANONICAL_LINK = "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts";
+const CANONICAL_LINK = "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled";
 
 type Draft = {
   id: string;
   category: string;
-  priority: string;
+  priority?: string;
   copy: string;
-  link?: string;
+  link?: string | null;
 };
 
-type ScheduledPost = Draft & {
-  link: string;
+type ScheduledPost = {
+  id: string;
+  category: string;
+  copy: string;
+  link: string | null;
   scheduled_at: string;
   status: string;
+  priority?: string;
 };
 
 function isWeekday(date: Date) {
@@ -111,7 +115,10 @@ async function main() {
     }
   }
 
-  function getLink(draft: Draft): string {
+  function getLink(draft: Draft): string | null {
+    // Engagement posts (link: null) stay linkless
+    if (draft.link === null || draft.link === undefined) return null;
+    if (draft.link === "") return null;
     return draft.link || CANONICAL_LINK;
   }
 
@@ -128,11 +135,12 @@ async function main() {
       cursor = getNextWeekday(cursor);
     }
 
-    // Primary post (daily_intercept or crypto_intercept): every trading day at 13:15 UTC
-    if (diIdx < primaryPosts.length) {
+    // Primary post (daily_intercept or crypto_intercept): every 2nd trading day at 13:15 UTC
+    if (diIdx < primaryPosts.length && dayCount % 2 === 0) {
       scheduled.push({
-        ...primaryPosts[diIdx],
         id: primaryPosts[diIdx].id,
+        category: primaryPosts[diIdx].category,
+        copy: primaryPosts[diIdx].copy,
         link: getLink(primaryPosts[diIdx]),
         scheduled_at: toISO(cursor, 13, 15),
         status: "scheduled",
@@ -140,11 +148,12 @@ async function main() {
       diIdx++;
     }
 
-    // Receipt: every 2nd trading day at 16:00 UTC
-    if (rcIdx < receipts.length && dayCount % 2 === 1) {
+    // Receipt: every 3rd trading day at 16:00 UTC
+    if (rcIdx < receipts.length && dayCount % 3 === 1) {
       scheduled.push({
-        ...receipts[rcIdx],
         id: receipts[rcIdx].id,
+        category: receipts[rcIdx].category,
+        copy: receipts[rcIdx].copy,
         link: getLink(receipts[rcIdx]),
         scheduled_at: toISO(cursor, 16, 0),
         status: "scheduled",
@@ -153,10 +162,11 @@ async function main() {
     }
 
     // Educational: every 3rd trading day at 15:00 UTC
-    if (edIdx < educational.length && dayCount % 3 === 0 && dayCount > 0) {
+    if (edIdx < educational.length && dayCount % 3 === 2) {
       scheduled.push({
-        ...educational[edIdx],
         id: educational[edIdx].id,
+        category: educational[edIdx].category,
+        copy: educational[edIdx].copy,
         link: getLink(educational[edIdx]),
         scheduled_at: toISO(cursor, 15, 0),
         status: "scheduled",
@@ -164,11 +174,12 @@ async function main() {
       edIdx++;
     }
 
-    // Email signup: every 4th trading day at 14:30 UTC
-    if (esIdx < emailSignups.length && dayCount % 4 === 0) {
+    // Email signup: every 5th trading day at 14:30 UTC
+    if (esIdx < emailSignups.length && dayCount % 5 === 0) {
       scheduled.push({
-        ...emailSignups[esIdx],
         id: emailSignups[esIdx].id,
+        category: emailSignups[esIdx].category,
+        copy: emailSignups[esIdx].copy,
         link: getLink(emailSignups[esIdx]),
         scheduled_at: toISO(cursor, 14, 30),
         status: "scheduled",
@@ -176,11 +187,12 @@ async function main() {
       esIdx++;
     }
 
-    // Engagement: every 3rd trading day at 14:00 UTC (no link for pure engagement)
-    if (enIdx < engagement.length && dayCount % 3 === 2) {
+    // Engagement: EVERY trading day at 14:00 UTC (highest frequency)
+    if (enIdx < engagement.length) {
       scheduled.push({
-        ...engagement[enIdx],
         id: engagement[enIdx].id,
+        category: engagement[enIdx].category,
+        copy: engagement[enIdx].copy,
         link: getLink(engagement[enIdx]),
         scheduled_at: toISO(cursor, 14, 0),
         status: "scheduled",
@@ -188,11 +200,12 @@ async function main() {
       enIdx++;
     }
 
-    // Referral: every 5th trading day at 15:30 UTC
-    if (rfIdx < referral.length && dayCount % 5 === 4) {
+    // Referral: every 7th trading day at 15:30 UTC
+    if (rfIdx < referral.length && dayCount % 7 === 6) {
       scheduled.push({
-        ...referral[rfIdx],
         id: referral[rfIdx].id,
+        category: referral[rfIdx].category,
+        copy: referral[rfIdx].copy,
         link: getLink(referral[rfIdx]),
         scheduled_at: toISO(cursor, 15, 30),
         status: "scheduled",

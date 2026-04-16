@@ -7,8 +7,9 @@ import { TwitterApi } from 'twitter-api-v2';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isBlueskyConfigured, publishToBluesky } from './bluesky';
+import { sanitizeForSocial } from './sanitize';
 
-const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts';
+const CANONICAL_EMAIL_LINK = 'https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled';
 const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/emails\b/gi;
 const MAX_X_POST_LENGTH = 280;
 
@@ -102,11 +103,14 @@ function normalizeScheduledPostLink(link: string | null) {
 }
 
 function buildTweetContent(post: ScheduledPostRow) {
-  const trimmedBody = post.post_body?.trim();
+  const rawBody = post.post_body?.trim();
 
-  if (!trimmedBody) {
+  if (!rawBody) {
     throw new RouteError(`Scheduled post ${post.id} is empty and cannot be published.`);
   }
+
+  // Strip any markdown emphasis that leaked into post copy
+  const trimmedBody = sanitizeForSocial(rawBody);
 
   const normalizedLink = normalizeScheduledPostLink(post.link);
 

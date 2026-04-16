@@ -21,6 +21,8 @@ import { partitionUnlockedSubscribers } from '../../../../lib/referral/premium-u
 import { verifyPendingReferrals } from '../../../../lib/referral/verify-referrals';
 import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
+import { sanitizeForSocial } from '../../../../lib/social/sanitize';
+import { isTelegramConfigured, publishToTelegram } from '../../../../lib/social/telegram';
 import { getWeeklyDigestData } from '../../../../lib/briefing/weekly-digest-data';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 
@@ -31,7 +33,7 @@ export const revalidate = 0;
 
 const EMAIL_RECIPIENT_PAGE_SIZE = 1000;
 const MAX_HISTORY_ROWS = 180;
-const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 150;
+const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 120;
 const DISCORD_PUBLISHING_ENABLED = false;
 
 type PublishPayload = {
@@ -53,7 +55,7 @@ type XCredentials = {
   apiSecret: string;
 };
 
-type PublishDestination = 'bluesky' | 'discord' | 'email' | 'x';
+type PublishDestination = 'bluesky' | 'discord' | 'email' | 'telegram' | 'x';
 
 type PublishResult = {
   destination: PublishDestination;
@@ -115,12 +117,9 @@ function formatOptionalUnsignedPercent(value: number | null) {
   return `${Math.abs(Number(value.toFixed(2)))}%`;
 }
 
-function stripMarkdownBold(text: string) {
-  return text.replace(/\*\*/g, '');
-}
-
 function buildXSnippet(text: string, maxLength: number) {
-  const normalizedText = stripMarkdownBold(text).replace(/\s+/g, ' ').trim();
+  // Collapse to single line for snippet use
+  const normalizedText = sanitizeForSocial(text).replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
 
   if (normalizedText.length <= maxLength) {
     return normalizedText;
@@ -436,11 +435,11 @@ function buildPublishPayload(
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n');
-  const xText = stripMarkdownBold([
+  const xText = sanitizeForSocial([
     `Today's Macro Bias: ${formatSignedNumber(snapshot.score)} (${label})`,
     regimeSentence,
     xPlaybookSummary,
-    `Free daily briefing → ${new URL('/emails?utm_source=twitter&utm_medium=social&utm_campaign=daily_briefing', appUrl).toString()}`,
+    `Free daily briefing: macro-bias.com/emails?utm_source=x&utm_campaign=daily`,
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n'));
@@ -466,12 +465,12 @@ function buildMacroOverrideXText(
   const label = snapshot.bias_label.replace(/_/g, ' ');
   const rationaleSnippet = buildXSnippet(newsletterCopy, MACRO_OVERRIDE_X_SNIPPET_LENGTH);
 
-  return stripMarkdownBold([
+  return [
     'MACRO OVERRIDE ACTIVE',
-    `Today\'s Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
+    `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
     rationaleSnippet,
-    `Free daily briefing → ${new URL('/emails?utm_source=twitter&utm_medium=social&utm_campaign=daily_briefing', getAppUrl()).toString()}`,
-  ].join('\n\n'));
+    `Free daily briefing: macro-bias.com/emails?utm_source=x&utm_campaign=override`,
+  ].join('\n\n');
 }
 
 async function postJson(url: string, payload: unknown, destinationName: string) {
@@ -773,6 +772,12 @@ async function handlePublish(request: NextRequest) {
     if (isBlueskyConfigured()) {
       publishResults.push(
         await safePublish('bluesky', () => publishToBluesky(finalPublishPayload.xText).then(() => undefined)),
+      );
+    }
+
+    if (isTelegramConfigured()) {
+      publishResults.push(
+        await safePublish('telegram', () => publishToTelegram(finalPublishPayload.xText).then(() => undefined)),
       );
     }
 

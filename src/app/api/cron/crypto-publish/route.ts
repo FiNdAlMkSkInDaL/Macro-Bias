@@ -17,6 +17,8 @@ import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
 import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
 import { getAppUrl } from "@/lib/server-env";
 import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
+import { sanitizeForSocial } from "@/lib/social/sanitize";
+import { isTelegramConfigured, publishToTelegram } from "@/lib/social/telegram";
 import type {
   BiasLabel,
   CryptoBiasScoreRow,
@@ -561,7 +563,6 @@ async function dispatchCryptoBriefingEmails(
 function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: string): string {
   const signedScore = score > 0 ? `+${score}` : `${score}`;
   const labelText = label.replace(/_/g, " ");
-  const appUrl = getAppUrl();
 
   // Extract the BOTTOM LINE from the newsletter copy for a concise summary
   const bottomLineMatch = newsletterCopy.match(/BOTTOM LINE[:\s]*\n?([\s\S]*?)(?=\n\s*(?:MARKET BREAKDOWN|RISK CHECK|MODEL NOTES)|$)/i);
@@ -571,16 +572,14 @@ function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: strin
     const rawBottomLine = bottomLineMatch[1].trim();
     const firstSentence = rawBottomLine.split(/\.\s/)[0];
     if (firstSentence && firstSentence.length <= 120) {
-      summaryLine = firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`;
+      summaryLine = sanitizeForSocial(firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`);
     }
   }
-
-  const ctaUrl = new URL("/emails?utm_source=twitter&utm_medium=social&utm_campaign=crypto_briefing", appUrl).toString();
 
   const lines = [
     `Daily Crypto Bias: ${signedScore} (${labelText})`,
     summaryLine || null,
-    `Free daily crypto briefing → ${ctaUrl}`,
+    `Free daily crypto briefing: macro-bias.com/emails?utm_source=x&utm_campaign=crypto`,
   ].filter((line): line is string => Boolean(line));
 
   return lines.join("\n\n");
@@ -606,10 +605,11 @@ async function publishCryptoToSocial(
   score: number,
   label: BiasLabel,
   newsletterCopy: string,
-): Promise<{ xPosted: boolean; blueskyPosted: boolean }> {
+): Promise<{ xPosted: boolean; blueskyPosted: boolean; telegramPosted: boolean }> {
   const xText = buildCryptoXText(score, label, newsletterCopy);
   let xPosted = false;
   let blueskyPosted = false;
+  let telegramPosted = false;
 
   // Post to X
   const xCreds = getXCredentials();
@@ -642,7 +642,19 @@ async function publishCryptoToSocial(
     }
   }
 
-  return { xPosted, blueskyPosted };
+  // Post to Telegram
+  if (isTelegramConfigured()) {
+    try {
+      await publishToTelegram(xText);
+      telegramPosted = true;
+      console.log("[crypto-publish] Posted to Telegram.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown";
+      console.warn(`[crypto-publish] Telegram post failed: ${msg}`);
+    }
+  }
+
+  return { xPosted, blueskyPosted, telegramPosted };
 }
 
 /* ------------------------------------------------------------------ */
@@ -733,8 +745,8 @@ async function handleCryptoPublish(request: NextRequest) {
       warnings.push("Email skipped: skipEmail param set.");
     }
 
-    /* Step 5: Social posting (X + Bluesky) */
-    let socialResult = { xPosted: false, blueskyPosted: false };
+    /* Step 5: Social posting (X + Bluesky + Telegram) */
+    let socialResult = { xPosted: false, blueskyPosted: false, telegramPosted: false };
     try {
       socialResult = await publishCryptoToSocial(
         latestSnapshot.score,
@@ -757,6 +769,7 @@ async function handleCryptoPublish(request: NextRequest) {
       freeEmailsSent: emailResult.freeSent,
       xPosted: socialResult.xPosted,
       blueskyPosted: socialResult.blueskyPosted,
+      telegramPosted: socialResult.telegramPosted,
       warnings: [...warnings, ...briefingResult.warnings],
     });
   } catch (error) {

@@ -6,15 +6,15 @@ import { loadEnvConfig } from '@next/env';
 
 import { createSupabaseAdminClient } from '../lib/supabase/admin';
 
-const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts';
+const CANONICAL_EMAIL_LINK = 'https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled';
 const QUEUE_FILE_PATH = path.join(process.cwd(), 'src', 'content', 'marketing', 'x-queue-scheduled.json');
 
 type ScheduledQueueArtifact = {
   category: string;
   copy: string;
   id: string;
-  link: string;
-  priority: string;
+  link: string | null;
+  priority?: string;
   scheduled_at: string;
   status: string;
 };
@@ -38,9 +38,8 @@ function validateScheduledQueueArtifact(value: unknown): value is ScheduledQueue
   return (
     typeof post.id === 'string' &&
     typeof post.category === 'string' &&
-    typeof post.priority === 'string' &&
     typeof post.copy === 'string' &&
-    typeof post.link === 'string' &&
+    (typeof post.link === 'string' || post.link === null) &&
     typeof post.scheduled_at === 'string' &&
     typeof post.status === 'string'
   );
@@ -65,7 +64,7 @@ async function loadScheduledQueueArtifacts() {
       throw new Error(`Scheduled post ${artifact.id} is empty.`);
     }
 
-    if (artifact.link && !artifact.link.startsWith('https://www.macro-bias.com/')) {
+    if (artifact.link && !artifact.link.startsWith('https://macro-bias.com/')) {
       throw new Error(`Scheduled post ${artifact.id} link must use the macro-bias.com domain.`);
     }
 
@@ -113,7 +112,7 @@ async function main() {
     .filter((artifact) => !existingKeys.has(getDeduplicationKey(artifact.copy.trim(), artifact.scheduled_at)))
     .map((artifact) => ({
       id: randomUUID(),
-      link: CANONICAL_EMAIL_LINK,
+      link: artifact.link || null,
       post_body: artifact.copy.trim(),
       scheduled_at: artifact.scheduled_at,
       status: 'scheduled',
