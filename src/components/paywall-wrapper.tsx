@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { createSupabaseBrowserClient } from '../lib/supabase/browser';
@@ -57,6 +57,7 @@ export function PaywallWrapper({
   const [isPending, startTransition] = useTransition();
   const [isUnlocked, setIsUnlocked] = useState(initialIsPro);
   const refreshFrameRef = useRef<number | null>(null);
+  const instanceId = useId();
 
   useEffect(() => {
     setIsUnlocked(initialIsPro);
@@ -144,7 +145,7 @@ export function PaywallWrapper({
 
     const usersChannel = userId
       ? supabase
-          .channel(`dashboard-subscription-status-${userId}`)
+          .channel(`dashboard-subscription-status-${userId}-${instanceId}`)
           .on(
             'postgres_changes',
             {
@@ -191,7 +192,7 @@ export function PaywallWrapper({
         void supabase.removeChannel(usersChannel);
       }
     };
-  }, [isUnlocked, router, startTransition, userId]);
+  }, [instanceId, isUnlocked, router, startTransition, userId]);
 
   if (isUnlocked) {
     return <>{children}</>;

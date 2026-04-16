@@ -1,1 +1,954 @@
-﻿[]
+[
+  {
+    "id": "int-01",
+    "category": "daily_intercept",
+    "copy": "Oil moved and nobody's talking about it. $USO is repricing inflation risk while everyone watches $SPY. Model caught this days ago.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-17T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "signup-01",
+    "category": "email_signup",
+    "copy": "Free email every morning before the bell. Risk-on, risk-off, or neutral. 9 ETFs. 10 years of data. 90-second read.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-17T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-01",
+    "category": "engagement",
+    "copy": "What's one indicator you swore by when you started trading that you'd never use now?",
+    "link": null,
+    "scheduled_at": "2026-04-17T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-02",
+    "category": "engagement",
+    "copy": "SPY opens red. Do you buy the dip or wait for confirmation? Be honest.",
+    "link": null,
+    "scheduled_at": "2026-04-17T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-01",
+    "category": "receipt",
+    "copy": "Model said risk-on yesterday. $SPY gapped up and never looked back. The data had the answer before the bell rang.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-20T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-03",
+    "category": "engagement",
+    "copy": "Worst trade you've taken this month. No judgement. We've all got one.",
+    "link": null,
+    "scheduled_at": "2026-04-20T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-04",
+    "category": "engagement",
+    "copy": "Hot take: most traders would make more money if they traded LESS. Agree or disagree?",
+    "link": null,
+    "scheduled_at": "2026-04-20T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-02",
+    "category": "daily_intercept",
+    "copy": "Money is quietly moving into utilities while indexes look fine. When big money hides before anything breaks, pay attention.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-21T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "edu-01",
+    "category": "educational_fomo",
+    "copy": "RSI overbought doesn't mean sell. $SPY has run overbought for weeks in strong trends. You need historical context, not just an indicator.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-21T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-05",
+    "category": "engagement",
+    "copy": "How long did it take you to stop revenge trading? Or are you still working on it?",
+    "link": null,
+    "scheduled_at": "2026-04-21T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-06",
+    "category": "engagement",
+    "copy": "VIX is at 14. Does that make you comfortable or nervous? Genuinely curious.",
+    "link": null,
+    "scheduled_at": "2026-04-21T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-07",
+    "category": "engagement",
+    "copy": "Name a ticker you're watching right now but haven't pulled the trigger on yet.",
+    "link": null,
+    "scheduled_at": "2026-04-22T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-08",
+    "category": "engagement",
+    "copy": "Do you check futures before bed? Or is that just a recipe for not sleeping?",
+    "link": null,
+    "scheduled_at": "2026-04-22T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-03",
+    "category": "daily_intercept",
+    "copy": "Dollar weakening. Usually good for growth. Model flipped to this read two days ago. Most of Twitter still hasn't caught on.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-23T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-02",
+    "category": "receipt",
+    "copy": "$NVDA led. $QQQ followed. Model said growth holds as long as credit stays open. It did. Dip buyers won.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-23T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-09",
+    "category": "engagement",
+    "copy": "Your portfolio is flat for 3 months. Do you change your strategy or trust the process?",
+    "link": null,
+    "scheduled_at": "2026-04-23T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-10",
+    "category": "engagement",
+    "copy": "Unpopular opinion: the best edge in markets isn't a strategy. It's patience.",
+    "link": null,
+    "scheduled_at": "2026-04-23T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "edu-02",
+    "category": "educational_fomo",
+    "copy": "Indicators show what price already did. Pattern matching shows what price usually does next. One reacts. One anticipates.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-24T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "signup-02",
+    "category": "email_signup",
+    "copy": "One number. Every morning. Before you trade. Based on macro data, not vibes. Free daily briefing, no account needed.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-24T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-11",
+    "category": "engagement",
+    "copy": "How many open positions are you holding right now? Over/under 5.",
+    "link": null,
+    "scheduled_at": "2026-04-24T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-12",
+    "category": "engagement",
+    "copy": "What's the one mistake you keep making even though you know better?",
+    "link": null,
+    "scheduled_at": "2026-04-24T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-04",
+    "category": "daily_intercept",
+    "copy": "VIX structure changed. Buyers stopped pressing for more upside. Everyone's calling breakout. That disconnect usually ends badly.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-27T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-13",
+    "category": "engagement",
+    "copy": "Friday afternoon. Market's about to close. Are you holding over the weekend or going flat?",
+    "link": null,
+    "scheduled_at": "2026-04-27T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-14",
+    "category": "engagement",
+    "copy": "If you could only trade ONE ETF for the rest of your life, what are you picking?",
+    "link": null,
+    "scheduled_at": "2026-04-27T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "ref-01",
+    "category": "referral",
+    "copy": "Know a trader who'd use this? Send them the link. One verified signup unlocks 7 days of Premium for you.",
+    "link": "https://macro-bias.com/refer?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-27T16:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-03",
+    "category": "receipt",
+    "copy": "Model tagged a squeeze setup before $SPY broke higher. Half of Twitter was shorting resistance. The data said squeeze. It squeezed.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-28T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-15",
+    "category": "engagement",
+    "copy": "Real question: do you actually have a trading journal or do you just wing it?",
+    "link": null,
+    "scheduled_at": "2026-04-28T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-16",
+    "category": "engagement",
+    "copy": "Bonds are selling off and nobody in your feed is talking about it. That's usually when you should pay attention.",
+    "link": null,
+    "scheduled_at": "2026-04-28T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-05",
+    "category": "daily_intercept",
+    "copy": "$SPY chopping sideways and everyone's bored. Underneath, money is rotating. The index looks dead. The internals say otherwise.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-29T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "edu-03",
+    "category": "educational_fomo",
+    "copy": "The market doesn't care about your favourite indicator. It rewards knowing when conditions are dangerous vs. normal.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-04-29T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-17",
+    "category": "engagement",
+    "copy": "The hardest part of trading isn't finding entries. It's sitting in a winner without touching it.",
+    "link": null,
+    "scheduled_at": "2026-04-29T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-18",
+    "category": "engagement",
+    "copy": "Be honest. How much of your P&L this year came from 2 or 3 trades?",
+    "link": null,
+    "scheduled_at": "2026-04-29T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-19",
+    "category": "engagement",
+    "copy": "What's a market lesson you had to learn the expensive way?",
+    "link": null,
+    "scheduled_at": "2026-04-30T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-20",
+    "category": "engagement",
+    "copy": "Do you trade the open or wait 30 minutes? I'm curious what the split is.",
+    "link": null,
+    "scheduled_at": "2026-04-30T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-06",
+    "category": "daily_intercept",
+    "copy": "$QQQ dipped and got bought right back. Bears pressed for follow-through and got nothing. That's a failed breakdown, not weakness.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-01T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-04",
+    "category": "receipt",
+    "copy": "First red candle and everyone panicked. Model said this pattern recovers. $QQQ was green by lunch. Best trade: don't sell the shakeout.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-01T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "signup-03",
+    "category": "email_signup",
+    "copy": "Most newsletters give you someone's opinion. This one gives you a number backed by 10 years of pattern matching. Free. Daily.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-01T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-21",
+    "category": "engagement",
+    "copy": "Every time VIX gets this low, people forget what a real selloff feels like. Then it shows up.",
+    "link": null,
+    "scheduled_at": "2026-05-01T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-22",
+    "category": "engagement",
+    "copy": "If you're not tracking what the market did on similar days in the past, you're guessing. Even if it's an educated guess.",
+    "link": null,
+    "scheduled_at": "2026-05-01T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "edu-04",
+    "category": "educational_fomo",
+    "copy": "\"RSI is overbought so I'm shorting.\" How many times has that cost you? Overbought stays overbought for weeks in a strong market.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-04T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-23",
+    "category": "engagement",
+    "copy": "Biggest lie in trading: \"I'll add more when it pulls back.\" You won't. You'll chase it higher.",
+    "link": null,
+    "scheduled_at": "2026-05-04T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-24",
+    "category": "engagement",
+    "copy": "Market goes up 6 days straight. Are you buying the momentum or expecting a pullback? No wrong answers.",
+    "link": null,
+    "scheduled_at": "2026-05-04T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-07",
+    "category": "daily_intercept",
+    "copy": "$IWM diverging from $SPY. Small caps getting accumulated while the index goes nowhere. Boring tapes are where moves start.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-05T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-25",
+    "category": "engagement",
+    "copy": "What's the first thing you check every morning before the market opens?",
+    "link": null,
+    "scheduled_at": "2026-05-05T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-26",
+    "category": "engagement",
+    "copy": "Gold at all-time highs while stocks are also at highs. When does that usually end well? (It doesn't.)",
+    "link": null,
+    "scheduled_at": "2026-05-05T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-05",
+    "category": "receipt",
+    "copy": "Credit held. Vol stayed low. $SPY kept grinding. Model said continuation. That's exactly what happened. Bears have been wrong for weeks.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-06T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-27",
+    "category": "engagement",
+    "copy": "Chart patterns or macro context? Pick one. I already know my answer.",
+    "link": null,
+    "scheduled_at": "2026-05-06T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-28",
+    "category": "engagement",
+    "copy": "The people who made the most money this year aren't the ones who traded the most. They're the ones who sized up when it mattered.",
+    "link": null,
+    "scheduled_at": "2026-05-06T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "ref-02",
+    "category": "referral",
+    "copy": "Refer one trader. Unlock Premium for a week. No hoops, no catches. They sign up, you get upgraded.",
+    "link": "https://macro-bias.com/refer?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-06T16:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-08",
+    "category": "daily_intercept",
+    "copy": "Gold accelerating while stocks are still going up. That combo doesn't usually last. Someone big is buying protection.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-07T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "edu-05",
+    "category": "educational_fomo",
+    "copy": "9 ETFs. 10 years of data. One number each morning that tells you if the market is risk-on, risk-off, or neutral. That's the model.",
+    "link": "https://macro-bias.com/regime?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-07T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-29",
+    "category": "engagement",
+    "copy": "Everyone's a genius in a bull market. The real test is what you do when the trend breaks.",
+    "link": null,
+    "scheduled_at": "2026-05-07T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-30",
+    "category": "engagement",
+    "copy": "Quick poll: do you think we finish the year higher or lower from here?",
+    "link": null,
+    "scheduled_at": "2026-05-07T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "signup-04",
+    "category": "email_signup",
+    "copy": "Do you actually know if the market is risk-on or risk-off right now? Not what Twitter thinks. What the data shows. That's what I send every morning.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-08T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-31",
+    "category": "engagement",
+    "copy": "The market just went 8 sessions without a 1% move. That kind of calm never lasts.",
+    "link": null,
+    "scheduled_at": "2026-05-08T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-32",
+    "category": "engagement",
+    "copy": "Name a sector you're bullish on that nobody else is talking about.",
+    "link": null,
+    "scheduled_at": "2026-05-08T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-09",
+    "category": "daily_intercept",
+    "copy": "$QQQ is being carried by 3 names. That's not a healthy trend, that's a house of cards. When those names rotate, so does the index.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-11T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-06",
+    "category": "receipt",
+    "copy": "Model flagged semis before the move hit $QQQ. By the time Twitter saw it, the easy money was made.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-11T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-33",
+    "category": "engagement",
+    "copy": "Crypto traders and stock traders looking at the same macro data and reaching completely different conclusions. Tale as old as time.",
+    "link": null,
+    "scheduled_at": "2026-05-11T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-34",
+    "category": "engagement",
+    "copy": "How many screens do you trade with? I genuinely want to know if more screens = better decisions or just more distractions.",
+    "link": null,
+    "scheduled_at": "2026-05-11T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "edu-06",
+    "category": "educational_fomo",
+    "copy": "Most people look at $SPY and call the market. We check bonds, credit, gold, oil, volatility, and the dollar. Different picture.",
+    "link": "https://macro-bias.com/regime?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-12T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-35",
+    "category": "engagement",
+    "copy": "Overtrading has cost me more money than any bad thesis ever has. Learning when to sit out is the real edge.",
+    "link": null,
+    "scheduled_at": "2026-05-12T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-10",
+    "category": "daily_intercept",
+    "copy": "Bonds getting bid while stocks are green. Big money is buying insurance quietly. Surface says bullish. Bond market says careful.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-13T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-07",
+    "category": "receipt",
+    "copy": "Called risk-off on Monday. $SPY dropped 1.2% by Wednesday. Not bragging, just showing the data works.",
+    "link": "https://macro-bias.com/track-record?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-14T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-11",
+    "category": "daily_intercept",
+    "copy": "Credit spreads tightening while VIX creeps higher. Mixed signal. Last 3 times this happened, the move came within a week.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-15T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-12",
+    "category": "daily_intercept",
+    "copy": "Semis leading again. When $SOXX outperforms $SPY for 5+ sessions, the trend usually has legs. Model confirmed this morning.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-19T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "rcpt-08",
+    "category": "receipt",
+    "copy": "Wrong call yesterday. Model said risk-on, market sold off. Happens. Track record is still 68% over 30 days. One miss doesn't break that.",
+    "link": "https://macro-bias.com/track-record?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-19T16:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-13",
+    "category": "daily_intercept",
+    "copy": "Everyone watching the Fed. The bond market already told you what it thinks. $TLT has been moving for a week.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-21T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "int-14",
+    "category": "daily_intercept",
+    "copy": "Volatility this low makes people complacent. The data says these setups have a shelf life. The model is watching the clock.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-25T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-int-01",
+    "category": "crypto_intercept",
+    "copy": "$BTC consolidating above support while $ETH underperforms. The model reads this as accumulation. Similar setups have resolved higher.",
+    "link": "https://macro-bias.com/crypto?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-27T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-int-02",
+    "category": "crypto_intercept",
+    "copy": "Crypto vol compressing while equities chop. Last 3 times this happened, BTC moved 8%+ within 10 days. Direction TBD.",
+    "link": "https://macro-bias.com/crypto?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-05-29T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-int-03",
+    "category": "crypto_intercept",
+    "copy": "$BTC broke out while stocks went nowhere. Cross-asset divergence like this usually means one of them is wrong. Model says watch DXY.",
+    "link": "https://macro-bias.com/crypto?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-06-02T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-int-04",
+    "category": "crypto_intercept",
+    "copy": "Everyone's watching BTC price. Nobody's watching BTC vs gold. That ratio is telling a different story right now.",
+    "link": "https://macro-bias.com/crypto?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-06-04T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-int-05",
+    "category": "crypto_intercept",
+    "copy": "Free daily crypto bias score. Same approach as our macro model but tuned for BTC and ETH. Data, not hopium.",
+    "link": "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled",
+    "scheduled_at": "2026-06-08T13:15:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-36",
+    "category": "engagement",
+    "copy": "Your trading account doesn't care about your feelings. That's the first lesson and somehow the last one people learn.",
+    "link": null,
+    "scheduled_at": "2026-06-09T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-37",
+    "category": "engagement",
+    "copy": "The market is open 6.5 hours a day and most of your best trades happen in the first 30 minutes and the last 30 minutes. The middle is just anxiety.",
+    "link": null,
+    "scheduled_at": "2026-06-09T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-38",
+    "category": "engagement",
+    "copy": "Tell me your average hold time without telling me your average hold time.",
+    "link": null,
+    "scheduled_at": "2026-06-10T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-39",
+    "category": "engagement",
+    "copy": "You ever hold a trade so long it goes from a swing trade to an \"investment\"? Yeah. We've all been there.",
+    "link": null,
+    "scheduled_at": "2026-06-10T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-40",
+    "category": "engagement",
+    "copy": "The market punishes confidence and rewards conviction. Sounds the same. It's not.",
+    "link": null,
+    "scheduled_at": "2026-06-11T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-41",
+    "category": "engagement",
+    "copy": "Someone is making money on the other side of your trade right now. Think about who that person is and what they know that you don't.",
+    "link": null,
+    "scheduled_at": "2026-06-11T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-42",
+    "category": "engagement",
+    "copy": "Raise your hand if you've ever closed a trade for a small gain and then watched it run 5x without you. Just me? Cool.",
+    "link": null,
+    "scheduled_at": "2026-06-12T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-43",
+    "category": "engagement",
+    "copy": "Your watchlist says a lot about you. Drop your top 3 tickers right now.",
+    "link": null,
+    "scheduled_at": "2026-06-12T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-44",
+    "category": "engagement",
+    "copy": "The gap between \"I know I should wait for confirmation\" and actually waiting for confirmation is where most losses live.",
+    "link": null,
+    "scheduled_at": "2026-06-15T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-45",
+    "category": "engagement",
+    "copy": "90% of trading advice on here is just hindsight with a confident tone. The other 10% is ads.",
+    "link": null,
+    "scheduled_at": "2026-06-15T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-46",
+    "category": "engagement",
+    "copy": "I will never understand traders who don't check bonds. You're driving with one eye closed.",
+    "link": null,
+    "scheduled_at": "2026-06-16T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-47",
+    "category": "engagement",
+    "copy": "Friendly reminder that the market doesn't owe you a trade today. Sometimes the move is no move.",
+    "link": null,
+    "scheduled_at": "2026-06-16T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-48",
+    "category": "engagement",
+    "copy": "What's a trade you're proud of that nobody saw? Drop it below. Let's celebrate the quiet wins.",
+    "link": null,
+    "scheduled_at": "2026-06-17T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-49",
+    "category": "engagement",
+    "copy": "Nothing humbles you faster than shorting a stock that just. Keeps. Going.",
+    "link": null,
+    "scheduled_at": "2026-06-17T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-50",
+    "category": "engagement",
+    "copy": "Hot take: if your entire strategy fits in a tweet, it's probably not a strategy.",
+    "link": null,
+    "scheduled_at": "2026-06-18T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-51",
+    "category": "engagement",
+    "copy": "Two types of traders: the ones who journal every trade and the ones who make the same mistakes every month. Pick your lane.",
+    "link": null,
+    "scheduled_at": "2026-06-18T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-52",
+    "category": "engagement",
+    "copy": "The scariest four words in markets: \"this time is different.\"",
+    "link": null,
+    "scheduled_at": "2026-06-19T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-53",
+    "category": "engagement",
+    "copy": "What's one thing you changed about your trading this year that actually moved the needle?",
+    "link": null,
+    "scheduled_at": "2026-06-19T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-54",
+    "category": "engagement",
+    "copy": "$VIX at 12 and everyone's comfortable. That's exactly when you should start getting uncomfortable.",
+    "link": null,
+    "scheduled_at": "2026-06-22T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-55",
+    "category": "engagement",
+    "copy": "The best trades feel boring when you enter them. If your heart rate is up, your position size is probably wrong.",
+    "link": null,
+    "scheduled_at": "2026-06-22T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-56",
+    "category": "engagement",
+    "copy": "If you bought every dip this year and sold every rip, you'd have made less than someone who just held. Let that sink in.",
+    "link": null,
+    "scheduled_at": "2026-06-23T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-57",
+    "category": "engagement",
+    "copy": "Markets are closed but my screen time report isn't going to like what it sees on Monday.",
+    "link": null,
+    "scheduled_at": "2026-06-23T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-58",
+    "category": "engagement",
+    "copy": "You don't need more indicators. You need fewer opinions. Including your own sometimes.",
+    "link": null,
+    "scheduled_at": "2026-06-24T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-59",
+    "category": "engagement",
+    "copy": "Imagine explaining to a non-trader that you woke up at 4am to watch a candle on a screen. And then did nothing.",
+    "link": null,
+    "scheduled_at": "2026-06-24T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-60",
+    "category": "engagement",
+    "copy": "The strongest signal in markets isn't a pattern. It's when everyone is sure about something and the price doesn't agree.",
+    "link": null,
+    "scheduled_at": "2026-06-25T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-61",
+    "category": "engagement",
+    "copy": "\"I'll get in on the next pullback\" is the lie that's cost more people more money than any bad setup.",
+    "link": null,
+    "scheduled_at": "2026-06-25T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-62",
+    "category": "engagement",
+    "copy": "The market has been open for 10,000+ sessions in the last 40 years. Today's is one data point. Act accordingly.",
+    "link": null,
+    "scheduled_at": "2026-06-26T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-63",
+    "category": "engagement",
+    "copy": "Serious question: when was the last time you adjusted your stop loss BEFORE the trade, not during?",
+    "link": null,
+    "scheduled_at": "2026-06-26T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-64",
+    "category": "engagement",
+    "copy": "Your P&L this month. One word. Go.",
+    "link": null,
+    "scheduled_at": "2026-06-29T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-65",
+    "category": "engagement",
+    "copy": "The funniest thing about consensus is that by the time everyone agrees, the trade is over.",
+    "link": null,
+    "scheduled_at": "2026-06-29T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-66",
+    "category": "engagement",
+    "copy": "Some of you are trading $SPY options like it's a slot machine and honestly I respect the commitment.",
+    "link": null,
+    "scheduled_at": "2026-06-30T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-67",
+    "category": "engagement",
+    "copy": "Do you size up on high conviction or keep it flat regardless? Genuinely curious how people handle this.",
+    "link": null,
+    "scheduled_at": "2026-06-30T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-68",
+    "category": "engagement",
+    "copy": "Every trader has a nemesis ticker. The one that takes your money no matter what. What's yours?",
+    "link": null,
+    "scheduled_at": "2026-07-01T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-69",
+    "category": "engagement",
+    "copy": "\"Just one more trade\" is the trading version of \"just one more episode\" and the results are about the same.",
+    "link": null,
+    "scheduled_at": "2026-07-01T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-70",
+    "category": "engagement",
+    "copy": "The market doesn't know you exist. Trade like it.",
+    "link": null,
+    "scheduled_at": "2026-07-02T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-71",
+    "category": "engagement",
+    "copy": "Nobody talks about how boring profitable trading actually is. It's not exciting. It's process.",
+    "link": null,
+    "scheduled_at": "2026-07-02T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-72",
+    "category": "engagement",
+    "copy": "If someone had told me 5 years ago that the key to trading is doing LESS, I would have saved a lot of money.",
+    "link": null,
+    "scheduled_at": "2026-07-03T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-73",
+    "category": "engagement",
+    "copy": "How do you handle a 3-day losing streak? A) Step away B) Trade smaller C) Double down D) Stare at the ceiling",
+    "link": null,
+    "scheduled_at": "2026-07-03T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-74",
+    "category": "engagement",
+    "copy": "Friday close. Are you flat, hedged, or just praying? No judgement.",
+    "link": null,
+    "scheduled_at": "2026-07-06T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-75",
+    "category": "engagement",
+    "copy": "Bold prediction time. Drop your end-of-week $SPY call below. Let's see who nails it.",
+    "link": null,
+    "scheduled_at": "2026-07-06T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-76",
+    "category": "engagement",
+    "copy": "I'm convinced half of FinTwit trades on vibes and the other half trades on other people's vibes.",
+    "link": null,
+    "scheduled_at": "2026-07-07T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-77",
+    "category": "engagement",
+    "copy": "What's the most you've ever made on a single trade? And did you immediately give it back on the next one? Be honest.",
+    "link": null,
+    "scheduled_at": "2026-07-07T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-78",
+    "category": "engagement",
+    "copy": "Markets humbled me today. Won't say how. Just know it happened. Moving on.",
+    "link": null,
+    "scheduled_at": "2026-07-08T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-79",
+    "category": "engagement",
+    "copy": "The people posting screenshots of wins never show you the 14 losers that came before. Remember that.",
+    "link": null,
+    "scheduled_at": "2026-07-08T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-80",
+    "category": "engagement",
+    "copy": "Crypto people and stock people arguing about which market is \"real\" while bonds quietly run everything. Classic.",
+    "link": null,
+    "scheduled_at": "2026-07-09T14:00:00.000Z",
+    "status": "scheduled"
+  }
+]

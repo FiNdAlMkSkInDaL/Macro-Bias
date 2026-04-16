@@ -1,13 +1,13 @@
 /**
  * Schedule draft social posts into the publishing queue.
  * 
- * Scheduling logic (3-4 posts per trading day, engagement-heavy):
- * - engagement: one EVERY trading day at 14:00 UTC (highest frequency)
+ * Scheduling logic (4-5 posts per trading day, engagement-heavy):
+ * - engagement: TWO per trading day at 14:00 and 15:30 UTC
  * - daily_intercept / crypto_intercept / contrarian: one every 2nd trading day at 13:15 UTC
  * - receipt: one every 3rd trading day at 16:00 UTC
  * - educational_fomo: one every 3rd trading day at 15:00 UTC
  * - email_signup: one every 5th trading day at 14:30 UTC
- * - referral: one every 7th trading day at 15:30 UTC
+ * - referral: one every 7th trading day at 16:30 UTC
  * 
  * Starts from the next weekday after the last scheduled post.
  * Posts with their own link use that link. Posts without (engagement) post as-is.
@@ -187,7 +187,7 @@ async function main() {
       esIdx++;
     }
 
-    // Engagement: EVERY trading day at 14:00 UTC (highest frequency)
+    // Engagement #1: EVERY trading day at 14:00 UTC
     if (enIdx < engagement.length) {
       scheduled.push({
         id: engagement[enIdx].id,
@@ -200,14 +200,27 @@ async function main() {
       enIdx++;
     }
 
-    // Referral: every 7th trading day at 15:30 UTC
+    // Engagement #2: EVERY trading day at 15:30 UTC
+    if (enIdx < engagement.length) {
+      scheduled.push({
+        id: engagement[enIdx].id,
+        category: engagement[enIdx].category,
+        copy: engagement[enIdx].copy,
+        link: getLink(engagement[enIdx]),
+        scheduled_at: toISO(cursor, 15, 30),
+        status: "scheduled",
+      });
+      enIdx++;
+    }
+
+    // Referral: every 7th trading day at 16:30 UTC
     if (rfIdx < referral.length && dayCount % 7 === 6) {
       scheduled.push({
         id: referral[rfIdx].id,
         category: referral[rfIdx].category,
         copy: referral[rfIdx].copy,
         link: getLink(referral[rfIdx]),
-        scheduled_at: toISO(cursor, 15, 30),
+        scheduled_at: toISO(cursor, 16, 30),
         status: "scheduled",
       });
       rfIdx++;
