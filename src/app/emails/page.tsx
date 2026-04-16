@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { trackClientEvent } from "@/lib/analytics/client";
@@ -146,7 +147,7 @@ export default function EmailsPage() {
         </p>
         <p className="mt-1 text-center text-xs text-zinc-500">
           Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
-          <a
+          <Link
             href="/refer"
             className="text-sky-400 underline"
             data-analytics-event="referral_cta_click"
@@ -154,7 +155,7 @@ export default function EmailsPage() {
             data-analytics-location="emails_page"
           >
             See referral rewards
-          </a>
+          </Link>
         </p>
 
         {submissionState === "success" && (
@@ -162,7 +163,7 @@ export default function EmailsPage() {
             <p className="text-sm text-zinc-400">Know someone who'd find this useful?</p>
             <p className="mt-1 text-xs text-zinc-500">
               Invite 3 traders, unlock 7 days of Premium {"->"}{" "}
-              <a
+              <Link
                 href="/refer"
                 className="text-sky-400 underline"
                 data-analytics-event="referral_cta_click"
@@ -170,47 +171,57 @@ export default function EmailsPage() {
                 data-analytics-location="emails_page"
               >
                 See referral program
-              </a>
+              </Link>
             </p>
           </div>
         )}
 
         {/* Track Record Stats */}
-        <div className="mx-auto mt-12 grid max-w-lg gap-4 sm:grid-cols-2">
+        <div className="mx-auto mt-12 grid max-w-2xl gap-4 sm:grid-cols-2">
           {/* Stocks stat */}
-          <div className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/60 px-6 py-5">
-            <div className="flex items-center gap-4">
-              <div className="text-center">
+          <Link
+            href="/track-record"
+            className="block min-w-0 border border-zinc-800 bg-zinc-950/60 px-6 py-5 transition hover:border-zinc-700 hover:bg-zinc-950/80"
+          >
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center">
+              <div className="min-w-0">
                 <p className="text-2xl font-semibold text-white">+295%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Macro Bias</p>
               </div>
               <div className="text-center text-zinc-600">vs</div>
-              <div className="text-center">
+              <div className="min-w-0">
                 <p className="text-2xl font-semibold text-zinc-400">+116%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">S&amp;P 500</p>
               </div>
             </div>
-            <a href="/track-record" className="text-xs text-zinc-500 underline hover:text-zinc-300">
-              Stocks
-            </a>
-          </div>
+            <div className="mt-4 border-t border-zinc-800 pt-3 text-right">
+              <span className="text-xs text-zinc-500 underline underline-offset-2 transition hover:text-zinc-300">
+                Stocks track record
+              </span>
+            </div>
+          </Link>
           {/* Crypto stat */}
-          <div className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/60 px-6 py-5">
-            <div className="flex items-center gap-4">
-              <div className="text-center">
+          <Link
+            href="/crypto/track-record"
+            className="block min-w-0 border border-zinc-800 bg-zinc-950/60 px-6 py-5 transition hover:border-zinc-700 hover:bg-zinc-950/80"
+          >
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center">
+              <div className="min-w-0">
                 <p className="text-xl font-semibold text-white">+41,576%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Long Only</p>
               </div>
               <div className="text-center text-zinc-600">vs</div>
-              <div className="text-center">
+              <div className="min-w-0">
                 <p className="text-xl font-semibold text-zinc-400">+941%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">BTC</p>
               </div>
             </div>
-            <a href="/crypto/track-record" className="text-xs text-zinc-500 underline hover:text-zinc-300">
-              Crypto
-            </a>
-          </div>
+            <div className="mt-4 border-t border-zinc-800 pt-3 text-right">
+              <span className="text-xs text-zinc-500 underline underline-offset-2 transition hover:text-zinc-300">
+                Crypto track record
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* What You Get */}
