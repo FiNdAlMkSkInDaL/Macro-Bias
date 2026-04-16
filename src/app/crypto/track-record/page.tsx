@@ -114,7 +114,7 @@ export default async function CryptoTrackRecordPage() {
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Long Only Alpha
                 </p>
-                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
+                <p className="mt-2 min-[420px]:mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-3xl">
                   {longOnlyAlpha !== null
                     ? `${longOnlyAlpha > 0 ? "+" : ""}${longOnlyAlpha.toFixed(2)}%`
                     : "—"}
@@ -132,7 +132,7 @@ export default async function CryptoTrackRecordPage() {
 
             {/* Chart */}
             <section className="border-b border-white/10 py-8">
-              <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2nter gap-x-6 gap-y-2">
                 <span className="flex items-center gap-2 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   <span className="inline-block h-px w-4 bg-white" />
                   Long/Short

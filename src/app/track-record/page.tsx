@@ -178,7 +178,7 @@ export default async function TrackRecordPage() {
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   Alpha
                 </p>
-                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2xl font-bold text-white sm:text-2xl md:text-3xl">
+                <p className="mt-2 min-[420px]:mt-3 font-[family:var(--font-data)] text-2font-data)] text-2xl font-bold text-white sm:text-2xl md:text-3xl">
                   {outperformance !== null
                     ? `${outperformance > 0 ? "+" : ""}${outperformance.toFixed(2)}%`
                     : "—"}
