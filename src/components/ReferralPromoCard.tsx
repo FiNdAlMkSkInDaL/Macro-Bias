@@ -11,7 +11,7 @@ export function ReferralPromoCard({
   className = "",
   ctaLabel = "See referral rewards",
   location,
-  title = "Invite 3 traders. Unlock 7 days of Premium.",
+  title = "Invite 1 trader. Unlock 7 days of Premium.",
 }: ReferralPromoCardProps) {
   return (
     <section className={`rounded-xl border border-sky-500/20 bg-sky-500/[0.05] p-6 ${className}`.trim()}>
@@ -22,11 +22,11 @@ export function ReferralPromoCard({
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
-        Every subscriber gets a unique link. Share it with traders you know. Three verified
-        referrals unlock 7 days of Premium. Seven unlock a free month. Fifteen unlock a free annual plan.
+        Every subscriber gets a unique link. Share it with traders you know. One verified
+        referral unlocks 7 days of Premium. Seven unlock a free month. Fifteen unlock a free annual plan.
       </p>
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-500">
-        <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1">3 → 7-day Premium</span>
+        <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1">1 → 7-day Premium</span>
         <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1">7 → Free month</span>
         <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1">15 → Annual plan</span>
       </div>

@@ -28,6 +28,22 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
+
+  // Check if already unsubscribed to prevent duplicate analytics events
+  // (email clients pre-fetch links, users double-click, etc.)
+  const { data: existing } = await supabase
+    .from('free_subscribers')
+    .select('status')
+    .eq('email', email)
+    .single();
+
+  if (existing?.status === 'inactive') {
+    return new NextResponse(buildResultHtml('You have been unsubscribed.', true), {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
   const [{ error: subscriberError }, { error: enrollmentError }, { error: deliveryError }] = await Promise.all([
     supabase
       .from('free_subscribers')

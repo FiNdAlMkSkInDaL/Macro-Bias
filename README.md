@@ -28,6 +28,10 @@ The crypto briefing follows the same architecture, tuned for BTC, ETH, and altco
 
 Sections: **Bottom Line**, **Market Breakdown**, **Risk Check**, **Model Notes**.
 
+### Post-Market Scorecard
+
+Every weeknight at 21:15 UTC, after the US session close, a post-market scorecard cron runs. It retrieves the prior day's regime score, fetches the actual SPY close, determines whether the directional call was correct, and calculates a 30-day rolling hit rate and current streak. The result is posted to X and Bluesky as a structured accountability post.
+
 ## The Macro Override Engine
 
 The K-NN model is the baseline decision layer. It identifies historically similar sessions and calculates the day's regime score.
@@ -48,10 +52,10 @@ When a structural break is detected, the system sets `is_override_active = true`
 ### Stocks pipeline (`/api/cron/publish`)
 
 ```text
-Vercel Cron (12:45 UTC)
+Vercel Cron (12:45 UTC, daily)
   -> cron authorization
-  -> same-day publish guard
-  -> upsertDailyMarketData()
+  -> same-day publish guard (re-publishes if briefing already exists)
+  -> upsertDailyMarketData() with fallback to cached snapshots on failure
   -> load recent macro_bias_scores
   -> generateDailyBriefing()
      -> Promise.all(fetchNews(), getQuantScore())
@@ -63,7 +67,7 @@ Vercel Cron (12:45 UTC)
 ### Crypto pipeline (`/api/cron/crypto-publish`)
 
 ```text
-Vercel Cron (13:00 UTC)
+Vercel Cron (13:00 UTC, daily)
   -> cron authorization
   -> same-day publish guard
   -> upsertCryptoMarketData()
@@ -74,19 +78,30 @@ Vercel Cron (13:00 UTC)
   -> dispatchCryptoBriefingEmails() (premium + free preview tiers)
 ```
 
-### Additional crons
+### Cron schedule
 
 | Cron | Schedule (UTC) | Purpose |
 | --- | --- | --- |
+| `/api/cron/publish` | 12:45 daily | Stocks daily briefing pipeline |
+| `/api/cron/crypto-publish` | 13:00 daily | Crypto daily briefing pipeline |
 | `/api/cron/welcome-drip` | 10:00 daily | Sends personalized 4-step welcome sequence to new subscribers |
-| `/api/cron/social-dispatch` | 17:00 daily | Drains the scheduled social queue, publishing due posts to X |
+| `/api/cron/social-dispatch` | 13:15 Mon–Fri | Morning scheduled social post dispatch |
+| `/api/cron/marketing` | 14:30 Mon–Fri | Marketing scheduled post dispatch |
+| `/api/cron/social-dispatch-pm` | 15:00 Mon–Fri | Afternoon scheduled social post dispatch |
+| `/api/cron/social-dispatch-eod` | 16:00 Mon–Fri | End-of-day scheduled social post dispatch |
+| `/api/cron/post-market-scorecard` | 21:15 Mon–Fri | Post-market accuracy scorecard posted to X and Bluesky |
+
+All social dispatch crons (`social-dispatch`, `marketing`, `social-dispatch-pm`, `social-dispatch-eod`) share the same `handleSocialDispatch` handler and drain posts due for their respective windows from the `scheduled_posts` table.
 
 ### Resilience and fallback design
 
 - `retry.ts` wraps external dependencies in exponential backoff.
 - `daily-briefing-strategies.ts` applies a Strategy Pattern for `news-aware` and `news-unavailable` behavior.
+- Yahoo Finance fetches use a `User-Agent` header and retry with exponential backoff (3 attempts, staggered sequential fetching, max 2 concurrent requests per group).
 - If Finnhub fails, a report is still generated from quant context with a news-unavailable disclaimer.
 - If the LLM fails, a deterministic fallback briefing is built from the latest quant context.
+- Market data sync failures fall back to cached snapshots in `macro_bias_scores` rather than aborting.
+- If a briefing already exists for the day, the publish cron re-publishes to all destinations instead of skipping.
 
 ## Newsletter Preferences
 
@@ -105,22 +120,50 @@ Both stocks and crypto pipelines send tiered emails through Resend:
 - **Free subscribers**: paywalled preview with upgrade prompts (stocks) or a preview snippet (crypto).
 - `SHADOW_RUN_EMAIL` forces all mail to one inbox for safe testing.
 
+## Referral Program
+
+Subscribers get a unique referral code on signup. Sharing it awards tiers of rewards as referred subscribers are verified:
+
+| Tier | Verified referrals | Reward |
+| --- | --- | --- |
+| 1 | 3 | 7-day Premium unlock (no Stripe required) |
+| 2 | 7 | Stripe coupon emailed for a free month |
+| 3 | 15 | Stripe coupon emailed for a free annual plan |
+
+Referral state is tracked in the `referrals` and `referral_rewards` tables. The `/refer` page lets subscribers share their link and track progress. The `/api/referral/status` endpoint returns live referral counts for the client. `premium_unlock_expires_at` on `free_subscribers` gates the free-tier paywall bypass.
+
+Scripts: `report-referral-funnel.ts` audits funnel health; `simulate-referral-funnel.ts` tests reward logic end-to-end.
+
 ## Growth Automation
 
 ### Scheduled social queue
 
-- `x-queue-scheduled.json` is the source of truth for social posts.
 - `arm-scheduled-social-queue.ts` validates and inserts posts into the `scheduled_posts` table.
-- `/api/cron/social-dispatch` drains the queue daily at 17:00 UTC.
+- Four social-dispatch crons drain the queue at 13:15, 14:30, 15:00, and 16:00 UTC (Mon–Fri).
 - Posts cover both stocks and crypto content, all linking to `/emails`.
+- Both X and Bluesky are supported as publish targets.
 
 ### Welcome drip
 
-A 4-step automated email sequence for new subscribers, personalized by product preference. Managed by `welcome-drip.ts` and triggered by the welcome-drip cron.
+A 4-step automated email sequence for new subscribers, personalized by product preference. Managed by `welcome-drip.ts` and triggered by the welcome-drip cron (10:00 UTC daily). The Vercel Hobby plan limit constrains this to once per day.
 
 ### Blog / Intel
 
 Marketing posts are stored as markdown in `src/content/marketing/` and published to the `published_marketing_posts` table via `publish-marketing-posts.ts`. They are served at `/intel/[slug]`.
+
+## Analytics Dashboard
+
+`/analytics` is a server-rendered admin-only page (guarded by Supabase auth, restricted to a single admin email). It surfaces:
+
+- Top pages by view count (last 7 / 30 days)
+- Top events by count
+- UTM source breakdown
+- Top referrers with verified and pending counts
+- Recent event log
+
+Data is served by Supabase RPC functions defined in `202604170002_create_analytics_dashboard_functions.sql`. First-party analytics writes to `marketing_event_log` via `/api/analytics/track` (client) and `logMarketingEvent()` (server).
+
+`audit-analytics.ts` is a local script for a quick terminal-level funnel health check across the last 1 / 7 / 30 days.
 
 ## Persistence and Data Model
 
@@ -131,11 +174,13 @@ Marketing posts are stored as markdown in `src/content/marketing/` and published
 | `crypto_bias_scores` | Daily crypto regime scores, component scores, and ticker changes |
 | `daily_market_briefings` | Generated stocks briefing ledger |
 | `crypto_daily_briefings` | Generated crypto briefing ledger |
-| `free_subscribers` | Email subscribers with newsletter preferences |
+| `free_subscribers` | Email subscribers with newsletter preferences and referral state |
 | `scheduled_posts` | Social post queue for X/Bluesky dispatch |
 | `published_marketing_posts` | Blog post publication records |
-| `marketing_analytics` | Signup event tracking |
-| `welcome_drip_deliveries` / `welcome_drip_enrollments` | Welcome email sequence state |
+| `marketing_event_log` | First-party analytics event log |
+| `welcome_email_drip_enrollments` / `welcome_email_drip_deliveries` | Welcome email sequence state |
+| `referrals` | Referral attribution records (pending / verified / rejected) |
+| `referral_rewards` | Reward fulfillment log per referrer and tier |
 
 ## Repository Map
 
@@ -144,60 +189,96 @@ src/
   app/
     api/
       cron/
-        publish/route.ts          # Stocks daily pipeline
-        crypto-publish/route.ts   # Crypto daily pipeline
-        welcome-drip/route.ts     # Welcome email drip
-        social-dispatch/route.ts  # Scheduled X post dispatch
-      subscribe/route.ts          # Email signup endpoint
-      checkout/route.ts           # Stripe checkout
-      stripe/route.ts             # Stripe webhooks
-    briefings/                    # Stocks briefing archive
+        publish/route.ts              # Stocks daily pipeline
+        crypto-publish/route.ts       # Crypto daily pipeline
+        welcome-drip/route.ts         # Welcome email drip
+        social-dispatch/route.ts      # Morning scheduled post dispatch
+        marketing/route.ts            # Mid-day marketing post dispatch
+        social-dispatch-pm/route.ts   # Afternoon scheduled post dispatch
+        social-dispatch-eod/route.ts  # End-of-day scheduled post dispatch
+        post-market-scorecard/route.ts # Post-market accuracy scorecard
+      subscribe/route.ts              # Email signup endpoint
+      checkout/route.ts               # Stripe checkout
+      stripe/route.ts                 # Stripe webhooks
+      referral/
+        status/route.ts               # Referral count API for client
+      analytics/
+        track/route.ts                # First-party analytics ingest
+        dashboard/route.ts            # Analytics dashboard data
+      bias/
+        latest/route.ts               # Latest bias score API
+    analytics/page.tsx                # Admin analytics dashboard
+    briefings/                        # Stocks briefing archive
     crypto/
-      page.tsx                    # Crypto landing page
-      dashboard/page.tsx          # Crypto live dashboard
-      track-record/page.tsx       # Crypto backtest equity curve
-      briefings/                  # Crypto briefing archive
-    dashboard/page.tsx            # Stocks live dashboard
-    track-record/page.tsx         # Stocks backtest equity curve
-    emails/page.tsx               # Newsletter signup page
-    pricing/page.tsx              # Pricing and plan comparison
-    regime/                       # Regime explainer pages
-    intel/[slug]/                 # Blog posts
-    feed.json/route.ts            # JSON Feed
-    feed.xml/route.ts             # RSS Feed
+      page.tsx                        # Crypto landing page
+      dashboard/page.tsx              # Crypto live dashboard
+      track-record/page.tsx           # Crypto backtest equity curve
+      briefings/                      # Crypto briefing archive
+    dashboard/page.tsx                # Stocks live dashboard
+    track-record/page.tsx             # Stocks backtest equity curve
+    today/page.tsx                    # Market regime today (SEO landing page)
+    emails/page.tsx                   # Newsletter signup page
+    pricing/page.tsx                  # Pricing and plan comparison
+    refer/page.tsx                    # Referral program page
+    regime/                           # Regime explainer pages
+    intel/[slug]/                     # Blog posts
+    feed.json/route.ts                # JSON Feed
+    feed.xml/route.ts                 # RSS Feed
   components/
-    AssetToggle.tsx               # Stocks / Crypto navigation toggle
-    SiteNav.tsx                   # Global navigation
-    SiteFooter.tsx                # Global footer
-    dashboard/                    # Gauge, heatmap, signal breakdown
+    AssetToggle.tsx                   # Stocks / Crypto navigation toggle
+    SiteNav.tsx                       # Global navigation
+    SiteFooter.tsx                    # Global footer
+    ReferralPromoCard.tsx             # Referral CTA card used across pages
+    dashboard/                        # Gauge, heatmap, signal breakdown, share button
     track-record/
-      PerformanceChart.tsx        # Stocks equity curve chart
-      CryptoPerformanceChart.tsx  # Crypto equity curve chart
+      PerformanceChart.tsx            # Stocks equity curve chart
+      CryptoPerformanceChart.tsx      # Crypto equity curve chart
   lib/
-    briefing/                     # Stocks briefing generator, config, strategies, retry
-    crypto-briefing/              # Crypto briefing generator and config
-    macro-bias/                   # Stocks bias calculation and types
-    crypto-bias/                  # Crypto bias calculation, constants, types
-    market-data/                  # Stocks market data sync and news fetch
-    crypto-market-data/           # Crypto market data sync (BTC, ETH, SOL, GLD, DXY, TLT)
-    track-record/                 # Stocks backtest engine
-    crypto-track-record/          # Crypto backtest engine
+    briefing/                         # Stocks briefing generator, config, strategies, retry, weekly digest
+    crypto-briefing/                  # Crypto briefing generator and config
+    macro-bias/                       # Stocks bias calculation and types
+    crypto-bias/                      # Crypto bias calculation, constants, types
+    market-data/                      # Stocks market data sync and news fetch
+    crypto-market-data/               # Crypto market data sync (BTC, ETH, SOL, GLD, DXY, TLT)
+    track-record/                     # Stocks backtest engine and track record data
+    crypto-track-record/              # Crypto backtest engine
     marketing/
-      email-dispatch.ts           # Stocks email builder and sender
-      welcome-drip.ts             # Welcome email sequence
-    billing/                      # Stripe subscription management
-    social/                       # Social post dispatcher
-    regime/                       # Regime content and classification
-    supabase/                     # Supabase client factories
-    analytics/                    # Client and server analytics
+      email-dispatch.ts               # Stocks email builder and sender
+      welcome-drip.ts                 # Welcome email sequence
+      markdown-parser.ts              # Marketing post markdown parser
+    billing/
+      subscription.ts                 # Stripe subscription management
+    social/
+      bluesky.ts                      # Bluesky API publisher
+      scheduled-post-dispatch.ts      # Shared social dispatch handler
+      post-market-scorecard.ts        # Scorecard data fetching and post formatting
+    referral/
+      client.ts                       # Referral DB queries
+      constants.ts                    # Reward tier thresholds
+      generate-referral-code.ts       # Referral code generation
+      premium-unlock.ts               # Free-tier paywall unlock logic
+      rewards.ts                      # Reward fulfillment (premium unlock + Stripe coupons)
+      verify-referrals.ts             # Referral verification logic
+    regime/                           # Regime content and classification
+    supabase/                         # Supabase client factories
+    analytics/
+      client.ts                       # Client-side event tracking
+      server.ts                       # Server-side logMarketingEvent()
   utils/
-    knn.ts                        # K-Nearest Neighbors implementation
-    quantMath.ts                  # Quantitative math utilities
-    regime-classifier.ts          # Stocks regime classifier
-    crypto-regime-classifier.ts   # Crypto regime classifier
+    knn.ts                            # K-Nearest Neighbors implementation
+    quantMath.ts                      # Quantitative math utilities
+    regime-classifier.ts              # Stocks regime classifier
+    crypto-regime-classifier.ts       # Crypto regime classifier
   scripts/
-    arm-scheduled-social-queue.ts
-    run-daily-macro-bias-sync.ts
+    arm-scheduled-social-queue.ts     # Seed social post queue
+    run-daily-macro-bias-sync.ts      # Manual stocks bias sync
+    run-daily-crypto-bias-sync.ts     # Manual crypto bias sync
+    backfill-crypto-prices.ts         # Backfill historical crypto prices
+    publish-marketing-posts.ts        # Publish markdown blog posts
+    schedule-drafts.ts                # Schedule draft social posts
+    report-referral-funnel.ts         # Referral funnel health report
+    simulate-referral-funnel.ts       # Referral reward logic E2E test
+    audit-analytics.ts                # Analytics funnel health check
     publish-marketing-posts.ts
     backfill-crypto-prices.ts
     run-daily-crypto-bias-sync.ts

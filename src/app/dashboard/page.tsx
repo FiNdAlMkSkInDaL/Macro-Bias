@@ -2,7 +2,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
 
 import { BiasGauge } from "../../components/dashboard/BiasGauge";
-import { ShareEdgeButton } from "../../components/dashboard/ShareEdgeButton";
 import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
@@ -565,7 +564,6 @@ export default async function DashboardPage() {
     getUserSubscriptionStatus(),
     getSupplementalCrossAssetMapAssets(),
   ]);
-  const landingPageUrl = new URL("/#auth-console", baseUrl).toString();
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
   const isProUser = isSubscriptionActive(subscriptionStatus);
   const shouldRenderManageSubscription = isPro;
@@ -630,19 +628,6 @@ export default async function DashboardPage() {
       }
     );
   });
-  const shareCopy = [
-    `Macro Bias | ${targetSessionDate}`,
-    `Data as of ${snapshotDateLabel}`,
-    `${signalLabel} (${biasData.biasScore > 0 ? "+" : ""}${biasData.biasScore})`,
-    breadthSummary,
-    strongestAsset
-      ? `Leader ${strongestAsset.ticker} ${formatMove(strongestAsset.dailyChangePercent ?? null)}`
-      : null,
-    analogSummaryCopy,
-    `See today's edge: ${landingPageUrl}`,
-  ]
-    .filter((value): value is string => Boolean(value))
-    .join(" | ");
 
   return (
     <main
@@ -697,7 +682,12 @@ export default async function DashboardPage() {
             </div>
 
             <div className="flex flex-col gap-2 md:items-end">
-              <ShareEdgeButton copyText={shareCopy} />
+              <a
+                href="/refer"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-full border-[0.5px] border-sky-400/30 bg-sky-500/[0.06] px-5 py-3 text-[13px] font-medium text-sky-300 transition hover:border-sky-400/50 hover:bg-sky-500/[0.12] sm:w-auto sm:px-4 sm:py-2.5 sm:text-sm md:border"
+              >
+                Refer Friends
+              </a>
 
               {shouldRenderManageSubscription ? (
                 <a

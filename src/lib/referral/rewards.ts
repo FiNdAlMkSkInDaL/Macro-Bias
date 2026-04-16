@@ -8,7 +8,7 @@ import { logMarketingEvent } from '@/lib/analytics/server';
 import { getAppUrl } from '@/lib/server-env';
 
 const REWARD_TIERS = [
-  { tier: 1, threshold: 3, type: 'premium_unlock' as const },
+  { tier: 1, threshold: 1, type: 'premium_unlock' as const },
   { tier: 2, threshold: 7, type: 'stripe_coupon' as const },
   { tier: 3, threshold: 15, type: 'stripe_coupon' as const },
 ] as const;
