@@ -556,5 +556,113 @@
     "link": "https://www.macro-bias.com/emails",
     "scheduled_at": "2026-05-27T15:00:00.000Z",
     "status": "scheduled"
+  },
+  {
+    "id": "crypto-daily-intercept-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "$BTC reclaimed the 200-day MA on volume. Funding rates positive but not overheated. The crypto regime model flagged this as a continuation day. Same framework that turned $10k into $4.1M long-only since 2020.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-18T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-receipt-01",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "+41,576% long-only vs +941% BTC buy-and-hold.\n\nSame regime-scoring discipline we use for stocks, tuned for crypto volatility. 2,297 days backtested. One read. 90 seconds. Every morning before the US session.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-21T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-educational-fomo-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Crypto volatility is 3-4x equities. The market never closes. Every mistake is amplified.\n\nYou don't need more indicators. You need to know if today looks like a day BTC usually rips or usually fades. That's it.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-23T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-daily-intercept-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "ETH/BTC ratio just broke a 3-week range. When that happens, altcoins usually follow within 48 hours. The crypto regime model tracks this automatically so you don't have to.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-25T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-email-signup-01",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Every morning at 9 AM ET you get one email:\n\n— Is the crypto regime risk-on or risk-off?\n— What happened on the days that looked like today?\n— Where are BTC, altcoins, and DeFi flows pointing?\n\nNo account. No coin picks. Just the read.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-28T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-daily-intercept-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Funding rates spiking + open interest rising + regime score negative. The model has seen this pattern 47 times since 2020. It faded 39 of them. Knowing when to sit out is the edge nobody talks about.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-04-30T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-receipt-02",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "A $10,000 BTC position on Jan 1, 2020 using our regime model is worth over $4.1 million today.\n\nThe same $10,000 in buy-and-hold BTC? $104,400.\n\nThe difference is one daily decision: is this a regime you show up for or sit out? We send that answer every morning.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-02T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-educational-fomo-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "The best crypto traders I know don't start the day with a chart. They start with context.\n\nIs BTC in a risk-on or risk-off regime? Where is money actually flowing? What happened on days that looked like today?\n\nThat's a 90-second read. We send it free every morning.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-05T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-daily-intercept-04",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "DXY rallying + BTC holding. That divergence doesn't last. Either the dollar rolls or BTC catches down. The regime model is already positioned. Are you?",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-08T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-receipt-03",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The hardest part of trading crypto isn't finding entries. It's knowing which days to skip.\n\nOur regime model sat out 40% of sessions since 2020. The ones it skipped averaged -0.8%. The ones it traded averaged +1.2%.\n\nThat gap, compounded daily, is the difference between +941% and +41,576%.",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-11T14:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-educational-fomo-03",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "You're reading CT threads, checking funding rates, watching whale wallets, refreshing CoinGecko.\n\nWhat if one email compressed all of that into a single daily score — risk-on or risk-off — with the historical hit rate attached?\n\nThat's what we built.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-14T15:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "crypto-email-signup-02",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "New: Daily Crypto Regime Briefing.\n\nBTC realized vol, ETH/BTC ratio, funding rates, and DXY correlation — compressed into a single regime score. Delivered every morning at 9 AM ET.\n\n+41,576% backtested vs +941% BTC. Free tier available.\n\nmacro-bias.com/emails",
+    "link": "https://www.macro-bias.com/emails",
+    "scheduled_at": "2026-05-17T14:30:00.000Z",
+    "status": "scheduled"
   }
 ]

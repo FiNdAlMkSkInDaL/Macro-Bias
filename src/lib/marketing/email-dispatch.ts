@@ -1043,7 +1043,12 @@ function buildEmailHtml(
                 <div style="margin-top: 32px;">
                   ${footerCtaHtml}
                 </div>
-                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #1e293b; text-align: center;">
+                <div style="margin-top: 32px; padding: 16px 20px; border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; background: rgba(56,189,248,0.04); text-align: center;">
+                  <p style="margin: 0; color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">Now Available</p>
+                  <p style="margin: 6px 0 0; color: #e2e8f0; font-size: 14px;">Daily Crypto Regime Briefing — same model, tuned for BTC.</p>
+                  <a href="${escapeHtml(new URL('/emails', getAppUrl()).toString())}" style="display: inline-block; margin-top: 10px; color: #38bdf8; font-size: 12px; font-weight: 600; text-decoration: underline;">Add it to your inbox &rarr;</a>
+                </div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #1e293b; text-align: center;">
                   <a href="${UNSUBSCRIBE_PLACEHOLDER}" style="color: #475569; font-size: 11px; text-decoration: underline;">Unsubscribe from daily emails</a>
                 </div>
               </td>
@@ -1083,6 +1088,7 @@ function buildEmailText(
     strippedBodyCopy,
     weeklyRecapText,
     footerCallToAction,
+    `Now available: Daily Crypto Regime Briefing. Add it to your inbox: ${new URL('/emails', getAppUrl()).toString()}`,
     `Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`,
   ]
     .filter((fragment) => fragment.length > 0)

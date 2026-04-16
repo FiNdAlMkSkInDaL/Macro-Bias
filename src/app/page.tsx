@@ -21,16 +21,16 @@ type Credentials = {
 
 const heroStats = [
   {
-    label: "Update cadence",
-    value: "Daily before the bell",
+    label: "Stocks backtest",
+    value: "+295% vs +116% S&P 500",
   },
   {
-    label: "Coverage",
-    value: "Volatility, credit, trend",
+    label: "Crypto backtest",
+    value: "+41,576% vs +941% BTC",
   },
   {
     label: "Price",
-    value: "$25/mo — 7-day free trial",
+    value: "$25/mo — covers both",
   },
 ] as const;
 
@@ -122,7 +122,7 @@ export default function HomePage() {
       const response = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newsletterEmail, pagePath: window.location.pathname }),
+        body: JSON.stringify({ email: newsletterEmail, pagePath: window.location.pathname, stocksOptedIn: true, cryptoOptedIn: true }),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -319,8 +319,8 @@ export default function HomePage() {
           </h1>
           <p className="mt-6 max-w-3xl text-balance text-lg leading-8 text-zinc-300 md:text-xl">
             Macro Bias gives day traders an institutional-grade regime read before the
-            open, so you stop forcing trades into the wrong volatility, credit, and trend
-            backdrop.
+            open — now covering stocks and crypto. Stop forcing trades into the wrong
+            volatility, credit, and trend backdrop.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
@@ -383,7 +383,7 @@ export default function HomePage() {
               }`}
               aria-live="polite"
             >
-              {newsletterMessage ?? "Daily regime score + alpha protocol. Unsubscribe anytime."}
+              {newsletterMessage ?? "Stocks + crypto regime scores. Daily. Free. Unsubscribe anytime."}
             </p>
           </div>
 

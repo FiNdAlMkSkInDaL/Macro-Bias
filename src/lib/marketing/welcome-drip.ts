@@ -25,7 +25,7 @@ const WELCOME_DRIP_STEPS = [
       "You are on the list. Every morning before the bell, you will get one email with the market's directional bias, what is driving it, and what to watch for.",
     title: "Welcome to Macro Bias.",
     bullets: [
-      "Backtested since 2020: +286% strategy return vs +111% for SPY buy-and-hold.",
+      "Backtested since 2020: +295% strategy return vs +116% for SPY buy-and-hold.",
       "One daily call: Risk-On, Neutral, or Risk-Off.",
       "90 seconds to read. Before you place a single trade.",
     ],
@@ -265,7 +265,7 @@ function personalizeWelcomeStep1(step: WelcomeDripStep, prefs: { stocks_opted_in
     mutable.secondaryHref = "/crypto/briefings";
     mutable.secondaryLabel = "Read a crypto briefing";
     mutable.bullets = [
-      "Backtested since 2020: +41,576% long-only strategy return vs +944% BTC buy-and-hold.",
+      "Backtested since 2020: +41,576% long-only strategy return vs +941% BTC buy-and-hold.",
       "One daily call: Risk-On, Neutral, or Risk-Off — tuned for crypto volatility.",
       "90 seconds to read. Before you place a single trade.",
     ];

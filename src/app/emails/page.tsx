@@ -148,12 +148,12 @@ export default function EmailsPage() {
           <div className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/60 px-6 py-5">
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="text-2xl font-semibold text-white">+286%</p>
+                <p className="text-2xl font-semibold text-white">+295%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Macro Bias</p>
               </div>
               <div className="text-center text-zinc-600">vs</div>
               <div className="text-center">
-                <p className="text-2xl font-semibold text-zinc-400">+111%</p>
+                <p className="text-2xl font-semibold text-zinc-400">+116%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">S&amp;P 500</p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function EmailsPage() {
               </div>
               <div className="text-center text-zinc-600">vs</div>
               <div className="text-center">
-                <p className="text-xl font-semibold text-zinc-400">+944%</p>
+                <p className="text-xl font-semibold text-zinc-400">+941%</p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">BTC</p>
               </div>
             </div>
@@ -211,33 +211,61 @@ export default function EmailsPage() {
           </ul>
         </div>
 
-        {/* Sample Briefing */}
+        {/* Sample Briefings */}
         <div className="mt-14">
           <h2 className="text-center text-sm uppercase tracking-[0.3em] text-zinc-500">
             Here is what a briefing looks like
           </h2>
-          <div className="mx-auto mt-6 max-w-lg border border-zinc-800 bg-zinc-950/80 p-6">
-            <div className="flex items-baseline justify-between">
-              <p className="text-xs uppercase tracking-widest text-zinc-500">Sample Briefing</p>
-              <p className="text-xs font-medium text-emerald-500">RISK ON (+42)</p>
+          <div className="mx-auto mt-6 grid max-w-lg gap-4 sm:max-w-3xl sm:grid-cols-2">
+            {/* Stocks sample */}
+            <div className="border border-zinc-800 bg-zinc-950/80 p-6">
+              <div className="flex items-baseline justify-between">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">Stocks</p>
+                <p className="text-xs font-medium text-emerald-500">RISK ON (+42)</p>
+              </div>
+              <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-zinc-300">
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Bottom Line</p>
+                <p>
+                  Credit spreads are tightening, oil momentum is positive, and volatility is falling. The tape favors buyers today.
+                </p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-widest text-zinc-400">Sector Breakdown</p>
+                <p>
+                  <strong className="text-white">Tech:</strong> Strong. Semis leading pre-market, broad risk appetite confirmed by falling VIX.
+                </p>
+                <p className="text-zinc-600">
+                  3 more sectors + risk check + model notes...
+                </p>
+              </div>
+              <div className="mt-5 border-t border-zinc-800 pt-4">
+                <p className="text-center text-xs text-zinc-500">
+                  8:45 AM ET, every trading day.
+                </p>
+              </div>
             </div>
-            <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-zinc-300">
-              <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Bottom Line</p>
-              <p>
-                Credit spreads are tightening, oil momentum is positive, and volatility is falling. The tape favors buyers today. Continuation setups into the bell look solid unless bonds reverse hard in the afternoon session.
-              </p>
-              <p className="mt-4 text-xs font-medium uppercase tracking-widest text-zinc-400">Sector Breakdown</p>
-              <p>
-                <strong className="text-white">Tech:</strong> Strong. Semis leading pre-market, broad risk appetite confirmed by falling VIX.
-              </p>
-              <p className="text-zinc-600">
-                3 more sectors + risk check + model notes in the full briefing...
-              </p>
-            </div>
-            <div className="mt-5 border-t border-zinc-800 pt-4">
-              <p className="text-center text-xs text-zinc-500">
-                Delivered to your inbox at 8:45 AM ET, every trading day.
-              </p>
+            {/* Crypto sample */}
+            <div className="border border-zinc-800 bg-zinc-950/80 p-6">
+              <div className="flex items-baseline justify-between">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">Crypto</p>
+                <p className="text-xs font-medium text-emerald-500">RISK ON (+38)</p>
+              </div>
+              <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-zinc-300">
+                <p className="text-xs font-medium uppercase tracking-widest text-sky-400/80">Bottom Line</p>
+                <p>
+                  BTC reclaimed the 200-day moving average with volume confirmation. Funding rates are positive but not overheated.
+                </p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-widest text-violet-400/80">Market Breakdown</p>
+                <p>
+                  <strong className="text-white">Bitcoin:</strong> Strong. Breaking above key resistance with spot-led demand.
+                </p>
+                <p className="text-zinc-600">
+                  Altcoins + risk check + model notes...
+                </p>
+              </div>
+              <div className="mt-5 border-t border-zinc-800 pt-4">
+                <p className="text-center text-xs text-zinc-500">
+                  9:00 AM ET, every day.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -245,7 +273,7 @@ export default function EmailsPage() {
         {/* Final CTA */}
         <div className="mt-14 text-center">
           <p className="text-sm text-zinc-500">
-            No spam. No stock picks. Just data. Unsubscribe anytime.
+            No spam. No picks. Just data. Unsubscribe anytime.
           </p>
         </div>
       </div>

@@ -225,7 +225,7 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
     <!-- Footer -->
     <div style="padding:20px 0;text-align:center;">
       <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;">
-        <a href="https://macro-bias.com/crypto" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
+        <a href="https://macro-bias.com/crypto/dashboard" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
       </p>
       <p style="margin:0;font-size:10px;color:#3f3f46;">
         You're receiving this because you opted into Crypto Briefings.
@@ -303,7 +303,7 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
     <!-- Footer -->
     <div style="padding:20px 0;text-align:center;">
       <p style="margin:0 0 8px;font-size:11px;color:#3f3f46;">
-        <a href="https://macro-bias.com/crypto" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
+        <a href="https://macro-bias.com/crypto/dashboard" style="color:#7dd3fc;text-decoration:none;">macro-bias.com/crypto</a>
       </p>
       <p style="margin:0;font-size:10px;color:#3f3f46;">
         You're receiving this because you opted into Crypto Briefings.

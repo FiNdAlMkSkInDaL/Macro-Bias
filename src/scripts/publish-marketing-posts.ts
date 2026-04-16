@@ -19,6 +19,11 @@ const slugs = [
   "intuition-is-not-edge",
   "news-already-priced",
   "systems-break-in-volatility",
+  "crypto-gut-feeling-costs-more",
+  "btc-regime-scoring-drawdowns",
+  "crypto-90-second-morning-routine",
+  "crypto-traders-need-macro-model",
+  "backtested-41576-vs-btc",
 ];
 
 async function main() {
