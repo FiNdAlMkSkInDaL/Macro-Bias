@@ -6,7 +6,7 @@ import { loadEnvConfig } from '@next/env';
 
 import { createSupabaseAdminClient } from '../lib/supabase/admin';
 
-const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails';
+const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts';
 const QUEUE_FILE_PATH = path.join(process.cwd(), 'src', 'content', 'marketing', 'x-queue-scheduled.json');
 
 type ScheduledQueueArtifact = {
@@ -65,7 +65,7 @@ async function loadScheduledQueueArtifacts() {
       throw new Error(`Scheduled post ${artifact.id} is empty.`);
     }
 
-    if (artifact.link !== CANONICAL_EMAIL_LINK) {
+    if (!artifact.link.startsWith('https://www.macro-bias.com/emails')) {
       throw new Error(`Scheduled post ${artifact.id} must use the canonical email link.`);
     }
 

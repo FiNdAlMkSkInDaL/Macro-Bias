@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   title: "Track Record — Model Performance vs S&P 500 | Macro Bias",
   description:
     "See how the Macro Bias signal performed against the S&P 500 since January 2020. Simple equity curve, no spin — just the numbers.",
+  keywords: [
+    "trading model track record",
+    "SPY backtested performance",
+    "quant model results",
+    "macro regime backtest",
+    "day trading signal accuracy",
+    "market regime model performance",
+  ],
   alternates: {
     canonical: `${SITE_URL}/track-record`,
   },
@@ -27,6 +35,20 @@ export const metadata: Metadata = {
     title: "Track Record — Model Performance vs S&P 500 | Macro Bias",
     description:
       "See how the Macro Bias signal performed against the S&P 500 since January 2020.",
+    images: [
+      {
+        url: `${SITE_URL}/api/og`,
+        width: 1200,
+        height: 630,
+        alt: "Macro Bias — Track Record",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Track Record — Model vs S&P 500 | Macro Bias",
+    description:
+      "Backtested equity curve since Jan 2020. No spin — just the numbers.",
   },
 };
 

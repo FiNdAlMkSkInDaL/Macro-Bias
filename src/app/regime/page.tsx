@@ -22,6 +22,13 @@ export const metadata: Metadata = {
   title: "Macro Regime Guide — Risk On, Risk Off, Neutral | Macro Bias",
   description:
     "Understand the five macro regimes the Macro Bias algo tracks: Extreme Risk On, Risk On, Neutral, Risk Off, and Extreme Risk Off. Learn what each regime means for day trading.",
+  keywords: [
+    "risk on risk off explained",
+    "macro regime types",
+    "market regime classification",
+    "trading regime guide",
+    "risk on vs risk off",
+  ],
   alternates: {
     canonical: `${SITE_URL}/regime`,
   },
@@ -32,6 +39,12 @@ export const metadata: Metadata = {
     title: "Macro Regime Guide — Risk On, Risk Off, Neutral | Macro Bias",
     description:
       "Guide to the five macro regimes tracked by the Macro Bias algo. Learn trading implications, key indicators, and historical patterns for each regime.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Macro Regime Guide | Macro Bias",
+    description:
+      "Five macro regimes explained. Learn what each means for day trading.",
   },
 };
 

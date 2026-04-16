@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   title: "Daily Briefing Archive | Macro Bias",
   description:
     "Browse the complete archive of daily macro regime briefings from the Macro Bias algo. Free previews of every session's score, overlay status, and sector playbook.",
+  keywords: [
+    "daily market briefing archive",
+    "macro regime briefing",
+    "daily trading signal history",
+    "market regime reports",
+  ],
   alternates: {
     canonical: `${SITE_URL}/briefings`,
   },
@@ -24,6 +30,12 @@ export const metadata: Metadata = {
     title: "Daily Briefing Archive | Macro Bias",
     description:
       "Browse the complete archive of daily macro regime briefings from the Macro Bias algo.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Daily Briefing Archive | Macro Bias",
+    description:
+      "Every daily macro regime briefing. Free previews of score, overlay status, and sector playbook.",
   },
 };
 

@@ -218,7 +218,7 @@ export function buildScorecardPost(data: ScorecardData): string {
   }
 
   // Line 4: CTA
-  const ctaLine = 'macro-bias.com/track-record';
+  const ctaLine = 'macro-bias.com/track-record?utm_source=twitter&utm_medium=social&utm_campaign=scorecard';
 
   const lines = [resultVerdict, statsLine, streakLine, ctaLine].filter(
     (line): line is string => Boolean(line),

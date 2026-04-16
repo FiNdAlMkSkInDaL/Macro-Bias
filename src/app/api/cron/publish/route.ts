@@ -413,6 +413,9 @@ function buildPublishPayload(
   const ogImageUrl = new URL('/api/og', appUrl).toString();
   const shareUrl = new URL('/', appUrl);
   shareUrl.searchParams.set('d', snapshot.trade_date);
+  shareUrl.searchParams.set('utm_source', 'twitter');
+  shareUrl.searchParams.set('utm_medium', 'social');
+  shareUrl.searchParams.set('utm_campaign', 'daily_briefing');
   const formattedDate = formatDisplayDate(snapshot.trade_date);
   const label = snapshot.bias_label.replace(/_/g, ' ');
   const headline = `Today's Macro Weather Report: ${label} (${formatSignedNumber(snapshot.score)})`;
@@ -434,10 +437,10 @@ function buildPublishPayload(
     .filter((line): line is string => Boolean(line))
     .join('\n');
   const xText = stripMarkdownBold([
-    `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)}`,
-    `Regime: ${regimeSentence}`,
+    `Today's Macro Bias: ${formatSignedNumber(snapshot.score)} (${label})`,
+    regimeSentence,
     xPlaybookSummary,
-    shareUrl.toString(),
+    `Free daily briefing → ${new URL('/emails?utm_source=twitter&utm_medium=social&utm_campaign=daily_briefing', appUrl).toString()}`,
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n'));
@@ -467,7 +470,7 @@ function buildMacroOverrideXText(
     'MACRO OVERRIDE ACTIVE',
     `Today\'s Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
     rationaleSnippet,
-    publishPayload.shareUrl,
+    `Free daily briefing → ${new URL('/emails?utm_source=twitter&utm_medium=social&utm_campaign=daily_briefing', getAppUrl()).toString()}`,
   ].join('\n\n'));
 }
 

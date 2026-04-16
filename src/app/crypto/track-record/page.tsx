@@ -23,6 +23,12 @@ export const metadata: Metadata = {
     description:
       "Crypto model equity curve vs BTC buy-and-hold since January 2020.",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Crypto Track Record — Model vs BTC | Macro Bias",
+    description:
+      "Backtested crypto model equity curve vs BTC buy-and-hold since Jan 2020.",
+  },
 };
 
 function fmtReturn(v: number | null): string {

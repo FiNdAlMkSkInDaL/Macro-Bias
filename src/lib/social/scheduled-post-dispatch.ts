@@ -8,7 +8,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isBlueskyConfigured, publishToBluesky } from './bluesky';
 
-const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails';
+const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts';
 const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/emails\b/gi;
 const MAX_X_POST_LENGTH = 280;
 

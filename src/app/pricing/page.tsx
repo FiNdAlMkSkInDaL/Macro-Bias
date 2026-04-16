@@ -7,6 +7,12 @@ import { ReferralPromoCard } from "@/components/ReferralPromoCard";
 
 type BillingCycle = "monthly" | "annual";
 
+// Note: metadata is exported from a layout file since this is a client component
+// See src/app/pricing/layout.tsx
+
+// Note: metadata is exported from a layout file since this is a client component
+// See src/app/pricing/layout.tsx
+
 const features = [
   { name: "Daily macro regime score", free: true, pro: true },
   { name: "Top-line market summary", free: true, pro: true },

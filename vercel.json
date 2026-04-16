@@ -10,7 +10,19 @@
     },
     {
       "path": "/api/cron/social-dispatch",
-      "schedule": "0 17 * * *"
+      "schedule": "15 13 * * 1-5"
+    },
+    {
+      "path": "/api/cron/marketing",
+      "schedule": "30 14 * * 1-5"
+    },
+    {
+      "path": "/api/cron/social-dispatch-pm",
+      "schedule": "0 15 * * 1-5"
+    },
+    {
+      "path": "/api/cron/social-dispatch-eod",
+      "schedule": "0 16 * * 1-5"
     },
     {
       "path": "/api/cron/crypto-publish",

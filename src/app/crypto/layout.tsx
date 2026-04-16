@@ -17,6 +17,12 @@ export const metadata: Metadata = {
     description:
       "Same regime-scoring discipline as equities, tuned for crypto volatility. Free daily email.",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Daily Crypto Regime Briefing | Macro Bias",
+    description:
+      "Quantitative daily crypto regime score. Backtested +41,576% vs +944% BTC buy-and-hold.",
+  },
 };
 
 export default function CryptoLayout({ children }: { children: React.ReactNode }) {

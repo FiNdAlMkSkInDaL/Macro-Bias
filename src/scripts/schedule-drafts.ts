@@ -1,14 +1,14 @@
 /**
- * One-time script to convert draft social posts into scheduled posts
- * and append them to x-queue-scheduled.json.
+ * Schedule draft social posts into the publishing queue.
  * 
- * Scheduling logic:
+ * Scheduling logic (1-2 posts per trading day):
  * - daily_intercept: one per trading day at 13:15 UTC
- * - receipt: one every 2-3 days at 16:00 UTC
- * - educational_fomo: one every 2-3 days at 15:00 UTC
- * - email_signup: one every 3 days at 14:30 UTC
+ * - receipt: one every 2nd trading day at 16:00 UTC
+ * - educational_fomo: one every 3rd trading day at 15:00 UTC
+ * - email_signup: one every 4th trading day at 14:30 UTC
  * 
- * Starts May 1, 2026 and fills through May.
+ * Starts from the next weekday after today.
+ * All links include UTM tracking parameters.
  */
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -16,7 +16,7 @@ import path from "node:path";
 
 const DRAFTS_PATH = path.join(process.cwd(), "src", "content", "marketing", "x-queue-drafts.json");
 const SCHEDULED_PATH = path.join(process.cwd(), "src", "content", "marketing", "x-queue-scheduled.json");
-const CANONICAL_LINK = "https://www.macro-bias.com/emails";
+const CANONICAL_LINK = "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts";
 
 type Draft = {
   id: string;
@@ -62,17 +62,33 @@ async function main() {
   const drafts: Draft[] = JSON.parse(await readFile(DRAFTS_PATH, "utf8"));
   const existing: ScheduledPost[] = JSON.parse(await readFile(SCHEDULED_PATH, "utf8"));
 
-  const dailyIntercepts = drafts.filter(d => d.category === "daily_intercept");
-  const receipts = drafts.filter(d => d.category === "receipt");
-  const educational = drafts.filter(d => d.category === "educational_fomo");
-  const emailSignups = drafts.filter(d => d.category === "email_signup");
+  // Deduplicate: skip drafts whose id is already in the scheduled queue
+  const existingIds = new Set(existing.map((p) => p.id));
+
+  const dailyIntercepts = drafts.filter(d => d.category === "daily_intercept" && !existingIds.has(`draft-${d.id}`));
+  const receipts = drafts.filter(d => d.category === "receipt" && !existingIds.has(`draft-${d.id}`));
+  const educational = drafts.filter(d => d.category === "educational_fomo" && !existingIds.has(`draft-${d.id}`));
+  const emailSignups = drafts.filter(d => d.category === "email_signup" && !existingIds.has(`draft-${d.id}`));
+
+  const totalDrafts = dailyIntercepts.length + receipts.length + educational.length + emailSignups.length;
+
+  if (totalDrafts === 0) {
+    console.log("No new drafts to schedule (all already in queue).");
+    return;
+  }
 
   const scheduled: ScheduledPost[] = [];
-  let cursor = new Date(Date.UTC(2026, 4, 1)); // May 1, 2026
 
-  // Ensure we start on a weekday
+  // Start from the next weekday after today
+  const today = new Date();
+  let cursor = new Date(Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate() + 1,
+  ));
+
   if (!isWeekday(cursor)) {
-    cursor = getNextWeekday(new Date(Date.UTC(2026, 3, 30)));
+    cursor = getNextWeekday(cursor);
   }
 
   let diIdx = 0;
@@ -143,7 +159,10 @@ async function main() {
   const combined = [...existing, ...scheduled];
   await writeFile(SCHEDULED_PATH, JSON.stringify(combined, null, 2) + "\n", "utf8");
 
-  console.log(`Scheduled ${scheduled.length} new posts from drafts (May 1 – ~May 30 2026)`);
+  const firstDate = scheduled[0]?.scheduled_at?.slice(0, 10) ?? "N/A";
+  const lastDate = scheduled[scheduled.length - 1]?.scheduled_at?.slice(0, 10) ?? "N/A";
+
+  console.log(`Scheduled ${scheduled.length} new posts from ${totalDrafts} drafts (${firstDate} – ${lastDate})`);
   console.log(`  daily_intercept: ${dailyIntercepts.length}`);
   console.log(`  receipt: ${receipts.length}`);
   console.log(`  educational_fomo: ${educational.length}`);
