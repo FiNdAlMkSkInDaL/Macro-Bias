@@ -1,20 +1,27 @@
 /**
  * Schedule draft social posts into the publishing queue.
  * 
- * Scheduling logic (1-2 posts per trading day):
- * - daily_intercept: one per trading day at 13:15 UTC
+ * Scheduling logic (2-3 posts per trading day):
+ * - daily_intercept / crypto_intercept / contrarian: one per trading day at 13:15 UTC
  * - receipt: one every 2nd trading day at 16:00 UTC
  * - educational_fomo: one every 3rd trading day at 15:00 UTC
  * - email_signup: one every 4th trading day at 14:30 UTC
+ * - engagement: one every 3rd trading day at 14:00 UTC
+ * - referral: one every 5th trading day at 15:30 UTC
  * 
- * Starts from the next weekday after today.
- * All links include UTM tracking parameters.
+ * Starts from the next weekday after the last scheduled post.
+ * Posts with their own link use that link. Posts without get the canonical link.
+ * 
+ * Usage: npx tsx src/scripts/schedule-drafts.ts [drafts-file-name]
+ *   default: x-queue-drafts.json
+ *   example: npx tsx src/scripts/schedule-drafts.ts x-queue-drafts-v2.json
  */
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const DRAFTS_PATH = path.join(process.cwd(), "src", "content", "marketing", "x-queue-drafts.json");
+const draftsFileName = process.argv[2] ?? "x-queue-drafts.json";
+const DRAFTS_PATH = path.join(process.cwd(), "src", "content", "marketing", draftsFileName);
 const SCHEDULED_PATH = path.join(process.cwd(), "src", "content", "marketing", "x-queue-scheduled.json");
 const CANONICAL_LINK = "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts";
 
@@ -23,6 +30,7 @@ type Draft = {
   category: string;
   priority: string;
   copy: string;
+  link?: string;
 };
 
 type ScheduledPost = Draft & {
@@ -59,18 +67,24 @@ function toISO(date: Date, hour: number, minute: number) {
 }
 
 async function main() {
+  console.log(`Reading drafts from: ${draftsFileName}`);
   const drafts: Draft[] = JSON.parse(await readFile(DRAFTS_PATH, "utf8"));
   const existing: ScheduledPost[] = JSON.parse(await readFile(SCHEDULED_PATH, "utf8"));
 
   // Deduplicate: skip drafts whose id is already in the scheduled queue
   const existingIds = new Set(existing.map((p) => p.id));
 
-  const dailyIntercepts = drafts.filter(d => d.category === "daily_intercept" && !existingIds.has(`draft-${d.id}`));
-  const receipts = drafts.filter(d => d.category === "receipt" && !existingIds.has(`draft-${d.id}`));
-  const educational = drafts.filter(d => d.category === "educational_fomo" && !existingIds.has(`draft-${d.id}`));
-  const emailSignups = drafts.filter(d => d.category === "email_signup" && !existingIds.has(`draft-${d.id}`));
+  // Group by category, supporting new categories
+  const primaryPosts = drafts.filter(d => 
+    (d.category === "daily_intercept" || d.category === "crypto_intercept") && !existingIds.has(d.id)
+  );
+  const receipts = drafts.filter(d => d.category === "receipt" && !existingIds.has(d.id));
+  const educational = drafts.filter(d => d.category === "educational_fomo" && !existingIds.has(d.id));
+  const emailSignups = drafts.filter(d => d.category === "email_signup" && !existingIds.has(d.id));
+  const engagement = drafts.filter(d => d.category === "engagement" && !existingIds.has(d.id));
+  const referral = drafts.filter(d => d.category === "referral" && !existingIds.has(d.id));
 
-  const totalDrafts = dailyIntercepts.length + receipts.length + educational.length + emailSignups.length;
+  const totalDrafts = primaryPosts.length + receipts.length + educational.length + emailSignups.length + engagement.length + referral.length;
 
   if (totalDrafts === 0) {
     console.log("No new drafts to schedule (all already in queue).");
@@ -79,36 +93,47 @@ async function main() {
 
   const scheduled: ScheduledPost[] = [];
 
-  // Start from the next weekday after today
-  const today = new Date();
-  let cursor = new Date(Date.UTC(
-    today.getUTCFullYear(),
-    today.getUTCMonth(),
-    today.getUTCDate() + 1,
-  ));
+  // Start from the day after the last scheduled post, or next weekday
+  const lastScheduledDate = existing
+    .filter(p => p.status === "scheduled")
+    .map(p => new Date(p.scheduled_at).getTime())
+    .reduce((max, t) => Math.max(max, t), 0);
 
-  if (!isWeekday(cursor)) {
+  let cursor: Date;
+  if (lastScheduledDate > 0) {
+    cursor = new Date(lastScheduledDate);
     cursor = getNextWeekday(cursor);
+  } else {
+    const today = new Date();
+    cursor = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
+    if (!isWeekday(cursor)) {
+      cursor = getNextWeekday(cursor);
+    }
+  }
+
+  function getLink(draft: Draft): string {
+    return draft.link || CANONICAL_LINK;
   }
 
   let diIdx = 0;
   let rcIdx = 0;
   let edIdx = 0;
   let esIdx = 0;
+  let enIdx = 0;
+  let rfIdx = 0;
   let dayCount = 0;
 
-  // Schedule across ~22 trading days (full month of May)
-  while (diIdx < dailyIntercepts.length || rcIdx < receipts.length || edIdx < educational.length || esIdx < emailSignups.length) {
+  while (diIdx < primaryPosts.length || rcIdx < receipts.length || edIdx < educational.length || esIdx < emailSignups.length || enIdx < engagement.length || rfIdx < referral.length) {
     if (!isWeekday(cursor)) {
       cursor = getNextWeekday(cursor);
     }
 
-    // Daily intercept: every trading day at 13:15 UTC
-    if (diIdx < dailyIntercepts.length) {
+    // Primary post (daily_intercept or crypto_intercept): every trading day at 13:15 UTC
+    if (diIdx < primaryPosts.length) {
       scheduled.push({
-        ...dailyIntercepts[diIdx],
-        id: `draft-${dailyIntercepts[diIdx].id}`,
-        link: CANONICAL_LINK,
+        ...primaryPosts[diIdx],
+        id: primaryPosts[diIdx].id,
+        link: getLink(primaryPosts[diIdx]),
         scheduled_at: toISO(cursor, 13, 15),
         status: "scheduled",
       });
@@ -119,8 +144,8 @@ async function main() {
     if (rcIdx < receipts.length && dayCount % 2 === 1) {
       scheduled.push({
         ...receipts[rcIdx],
-        id: `draft-${receipts[rcIdx].id}`,
-        link: CANONICAL_LINK,
+        id: receipts[rcIdx].id,
+        link: getLink(receipts[rcIdx]),
         scheduled_at: toISO(cursor, 16, 0),
         status: "scheduled",
       });
@@ -131,8 +156,8 @@ async function main() {
     if (edIdx < educational.length && dayCount % 3 === 0 && dayCount > 0) {
       scheduled.push({
         ...educational[edIdx],
-        id: `draft-${educational[edIdx].id}`,
-        link: CANONICAL_LINK,
+        id: educational[edIdx].id,
+        link: getLink(educational[edIdx]),
         scheduled_at: toISO(cursor, 15, 0),
         status: "scheduled",
       });
@@ -143,12 +168,36 @@ async function main() {
     if (esIdx < emailSignups.length && dayCount % 4 === 0) {
       scheduled.push({
         ...emailSignups[esIdx],
-        id: `draft-${emailSignups[esIdx].id}`,
-        link: CANONICAL_LINK,
+        id: emailSignups[esIdx].id,
+        link: getLink(emailSignups[esIdx]),
         scheduled_at: toISO(cursor, 14, 30),
         status: "scheduled",
       });
       esIdx++;
+    }
+
+    // Engagement: every 3rd trading day at 14:00 UTC (no link for pure engagement)
+    if (enIdx < engagement.length && dayCount % 3 === 2) {
+      scheduled.push({
+        ...engagement[enIdx],
+        id: engagement[enIdx].id,
+        link: getLink(engagement[enIdx]),
+        scheduled_at: toISO(cursor, 14, 0),
+        status: "scheduled",
+      });
+      enIdx++;
+    }
+
+    // Referral: every 5th trading day at 15:30 UTC
+    if (rfIdx < referral.length && dayCount % 5 === 4) {
+      scheduled.push({
+        ...referral[rfIdx],
+        id: referral[rfIdx].id,
+        link: getLink(referral[rfIdx]),
+        scheduled_at: toISO(cursor, 15, 30),
+        status: "scheduled",
+      });
+      rfIdx++;
     }
 
     dayCount++;
@@ -163,10 +212,12 @@ async function main() {
   const lastDate = scheduled[scheduled.length - 1]?.scheduled_at?.slice(0, 10) ?? "N/A";
 
   console.log(`Scheduled ${scheduled.length} new posts from ${totalDrafts} drafts (${firstDate} – ${lastDate})`);
-  console.log(`  daily_intercept: ${dailyIntercepts.length}`);
+  console.log(`  primary (intercepts): ${primaryPosts.length}`);
   console.log(`  receipt: ${receipts.length}`);
   console.log(`  educational_fomo: ${educational.length}`);
   console.log(`  email_signup: ${emailSignups.length}`);
+  console.log(`  engagement: ${engagement.length}`);
+  console.log(`  referral: ${referral.length}`);
   console.log(`Total scheduled queue: ${combined.length} posts`);
 }
 

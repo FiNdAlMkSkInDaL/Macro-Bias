@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { NextResponse, type NextRequest } from "next/server";
+import { TwitterApi } from "twitter-api-v2";
 
 import {
   generateCryptoDailyBriefing,
@@ -15,6 +16,7 @@ import {
 import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
 import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
 import { getAppUrl } from "@/lib/server-env";
+import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
 import type {
   BiasLabel,
   CryptoBiasScoreRow,
@@ -553,6 +555,97 @@ async function dispatchCryptoBriefingEmails(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Social posting (X + Bluesky)                                       */
+/* ------------------------------------------------------------------ */
+
+function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: string): string {
+  const signedScore = score > 0 ? `+${score}` : `${score}`;
+  const labelText = label.replace(/_/g, " ");
+  const appUrl = getAppUrl();
+
+  // Extract the BOTTOM LINE from the newsletter copy for a concise summary
+  const bottomLineMatch = newsletterCopy.match(/BOTTOM LINE[:\s]*\n?([\s\S]*?)(?=\n\s*(?:MARKET BREAKDOWN|RISK CHECK|MODEL NOTES)|$)/i);
+  let summaryLine = "";
+  if (bottomLineMatch) {
+    // Take first sentence of the bottom line
+    const rawBottomLine = bottomLineMatch[1].trim();
+    const firstSentence = rawBottomLine.split(/\.\s/)[0];
+    if (firstSentence && firstSentence.length <= 120) {
+      summaryLine = firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`;
+    }
+  }
+
+  const ctaUrl = new URL("/emails?utm_source=twitter&utm_medium=social&utm_campaign=crypto_briefing", appUrl).toString();
+
+  const lines = [
+    `Daily Crypto Bias: ${signedScore} (${labelText})`,
+    summaryLine || null,
+    `Free daily crypto briefing → ${ctaUrl}`,
+  ].filter((line): line is string => Boolean(line));
+
+  return lines.join("\n\n");
+}
+
+type XCredentials = {
+  apiKey: string;
+  apiSecret: string;
+  accessToken: string;
+  accessSecret: string;
+};
+
+function getXCredentials(): XCredentials | null {
+  const apiKey = getOptionalServerEnv("X_API_KEY");
+  const apiSecret = getOptionalServerEnv("X_API_SECRET");
+  const accessToken = getOptionalServerEnv("X_ACCESS_TOKEN");
+  const accessSecret = getOptionalServerEnv("X_ACCESS_SECRET");
+  if (!apiKey || !apiSecret || !accessToken || !accessSecret) return null;
+  return { apiKey, apiSecret, accessToken, accessSecret };
+}
+
+async function publishCryptoToSocial(
+  score: number,
+  label: BiasLabel,
+  newsletterCopy: string,
+): Promise<{ xPosted: boolean; blueskyPosted: boolean }> {
+  const xText = buildCryptoXText(score, label, newsletterCopy);
+  let xPosted = false;
+  let blueskyPosted = false;
+
+  // Post to X
+  const xCreds = getXCredentials();
+  if (xCreds) {
+    try {
+      const client = new TwitterApi({
+        appKey: xCreds.apiKey,
+        appSecret: xCreds.apiSecret,
+        accessToken: xCreds.accessToken,
+        accessSecret: xCreds.accessSecret,
+      });
+      await client.v2.tweet(xText);
+      xPosted = true;
+      console.log("[crypto-publish] Posted to X.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown";
+      console.warn(`[crypto-publish] X post failed: ${msg}`);
+    }
+  }
+
+  // Post to Bluesky
+  if (isBlueskyConfigured()) {
+    try {
+      await publishToBluesky(xText);
+      blueskyPosted = true;
+      console.log("[crypto-publish] Posted to Bluesky.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown";
+      console.warn(`[crypto-publish] Bluesky post failed: ${msg}`);
+    }
+  }
+
+  return { xPosted, blueskyPosted };
+}
+
+/* ------------------------------------------------------------------ */
 /*  Route handler                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -640,6 +733,19 @@ async function handleCryptoPublish(request: NextRequest) {
       warnings.push("Email skipped: skipEmail param set.");
     }
 
+    /* Step 5: Social posting (X + Bluesky) */
+    let socialResult = { xPosted: false, blueskyPosted: false };
+    try {
+      socialResult = await publishCryptoToSocial(
+        latestSnapshot.score,
+        latestSnapshot.bias_label,
+        briefingResult.newsletterCopy,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown";
+      warnings.push(`Social posting failed: ${msg}`);
+    }
+
     return NextResponse.json({
       ok: true,
       tradeDate: latestSnapshot.trade_date,
@@ -649,6 +755,8 @@ async function handleCryptoPublish(request: NextRequest) {
       overrideActive: briefingResult.isOverrideActive,
       premiumEmailsSent: emailResult.premiumSent,
       freeEmailsSent: emailResult.freeSent,
+      xPosted: socialResult.xPosted,
+      blueskyPosted: socialResult.blueskyPosted,
       warnings: [...warnings, ...briefingResult.warnings],
     });
   } catch (error) {

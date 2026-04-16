@@ -65,8 +65,8 @@ async function loadScheduledQueueArtifacts() {
       throw new Error(`Scheduled post ${artifact.id} is empty.`);
     }
 
-    if (!artifact.link.startsWith('https://www.macro-bias.com/emails')) {
-      throw new Error(`Scheduled post ${artifact.id} must use the canonical email link.`);
+    if (artifact.link && !artifact.link.startsWith('https://www.macro-bias.com/')) {
+      throw new Error(`Scheduled post ${artifact.id} link must use the macro-bias.com domain.`);
     }
 
     if (Number.isNaN(Date.parse(artifact.scheduled_at))) {

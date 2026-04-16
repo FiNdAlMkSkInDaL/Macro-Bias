@@ -91,7 +91,7 @@ function normalizeScheduledPostLink(link: string | null) {
   const trimmedLink = link?.trim();
 
   if (!trimmedLink) {
-    return CANONICAL_EMAIL_LINK;
+    return null;
   }
 
   if (containsEmailLink(trimmedLink)) {
@@ -109,6 +109,18 @@ function buildTweetContent(post: ScheduledPostRow) {
   }
 
   const normalizedLink = normalizeScheduledPostLink(post.link);
+
+  // If no link at all, just post the body as-is (engagement posts)
+  if (!normalizedLink) {
+    if (Array.from(trimmedBody).length > MAX_X_POST_LENGTH) {
+      throw new RouteError(
+        `Scheduled post ${post.id} exceeds X's ${MAX_X_POST_LENGTH}-character limit.`,
+        400,
+      );
+    }
+    return trimmedBody;
+  }
+
   const content = containsEmailLink(trimmedBody)
     ? trimmedBody.replace(EMAIL_LINK_PATTERN, normalizedLink)
     : `${trimmedBody}\n\n${normalizedLink}`;

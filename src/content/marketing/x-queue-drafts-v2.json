@@ -1,0 +1,282 @@
+[
+  {
+    "id": "crypto-intercept-01",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "$BTC is holding above the 200-day while equities chop. When crypto stops caring about stock market noise, that's usually the start of something. The crypto regime model saw this shift early.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-02",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "$ETH is diverging from $BTC again. When the ratio compresses and then snaps, the move is usually violent. The model's crypto regime score is tracking this before most traders notice.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-03",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "Everyone is watching $BTC at resistance while the real story is what credit markets are doing underneath. Crypto doesn't trade in a vacuum. The macro context matters more than the chart.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-04",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "Dollar weakness and $BTC strength at the same time. That's not a coincidence, that's a regime. The crypto model scores these cross-asset signals daily. Free briefing, 90 seconds, before you trade.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-05",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "Crypto Twitter is calling for 100k again. The model doesn't care about narratives. It cares about what happened in the 47 most similar sessions since 2020. That context is worth more than any take.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-06",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "Altcoins are bleeding while $BTC holds. That's classic risk-off behaviour inside crypto. When capital concentrates into one asset, the regime is telling you something. The model quantifies it daily.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-07",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "The $BTC funding rate just flipped negative while price is flat. Last 5 times that happened, the resolution was up within 3 days. The model tracks these setups across 6 years of data.",
+    "link": "https://www.macro-bias.com/crypto?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "crypto-intercept-08",
+    "category": "crypto_intercept",
+    "priority": "primary",
+    "copy": "Most crypto traders look at one timeframe and one asset. The model looks at $BTC, $ETH, DXY, credit spreads, and volatility at the same time. That's how you see the regime before it flips.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "engagement-question-01",
+    "category": "engagement",
+    "priority": "primary",
+    "copy": "Honest question for traders: do you check any macro data before the open, or just look at $SPY and go? Curious what your process looks like.",
+    "link": ""
+  },
+  {
+    "id": "engagement-question-02",
+    "category": "engagement",
+    "priority": "primary",
+    "copy": "What's the one indicator you can't trade without? Not what sounds smart. The one you actually use every single day.",
+    "link": ""
+  },
+  {
+    "id": "engagement-question-03",
+    "category": "engagement",
+    "priority": "primary",
+    "copy": "Quick poll: when bonds and equities disagree, which one do you trust more? The answer says a lot about how you trade.",
+    "link": ""
+  },
+  {
+    "id": "engagement-question-04",
+    "category": "engagement",
+    "priority": "primary",
+    "copy": "How many of you actually track cross-asset correlation before the bell? Or do you just wing it based on what FinTwit is saying?",
+    "link": ""
+  },
+  {
+    "id": "engagement-question-05",
+    "category": "engagement",
+    "priority": "primary",
+    "copy": "Crypto traders: do you check what equities are doing before you size a $BTC position? Or does macro not matter to you?",
+    "link": ""
+  },
+  {
+    "id": "daily-intercept-new-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Bonds are selling off but equities haven't noticed yet. That gap usually closes within 3-5 sessions. The question is which one blinks first.",
+    "link": "https://www.macro-bias.com/today?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "daily-intercept-new-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The dollar is catching a bid and nobody is adjusting their equity exposure for it. When DXY moves and $SPY doesn't react, one of them is wrong. The model checks this every morning.",
+    "link": "https://www.macro-bias.com/today?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "daily-intercept-new-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "$VIX is compressing while breadth is narrowing. That combination has led to sharp moves in either direction. The question isn't if, it's when. The model matched today to 42 similar sessions.",
+    "link": "https://www.macro-bias.com/today?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "daily-intercept-new-04",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Small caps are quietly outperforming for the first time in weeks. $IWM leading $SPY is usually early confirmation of risk appetite returning. Most traders won't see it until the move is done.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "daily-intercept-new-05",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Credit is tightening while the indexes sit at highs. HYG/TLT is rolling over. That divergence has preceded every meaningful pullback in the last 3 years. The model weighs this every single day.",
+    "link": "https://www.macro-bias.com/briefings?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "daily-intercept-new-06",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Gold just broke out and nobody on FinTwit is talking about it. $GLD catching a bid while equities chop usually means real money is hedging something. Worth knowing before you go long at the open.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "daily-intercept-new-07",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Energy is leading again. When $USO and $XLE start moving together while tech stalls, the rotation is telling you something about where real money is going. The model catches these shifts daily.",
+    "link": "https://www.macro-bias.com/today?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "receipt-new-01",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "Yesterday the model said risk-on. $SPY closed up 0.8% and never looked back from the open. Not every call is right, but the rolling accuracy speaks for itself.",
+    "link": "https://www.macro-bias.com/track-record?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "receipt-new-02",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The model flagged risk-off two days before the selloff started. Most traders were still buying dips. You can see the full track record, including the misses.",
+    "link": "https://www.macro-bias.com/track-record?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "receipt-new-03",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "Three risk-on calls in a row, all correct. The model doesn't streak often but when it does, ignoring the signal gets expensive. Full history, no cherry picking.",
+    "link": "https://www.macro-bias.com/track-record?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "receipt-crypto-01",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The crypto model backtested +41,576% vs +944% $BTC buy-and-hold since 2020. Not because it's always right. Because it sizes exposure to the regime instead of guessing.",
+    "link": "https://www.macro-bias.com/crypto/track-record?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "receipt-crypto-02",
+    "category": "receipt",
+    "priority": "primary",
+    "copy": "The crypto model avoided the worst of the last drawdown by going to cash before the drop. Not prediction. Pattern matching. The regime score turned negative 2 days before the move.",
+    "link": "https://www.macro-bias.com/crypto/track-record?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "educational-new-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Moving averages tell you where price has been. K-NN pattern matching tells you what happened in the 40 most similar sessions in history. One is a mirror, the other is a map.",
+    "link": "https://www.macro-bias.com/regime?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "educational-new-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Every morning before you trade: is the market risk-on, risk-off, or neutral today? That one question changes how you size, where you look, and when you sit out. 90 seconds. Free.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "educational-new-03",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "The market has five distinct regimes. Extreme risk-on, risk-on, neutral, risk-off, extreme risk-off. Each one has a different playbook. Trading the wrong playbook is how most losses happen.",
+    "link": "https://www.macro-bias.com/regime?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "educational-new-04",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "You don't need 15 indicators. You need one question answered every morning: what is the market actually doing right now, and what did similar days lead to? The briefing answers that in 90 seconds.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "educational-crypto-01",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "Most crypto traders are using stock market tools on a 24/7 market. RSI, MACD, Bollinger Bands. The crypto model was built for crypto volatility from the ground up. Different asset class, different approach.",
+    "link": "https://www.macro-bias.com/crypto?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "educational-crypto-02",
+    "category": "educational_fomo",
+    "priority": "primary",
+    "copy": "If you trade $BTC without checking what the dollar, credit, and equities are doing, you're trading with one eye closed. Crypto doesn't move in isolation. The macro context is the edge.",
+    "link": "https://www.macro-bias.com/crypto?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "email-signup-new-01",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Every morning I get a 90 second email that tells me if the market is risk-on, risk-off, or neutral. Strongest sector, weakest sector, what similar days led to historically. Free.\n\nmacro-bias.com/emails",
+    "link": ""
+  },
+  {
+    "id": "email-signup-new-02",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "I built a model that compares today to every similar session since 2020. It sends a free daily email before the bell. No opinions. Just what the data says and what to expect.\n\nmacro-bias.com/emails",
+    "link": ""
+  },
+  {
+    "id": "email-signup-new-03",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Free daily market briefing. Stocks and crypto. 90 seconds before the open. The model tells you the regime, the strongest sector, the weakest sector, and what similar sessions did next.\n\nmacro-bias.com/emails",
+    "link": ""
+  },
+  {
+    "id": "email-signup-crypto-01",
+    "category": "email_signup",
+    "priority": "primary",
+    "copy": "Free daily crypto regime briefing. $BTC, $ETH, and the macro context that moves them. 90 seconds before you trade. No hype, no predictions. Just what the model sees.\n\nmacro-bias.com/emails",
+    "link": ""
+  },
+  {
+    "id": "referral-01",
+    "category": "referral",
+    "priority": "primary",
+    "copy": "If you know a trader who wings it every morning without checking macro context, send them this. Free daily briefing, 90 seconds. One referral unlocks Premium for a week.",
+    "link": "https://www.macro-bias.com/refer?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "referral-02",
+    "category": "referral",
+    "priority": "primary",
+    "copy": "Macro Bias subscribers can earn free Premium access by referring traders they know. 1 referral = 7 days free. 7 = a free month. 15 = free annual plan. No catch.",
+    "link": "https://www.macro-bias.com/refer?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "contrarian-01",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "FinTwit consensus is bearish. The model is neutral. When everyone agrees on the direction, the data usually disagrees. That's not contrarian for the sake of it. That's pattern matching.",
+    "link": "https://www.macro-bias.com/today?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "contrarian-02",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "Everyone is calling for a crash. The model matched today to 39 similar sessions. 28 of them were green the next day. Not a guarantee, but worth knowing before you press the sell button.",
+    "link": "https://www.macro-bias.com/today?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  },
+  {
+    "id": "contrarian-03",
+    "category": "daily_intercept",
+    "priority": "primary",
+    "copy": "The best trades often feel wrong at the open. When the model says risk-on and your gut says sell, that tension is where the edge lives. Data beats opinion, every time.",
+    "link": "https://www.macro-bias.com/emails?utm_source=twitter&utm_medium=social&utm_campaign=scheduled_posts"
+  }
+]
