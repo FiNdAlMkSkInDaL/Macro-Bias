@@ -1,26 +1,56 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { logMarketingEvent } from '@/lib/analytics/server';
+import {
+  isValidEmailAddress,
+  normalizeEmailAddress,
+  unsubscribeEmailAddress,
+} from '@/lib/marketing/email-preferences';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+async function extractEmailFromRequest(request: NextRequest) {
+  const emailFromQuery = normalizeEmailAddress(request.nextUrl.searchParams.get('email'));
 
-function normalizeEmail(value: unknown) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (emailFromQuery) {
+    return emailFromQuery;
+  }
+
+  if (request.method === 'GET') {
+    return '';
+  }
+
+  const contentType = request.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    const payload = await request.clone().json().catch(() => null) as { email?: unknown } | null;
+    return normalizeEmailAddress(payload?.email);
+  }
+
+  if (
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data')
+  ) {
+    const formData = await request.clone().formData().catch(() => null);
+    return normalizeEmailAddress(formData?.get('email'));
+  }
+
+  const rawBody = await request.clone().text().catch(() => '');
+
+  if (!rawBody) {
+    return '';
+  }
+
+  return normalizeEmailAddress(new URLSearchParams(rawBody).get('email'));
 }
 
-function isValidEmail(email: string) {
-  return email.length > 3 && email.length <= 320 && EMAIL_PATTERN.test(email);
-}
+async function handleUnsubscribe(request: NextRequest) {
+  const email = await extractEmailFromRequest(request);
 
-export async function GET(request: NextRequest) {
-  const email = normalizeEmail(request.nextUrl.searchParams.get('email'));
-
-  if (!isValidEmail(email)) {
+  if (!isValidEmailAddress(email)) {
     return new NextResponse(buildResultHtml('Invalid unsubscribe link.', false), {
       status: 400,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -29,65 +59,48 @@ export async function GET(request: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
-  // Check if already unsubscribed to prevent duplicate analytics events
-  // (email clients pre-fetch links, users double-click, etc.)
-  const { data: existing } = await supabase
-    .from('free_subscribers')
-    .select('status')
-    .eq('email', email)
-    .single();
+  let alreadyUnsubscribed = false;
 
-  if (existing?.status === 'inactive') {
-    return new NextResponse(buildResultHtml('You have been unsubscribed.', true), {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
-  }
-
-  const [{ error: subscriberError }, { error: enrollmentError }, { error: deliveryError }] = await Promise.all([
-    supabase
-      .from('free_subscribers')
-      .update({ status: 'inactive' })
-      .eq('email', email),
-    supabase
-      .from('welcome_email_drip_enrollments')
-      .update({ status: 'unsubscribed' })
-      .eq('email', email),
-    supabase
-      .from('welcome_email_drip_deliveries')
-      .update({
-        error_message: 'Subscriber unsubscribed.',
-        status: 'cancelled',
-      })
-      .eq('email', email)
-      .eq('status', 'scheduled'),
-  ]);
-
-  if (subscriberError || enrollmentError || deliveryError) {
+  try {
+    const result = await unsubscribeEmailAddress(supabase, email);
+    alreadyUnsubscribed = result.alreadyUnsubscribed;
+  } catch (unsubscribeError) {
+    console.error('[unsubscribe] failed', unsubscribeError);
     return new NextResponse(buildResultHtml('Something went wrong. Try again later.', false), {
       status: 500,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
   }
 
-  try {
-    await logMarketingEvent({
-      eventName: 'email_unsubscribed',
-      metadata: {
-        source: 'unsubscribe_route',
-      },
-      pagePath: request.nextUrl.pathname,
-      referrer: request.headers.get('referer'),
-      subscriberEmail: email,
-    });
-  } catch (analyticsError) {
-    console.error('[unsubscribe] analytics logging failed', analyticsError);
+  if (!alreadyUnsubscribed) {
+    try {
+      await logMarketingEvent({
+        eventName: 'email_unsubscribed',
+        metadata: {
+          request_method: request.method,
+          source: 'unsubscribe_route',
+        },
+        pagePath: request.nextUrl.pathname,
+        referrer: request.headers.get('referer'),
+        subscriberEmail: email,
+      });
+    } catch (analyticsError) {
+      console.error('[unsubscribe] analytics logging failed', analyticsError);
+    }
   }
 
   return new NextResponse(buildResultHtml('You have been unsubscribed.', true), {
     status: 200,
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
+}
+
+export async function GET(request: NextRequest) {
+  return handleUnsubscribe(request);
+}
+
+export async function POST(request: NextRequest) {
+  return handleUnsubscribe(request);
 }
 
 function buildResultHtml(message: string, success: boolean) {

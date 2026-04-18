@@ -15,6 +15,7 @@ import type {
   StoredBiasSnapshot,
 } from '../../../../lib/briefing/types';
 import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch';
+import { filterSubscribedEmailRecipients } from '../../../../lib/marketing/email-preferences';
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
 import { partitionUnlockedSubscribers } from '../../../../lib/referral/premium-unlock';
@@ -36,6 +37,17 @@ const EMAIL_RECIPIENT_PAGE_SIZE = 1000;
 const MAX_HISTORY_ROWS = 180;
 const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 120;
 const DISCORD_PUBLISHING_ENABLED = false;
+const MARKET_TIME_ZONE = 'America/New_York';
+
+const WEEKDAY_INDEX_BY_LABEL = {
+  Fri: 5,
+  Mon: 1,
+  Sat: 6,
+  Sun: 0,
+  Thu: 4,
+  Tue: 2,
+  Wed: 3,
+} as const;
 
 type PublishPayload = {
   analogs: DailyBriefingAnalogMatch[];
@@ -243,6 +255,42 @@ function isAuthorizedCronRequest(request: NextRequest) {
   return Boolean(providedSecret && safeCompare(providedSecret, expectedSecret));
 }
 
+function getMarketCalendarContext(now = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: MARKET_TIME_ZONE,
+    weekday: 'short',
+    year: 'numeric',
+  });
+  const parts = new Map(
+    formatter
+      .formatToParts(now)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value] as const),
+  );
+  const weekdayLabel = parts.get('weekday');
+  const year = parts.get('year');
+  const month = parts.get('month');
+  const day = parts.get('day');
+
+  if (!weekdayLabel || !year || !month || !day) {
+    throw new Error('Failed to derive stock market calendar context.');
+  }
+
+  const dayOfWeek = WEEKDAY_INDEX_BY_LABEL[weekdayLabel as keyof typeof WEEKDAY_INDEX_BY_LABEL];
+
+  if (dayOfWeek == null) {
+    throw new Error(`Unsupported market weekday label: ${weekdayLabel}`);
+  }
+
+  return {
+    briefingDate: `${year}-${month}-${day}`,
+    isMonday: dayOfWeek === 1,
+    isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+  };
+}
+
 function getTickerPercentChange(
   engineInputs: unknown,
   section: 'coreTickerChanges' | 'supplementalTickerChanges',
@@ -397,9 +445,20 @@ async function getTieredQuantBriefingRecipients(): Promise<TieredQuantBriefingRe
     }
   }
 
+  const {
+    deliverableEmails: premiumRecipients,
+    unsubscribedEmails: unsubscribedPremiumRecipients,
+  } = await filterSubscribedEmailRecipients(supabase, [...premiumEmailsByNormalizedValue.values()]);
+
+  if (unsubscribedPremiumRecipients.length > 0) {
+    console.log(
+      `[publish-cron] Suppressed ${unsubscribedPremiumRecipients.length} unsubscribed premium recipients.`,
+    );
+  }
+
   return {
     freeRecipients: [...freeEmailsByNormalizedValue.values()],
-    premiumRecipients: [...premiumEmailsByNormalizedValue.values()],
+    premiumRecipients,
   };
 }
 
@@ -615,8 +674,23 @@ async function handlePublish(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const marketCalendar = getMarketCalendarContext();
     const skipEmail = request.nextUrl.searchParams.get('skipEmail') === 'true';
-    const briefingDate = new Date().toISOString().slice(0, 10);
+    const briefingDate = marketCalendar.briefingDate;
+
+    if (marketCalendar.isWeekend) {
+      console.log(
+        `[publish-cron] ${briefingDate} is a weekend in ${MARKET_TIME_ZONE}; skipping stock publish.`,
+      );
+
+      return NextResponse.json({
+        briefingDate,
+        ok: true,
+        reason: 'Stock publish cron skips weekends.',
+        skipped: true,
+      });
+    }
+
     const briefingAlreadyGenerated = await hasDailyBriefingForDate(briefingDate);
 
     const discordWebhookUrl = DISCORD_PUBLISHING_ENABLED
@@ -795,7 +869,7 @@ async function handlePublish(request: NextRequest) {
           const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
 
           // On Mondays, fetch last week's data to embed in the daily email
-          const isMonday = new Date().getUTCDay() === 1;
+          const isMonday = marketCalendar.isMonday;
           let weeklyDigest = null;
           if (isMonday) {
             try {

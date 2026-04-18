@@ -13,6 +13,7 @@ import {
   isSubscriptionActive,
   type SubscriptionStatus,
 } from "@/lib/billing/subscription";
+import { filterSubscribedEmailRecipients } from '@/lib/marketing/email-preferences';
 import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
 import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
 import { getAppUrl } from "@/lib/server-env";
@@ -444,6 +445,17 @@ async function dispatchCryptoBriefingEmails(
     if (rows.length < CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE) break;
   }
 
+  const {
+    deliverableEmails: deliverablePremiumEmails,
+    unsubscribedEmails: unsubscribedPremiumEmails,
+  } = await filterSubscribedEmailRecipients(supabase, [...premiumEmails.values()]);
+
+  if (unsubscribedPremiumEmails.length > 0) {
+    console.log(
+      `[crypto-publish] Suppressed ${unsubscribedPremiumEmails.length} unsubscribed premium recipients.`,
+    );
+  }
+
   /* --- Load free crypto-opted-in subscribers, excluding premium --- */
   const { data: subscribers, error: freeError } = await supabase
     .from("free_subscribers")
@@ -466,7 +478,7 @@ async function dispatchCryptoBriefingEmails(
     freeEmails,
   );
 
-  const premiumList = [...premiumEmails.values(), ...unlockedEmails];
+  const premiumList = [...deliverablePremiumEmails, ...unlockedEmails];
 
   if (premiumList.length === 0 && regularFreeEmails.length === 0) {
     console.log("[crypto-publish] No crypto recipients found.");
