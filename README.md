@@ -1,913 +1,376 @@
 # Macro Bias
 
-Macro Bias is an automated quantitative research desk that publishes daily pre-market regime scores for stocks and crypto.
+Macro Bias is a Next.js 15 and Supabase SaaS that publishes automated daily regime research for equities and crypto. The platform combines quantitative regime models, live market context, structured LLM synthesis, tiered email distribution, track-record dashboards, referral growth loops, and scheduled social distribution.
 
-It runs two parallel pipelines — one for equities and one for crypto — each combining a K-Nearest Neighbors historical analog model with real-time geopolitical and financial news. The outputs are distributed as structured daily briefings via tiered email, with a web dashboard, track record, briefing archive, and scheduled social growth automation.
+This README was refreshed against the git history after the previous README edit on 2026-04-16 and against the current `main` branch. The main changes since that edit were Threads publishing support, Meta compliance callbacks, a weekly Threads token-refresh cron, and a refactor of the shared social dispatch pipeline.
 
-The core product promise: do not trade the tape in isolation. Macro Bias provides a quantitative baseline, tests whether today's news flow confirms or invalidates that baseline, and publishes a research note that tells the user whether the math is still safe to trust.
+## Stack
 
-## What The System Produces
+- Next.js 15 App Router, React 19, TypeScript, Tailwind CSS
+- Supabase for Postgres, auth helpers, and admin access
+- Anthropic for structured briefing synthesis
+- Finnhub plus internal market-data sync modules for research inputs
+- Resend for email delivery
+- Stripe for checkout, subscriptions, and referral coupons
+- X, Bluesky, Threads, and optional Telegram for outbound distribution
 
-### Stocks Briefing
+## Product Surface
 
-Every daily stocks briefing has three layers:
+| Surface               | Route(s)                                                                    | Purpose                                                                      |
+| --------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Stocks research       | `/today`, `/dashboard`, `/track-record`, `/briefings`                       | Daily bias snapshot, dashboard, track record, and archive                    |
+| Crypto research       | `/crypto`, `/crypto/dashboard`, `/crypto/track-record`, `/crypto/briefings` | Crypto landing page, live dashboard, track record, and archive               |
+| Conversion and growth | `/emails`, `/pricing`, `/refer`, `/intel/[slug]`, `/feed.json`, `/feed.xml` | Newsletter signup, billing, referrals, marketing posts, and feeds            |
+| Admin                 | `/analytics`                                                                | Server-rendered analytics dashboard restricted to the configured admin email |
+| Auth callback         | `/auth/callback`                                                            | Supabase auth completion flow                                                |
 
-1. A quantitative baseline from the K-NN regime score and historical analog set.
-2. A qualitative overlay from pre-market geopolitical and financial headlines.
-3. A final briefing synthesized by an LLM under a strict JSON schema acting as a structured risk manager.
+## How The System Works
 
-The finished note includes explicit regime language, a compact sector playbook, a system risk assessment, and raw model diagnostics. Sections: **Bottom Line**, **Sector Breakdown**, **Risk Check**, **Model Notes**.
+### Stocks daily pipeline
 
-### Crypto Briefing
+Route: `/api/cron/publish`  
+Schedule: `45 12 * * *` UTC  
+Methods: `GET` and `POST`
 
-The crypto briefing follows the same architecture, tuned for BTC, ETH, and altcoin volatility:
+1. Validate cron auth using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
+2. Refresh daily market data with `upsertDailyMarketData()`.
+3. Load recent `macro_bias_scores` history.
+4. Generate the briefing with `generateDailyBriefing()`, which runs the quant and news branches in parallel.
+5. Persist the result to `daily_market_briefings`.
+6. Deliver tiered emails through Resend.
+7. Publish social snippets to the configured outbound channels.
 
-1. A regime score from BTC realized volatility, ETH/BTC ratio, DXY correlation, funding rates, and TLT momentum.
-2. A market structure overlay covering Bitcoin, altcoins, DeFi/L1s, and stablecoin flows.
-3. LLM synthesis under a separate crypto-specific JSON schema.
+Same-day reruns do not generate a second briefing row. They load the already-persisted briefing and attempt a re-publish or re-distribution pass instead.
 
-Sections: **Bottom Line**, **Market Breakdown**, **Risk Check**, **Model Notes**.
+### Crypto daily pipeline
 
-### Post-Market Scorecard
+Route: `/api/cron/crypto-publish`  
+Schedule: `0 13 * * *` UTC  
+Methods: `GET` and `POST`
 
-Every weeknight at 21:15 UTC, after the US session close, a post-market scorecard cron runs. It retrieves the prior day's regime score, fetches the actual SPY close, determines whether the directional call was correct, and calculates a 30-day rolling hit rate and current streak. The result is posted to X and Bluesky as a structured accountability post.
+1. Validate cron auth.
+2. Refresh crypto market data with `upsertCryptoMarketData()`.
+3. Load recent `crypto_bias_scores` history.
+4. Generate the crypto briefing with `generateCryptoDailyBriefing()`.
+5. Persist the result to `crypto_daily_briefings`.
+6. Send tiered crypto emails.
+7. Publish social snippets to the configured outbound channels.
 
-## The Macro Override Engine
+Same-day reruns follow the same re-publish pattern as the stocks pipeline.
 
-The K-NN model is the baseline decision layer. It identifies historically similar sessions and calculates the day's regime score.
+### Newsletter and growth flows
 
-The LLM is not used as a discretionary signal generator. It acts as a risk manager. Its job is to determine whether the current pre-market tape contains a structural break that invalidates the historical analog framework.
+- `/api/subscribe` upserts `free_subscribers`, stores `stocks_opted_in` and `crypto_opted_in`, generates a referral code, attributes referrals when `ref` is present, enrolls the subscriber in the welcome drip, logs analytics, and tries an immediate first welcome email.
+- `/api/cron/welcome-drip` advances the 4-step welcome sequence once per day.
+- `/api/referral/status` returns referral progress, masked recent referrals, and reward state for the client.
+- `/api/checkout`, `/api/stripe/portal`, and `/api/webhooks/stripe` handle paid subscriptions and billing state.
+- `/api/analytics/track` and `/api/analytics/dashboard` power first-party marketing analytics.
+- Markdown posts in `src/content/marketing/` are published into `published_marketing_posts` and rendered at `/intel/[slug]`.
 
-Examples of structural breaks:
+## Cron Schedule
 
-- wars, missile strikes, ceasefires, sanctions, embargoes, and tariff shocks
-- banking stress, liquidity events, or credit accidents
-- abrupt policy surprises from central banks or governments
-- energy disruptions, shipping chokepoints, or commodity shocks
+| Path                              | Schedule (UTC)  | Purpose                                    |
+| --------------------------------- | --------------- | ------------------------------------------ |
+| `/api/cron/welcome-drip`          | `0 10 * * *`    | Daily welcome drip processing              |
+| `/api/cron/publish`               | `45 12 * * *`   | Stocks briefing pipeline                   |
+| `/api/cron/crypto-publish`        | `0 13 * * *`    | Crypto briefing pipeline                   |
+| `/api/cron/social-dispatch`       | `15 13 * * 1-5` | Weekday queue drain, morning window        |
+| `/api/cron/marketing`             | `30 14 * * 1-5` | Weekday queue drain, midday window         |
+| `/api/cron/social-dispatch-pm`    | `0 15 * * 1-5`  | Weekday queue drain, afternoon window      |
+| `/api/cron/social-dispatch-eod`   | `0 16 * * 1-5`  | Weekday queue drain, end-of-day window     |
+| `/api/cron/post-market-scorecard` | `15 21 * * 1-5` | Publish the daily accountability scorecard |
+| `/api/cron/threads-token-refresh` | `0 9 * * 1`     | Weekly Threads token refresh check         |
 
-When a structural break is detected, the system sets `is_override_active = true` and the briefing warns the user not to trade the baseline math blindly. Both stocks and crypto pipelines support this override logic.
+The four weekday queue-drain routes all call the same `handleSocialDispatch()` function in `src/lib/social/scheduled-post-dispatch.ts`. Each run selects all due rows from `scheduled_posts`, sanitizes the copy for social, canonicalizes email CTA links, posts to X, and optionally cross-posts to Bluesky and Threads.
 
-## Daily Architecture
+## Social Publishing
 
-### Stocks pipeline (`/api/cron/publish`)
+### Scheduled queue
 
-```text
-Vercel Cron (12:45 UTC, daily)
-  -> cron authorization
-  -> same-day publish guard (re-publishes if briefing already exists)
-  -> upsertDailyMarketData() with fallback to cached snapshots on failure
-  -> load recent macro_bias_scores
-  -> generateDailyBriefing()
-     -> Promise.all(fetchNews(), getQuantScore())
-     -> Anthropic synthesis or deterministic fallback
-  -> persistDailyBriefing()
-  -> dispatchQuantBriefing() (premium + free tiers)
-```
+The social queue is built in two steps:
 
-### Crypto pipeline (`/api/cron/crypto-publish`)
+1. `src/scripts/schedule-drafts.ts` turns draft JSON files in `src/content/marketing/` into `x-queue-scheduled.json`.
+2. `src/scripts/arm-scheduled-social-queue.ts` loads that schedule into the `scheduled_posts` table.
 
-```text
-Vercel Cron (13:00 UTC, daily)
-  -> cron authorization
-  -> same-day publish guard
-  -> upsertCryptoMarketData()
-  -> load recent crypto_bias_scores
-  -> generateCryptoDailyBriefing()
-     -> Anthropic synthesis or deterministic fallback
-  -> persist to crypto_daily_briefings
-  -> dispatchCryptoBriefingEmails() (premium + free preview tiers)
-```
+The dispatcher is X-first. It always publishes to X when credentials are present, then best-effort cross-posts to Bluesky and Threads when those integrations are configured. Telegram is used by the daily briefing pipelines, not by the scheduled queue dispatcher.
 
-### Cron schedule
+### Post-market scorecard
 
-| Cron | Schedule (UTC) | Purpose |
-| --- | --- | --- |
-| `/api/cron/publish` | 12:45 daily | Stocks daily briefing pipeline |
-| `/api/cron/crypto-publish` | 13:00 daily | Crypto daily briefing pipeline |
-| `/api/cron/welcome-drip` | 10:00 daily | Sends personalized 4-step welcome sequence to new subscribers |
-| `/api/cron/social-dispatch` | 13:15 Mon–Fri | Morning scheduled social post dispatch |
-| `/api/cron/marketing` | 14:30 Mon–Fri | Marketing scheduled post dispatch |
-| `/api/cron/social-dispatch-pm` | 15:00 Mon–Fri | Afternoon scheduled social post dispatch |
-| `/api/cron/social-dispatch-eod` | 16:00 Mon–Fri | End-of-day scheduled social post dispatch |
-| `/api/cron/post-market-scorecard` | 21:15 Mon–Fri | Post-market accuracy scorecard posted to X and Bluesky |
+Route: `/api/cron/post-market-scorecard`  
+Schedule: `15 21 * * 1-5`
 
-All social dispatch crons (`social-dispatch`, `marketing`, `social-dispatch-pm`, `social-dispatch-eod`) share the same `handleSocialDispatch` handler and drain posts due for their respective windows from the `scheduled_posts` table.
+This job builds an accountability post from the latest regime call and realized SPY performance, including the current streak and rolling 30-day hit rate. It publishes to X and, when configured, to Bluesky and Threads.
 
-### Resilience and fallback design
+### Threads integration
 
-- `retry.ts` wraps external dependencies in exponential backoff.
-- `daily-briefing-strategies.ts` applies a Strategy Pattern for `news-aware` and `news-unavailable` behavior.
-- Yahoo Finance fetches use a `User-Agent` header and retry with exponential backoff (3 attempts, staggered sequential fetching, max 2 concurrent requests per group).
-- If Finnhub fails, a report is still generated from quant context with a news-unavailable disclaimer.
-- If the LLM fails, a deterministic fallback briefing is built from the latest quant context.
-- Market data sync failures fall back to cached snapshots in `macro_bias_scores` rather than aborting.
-- If a briefing already exists for the day, the publish cron re-publishes to all destinations instead of skipping.
+Threads support was added after the previous README revision and currently includes:
 
-## Newsletter Preferences
+- publish support in `src/lib/social/threads.ts`
+- Meta compliance callbacks at `/api/threads/deauthorize` and `/api/threads/delete`
+- a weekly token refresh cron at `/api/cron/threads-token-refresh`
+- a manual OAuth and token exchange helper at `scripts/threads-auth.ts`
 
-Subscribers can opt into stocks, crypto, or both via checkboxes on the `/emails` signup page. Preferences are stored on the `free_subscribers` table as `stocks_opted_in` and `crypto_opted_in` booleans.
+Important: the weekly refresh route can fetch a new long-lived token and email or log it, but it does not update Vercel environment variables automatically. The refreshed token still has to be copied into `THREADS_ACCESS_TOKEN` manually.
 
-- The stocks cron filters by `stocks_opted_in = true`.
-- The crypto cron filters by `crypto_opted_in = true`.
-- The welcome drip personalizes the first email based on which products were selected.
-- Every stocks email includes a crypto cross-sell banner.
+## Billing, Referrals, And Analytics
 
-## Tiered Email Delivery
+### Billing
 
-Both stocks and crypto pipelines send tiered emails through Resend:
+- `/api/checkout` supports `GET` redirect mode and `POST` JSON mode.
+- Checkout sessions are created with a 7-day Stripe trial.
+- `/api/stripe/portal` opens the Stripe billing portal for authenticated users.
+- `/api/webhooks/stripe` syncs subscription state into the `users` table and legacy profile flags.
 
-- **Premium subscribers**: full briefing with all sections, dashboard link.
-- **Free subscribers**: paywalled preview with upgrade prompts (stocks) or a preview snippet (crypto).
-- `SHADOW_RUN_EMAIL` forces all mail to one inbox for safe testing.
+### Free list, paid users, and paywall
 
-## Referral Program
+- `free_subscribers` stores email list subscribers, newsletter preferences, referral code state, and temporary premium unlock windows.
+- `users` stores authenticated paid-user billing state.
+- `premium_unlock_expires_at` allows a free subscriber to bypass the normal free-tier paywall temporarily.
 
-Subscribers get a unique referral code on signup. Sharing it awards tiers of rewards as referred subscribers are verified:
+### Referrals
 
-| Tier | Verified referrals | Reward |
-| --- | --- | --- |
-| 1 | 3 | 7-day Premium unlock (no Stripe required) |
-| 2 | 7 | Stripe coupon emailed for a free month |
-| 3 | 15 | Stripe coupon emailed for a free annual plan |
+The referral system is wired through `/today` landing links, `/refer`, `/api/subscribe`, and `/api/referral/status`.
 
-Referral state is tracked in the `referrals` and `referral_rewards` tables. The `/refer` page lets subscribers share their link and track progress. The `/api/referral/status` endpoint returns live referral counts for the client. `premium_unlock_expires_at` on `free_subscribers` gates the free-tier paywall bypass.
+Current reward fulfillment logic in `src/lib/referral/rewards.ts` uses these thresholds:
 
-Scripts: `report-referral-funnel.ts` audits funnel health; `simulate-referral-funnel.ts` tests reward logic end-to-end.
+| Tier | Verified referrals | Reward                                     |
+| ---- | ------------------ | ------------------------------------------ |
+| 1    | 1                  | 7-day premium unlock                       |
+| 2    | 7                  | 1 free month of Premium via Stripe coupon  |
+| 3    | 15                 | Free annual subscription via Stripe coupon |
 
-## Growth Automation
+Note: `src/app/api/referral/status/route.ts` still labels Tier 1 as `3` verified referrals. The fulfillment engine above is the current source of truth at `HEAD`.
 
-### Scheduled social queue
+### Analytics
 
-- `arm-scheduled-social-queue.ts` validates and inserts posts into the `scheduled_posts` table.
-- Four social-dispatch crons drain the queue at 13:15, 14:30, 15:00, and 16:00 UTC (Mon–Fri).
-- Posts cover both stocks and crypto content, all linking to `/emails`.
-- Both X and Bluesky are supported as publish targets.
+The admin analytics page aggregates:
 
-### Welcome drip
+- subscriber and paid-user counts
+- opt-in mix for stocks versus crypto
+- 24-hour, 7-day, and 30-day marketing events
+- top pages, top events, UTM sources, and recent event logs
+- welcome drip, referral, and reward metrics
+- latest stocks and crypto briefing counts and recent bias history
 
-A 4-step automated email sequence for new subscribers, personalized by product preference. Managed by `welcome-drip.ts` and triggered by the welcome-drip cron (10:00 UTC daily). The Vercel Hobby plan limit constrains this to once per day.
+Access is currently restricted by a hard-coded admin email check in `src/app/analytics/page.tsx`.
 
-### Blog / Intel
+## Key API Routes
 
-Marketing posts are stored as markdown in `src/content/marketing/` and published to the `published_marketing_posts` table via `publish-marketing-posts.ts`. They are served at `/intel/[slug]`.
+| Route                        | Method(s)     | Purpose                                                                                |
+| ---------------------------- | ------------- | -------------------------------------------------------------------------------------- |
+| `/api/subscribe`             | `POST`        | Free newsletter signup, preferences, referral attribution, and welcome drip enrollment |
+| `/api/subscribe/unsubscribe` | `POST`        | Email unsubscribe                                                                      |
+| `/api/referral/status`       | `GET`         | Referral progress for the referral UI                                                  |
+| `/api/bias/latest`           | `GET`         | Latest bias snapshot for the frontend                                                  |
+| `/api/analytics/track`       | `POST`        | First-party analytics ingest                                                           |
+| `/api/analytics/dashboard`   | `GET`         | Analytics data for the admin dashboard                                                 |
+| `/api/checkout`              | `GET`, `POST` | Stripe checkout session creation                                                       |
+| `/api/stripe/portal`         | `GET`         | Stripe billing portal redirect                                                         |
+| `/api/webhooks/stripe`       | `POST`        | Stripe webhook ingestion and entitlement sync                                          |
+| `/api/threads/deauthorize`   | `POST`        | Meta deauthorization callback                                                          |
+| `/api/threads/delete`        | `POST`        | Meta GDPR delete callback                                                              |
 
-## Analytics Dashboard
+## Data Model
 
-`/analytics` is a server-rendered admin-only page (guarded by Supabase auth, restricted to a single admin email). It surfaces:
+These are the main tables the current system depends on:
 
-- Top pages by view count (last 7 / 30 days)
-- Top events by count
-- UTM source breakdown
-- Top referrers with verified and pending counts
-- Recent event log
-
-Data is served by Supabase RPC functions defined in `202604170002_create_analytics_dashboard_functions.sql`. First-party analytics writes to `marketing_event_log` via `/api/analytics/track` (client) and `logMarketingEvent()` (server).
-
-`audit-analytics.ts` is a local script for a quick terminal-level funnel health check across the last 1 / 7 / 30 days.
-
-## Persistence and Data Model
-
-| Table | Purpose |
-| --- | --- |
-| `etf_daily_prices` | Raw market history for the cross-asset feature space (stocks and crypto) |
-| `macro_bias_scores` | Daily stocks regime scores and model inputs |
-| `crypto_bias_scores` | Daily crypto regime scores, component scores, and ticker changes |
-| `daily_market_briefings` | Generated stocks briefing ledger |
-| `crypto_daily_briefings` | Generated crypto briefing ledger |
-| `free_subscribers` | Email subscribers with newsletter preferences and referral state |
-| `scheduled_posts` | Social post queue for X/Bluesky dispatch |
-| `published_marketing_posts` | Blog post publication records |
-| `marketing_event_log` | First-party analytics event log |
-| `welcome_email_drip_enrollments` / `welcome_email_drip_deliveries` | Welcome email sequence state |
-| `referrals` | Referral attribution records (pending / verified / rejected) |
-| `referral_rewards` | Reward fulfillment log per referrer and tier |
+| Table                            | Purpose                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `etf_daily_prices`               | Cross-asset historical price store used by the model inputs             |
+| `macro_bias_scores`              | Daily stocks regime scores and model inputs                             |
+| `crypto_bias_scores`             | Daily crypto regime scores and component data                           |
+| `daily_market_briefings`         | Persisted stocks briefing ledger                                        |
+| `crypto_daily_briefings`         | Persisted crypto briefing ledger                                        |
+| `free_subscribers`               | Free email list, preferences, referral data, and temporary unlock state |
+| `users`                          | Authenticated paid-user billing record                                  |
+| `scheduled_posts`                | Social queue used by the weekday dispatch crons                         |
+| `published_marketing_posts`      | Published blog and intel posts                                          |
+| `marketing_event_log`            | First-party analytics event log                                         |
+| `welcome_email_drip_enrollments` | Welcome sequence enrollment state                                       |
+| `welcome_email_drip_deliveries`  | Welcome sequence delivery log                                           |
+| `referrals`                      | Referral attribution records                                            |
+| `referral_rewards`               | Reward fulfillment ledger                                               |
 
 ## Repository Map
 
 ```text
 src/
   app/
+    analytics/                # Admin analytics dashboard
+    briefings/                # Stocks briefing archive
+    crypto/                   # Crypto landing, dashboard, track record, archive
+    dashboard/                # Stocks live dashboard
+    emails/                   # Newsletter signup surface
+    intel/                    # Marketing post pages
+    pricing/                  # Plans and billing surface
+    refer/                    # Referral hub
+    today/                    # SEO/share landing page
     api/
-      cron/
-        publish/route.ts              # Stocks daily pipeline
-        crypto-publish/route.ts       # Crypto daily pipeline
-        welcome-drip/route.ts         # Welcome email drip
-        social-dispatch/route.ts      # Morning scheduled post dispatch
-        marketing/route.ts            # Mid-day marketing post dispatch
-        social-dispatch-pm/route.ts   # Afternoon scheduled post dispatch
-        social-dispatch-eod/route.ts  # End-of-day scheduled post dispatch
-        post-market-scorecard/route.ts # Post-market accuracy scorecard
-      subscribe/route.ts              # Email signup endpoint
-      checkout/route.ts               # Stripe checkout
-      stripe/route.ts                 # Stripe webhooks
-      referral/
-        status/route.ts               # Referral count API for client
-      analytics/
-        track/route.ts                # First-party analytics ingest
-        dashboard/route.ts            # Analytics dashboard data
-      bias/
-        latest/route.ts               # Latest bias score API
-    analytics/page.tsx                # Admin analytics dashboard
-    briefings/                        # Stocks briefing archive
-    crypto/
-      page.tsx                        # Crypto landing page
-      dashboard/page.tsx              # Crypto live dashboard
-      track-record/page.tsx           # Crypto backtest equity curve
-      briefings/                      # Crypto briefing archive
-    dashboard/page.tsx                # Stocks live dashboard
-    track-record/page.tsx             # Stocks backtest equity curve
-    today/page.tsx                    # Market regime today (SEO landing page)
-    emails/page.tsx                   # Newsletter signup page
-    pricing/page.tsx                  # Pricing and plan comparison
-    refer/page.tsx                    # Referral program page
-    regime/                           # Regime explainer pages
-    intel/[slug]/                     # Blog posts
-    feed.json/route.ts                # JSON Feed
-    feed.xml/route.ts                 # RSS Feed
+      analytics/              # Track + dashboard APIs
+      bias/                   # Latest bias API
+      checkout/               # Stripe checkout
+      cron/                   # Stocks, crypto, drip, social, scorecard, Threads refresh
+      referral/               # Referral status API
+      stripe/                 # Billing portal API
+      subscribe/              # Signup + unsubscribe
+      threads/                # Meta compliance callbacks
+      webhooks/stripe/        # Stripe webhook
   components/
-    AssetToggle.tsx                   # Stocks / Crypto navigation toggle
-    SiteNav.tsx                       # Global navigation
-    SiteFooter.tsx                    # Global footer
-    ReferralPromoCard.tsx             # Referral CTA card used across pages
-    dashboard/                        # Gauge, heatmap, signal breakdown, share button
-    track-record/
-      PerformanceChart.tsx            # Stocks equity curve chart
-      CryptoPerformanceChart.tsx      # Crypto equity curve chart
-  lib/
-    briefing/                         # Stocks briefing generator, config, strategies, retry, weekly digest
-    crypto-briefing/                  # Crypto briefing generator and config
-    macro-bias/                       # Stocks bias calculation and types
-    crypto-bias/                      # Crypto bias calculation, constants, types
-    market-data/                      # Stocks market data sync and news fetch
-    crypto-market-data/               # Crypto market data sync (BTC, ETH, SOL, GLD, DXY, TLT)
-    track-record/                     # Stocks backtest engine and track record data
-    crypto-track-record/              # Crypto backtest engine
-    marketing/
-      email-dispatch.ts               # Stocks email builder and sender
-      welcome-drip.ts                 # Welcome email sequence
-      markdown-parser.ts              # Marketing post markdown parser
-    billing/
-      subscription.ts                 # Stripe subscription management
-    social/
-      bluesky.ts                      # Bluesky API publisher
-      scheduled-post-dispatch.ts      # Shared social dispatch handler
-      post-market-scorecard.ts        # Scorecard data fetching and post formatting
-    referral/
-      client.ts                       # Referral DB queries
-      constants.ts                    # Reward tier thresholds
-      generate-referral-code.ts       # Referral code generation
-      premium-unlock.ts               # Free-tier paywall unlock logic
-      rewards.ts                      # Reward fulfillment (premium unlock + Stripe coupons)
-      verify-referrals.ts             # Referral verification logic
-    regime/                           # Regime content and classification
-    supabase/                         # Supabase client factories
-    analytics/
-      client.ts                       # Client-side event tracking
-      server.ts                       # Server-side logMarketingEvent()
-  utils/
-    knn.ts                            # K-Nearest Neighbors implementation
-    quantMath.ts                      # Quantitative math utilities
-    regime-classifier.ts              # Stocks regime classifier
-    crypto-regime-classifier.ts       # Crypto regime classifier
-  scripts/
-    arm-scheduled-social-queue.ts     # Seed social post queue
-    run-daily-macro-bias-sync.ts      # Manual stocks bias sync
-    run-daily-crypto-bias-sync.ts     # Manual crypto bias sync
-    backfill-crypto-prices.ts         # Backfill historical crypto prices
-    publish-marketing-posts.ts        # Publish markdown blog posts
-    schedule-drafts.ts                # Schedule draft social posts
-    report-referral-funnel.ts         # Referral funnel health report
-    simulate-referral-funnel.ts       # Referral reward logic E2E test
-    audit-analytics.ts                # Analytics funnel health check
-    publish-marketing-posts.ts
-    backfill-crypto-prices.ts
-    run-daily-crypto-bias-sync.ts
-    schedule-drafts.ts
+    dashboard/                # Stocks dashboard UI
+    track-record/             # Stocks and crypto performance charts
   content/
-    marketing/                    # Blog post markdown + social queue JSON
+    marketing/                # Markdown posts and social queue JSON
+  lib/
+    analytics/                # Event logging helpers
+    billing/                  # Subscription status helpers
+    briefing/                 # Stocks briefing pipeline
+    crypto-bias/              # Crypto scoring logic
+    crypto-briefing/          # Crypto briefing pipeline
+    crypto-market-data/       # Crypto data sync
+    crypto-track-record/      # Crypto backtest logic
+    macro-bias/               # Stocks scoring logic
+    market-data/              # Stocks data sync and news fetch
+    marketing/                # Email delivery, welcome drip, markdown parser
+    referral/                 # Referral attribution, rewards, premium unlock
+    social/                   # X, Bluesky, Threads, Telegram, scorecard, shared queue dispatch
+    supabase/                 # Client factories
+    track-record/             # Stocks backtest logic
+  scripts/                    # Operational scripts that run against the app data model
 
-supabase/
-  migrations/                     # Schema migrations (12 files)
-
-vercel.json                       # Cron schedule definitions
+scripts/                      # Standalone utility scripts
+supabase/migrations/          # Schema history
+vercel.json                   # Cron definitions
 ```
 
-## Environment Variables
+## Scripts And Operator Commands
 
-### Core platform
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public Supabase client key for browser auth |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Privileged server-side database access |
-| `NEXT_PUBLIC_APP_URL` | Yes | Canonical base URL for links |
-| `CRON_SECRET` | Yes | Bearer secret for all cron routes |
-| `PUBLISH_CRON_SECRET` | Optional | Backward-compatible fallback secret |
-
-### Research generation
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `FINNHUB_API_KEY` | Yes | Pre-market news source |
-| `ANTHROPIC_API_KEY` | Yes | LLM synthesis and override evaluation |
-
-### Email delivery
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `RESEND_API_KEY` | Yes | Email transport |
-| `RESEND_FROM_ADDRESS` | Recommended | Authenticated `@macro-bias.com` sender |
-| `SHADOW_RUN_EMAIL` | Recommended for testing | Forces all mail to one inbox |
-
-### Billing
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes | Browser Stripe key |
-| `STRIPE_SECRET_KEY` | Yes | Server-side Stripe key |
-| `STRIPE_MONTHLY_PRICE_ID` | Yes | Monthly price ID |
-| `STRIPE_ANNUAL_PRICE_ID` | Yes | Annual price ID |
-| `STRIPE_WEBHOOK_SECRET` | Yes | Webhook signature verification |
-
-### Social channels
-
-| Variable | Purpose |
-| --- | --- |
-| `X_API_KEY` | X app key |
-| `X_API_SECRET` | X app secret |
-| `X_ACCESS_TOKEN` | X user access token |
-| `X_ACCESS_SECRET` | X user access secret |
-
-## Local Setup
+### App scripts from `package.json`
 
 ```bash
 npm install
 npm run dev
 npm run typecheck
 npm run build
+npm run macro-bias:sync
+npm run social:arm-queue
+npm run referral:report
+npm run referral:simulate
 ```
 
-### Operational commands
+### Additional operational scripts
 
 ```bash
-npm run macro-bias:sync                              # Refresh stocks market data
-npm run social:arm-queue                             # Insert social queue into DB
-npx tsx src/scripts/run-daily-crypto-bias-sync.ts    # Refresh crypto market data
-npx tsx src/scripts/publish-marketing-posts.ts       # Publish blog posts
-npx tsx src/scripts/backfill-crypto-prices.ts        # Backfill crypto price history
+npx tsx src/scripts/run-daily-crypto-bias-sync.ts
+npx tsx src/scripts/backfill-crypto-prices.ts
+npx tsx src/scripts/publish-marketing-posts.ts
+npx tsx src/scripts/schedule-drafts.ts x-queue-drafts-v4.json
+npx tsx src/scripts/audit-analytics.ts
+npx tsx scripts/audit-backtest.ts
+npx tsx scripts/test-regimes.ts
+npx tsx scripts/test-crypto-regimes.ts
+npx tsx scripts/threads-auth.ts
 ```
 
-### Test cron routes locally
+## Environment Variables
+
+The table below reflects the current codebase, not just the checked-in `.env.example`. The checked-in example currently covers only part of the env surface, so use this section as the source of truth when wiring a new environment.
+
+### Core platform
+
+| Variable                        | Required | Purpose                                                      |
+| ------------------------------- | -------- | ------------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL                                         |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Public Supabase key for browser auth flows                   |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Yes      | Server-side admin access for cron routes and writes          |
+| `NEXT_PUBLIC_APP_URL`           | Yes      | Canonical app URL used in emails, redirects, and share links |
+| `NODE_ENV`                      | No       | Standard Next.js runtime mode                                |
+
+### Cron auth
+
+| Variable              | Required | Purpose                                                           |
+| --------------------- | -------- | ----------------------------------------------------------------- |
+| `CRON_SECRET`         | Yes      | Primary auth secret for cron routes                               |
+| `PUBLISH_CRON_SECRET` | Optional | Backward-compatible fallback secret checked by most cron handlers |
+
+### Research and AI
+
+| Variable            | Required                                      | Purpose                  |
+| ------------------- | --------------------------------------------- | ------------------------ |
+| `FINNHUB_API_KEY`   | Yes for stocks briefing generation            | Pre-market news source   |
+| `ANTHROPIC_API_KEY` | Yes for stocks and crypto briefing generation | Structured LLM synthesis |
+
+### Email delivery
+
+| Variable              | Required                          | Purpose                                 |
+| --------------------- | --------------------------------- | --------------------------------------- |
+| `RESEND_API_KEY`      | Yes for all email delivery        | Resend transport                        |
+| `RESEND_FROM_ADDRESS` | Recommended                       | Authenticated sender address            |
+| `SHADOW_RUN_EMAIL`    | Recommended for local and staging | Redirects outbound mail to a safe inbox |
+
+### Billing
+
+| Variable                             | Required                  | Purpose                                                             |
+| ------------------------------------ | ------------------------- | ------------------------------------------------------------------- |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes for frontend checkout | Browser Stripe key                                                  |
+| `STRIPE_SECRET_KEY`                  | Yes                       | Server Stripe key                                                   |
+| `STRIPE_MONTHLY_PRICE_ID`            | Recommended               | Monthly subscription price ID                                       |
+| `STRIPE_ANNUAL_PRICE_ID`             | Yes                       | Annual subscription price ID                                        |
+| `STRIPE_PRICE_ID`                    | Fallback                  | Legacy monthly price fallback if `STRIPE_MONTHLY_PRICE_ID` is unset |
+| `STRIPE_WEBHOOK_SECRET`              | Yes                       | Stripe webhook signature verification                               |
+
+### Social distribution
+
+| Variable                      | Required             | Purpose                                                                         |
+| ----------------------------- | -------------------- | ------------------------------------------------------------------------------- |
+| `X_API_KEY`                   | Yes for X publishing | X API app key                                                                   |
+| `X_API_SECRET`                | Yes for X publishing | X API app secret                                                                |
+| `X_ACCESS_TOKEN`              | Yes for X publishing | X access token                                                                  |
+| `X_ACCESS_SECRET`             | Yes for X publishing | X access token secret                                                           |
+| `X_API_KEY_SECRET`            | Legacy fallback      | Older X secret name still supported in the stocks publish route                 |
+| `X_ACCESS_TOKEN_SECRET`       | Legacy fallback      | Older X access-secret name still supported in the stocks publish route          |
+| `BLUESKY_IDENTIFIER`          | Optional             | Bluesky account identifier                                                      |
+| `BLUESKY_APP_PASSWORD`        | Optional             | Bluesky app password                                                            |
+| `THREADS_ACCESS_TOKEN`        | Optional             | Long-lived Threads publishing token                                             |
+| `THREADS_USER_ID`             | Optional             | Threads user ID                                                                 |
+| `THREADS_APP_ID`              | Optional             | Needed by the manual Threads OAuth helper                                       |
+| `THREADS_APP_SECRET`          | Optional             | Needed by the manual Threads OAuth helper and weekly refresh route              |
+| `TELEGRAM_BOT_TOKEN`          | Optional             | Telegram bot token for daily briefing cross-posts                               |
+| `TELEGRAM_CHANNEL_ID`         | Optional             | Telegram channel or chat ID                                                     |
+| `DISCORD_PUBLISH_WEBHOOK_URL` | Currently unused     | Discord webhook env is present, but Discord publishing is hard-disabled in code |
+
+## Local Setup
+
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env.local`.
+3. Fill in the core env vars above. If you want Bluesky, Threads, or the full email and AI stack, add those manually because they are not all present in `.env.example`.
+4. Apply Supabase migrations from `supabase/migrations/`.
+5. Run `npm run dev`.
+6. Run `npm run typecheck` and `npm run build` before deploying.
+
+### Local cron testing
 
 ```bash
-# Stocks publish
+# Stocks daily pipeline
 curl -X POST http://localhost:3000/api/cron/publish \
   -H "Authorization: Bearer <CRON_SECRET>"
 
-# Crypto publish
+# Crypto daily pipeline
 curl -X POST http://localhost:3000/api/cron/crypto-publish \
   -H "Authorization: Bearer <CRON_SECRET>"
 
-# Social dispatch
+# Shared social queue dispatcher
 curl -X GET http://localhost:3000/api/cron/social-dispatch \
+  -H "Authorization: Bearer <CRON_SECRET>"
+
+# Weekly Threads token refresh
+curl -X GET http://localhost:3000/api/cron/threads-token-refresh \
   -H "Authorization: Bearer <CRON_SECRET>"
 ```
 
 ## Deployment
 
-Runs on Vercel (Hobby plan) with four cron jobs defined in `vercel.json`. Supabase provides PostgreSQL. Resend handles email. Stripe manages billing.
+The app is deployed on Vercel with cron jobs defined in `vercel.json`. Supabase provides the database and auth surface, Resend handles email, Stripe handles billing, Anthropic provides synthesis, and social distribution is gated by whichever channel credentials are present.
 
 ```bash
 vercel --prod
 ```
-# Macro Bias
-
-Macro Bias is an automated quantitative research desk.
-
-It runs a daily pre-market pipeline that combines a K-Nearest Neighbors historical price analog with real-time geopolitical and financial news, then distributes the result as a production-grade sector bias briefing. The system is built as a SaaS operating model, not a personal script: it persists market state, synthesizes a structured daily report, logs every run for audit and backtesting, distributes tiered email output, and supports scheduled growth automation.
-
-The core product promise is simple: do not trade the tape in isolation. Macro Bias provides a quantitative baseline, tests whether today's news flow confirms or invalidates that baseline, and publishes a research note that tells the user whether the math is still safe to trust.
-
-## What The System Produces
-
-Every daily briefing has three layers:
-
-1. A quantitative baseline derived from the latest K-NN regime score and historical analog set.
-2. A qualitative overlay built from pre-market geopolitical and financial headlines.
-3. A final briefing generated under a strict JSON contract by an LLM acting as a structured risk manager.
-
-The finished note is distributed as a sector bias report with explicit regime language, a compact sector playbook, a system risk assessment, and raw model diagnostics.
-
-## The Macro Override Engine
-
-The Macro Override engine is the core business logic.
-
-The K-NN model is the baseline decision layer. It identifies historically similar sessions from persisted market history and calculates the day's regime score from that analog cluster. That baseline is useful only if the live market structure still resembles the historical sample.
-
-The LLM is not used as a discretionary signal generator. It acts as a risk manager.
-
-Its job is to determine whether the current pre-market tape contains a structural break that invalidates the historical analog framework. If the news flow implies that the regime has materially changed, the system flips from trusting baseline math to warning that the analog is no longer safe.
-
-Examples of structural breaks include:
-
-- wars, missile strikes, ceasefires, sanctions, embargoes, and tariff shocks
-- banking stress, liquidity events, or credit accidents
-- abrupt policy surprises from central banks or governments
-- energy disruptions, shipping chokepoints, or commodity shocks
-- any macro catalyst that breaks normal analog behavior
-
-When that condition is met, the system sets `is_override_active = true` and the final briefing explicitly warns the user not to trade the baseline math blindly.
-
-In practical terms:
-
-1. The K-NN engine still prints the raw baseline.
-2. The LLM evaluates whether that baseline has been structurally invalidated.
-3. If the tape is broken, Macro Bias escalates into Macro Override mode.
-4. The report shifts from normal playbook framing to regime-risk framing.
-
-The old standalone `macro-override.ts` era is gone. Override logic now lives inside the unified daily briefing pipeline.
-
-## Daily Architecture
-
-The primary orchestration boundary is the secure cron route at `/api/cron/publish`.
-
-### End-to-end flow
-
-1. Vercel Cron hits `/api/cron/publish` once per day.
-2. The route validates the bearer secret using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
-3. A same-day publish guard checks `daily_market_briefings` for the current UTC `briefing_date`.
-4. If a row already exists, the route returns `200 OK` with `status = skipped` and exits without regenerating or redistributing the report.
-5. If no row exists, the route refreshes market data with `upsertDailyMarketData()`.
-6. The route loads recent `macro_bias_scores` snapshots from Supabase PostgreSQL.
-7. `generateDailyBriefing()` runs the quantitative branch and the news branch in parallel.
-8. Anthropic synthesizes the final note under a strict JSON schema.
-9. If the News API or LLM degrades, retry and fallback logic still produce a complete report.
-10. `persistDailyBriefing()` writes the report to `daily_market_briefings`.
-11. `dispatchQuantBriefing()` distributes the result through Resend to free and premium cohorts.
-12. Optional outbound publishing can also hit X and other channels when configured.
-
-### Pipeline diagram
-
-```text
-Vercel Cron
-  -> /api/cron/publish
-    -> cron authorization
-    -> same-day publish guard
-    -> upsertDailyMarketData()
-    -> load recent macro_bias_scores context
-    -> generateDailyBriefing()
-       -> Promise.all(fetchNews(), getQuantScore())
-       -> Anthropic synthesis or deterministic fallback
-    -> persistDailyBriefing()
-    -> dispatchQuantBriefing()
-    -> JSON response summary
-```
-
-### Parallel execution
-
-The daily generator does not serialize the market and news branches.
-
-It runs these paths concurrently:
-
-- `fetchNews()` pulls the pre-market headline set from Finnhub.
-- `getQuantScore()` reconstructs the K-NN context from PostgreSQL-backed market history and persisted model state.
-
-That parallel design keeps the route fast enough for the pre-bell window while preserving a clean separation between quantitative state and live-news state.
-
-### Resilience and fallback design
-
-The system is designed to degrade gracefully rather than fail open.
-
-- `retry.ts` wraps external dependencies in exponential backoff.
-- `daily-briefing-strategies.ts` applies a Strategy Pattern to switch between `news-aware` and `news-unavailable` fallback behavior.
-- If Finnhub fails, Macro Bias still generates a report from quant context and inserts a clear news-unavailable disclaimer.
-- If the LLM fails, the system falls back to a deterministic briefing built from the latest quant context and whatever news state is available.
-
-The important invariant is operational: the desk still produces a report even when the external edge services are degraded.
-
-## Output Contract
-
-The LLM is required to return strict JSON in this shape:
-
-```json
-{
-  "is_override_active": true,
-  "newsletter_copy": "..."
-}
-```
-
-The generated briefing must contain these four sections in this order:
-
-1. `BOTTOM LINE`
-2. `SECTOR BREAKDOWN`
-3. `RISK CHECK`
-4. `MODEL NOTES`
-
-That stable contract makes the output auditable, renderable, and testable across email, social previews, and future analytics workflows.
-
-The diagnostics layer also exposes raw model evidence such as:
-
-- Intraday Net
-- Session Range
-- Match Confidence
-- closest analog reference
-
-## Persistence, Audit, and Backtesting
-
-Every generated report is written to `public.daily_market_briefings`.
-
-That ledger stores the briefing date, trade date, quant score, bias label, override state, news status, headline set, analog reference, final briefing body, source model, generation method, and timestamp.
-
-This persistence layer has three jobs:
-
-1. preserve a full audit trail of every research note
-2. power the same-day duplicate guard
-3. create a backtesting dataset for analog reliability, override behavior, and fallback quality
-
-Primary datasets used by the research pipeline:
-
-- `etf_daily_prices`: raw market history used to build the cross-asset feature space
-- `macro_bias_scores`: persisted regime scores and model inputs
-- `daily_market_briefings`: the final generated report ledger
-- `free_subscribers`: frictionless lead-capture list for free-tier distribution
-- `scheduled_posts`: scheduled X queue used by the growth automation layer
-
-## Delivery and Growth Automation
-
-Macro Bias now includes two distribution surfaces beyond the core report generator.
-
-### Tiered email delivery
-
-`email-dispatch.ts` builds both premium and free-tier email variants.
-
-- premium users receive the full report
-- free users receive a paywalled preview with upgrade prompts
-- recipient cohorts are assembled in the publish cron from active paid users and `free_subscribers`
-
-### Scheduled X dispatch
-
-The codebase now includes a scheduled social queue.
-
-- `scheduled_posts` is the live queue table
-- `/api/cron/social-dispatch` drains the queue
-- the dispatcher finds the oldest row where `status = 'scheduled'` and `scheduled_at <= now()`
-- successful sends are marked `published` with `published_at`
-
-This growth path is not part of the core Macro Override decision engine, but it is part of the current production runtime and should be documented as such.
-
-## Repository Map
-
-```text
-src/
-  app/
-    api/
-      cron/
-        publish/
-          route.ts
-        social-dispatch/
-          route.ts
-      subscribe/
-        route.ts
-    emails/
-      page.tsx
-  lib/
-    briefing/
-      daily-brief-generator.ts
-      daily-briefing-config.ts
-      daily-briefing-strategies.ts
-      persist-daily-briefing.ts
-      retry.ts
-      types.ts
-    marketing/
-      email-dispatch.ts
-    social/
-      scheduled-post-dispatch.ts
-    market-data/
-      fetch-morning-news.ts
-      upsert-daily-market-data.ts
-  scripts/
-    arm-scheduled-social-queue.ts
-    run-daily-macro-bias-sync.ts
-
-supabase/
-  migrations/
-    202604080001_create_daily_market_briefings.sql
-    202604090001_create_free_subscribers.sql
-```
-
-### File roles
-
-| File                                                                 | Responsibility                                                                                                                                                                  |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/briefing/daily-brief-generator.ts`                          | Coordinates the full daily synthesis flow. Runs quant and news in parallel, calls Anthropic, normalizes malformed output, and applies deterministic fallback logic when needed. |
-| `src/app/api/cron/publish/route.ts`                                  | Secure daily orchestration boundary. Handles cron authorization, same-day skip protection, market-data refresh, report generation, persistence, and outbound publishing.        |
-| `src/lib/marketing/email-dispatch.ts`                                | Builds HTML and text emails, supports free and premium tiers, honors `SHADOW_RUN_EMAIL`, and sends through Resend.                                                              |
-| `src/lib/briefing/daily-briefing-config.ts`                          | Defines the model, retry budgets, JSON schema, section headers, and prompt contract for the LLM.                                                                                |
-| `src/lib/briefing/daily-briefing-strategies.ts`                      | Implements the Strategy Pattern for `news-aware` and `news-unavailable` briefing behavior.                                                                                      |
-| `src/lib/briefing/retry.ts`                                          | Provides exponential backoff for external dependencies such as Finnhub and Anthropic.                                                                                           |
-| `src/lib/briefing/persist-daily-briefing.ts`                         | Writes the final report record into `daily_market_briefings`.                                                                                                                   |
-| `supabase/migrations/202604080001_create_daily_market_briefings.sql` | Creates the persistence table used for audit history, duplicate-run protection, and future backtesting.                                                                         |
-| `src/app/api/subscribe/route.ts`                                     | Accepts frictionless free-tier email capture and upserts `free_subscribers`.                                                                                                    |
-| `src/lib/social/scheduled-post-dispatch.ts`                          | Executes due X posts from `scheduled_posts` and marks them published.                                                                                                           |
-
-## Environment Variables
-
-Macro Bias does not consume a raw `DATABASE_URL` in the application runtime. The live runtime uses Supabase via `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
-
-### Core platform
-
-| Variable                        | Required | Purpose                                                                            |
-| ------------------------------- | -------- | ---------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL used by server-side and browser-side clients.                 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Public Supabase client key for browser auth flows.                                 |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Yes      | Privileged server-side access for cron routes, persistence, and subscriber writes. |
-| `NEXT_PUBLIC_APP_URL`           | Yes      | Canonical base URL for dashboard, email, and share links.                          |
-| `CRON_SECRET`                   | Yes      | Primary bearer secret for `/api/cron/publish` and `/api/cron/social-dispatch`.     |
-| `PUBLISH_CRON_SECRET`           | Optional | Backward-compatible fallback secret name.                                          |
-
-### Research generation
-
-| Variable            | Required | Purpose                                                |
-| ------------------- | -------- | ------------------------------------------------------ |
-| `FINNHUB_API_KEY`   | Yes      | Pre-market news source used by the qualitative branch. |
-| `ANTHROPIC_API_KEY` | Yes      | LLM synthesis and Macro Override evaluation.           |
-
-### Email delivery and safe testing
-
-| Variable              | Required                                   | Purpose                                                                                                             |
-| --------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `RESEND_API_KEY`      | Yes                                        | Resend API key for email distribution.                                                                              |
-| `RESEND_FROM_ADDRESS` | Recommended                                | Authenticated production sender, ideally a verified `@macro-bias.com` address.                                      |
-| `SHADOW_RUN_EMAIL`    | Strongly recommended for local and staging | Forces all email dispatch to one inbox so you can test the full pipeline without touching the real subscriber list. |
-
-### Billing and paywall surface
-
-| Variable                             | Required               | Purpose                                     |
-| ------------------------------------ | ---------------------- | ------------------------------------------- |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes for checkout flows | Browser Stripe key.                         |
-| `STRIPE_SECRET_KEY`                  | Yes for checkout flows | Server-side Stripe key.                     |
-| `STRIPE_MONTHLY_PRICE_ID`            | Yes for paid plans     | Monthly price ID used by checkout.          |
-| `STRIPE_ANNUAL_PRICE_ID`             | Yes for paid plans     | Annual price ID used by checkout.           |
-| `STRIPE_WEBHOOK_SECRET`              | Yes for billing sync   | Signature verification for Stripe webhooks. |
-
-### Optional outbound channels
-
-| Variable                      | Purpose                                |
-| ----------------------------- | -------------------------------------- |
-| `X_API_KEY`                   | X app key for direct posting.          |
-| `X_API_SECRET`                | X app secret.                          |
-| `X_ACCESS_TOKEN`              | X user access token.                   |
-| `X_ACCESS_SECRET`             | X user access secret.                  |
-| `DISCORD_PUBLISH_WEBHOOK_URL` | Optional Discord distribution webhook. |
-
-## Local Setup
-
-1. Install dependencies.
-2. Populate environment variables.
-3. Apply the checked-in Supabase migrations.
-4. Ensure your Supabase project also contains the `scheduled_posts` table if you plan to use the X queue.
-5. Start the app.
-6. Validate type safety and the production build.
-
-```bash
-npm install
-npm run dev
-npm run typecheck
-npm run build
-```
-
-Useful operational commands:
-
-```bash
-npm run macro-bias:sync
-npm run social:arm-queue
-```
-
-`macro-bias:sync` refreshes the underlying market dataset without running the publish route. `social:arm-queue` inserts the scheduled X queue from `src/content/marketing/x-queue-scheduled.json` into `scheduled_posts`.
-
-## Email Dispatch and Deliverability
-
-Resend is the email transport layer.
-
-Production delivery is designed around an authenticated custom domain sender on `macro-bias.com` with standard deliverability controls:
-
-- SPF alignment for the sending domain
-- DKIM signing through Resend
-- DMARC enforcement for visibility and policy-backed rejection behavior
-
-The codebase supports safe testing by design. If `SHADOW_RUN_EMAIL` is set, outbound mail is forced to that single inbox, which prevents local and staging runs from spamming the real subscriber list.
-
-Operationally:
-
-- leave `SHADOW_RUN_EMAIL` set for local and staging validation
-- use a verified `RESEND_FROM_ADDRESS` for production
-- unset or intentionally manage `SHADOW_RUN_EMAIL` before live delivery to the full audience
-
-## Testing and Shadow Runs
-
-The safest local validation path is to call the cron routes directly with the bearer secret.
-
-### Trigger the daily publish route
-
-```bash
-curl -X POST http://localhost:3000/api/cron/publish \
-  -H "Authorization: Bearer <CRON_SECRET>"
-```
-
-### Trigger the scheduled social dispatcher
-
-```bash
-curl -X GET http://localhost:3000/api/cron/social-dispatch \
-  -H "Authorization: Bearer <CRON_SECRET>"
-```
-
-### Expected daily behavior
-
-On the first successful run of the day, `/api/cron/publish` should:
-
-1. refresh market data
-2. generate the briefing
-3. persist the row in `daily_market_briefings`
-4. distribute the report through the configured channels
-
-If a briefing for the current UTC date already exists, the route returns `200 OK` and exits gracefully with a skipped status. This is the same-day publish guard, and it is intentional.
-
-Example skipped response shape:
-
-```json
-{
-  "briefingDate": "2026-04-09",
-  "message": "Briefing already generated for today.",
-  "ok": true,
-  "status": "skipped"
-}
-```
-
-The social dispatcher behaves similarly. If no scheduled X post is due, it exits cleanly without publishing.
-
-## Operational Notes
-
-- The daily publish cron is the authoritative research-generation boundary.
-- The K-NN model is the baseline, not the final authority.
-- The LLM's highest-value job is invalidation, not creativity.
-- Every report is persisted before distribution.
-- The same-day guard prevents accidental duplicate sends.
-- The shadow-run mechanism exists specifically to keep local testing safe.
-
-Macro Bias is now a production automation system: data refresh, synthesis, override judgment, persistence, email delivery, and scheduled growth automation all run as part of one integrated desk workflow.
-      email-dispatch.ts
-    market-data/
-      fetch-morning-news.ts
-      upsert-daily-market-data.ts
-
-supabase/
-  migrations/
-    202604080001_create_daily_market_briefings.sql
-```
-
-### File roles
-
-| File                                                                 | Responsibility                                                                                                                                                |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/briefing/daily-brief-generator.ts`                          | Coordinates the full daily synthesis flow. Runs the quant and news branches in parallel, calls Anthropic, and applies deterministic fallback logic if needed. |
-| `src/app/api/cron/publish/route.ts`                                  | Secure cron entrypoint. Handles authorization, same-day skip protection, market-data refresh, persistence, and outbound publication.                          |
-| `src/lib/marketing/email-dispatch.ts`                                | Builds HTML and text emails and sends them through Resend. Supports shadow-run recipient locking for safe testing.                                            |
-| `src/lib/briefing/daily-briefing-config.ts`                          | Centralizes the Anthropic model, output schema, prompt contract, and retry budgets.                                                                           |
-| `src/lib/briefing/daily-briefing-strategies.ts`                      | Encapsulates fallback generation behavior for `news-aware` and `news-unavailable` states.                                                                     |
-| `supabase/migrations/202604080001_create_daily_market_briefings.sql` | Creates the persistence table used for reporting history and same-day duplicate prevention.                                                                   |
-
-## Data Model
-
-The daily briefing path relies on three primary datasets:
-
-- `etf_daily_prices`: raw market history used to construct the quant feature set.
-- `macro_bias_scores`: persisted daily regime scores and model inputs.
-- `daily_market_briefings`: the final generated report ledger used for backtesting and duplicate-run protection.
-
-## Environment Variables
-
-### Required for the daily briefing pipeline
-
-| Variable                        | Required                | Purpose                                                                        |
-| ------------------------------- | ----------------------- | ------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_APP_URL`           | Yes                     | Base URL for dashboard links and share links.                                  |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Yes                     | Supabase project URL.                                                          |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes                     | Public Supabase client key for app auth flows.                                 |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Yes                     | Server-side privileged database access.                                        |
-| `CRON_SECRET`                   | Yes                     | Primary secret for `/api/cron/publish`.                                        |
-| `PUBLISH_CRON_SECRET`           | Optional                | Backward-compatible fallback secret name.                                      |
-| `FINNHUB_API_KEY`               | Yes                     | Pre-market news source.                                                        |
-| `ANTHROPIC_API_KEY`             | Yes                     | LLM synthesis and Macro Override evaluation.                                   |
-| `RESEND_API_KEY`                | Yes                     | Email dispatch provider key.                                                   |
-| `RESEND_FROM_ADDRESS`           | Recommended             | Production sender, ideally an authenticated `@macro-bias.com` address.         |
-| `SHADOW_RUN_EMAIL`              | Recommended for testing | Forces all briefing mail to one inbox during shadow runs and local validation. |
-
-### Optional secondary channels
-
-| Variable                      | Purpose                                                   |
-| ----------------------------- | --------------------------------------------------------- |
-| `X_API_KEY`                   | X API app key.                                            |
-| `X_API_SECRET`                | X API app secret.                                         |
-| `X_ACCESS_TOKEN`              | X user access token.                                      |
-| `X_ACCESS_SECRET`             | X user access secret.                                     |
-| `X_API_KEY_SECRET`            | Legacy fallback secret name supported by the route.       |
-| `X_ACCESS_TOKEN_SECRET`       | Legacy fallback token-secret name supported by the route. |
-| `DISCORD_PUBLISH_WEBHOOK_URL` | Optional Discord webhook if that channel is re-enabled.   |
-
-The repository also contains Stripe billing infrastructure for the product surface, but the variables above are the critical set for the daily automated research pipeline.
-
-## Local Setup
-
-1. Install dependencies.
-2. Configure the required environment variables.
-3. Apply the Supabase migrations, including `202604080001_create_daily_market_briefings.sql`.
-4. Start the app.
-5. Validate the TypeScript build.
-
-```bash
-npm install
-npm run dev
-npm run typecheck
-```
-
-To refresh quant data manually without triggering the publish route:
-
-```bash
-npm run macro-bias:sync
-```
-
-## Email Dispatch And Deliverability
-
-Email distribution is handled by Resend.
-
-For production delivery, the intended setup is:
-
-- `RESEND_FROM_ADDRESS` points to an authenticated `macro-bias.com` sender
-- SPF is published for the sending domain
-- DKIM is enabled through Resend
-- DMARC is enforced so alignment failures are observable and policy-backed
-
-The codebase also supports safe testing behavior. During a shadow run, outbound mail is forced to `SHADOW_RUN_EMAIL` so the pipeline can be tested end-to-end without touching the live subscriber list.
-
-If you are validating the system locally or in pre-production, keep the shadow-run recipient lock enabled. If you are moving to production, switch to the authenticated custom-domain sender and remove the shadow-run recipient override.
-
-## Shadow Run Testing
-
-The recommended local test path is to invoke the publish route directly with the cron secret header.
-
-### Trigger the daily route
-
-```bash
-curl -X POST http://localhost:3000/api/cron/publish \
-  -H "Authorization: Bearer <CRON_SECRET>"
-```
-
-### Expected behavior
-
-On the first successful run of the day, the route should:
-
-1. refresh market data
-2. generate the daily briefing
-3. persist the new row to `daily_market_briefings`
-4. send exactly one email to `SHADOW_RUN_EMAIL`
-
-On a second run on the same UTC date, the same-day publish guard should return `200 OK` and skip dispatch.
-
-Example skip response:
-
-```json
-{
-  "briefingDate": "2026-04-08",
-  "message": "Briefing already generated for today.",
-  "ok": true,
-  "status": "skipped"
-}
-```
-
-This is the safety mechanism that prevents accidental duplicate briefings and subscriber spam if the cron is retried or manually re-fired.
-
-## Scheduling
-
-The primary daily job is defined in `vercel.json`:
-
-```json
-{
-  "path": "/api/cron/publish",
-  "schedule": "45 12 * * *"
-}
-```
-
-The schedule is expressed in UTC. Adjust operational expectations accordingly for New York pre-market timing and daylight-saving changes.
-
-## Architectural Principles
-
-The current codebase is organized around a few explicit principles:
-
-- quant remains the baseline model
-- the LLM is used as a structured synthesis and risk-escalation layer, not as a discretionary trading engine
-- a daily report must still be generated under partial dependency failure
-- every report must be persisted for auditability and backtesting
-- distribution must be safe by default during testing and shadow runs
-
-That architecture is what turns Macro Bias into a daily automated financial research SaaS rather than a one-off market script.
