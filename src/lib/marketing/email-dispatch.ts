@@ -619,7 +619,7 @@ function buildHeaderTickerHtml(
 ) {
   const baselineLabel = formatDisplayLabel(label);
   const baselineScore = formatSignedNumber(score);
-  const overlayLabel = getMacroOverlayLabel(isOverrideActive);
+  const overlayLabel = isOverrideActive ? 'HIGH ALERT' : 'CONTAINED';
 
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse;">
     <tr>
