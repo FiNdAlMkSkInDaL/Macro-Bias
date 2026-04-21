@@ -96,7 +96,7 @@ function getFreeTierContent(briefContent: string): string {
     const bulletLines = lines.filter((l) => l.trim().startsWith("-"));
     if (bulletLines.length > 1) {
       parts.push(
-        `${playbookHeader}:\n${bulletLines[0]}\n- 🔒 **[LOCKED]**: Upgrade to view remaining sector scores and algo catalyst.`,
+        `${playbookHeader}:\n${bulletLines[0]}\n- **[LOCKED]**: Upgrade to view the full session playbook, invalidation map, and self-critique.`,
       );
     } else {
       parts.push(`${playbookHeader}:\n${lines.join("\n")}`);
@@ -338,7 +338,7 @@ export default async function BriefingPage({ params }: PageProps) {
             Unlock the full briefing.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-            Get remaining sector breakdown, model notes, risk check, and Live Terminal access.
+            Get the full trader&apos;s playbook, stress test, model notes, risk check, and Live Terminal access.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link

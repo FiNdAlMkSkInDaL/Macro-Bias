@@ -22,11 +22,14 @@ import {
   LLM_RETRY_OPTIONS,
   NEWS_RETRY_OPTIONS,
 } from "./daily-briefing-config";
+import { buildResearchBrief } from "./daily-briefing-research";
 import {
   type DailyBriefingAnalogMatch,
   type DailyBriefingNewsResult,
   type DailyBriefingQuantContext,
   type DailyBriefingResult,
+  type DailyBriefingStressTest,
+  type DailyBriefingTraderPlaybook,
   type HistoricalAnalogSnapshot,
   type SnapshotSummary,
   type StoredBiasSnapshot,
@@ -64,7 +67,9 @@ type DailyBriefingPromptPayload = {
   newsDisclaimer: string | null;
   newsStatus: DailyBriefingNewsResult["status"];
   newsSummary: string;
+  playbook: DailyBriefingTraderPlaybook;
   score: number;
+  stressTest: DailyBriefingStressTest;
   tradeDate: string;
 };
 
@@ -278,6 +283,8 @@ async function getQuantScore(
 function buildPromptPayload(
   quant: DailyBriefingQuantContext,
   news: DailyBriefingNewsResult,
+  playbook: DailyBriefingTraderPlaybook,
+  stressTest: DailyBriefingStressTest,
 ): DailyBriefingPromptPayload {
   return {
     tradeDate: quant.tradeDate,
@@ -288,6 +295,8 @@ function buildPromptPayload(
     newsSummary: news.summary,
     newsDisclaimer: news.disclaimer,
     headlines: news.headlines.slice(0, DAILY_BRIEFING_MAX_HEADLINES),
+    playbook,
+    stressTest,
     analogs: {
       alignedSessionCount: quant.historicalAnalogs?.alignedSessionCount ?? 0,
       candidateCount: quant.historicalAnalogs?.candidateCount ?? 0,
@@ -316,7 +325,12 @@ function buildDailyBriefingPrompt(
   news: DailyBriefingNewsResult,
   strategyContext: ReturnType<typeof getStrategyContext>,
 ) {
-  const promptPayload = buildPromptPayload(quant, news);
+  const promptPayload = buildPromptPayload(
+    quant,
+    news,
+    strategyContext.playbook,
+    strategyContext.stressTest,
+  );
 
   return [
     strategyContext.strategy.buildPromptContext(strategyContext),
@@ -357,6 +371,132 @@ function normalizeNewsletterCopy(newsletterCopy: string) {
     DAILY_BRIEFING_MACRO_HEADER_TYPO,
     DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus,
   );
+}
+
+const BANNED_NEWSLETTER_PHRASES = [
+  "until the dust clears",
+  "tail risk",
+  "layered on top",
+  "the real weight",
+  "poison",
+  "isolate from the noise",
+  "could surprise in either direction",
+  "before lunch",
+  "first hour",
+  "participation flows",
+  "broke the anchor",
+  "capitulation into weakness",
+  "fade headlines",
+  "chase headlines",
+  "the real trap",
+  "front and center",
+  "stops caring",
+] as const;
+
+function countSentences(value: string) {
+  return value
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0).length;
+}
+
+function splitNewsletterSections(newsletterCopy: string) {
+  const normalized = normalizeNewsletterCopy(newsletterCopy).trim();
+  const headers = Object.values(DAILY_BRIEFING_SECTION_HEADERS);
+  const matches = [...normalized.matchAll(
+    new RegExp(`^(${headers.map((header) => header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s*$`, "gm"),
+  )];
+
+  if (matches.length !== headers.length) {
+    return null;
+  }
+
+  const sections = new Map<string, string>();
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const title = match[1];
+    const start = match.index! + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index! : normalized.length;
+    const content = normalized.slice(start, end).trim();
+    sections.set(title, content);
+  }
+
+  return {
+    normalized,
+    sections,
+  };
+}
+
+function validateNewsletterCopy(newsletterCopy: string) {
+  const parsed = splitNewsletterSections(newsletterCopy);
+
+  if (!parsed) {
+    throw new Error("Anthropic daily briefing failed section parsing.");
+  }
+
+  const lowerCopy = parsed.normalized.toLowerCase();
+  const bannedPhrase = BANNED_NEWSLETTER_PHRASES.find((phrase) =>
+    lowerCopy.includes(phrase.toLowerCase()),
+  );
+
+  if (bannedPhrase) {
+    throw new Error(`Anthropic daily briefing used banned phrasing: "${bannedPhrase}".`);
+  }
+
+  const bottomLine = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine) ?? "";
+  const dayType = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook) ?? "";
+  const edge = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest) ?? "";
+  const trustCheck = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? "";
+  const modelNote = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) ?? "";
+
+  if (countSentences(bottomLine) !== 2) {
+    throw new Error("Anthropic daily briefing bottom line must be exactly 2 sentences.");
+  }
+
+  const dayTypeLines = dayType
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (dayTypeLines.length !== 3) {
+    throw new Error("Anthropic daily briefing day type section must contain exactly 3 bullets.");
+  }
+
+  const expectedBulletPrefixes = ["- **Day type:**", "- **Best area:**", "- **Big risk:**"];
+
+  expectedBulletPrefixes.forEach((prefix, index) => {
+    if (!dayTypeLines[index]?.startsWith(prefix)) {
+      throw new Error(`Anthropic daily briefing day type bullet ${index + 1} is malformed.`);
+    }
+  });
+
+  if (countSentences(edge) !== 2) {
+    throw new Error("Anthropic daily briefing edge section must be exactly 2 sentences.");
+  }
+
+  const trustCheckSentenceCount = countSentences(trustCheck);
+
+  if (trustCheckSentenceCount < 1 || trustCheckSentenceCount > 2) {
+    throw new Error("Anthropic daily briefing trust check must be 1 or 2 short sentences.");
+  }
+
+  const modelNoteLines = modelNote
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (modelNoteLines.length < 2 || modelNoteLines.length > 3) {
+    throw new Error("Anthropic daily briefing model note must be 2 short sentences plus optional diagnostics.");
+  }
+
+  if (countSentences(modelNoteLines[0]) + countSentences(modelNoteLines[1]) !== 2) {
+    throw new Error("Anthropic daily briefing model note must begin with exactly 2 sentences.");
+  }
+
+  if (modelNoteLines.length === 3 && !modelNoteLines[2].startsWith("Model Diagnostics:")) {
+    throw new Error("Anthropic daily briefing model note diagnostics line is malformed.");
+  }
 }
 
 function tryParseDailyBriefingJson(rawResponse: string) {
@@ -435,9 +575,12 @@ function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMRespon
   const parsedResponse = tryParseDailyBriefingJson(rawResponse);
 
   if (parsedResponse) {
+    const normalizedNewsletterCopy = normalizeNewsletterCopy(parsedResponse.newsletter_copy).trim();
+    validateNewsletterCopy(normalizedNewsletterCopy);
+
     return {
       is_override_active: parsedResponse.is_override_active,
-      newsletter_copy: normalizeNewsletterCopy(parsedResponse.newsletter_copy).trim(),
+      newsletter_copy: normalizedNewsletterCopy,
     };
   }
 
@@ -445,21 +588,26 @@ function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMRespon
   const parsedEmbeddedResponse = embeddedJson ? tryParseDailyBriefingJson(embeddedJson) : null;
 
   if (parsedEmbeddedResponse) {
+    const normalizedNewsletterCopy = normalizeNewsletterCopy(parsedEmbeddedResponse.newsletter_copy).trim();
+    validateNewsletterCopy(normalizedNewsletterCopy);
+
     return {
       is_override_active: parsedEmbeddedResponse.is_override_active,
-      newsletter_copy: normalizeNewsletterCopy(parsedEmbeddedResponse.newsletter_copy).trim(),
+      newsletter_copy: normalizedNewsletterCopy,
     };
   }
 
   const pseudoJsonResponse = tryParsePseudoJsonDailyBriefing(rawResponse);
 
   if (pseudoJsonResponse) {
+    validateNewsletterCopy(pseudoJsonResponse.newsletter_copy);
     return pseudoJsonResponse;
   }
 
   const normalizedNewsletter = normalizeNewsletterCopy(rawResponse).trim();
 
   if (looksLikeNewsletterCopy(normalizedNewsletter)) {
+    validateNewsletterCopy(normalizedNewsletter);
     return {
       is_override_active: inferOverrideFromNewsletterCopy(normalizedNewsletter),
       newsletter_copy: normalizedNewsletter,
@@ -476,13 +624,21 @@ function getStrategyContext(
   const catalyst = detectOverrideCatalyst(news.headlines);
   const suggestedOverrideActive = catalyst !== null && news.status === "available";
   const strategy = getDailyBriefingStrategy(news);
+  const researchBrief = buildResearchBrief({
+    catalyst,
+    news,
+    quant,
+    suggestedOverrideActive,
+  });
 
   return {
     catalyst,
     news,
+    playbook: researchBrief.playbook,
     quant,
     strategy,
     suggestedOverrideActive,
+    stressTest: researchBrief.stressTest,
   };
 }
 
@@ -530,6 +686,8 @@ async function synthesizeDailyBriefingFromContext(
   news: DailyBriefingNewsResult,
   warnings: string[],
 ): Promise<DailyBriefingResult> {
+  const strategyContext = getStrategyContext(quant, news);
+
   try {
     const response = await generateAnthropicBriefing(quant, news);
 
@@ -539,12 +697,13 @@ async function synthesizeDailyBriefingFromContext(
       model: DAILY_BRIEFING_MODEL,
       news,
       newsletterCopy: response.newsletter_copy,
+      playbook: strategyContext.playbook,
       quant,
+      stressTest: strategyContext.stressTest,
       warnings,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown LLM generation failure.";
-    const strategyContext = getStrategyContext(quant, news);
 
     warnings.push(`LLM synthesis degraded: ${message}`);
 
@@ -554,7 +713,9 @@ async function synthesizeDailyBriefingFromContext(
       model: "deterministic-fallback",
       news,
       newsletterCopy: strategyContext.strategy.buildFallbackBriefing(strategyContext),
+      playbook: strategyContext.playbook,
       quant,
+      stressTest: strategyContext.stressTest,
       warnings,
     };
   }

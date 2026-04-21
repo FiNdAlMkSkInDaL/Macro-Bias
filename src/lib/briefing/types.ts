@@ -47,6 +47,26 @@ export type DailyBriefingQuantContext = {
   tradeDate: string;
 };
 
+export type DailyBriefingConviction = "HIGH" | "MEDIUM" | "LOW";
+
+export type DailyBriefingTraderPlaybook = {
+  avoid: string;
+  bestExpression: string;
+  conviction: DailyBriefingConviction;
+  favoredGroups: string[];
+  invalidationSignal: string;
+  posture: string;
+  pressuredGroups: string[];
+};
+
+export type DailyBriefingStressTest = {
+  confidence: DailyBriefingConviction;
+  counterThesis: string;
+  fragilityFlags: string[];
+  primaryFailureMode: string;
+  provingSignals: string;
+};
+
 export type DailyBriefingGenerationMethod = "anthropic" | "fallback";
 
 export type DailyBriefingResult = {
@@ -55,7 +75,9 @@ export type DailyBriefingResult = {
   model: string;
   news: DailyBriefingNewsResult;
   newsletterCopy: string;
+  playbook: DailyBriefingTraderPlaybook;
   quant: DailyBriefingQuantContext;
+  stressTest: DailyBriefingStressTest;
   warnings: string[];
 };
 

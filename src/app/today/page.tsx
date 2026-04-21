@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ReferralPromoCard } from "@/components/ReferralPromoCard";
+import { getLatestBriefing } from "@/lib/briefing/get-public-briefing";
+import { buildResearchBrief } from "@/lib/briefing/daily-briefing-research";
+import { DAILY_BRIEFING_SECTION_HEADERS } from "@/lib/briefing/daily-briefing-config";
+import { deriveHistoricalAnalogs } from "@/lib/market-data/derive-historical-analogs";
 import { getLatestBiasSnapshot } from "@/lib/market-data/get-latest-bias-snapshot";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { TodaySignupForm } from "./signup-form";
@@ -152,6 +156,53 @@ function getGaugePosition(score: number) {
   return ((Math.max(-100, Math.min(100, score)) + 100) / 200) * 100;
 }
 
+function parseBriefingSections(briefContent: string) {
+  const sectionHeaders = Object.values(DAILY_BRIEFING_SECTION_HEADERS);
+
+  return briefContent.split(/\n/).reduce<{ current: string | null; map: Map<string, string[]> }>(
+    (acc, line) => {
+      const trimmed = line.trim();
+      const headerMatch = sectionHeaders.find((header) =>
+        trimmed.startsWith(header) || trimmed.replace(/\*\*/g, "").startsWith(header),
+      );
+
+      if (headerMatch) {
+        acc.current = headerMatch;
+        const rest = trimmed.replace(/\*\*/g, "").replace(headerMatch, "").replace(/^:?\s*/, "");
+
+        if (rest) {
+          acc.map.get(headerMatch)?.push(rest) ?? acc.map.set(headerMatch, [rest]);
+        } else {
+          acc.map.set(headerMatch, acc.map.get(headerMatch) ?? []);
+        }
+
+        return acc;
+      }
+
+      if (acc.current) {
+        const lines = acc.map.get(acc.current);
+
+        if (lines) {
+          lines.push(line);
+        }
+      }
+
+      return acc;
+    },
+    { current: null, map: new Map() },
+  ).map;
+}
+
+function formatBriefingSection(sectionLines: string[] | undefined) {
+  return sectionLines?.join("\n").trim() ?? "";
+}
+
+function formatHeadlineList(headlines: string[]) {
+  return headlines
+    .filter((headline) => headline.trim().length > 0)
+    .slice(0, 3);
+}
+
 async function getCryptoSnapshot(): Promise<ScoreSnapshot | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -171,9 +222,10 @@ async function getCryptoSnapshot(): Promise<ScoreSnapshot | null> {
 }
 
 export default async function TodayPage() {
-  const [stocksSnapshot, cryptoSnapshot] = await Promise.all([
+  const [stocksSnapshot, cryptoSnapshot, latestBriefing] = await Promise.all([
     getLatestBiasSnapshot(),
     getCryptoSnapshot(),
+    getLatestBriefing(),
   ]);
 
   const stocksScore = stocksSnapshot?.score ?? 0;
@@ -185,6 +237,62 @@ export default async function TodayPage() {
   const cryptoDate = cryptoSnapshot?.tradeDate ?? null;
   const cryptoUpdated = cryptoSnapshot?.updatedAt ?? null;
   const cryptoDisplay = cryptoScore !== null ? getRegimeDisplay(cryptoScore) : null;
+  const briefingSections =
+    latestBriefing?.brief_content ? parseBriefingSections(latestBriefing.brief_content) : new Map<string, string[]>();
+  const bottomLineCopy = formatBriefingSection(
+    briefingSections.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine),
+  );
+  const whatMattersCopy = formatBriefingSection(
+    briefingSections.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook),
+  );
+  const whyCopy = formatBriefingSection(
+    briefingSections.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest),
+  );
+  const trustCheckCopy = formatBriefingSection(
+    briefingSections.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus),
+  );
+  const modelNoteCopy = formatBriefingSection(
+    briefingSections.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner),
+  );
+  const historicalAnalogs = stocksSnapshot
+    ? deriveHistoricalAnalogs(
+        stocksSnapshot.engine_inputs,
+        stocksSnapshot.component_scores,
+        stocksSnapshot.technical_indicators,
+      )
+    : null;
+  const researchBrief =
+    stocksSnapshot && latestBriefing
+      ? buildResearchBrief({
+          catalyst: null,
+          news: {
+            disclaimer: null,
+            headlines: latestBriefing.news_headlines ?? [],
+            status: "available",
+            summary: latestBriefing.news_summary,
+          },
+          quant: {
+            analogReference: historicalAnalogs?.topMatches[0]?.tradeDate ?? null,
+            analogs:
+              historicalAnalogs?.topMatches.map((match) => ({
+                tradeDate: match.tradeDate,
+                nextSessionDate: match.nextSessionDate,
+                score: null,
+                biasLabel: null,
+                matchConfidence: match.matchConfidence,
+                intradayNet: match.intradayNet,
+                overnightGap: match.overnightGap,
+                sessionRange: match.sessionRange,
+              })) ?? [],
+            historicalAnalogs,
+            label: stocksSnapshot.bias_label,
+            score: stocksSnapshot.score,
+            tradeDate: stocksSnapshot.trade_date,
+          },
+          suggestedOverrideActive: latestBriefing.is_override_active,
+        })
+      : null;
+  const topHeadlines = formatHeadlineList(latestBriefing?.news_headlines ?? []);
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -336,6 +444,140 @@ export default async function TodayPage() {
           </div>
         </section>
 
+        {latestBriefing && (
+          <section className="mt-10" aria-labelledby="daily-read">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <h2
+                  id="daily-read"
+                  className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500"
+                >
+                  Today&apos;s Read
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                  The email is the fast version. This is the fuller daily context.
+                </p>
+              </div>
+              <Link
+                href={`/briefings/${latestBriefing.briefing_date}`}
+                className="shrink-0 rounded-md border border-zinc-800 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-700 hover:text-white"
+              >
+                Full briefing →
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  {DAILY_BRIEFING_SECTION_HEADERS.bottomLine}
+                </p>
+                <p className="mt-3 text-base leading-7 text-zinc-200">
+                  {bottomLineCopy || "Today&apos;s note will appear here after the morning briefing runs."}
+                </p>
+
+                {whatMattersCopy && (
+                  <>
+                    <p className="mt-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      {DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook}
+                    </p>
+                    <div className="mt-3 space-y-3 text-sm leading-7 text-zinc-300">
+                      {whatMattersCopy
+                        .split("\n")
+                        .map((line) => line.trim())
+                        .filter(Boolean)
+                        .map((line) => (
+                          <p key={line}>{line.replace(/^- /, "")}</p>
+                        ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    {DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-zinc-200">
+                    {trustCheckCopy || latestBriefing.news_summary}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    {DAILY_BRIEFING_SECTION_HEADERS.stressTest}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">
+                    {whyCopy || latestBriefing.news_summary}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {(researchBrief || modelNoteCopy || topHeadlines.length > 0) && (
+              <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                {researchBrief && (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      Full Session Playbook
+                    </p>
+                    <div className="mt-3 space-y-3 text-sm leading-7 text-zinc-300">
+                      <p>{researchBrief.playbook.posture}</p>
+                      <p>
+                        <span className="text-zinc-500">Favored:</span>{" "}
+                        {researchBrief.playbook.favoredGroups.join(", ")}
+                      </p>
+                      <p>
+                        <span className="text-zinc-500">Careful with:</span>{" "}
+                        {researchBrief.playbook.pressuredGroups.join(", ")}
+                      </p>
+                      <p>{researchBrief.playbook.bestExpression}</p>
+                    </div>
+                  </div>
+                )}
+
+                {researchBrief && (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      What Could Break This Read
+                    </p>
+                    <div className="mt-3 space-y-3 text-sm leading-7 text-zinc-300">
+                      <p>{researchBrief.stressTest.primaryFailureMode}</p>
+                      <p>{researchBrief.stressTest.counterThesis}</p>
+                      <p>{researchBrief.stressTest.provingSignals}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Under The Hood
+                  </p>
+                  <div className="mt-3 space-y-3 text-sm leading-7 text-zinc-300">
+                    {modelNoteCopy && <p>{modelNoteCopy}</p>}
+                    {historicalAnalogs && (
+                      <p>
+                        Based on {historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions and{" "}
+                        {historicalAnalogs.topMatches.length} close historical matches.
+                      </p>
+                    )}
+                    {topHeadlines.length > 0 && (
+                      <div>
+                        <p className="text-zinc-500">Headline read</p>
+                        <ul className="mt-2 space-y-2">
+                          {topHeadlines.map((headline) => (
+                            <li key={headline}>{headline}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* ── Crypto Regime Score ── */}
         {cryptoScore !== null && cryptoDisplay && (
           <section className="mt-10" aria-labelledby="crypto-regime">
@@ -438,8 +680,8 @@ export default async function TodayPage() {
             </p>
             <p>
               Both scores are published every trading day before the US equity open. The
-              daily briefing email expands the score into a full sector breakdown,
-              historical pattern analysis, and risk check.
+              daily email gives the fast morning read, while this page carries the fuller
+              trust check, model context, and session map.
             </p>
           </div>
         </section>
@@ -453,9 +695,8 @@ export default async function TodayPage() {
             Get the full briefing every morning
           </h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            The score above is the headline. The daily email gives you everything
-            behind it: sector breakdown, historical pattern matching, risk check,
-            and model notes. Free. 90 seconds. Before the bell.
+            The score above is the headline. The daily email gives you the fast morning
+            read before the bell, and the site carries the fuller context behind it.
           </p>
 
           <TodaySignupForm />

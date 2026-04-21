@@ -12,6 +12,7 @@ export type PublicBriefingRow = {
   bias_label: string;
   is_override_active: boolean;
   brief_content: string;
+  news_headlines: string[];
   news_summary: string;
   generated_at: string;
 };
@@ -23,7 +24,7 @@ export type BriefingListItem = {
 };
 
 const BRIEFING_COLUMNS =
-  "id, briefing_date, trade_date, quant_score, bias_label, is_override_active, brief_content, news_summary, generated_at";
+  "id, briefing_date, trade_date, quant_score, bias_label, is_override_active, brief_content, news_headlines, news_summary, generated_at";
 
 export const getBriefingByDate = cache(async (date: string): Promise<PublicBriefingRow | null> => {
   const supabase = createSupabaseAdminClient();
@@ -37,6 +38,23 @@ export const getBriefingByDate = cache(async (date: string): Promise<PublicBrief
 
   if (error) {
     throw new Error(`Failed to load briefing for ${date}: ${error.message}`);
+  }
+
+  return (data as PublicBriefingRow | null) ?? null;
+});
+
+export const getLatestBriefing = cache(async (): Promise<PublicBriefingRow | null> => {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("daily_market_briefings")
+    .select(BRIEFING_COLUMNS)
+    .order("briefing_date", { ascending: false })
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load latest briefing: ${error.message}`);
   }
 
   return (data as PublicBriefingRow | null) ?? null;

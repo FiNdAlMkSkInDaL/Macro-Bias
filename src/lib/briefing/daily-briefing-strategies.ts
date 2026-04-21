@@ -1,13 +1,20 @@
 import type { BiasLabel } from "@/lib/macro-bias/types";
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from "./daily-briefing-config";
-import type { DailyBriefingNewsResult, DailyBriefingQuantContext } from "./types";
+import type {
+  DailyBriefingNewsResult,
+  DailyBriefingQuantContext,
+  DailyBriefingStressTest,
+  DailyBriefingTraderPlaybook,
+} from "./types";
 
 type DailyBriefingStrategyContext = {
   catalyst: string | null;
   news: DailyBriefingNewsResult;
+  playbook: DailyBriefingTraderPlaybook;
   quant: DailyBriefingQuantContext;
   suggestedOverrideActive: boolean;
+  stressTest: DailyBriefingStressTest;
 };
 
 export interface DailyBriefingStrategy {
@@ -15,14 +22,6 @@ export interface DailyBriefingStrategy {
   buildFallbackBriefing(context: DailyBriefingStrategyContext): string;
   buildPromptContext(context: DailyBriefingStrategyContext): string;
 }
-
-type SectorRow = {
-  catalyst: string;
-  sector: string;
-  sectorBias: "Strong" | "Neutral" | "Under Pressure";
-};
-
-const PLAYBOOK_BULLET_SEPARATOR = "--";
 
 function formatBiasLabel(label: BiasLabel) {
   return label.replace(/_/g, " ");
@@ -33,47 +32,45 @@ function getAnalogReferenceText(quant: DailyBriefingQuantContext) {
     return "Analog reference unavailable";
   }
 
-  return quant.analogReference.length >= 4
-    ? quant.analogReference.slice(0, 4)
-    : quant.analogReference;
+  return quant.analogReference;
 }
 
-function buildSectorRows(label: BiasLabel, catalyst: string): SectorRow[] {
-  switch (label) {
-    case "EXTREME_RISK_ON":
-    case "RISK_ON":
-      return [
-        { sector: "Technology", sectorBias: "Strong", catalyst },
-        { sector: "Cyclicals", sectorBias: "Strong", catalyst },
-        { sector: "Defensives", sectorBias: "Under Pressure", catalyst },
-      ];
-    case "EXTREME_RISK_OFF":
-    case "RISK_OFF":
-      return [
-        { sector: "Technology", sectorBias: "Under Pressure", catalyst },
-        { sector: "Cyclicals", sectorBias: "Under Pressure", catalyst },
-        { sector: "Defensives", sectorBias: "Strong", catalyst },
-      ];
-    default:
-      return [
-        { sector: "Technology", sectorBias: "Neutral", catalyst },
-        { sector: "Cyclicals", sectorBias: "Neutral", catalyst },
-        { sector: "Defensives", sectorBias: "Neutral", catalyst },
-      ];
+function formatConviction(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase();
+}
+
+function formatCatalyst(value: string | null) {
+  if (!value) {
+    return "Today's news";
   }
+
+  const normalized = value.toLowerCase();
+
+  if (normalized.includes("iran") && normalized.includes("sanction")) {
+    return "Iran escalation and fresh US sanctions";
+  }
+
+  if (normalized.includes("iran")) {
+    return "Iran escalation";
+  }
+
+  if (normalized.includes("sanction")) {
+    return "Fresh sanctions headlines";
+  }
+
+  return "Fresh macro headlines";
 }
 
-function buildPlaybookList(label: BiasLabel, catalyst: string) {
-  return buildSectorRows(label, catalyst)
-    .map(
-      (row) =>
-        `- **${row.sector}**: ${row.sectorBias} ${PLAYBOOK_BULLET_SEPARATOR} ${row.catalyst}`,
-    )
-    .join("\n");
-}
+function summarizeFocus(groups: string[]) {
+  if (groups.length === 0) {
+    return "clean setups";
+  }
 
-function getPortfolioPostureLine() {
-  return "The pattern is unreliable right now. Wait for things to settle before trusting the historical playbook again.";
+  if (groups.length === 1) {
+    return groups[0];
+  }
+
+  return `${groups[0]} and ${groups[1]}`;
 }
 
 function formatSignedPercent(value: number | null | undefined) {
@@ -89,7 +86,7 @@ function formatMatchConfidence(value: number | null | undefined) {
     return "n/a";
   }
 
-  return value.toFixed(2);
+  return `${Math.round(value)}%`;
 }
 
 function buildModelDiagnostics(context: DailyBriefingStrategyContext) {
@@ -98,40 +95,96 @@ function buildModelDiagnostics(context: DailyBriefingStrategyContext) {
   const intradayNet = leadAnalog?.intradayNet ?? analogContext?.intradayNet ?? null;
   const sessionRange = leadAnalog?.sessionRange ?? analogContext?.sessionRange ?? null;
   const matchConfidence = leadAnalog?.matchConfidence ?? null;
+  const analogReference = context.quant.analogReference ?? "n/a";
+  const overrideState = context.suggestedOverrideActive ? "ACTIVE" : "INACTIVE";
 
-  return `Model Diagnostics: Intraday Net ${formatSignedPercent(intradayNet)} | Session Range ${formatSignedPercent(sessionRange)} | Match Confidence ${formatMatchConfidence(matchConfidence)}.`;
+  return `Model Diagnostics: Closest Match ${analogReference} | Intraday Net ${formatSignedPercent(intradayNet)} | Session Range ${formatSignedPercent(sessionRange)} | Match Confidence ${formatMatchConfidence(matchConfidence)} | Override ${overrideState}.`;
 }
 
 function buildQuantCorner(context: DailyBriefingStrategyContext) {
   if (!context.quant.analogReference) {
-    const actionabilitySuffix = context.suggestedOverrideActive
-      ? ` ${getPortfolioPostureLine()}`
-      : "";
+    const firstSentence = "There is not enough clean history here, so the score is leaning more on the live tape than the analog set.";
+    const secondSentence = context.suggestedOverrideActive
+      ? "That matters even less than usual because the news changed the setup."
+      : "That makes this read a little softer than usual.";
 
-    return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: Not enough historical matches today, so the score is leaning on the live data and sector readings instead. ${buildModelDiagnostics(context)} ${actionabilitySuffix}`.trim();
+    return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
   }
 
   const analogReference = getAnalogReferenceText(context.quant);
+  const firstSentence = `Closest match is ${analogReference}, a quieter session than today.`;
+  const secondSentence = context.suggestedOverrideActive
+    ? "On a normal day this setup would usually stay contained, but today's news makes that comparison less useful."
+    : "A normal day like this would usually stay fairly contained, and that comparison still matters because the setup has not broken.";
 
-  const actionabilitySuffix = context.suggestedOverrideActive
-    ? ` ${getPortfolioPostureLine()}`
-    : "";
+  return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
+}
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: Closest analog: ${analogReference}. ${context.suggestedOverrideActive ? "Today's news has broken the historical pattern enough that this match is less trustworthy than usual." : "This historical match still lines up with what we are seeing today, so the pattern data remains useful."} ${buildModelDiagnostics(context)}${actionabilitySuffix ? ` ${actionabilitySuffix}` : ""}`;
+function buildTraderPlaybook(context: DailyBriefingStrategyContext) {
+  const convictionText = formatConviction(context.playbook.conviction);
+  const favoredGroups = context.suggestedOverrideActive
+    ? "stock-specific setups"
+    : summarizeFocus(context.playbook.favoredGroups);
+  const pressuredGroups = context.suggestedOverrideActive
+    ? "index chasing"
+    : summarizeFocus(context.playbook.pressuredGroups);
+  const dayTypeText = context.suggestedOverrideActive
+    ? "Neutral setup, but headlines are driving the tape."
+    : context.playbook.posture;
+  const bestAreaText = context.suggestedOverrideActive
+    ? `${convictionText} conviction. Focus on ${favoredGroups}, not ${pressuredGroups}.`
+    : `${convictionText} conviction. Focus on ${favoredGroups}, not ${pressuredGroups}.`;
+  const bigRiskText = context.suggestedOverrideActive
+    ? "Treating a noisy tape like a clean trend day."
+    : context.playbook.invalidationSignal;
+
+  return [
+    `${DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook}:`,
+    `- **Day type:** ${dayTypeText}`,
+    `- **Best area:** ${bestAreaText}`,
+    `- **Big risk:** ${bigRiskText}`,
+  ].join("\n");
+}
+
+function buildStressTest(context: DailyBriefingStrategyContext) {
+  const firstSentence = context.suggestedOverrideActive
+    ? "The edge is in stock-specific setups while the index gets pushed around by headlines."
+    : context.stressTest.counterThesis;
+  const secondSentence = context.suggestedOverrideActive
+    ? "If the market keeps reacting to every new headline, use the score as background, not signal."
+    : context.stressTest.provingSignals;
+
+  return `${DAILY_BRIEFING_SECTION_HEADERS.stressTest}: ${firstSentence} ${secondSentence}`;
+}
+
+function buildTrustCheck(context: DailyBriefingStrategyContext) {
+  if (context.suggestedOverrideActive) {
+    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern broken. ${formatCatalyst(context.catalyst)} changed the setup enough that the historical pattern is not reliable right now.`;
+  }
+
+  if (context.news.status === "unavailable") {
+    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern shaky. The score still matters, but the live news read is unavailable.`;
+  }
+
+  if (context.playbook.conviction === "LOW") {
+    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern shaky. The score is near neutral, so this read needs confirmation from price action.`;
+  }
+
+  return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern intact. The news does not do enough damage to break the historical read.`;
 }
 
 function buildBottomLine(context: DailyBriefingStrategyContext) {
   const labelText = formatBiasLabel(context.quant.label);
 
   if (context.suggestedOverrideActive) {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: The model reads ${labelText} with a score of ${context.quant.score}, but ${context.catalyst ?? "breaking news is shaking things up"}. That makes the historical pattern less reliable today, so the numbers deserve extra skepticism until things calm down.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern broken this morning. ${formatCatalyst(context.catalyst)} matters more than the ${labelText.toLowerCase()} score right now.`;
   }
 
   if (context.news.status === "unavailable") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: The model reads ${labelText} with a score of ${context.quant.score}. News is unavailable today, so the signal is relying on sector data, relative strength, and the historical pattern rather than any specific headline.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} score, but trust it less than usual. News is unavailable, so the setup needs more confirmation from price action.`;
   }
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: The model reads ${labelText} with a score of ${context.quant.score}, and the historical pattern still matches what we are seeing in the market. The news is confirming the score rather than contradicting it, which makes the setup more trustworthy than usual.`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} score, and the setup is still intact. The news is not doing enough damage to break the historical read.`;
 }
 
 class NewsAwareBriefingStrategy implements DailyBriefingStrategy {
@@ -140,7 +193,9 @@ class NewsAwareBriefingStrategy implements DailyBriefingStrategy {
   buildPromptContext(context: DailyBriefingStrategyContext) {
     return [
       "Validated news is available for this briefing.",
-      `Use this news summary as the institutional-flow overlay: ${context.news.summary}`,
+      `Use this news summary as the news backdrop for the session: ${context.news.summary}`,
+      `Playbook inputs: posture=${context.playbook.posture} | cleanRead=${context.playbook.bestExpression} | invalidation=${context.playbook.invalidationSignal}.`,
+      `Challenge inputs: failureMode=${context.stressTest.primaryFailureMode} | counterCase=${context.stressTest.counterThesis} | provingSignal=${context.stressTest.provingSignals}.`,
       context.suggestedOverrideActive
         ? `There is a potential disruption: ${context.catalyst}. Assess whether this changes the picture enough to override the historical pattern, and explain your reasoning clearly.`
         : "The news does not obviously contradict the model. Assess whether the historical pattern still holds and whether today's headlines support or weaken the setup.",
@@ -148,18 +203,14 @@ class NewsAwareBriefingStrategy implements DailyBriefingStrategy {
   }
 
   buildFallbackBriefing(context: DailyBriefingStrategyContext) {
-    const catalyst = context.catalyst ?? context.news.summary;
-    const macroOverrideStatus = context.suggestedOverrideActive
-      ? `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: ACTIVE. ${catalyst} is a big enough deal to make the historical pattern unreliable today. The model's read deserves extra caution.`
-      : `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: INACTIVE. ${context.news.summary} is not enough to break the historical pattern the model is following.`;
-
     return [
       buildBottomLine(context),
       "",
-      `${DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook}:`,
-      buildPlaybookList(context.quant.label, catalyst),
+      buildTraderPlaybook(context),
       "",
-      macroOverrideStatus,
+      buildStressTest(context),
+      "",
+      buildTrustCheck(context),
       "",
       buildQuantCorner(context),
     ].join("\n");
@@ -173,6 +224,8 @@ class NewsUnavailableBriefingStrategy implements DailyBriefingStrategy {
     return [
       "The news feed is unavailable after retries.",
       "Still produce the full report using the quantitative data and model diagnostics.",
+      `Playbook inputs: posture=${context.playbook.posture} | cleanRead=${context.playbook.bestExpression} | invalidation=${context.playbook.invalidationSignal}.`,
+      `Challenge inputs: failureMode=${context.stressTest.primaryFailureMode} | counterCase=${context.stressTest.counterThesis} | provingSignal=${context.stressTest.provingSignals}.`,
       `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus} must include this disclaimer verbatim: ${context.news.summary}`,
       "Default to is_override_active=false unless the quantitative data itself suggests the historical pattern is broken.",
     ].join(" ");
@@ -184,10 +237,11 @@ class NewsUnavailableBriefingStrategy implements DailyBriefingStrategy {
     return [
       buildBottomLine(context),
       "",
-      `${DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook}:`,
-      buildPlaybookList(context.quant.label, catalyst),
+      buildTraderPlaybook(context),
       "",
-      `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: INACTIVE. ${context.news.summary}`,
+      buildStressTest(context),
+      "",
+      buildTrustCheck(context),
       "",
       buildQuantCorner(context),
     ].join("\n");

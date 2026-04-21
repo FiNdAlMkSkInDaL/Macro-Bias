@@ -8,13 +8,14 @@ import { getAppUrl, getRequiredServerEnv } from '../server-env';
 
 const DEFAULT_FROM_ADDRESS = 'Macro Bias <briefing@macro-bias.com>';
 const EMAIL_BATCH_SIZE = 100;
-const FREE_TIER_LOCKED_PLAYBOOK_LINE = '🔒 **[LOCKED]**: Upgrade to see the full sector breakdown and model notes.';
+const FREE_TIER_LOCKED_PLAYBOOK_LINE = '🔒 **[LOCKED]**: Visit macro-bias.com/today for the full read and deeper context.';
 const FREE_TIER_PAYWALL_MESSAGE =
-  'Unlock the full briefing with sector breakdown, risk check, and model notes.';
+  'Visit macro-bias.com/today for the full morning read, trust check, and model context.';
 const UNSUBSCRIBE_PLACEHOLDER = '{{UNSUBSCRIBE_URL}}';
 const NEWSLETTER_SECTION_ORDER = [
   DAILY_BRIEFING_SECTION_HEADERS.bottomLine,
   DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook,
+  DAILY_BRIEFING_SECTION_HEADERS.stressTest,
   DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus,
   DAILY_BRIEFING_SECTION_HEADERS.quantCorner,
 ] as const;
@@ -29,11 +30,7 @@ type NewsletterSection = {
   title: NewsletterSectionTitle;
 };
 
-type PlaybookListItem = {
-  catalyst: string;
-  sector: string;
-  sectorBias: 'Strong' | 'Neutral' | 'Under Pressure';
-};
+type PlaybookListItem = string;
 
 export type DispatchQuantBriefingResult = {
   batchCount: number;
@@ -211,33 +208,12 @@ function parseNewsletterSections(newsletterCopy: string): NewsletterSection[] {
   return sections;
 }
 
-function parsePlaybookListItems(content: string): PlaybookListItem[] {
+function parseBulletListItems(content: string): string[] {
   return content
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => {
-      const match = line.match(
-        /^-\s+\*\*([^*]+)\*\*:\s*(Strong|Neutral|Under Pressure)\s*[\u2014-]\s*(.+)$/i,
-      );
-
-      if (!match) {
-        return null;
-      }
-
-      const sectorBias = normalizePlaybookBias(match[2]);
-
-      if (!sectorBias) {
-        return null;
-      }
-
-      return {
-        catalyst: match[3].trim(),
-        sector: match[1].trim(),
-        sectorBias,
-      };
-    })
-    .filter((item): item is PlaybookListItem => item !== null);
+    .map((line) => line.replace(/^-\s+/, '').trim());
 }
 
 function buildUpgradeUrl() {
@@ -251,7 +227,7 @@ function buildUnsubscribeUrl(email: string) {
 }
 
 function formatPlaybookListItemMarkdown(item: PlaybookListItem) {
-  return `- **${item.sector}**: ${item.sectorBias} — ${item.catalyst}`;
+  return `- ${item}`;
 }
 
 function buildNewsletterSectionText(title: string, content: string) {
@@ -259,13 +235,13 @@ function buildNewsletterSectionText(title: string, content: string) {
 }
 
 function buildFreeTierPlaybookMarkdown(content: string) {
-  const items = parsePlaybookListItems(content);
+  const items = parseBulletListItems(content);
 
   if (items.length === 0) {
     return `- ${FREE_TIER_LOCKED_PLAYBOOK_LINE}`;
   }
 
-  const previewLines = [formatPlaybookListItemMarkdown(items[0])];
+  const previewLines = [`- ${items[0]}`];
 
   if (items.length > 1) {
     previewLines.push(`- ${FREE_TIER_LOCKED_PLAYBOOK_LINE}`);
@@ -285,6 +261,7 @@ function buildFreeTierNewsletterCopyText(newsletterCopy: string) {
   const visibleSections: string[] = [];
   const bottomLineSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
   const playbookSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook);
+  const trustCheckSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus);
 
   if (bottomLineSection) {
     visibleSections.push(
@@ -298,6 +275,12 @@ function buildFreeTierNewsletterCopyText(newsletterCopy: string) {
         playbookSection.title,
         buildFreeTierPlaybookMarkdown(playbookSection.content),
       ),
+    );
+  }
+
+  if (trustCheckSection) {
+    visibleSections.push(
+      buildNewsletterSectionText(trustCheckSection.title, trustCheckSection.content),
     );
   }
 
@@ -319,43 +302,6 @@ function getAccentColor(label: string) {
 
 function getOverrideStatusColor(isOverrideActive: boolean) {
   return isOverrideActive ? '#fca5a5' : '#93c5fd';
-}
-
-function normalizePlaybookBias(value: string): PlaybookListItem['sectorBias'] | null {
-  switch (value.trim().toLowerCase()) {
-    case 'strong':
-      return 'Strong';
-    case 'under pressure':
-      return 'Under Pressure';
-    case 'neutral':
-      return 'Neutral';
-    default:
-      return null;
-  }
-}
-
-function getPlaybookBiasColor(sectorBias: PlaybookListItem['sectorBias']) {
-  switch (sectorBias) {
-    case 'Strong':
-      return '#22c55e';
-    case 'Under Pressure':
-      return '#ef4444';
-    default:
-      return '#9ca3af';
-  }
-}
-
-function renderPlaybookBiasHtml(value: string) {
-  return escapeHtml(value).replace(/\b(Strong|Neutral|Under Pressure)\b/g, (match) => {
-    const normalizedBias = normalizePlaybookBias(match);
-
-    if (!normalizedBias) {
-      return match;
-    }
-
-    const biasColor = getPlaybookBiasColor(normalizedBias);
-    return `<span style="font-weight: 700; color: ${biasColor}; -webkit-text-fill-color: ${biasColor};">${escapeHtml(normalizedBias)}</span>`;
-  });
 }
 
 function renderParagraphsHtml(
@@ -619,7 +565,7 @@ function buildHeaderTickerHtml(
 ) {
   const baselineLabel = formatDisplayLabel(label);
   const baselineScore = formatSignedNumber(score);
-  const overlayLabel = isOverrideActive ? 'HIGH ALERT' : 'CONTAINED';
+  const overlayLabel = isOverrideActive ? 'PATTERN BROKEN' : 'PATTERN INTACT';
 
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse;">
     <tr>
@@ -632,7 +578,7 @@ function buildHeaderTickerHtml(
     </tr>
     <tr>
       <td style="padding: 14px 0 0; border-top: 1px solid #1e293b;">
-        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">MACRO OVERLAY</div>
+        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">TRUST CHECK</div>
         <div style="margin-top: 8px; color: ${overrideStatusColor}; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.2;">${renderMonospaceSpan(overlayLabel, overrideStatusColor)}</div>
       </td>
     </tr>
@@ -665,18 +611,18 @@ function buildFreeTierPaywallHtml(upgradeUrl: string) {
 
 function renderPlaybookListItemHtml(item: PlaybookListItem) {
   return `<li style="margin: 0 0 18px; color: #dbe4ee; -webkit-text-fill-color: #dbe4ee; font-size: 16px; line-height: 1.8;">
-    <strong style="font-weight: 700; color: #f8fafc; -webkit-text-fill-color: #f8fafc;">${escapeHtml(item.sector)}</strong>: ${renderPlaybookBiasHtml(item.sectorBias)} <span style="color: #64748b; -webkit-text-fill-color: #64748b;">&mdash;</span> ${renderMarkdownInline(item.catalyst)}
+    ${renderMarkdownInline(item)}
   </li>`;
 }
 
 function renderFreeTierLockedPlaybookItemHtml() {
   return `<li style="margin: 0 0 14px; color: #dbe4ee; -webkit-text-fill-color: #dbe4ee; font-size: 16px; line-height: 1.8;">
-    🔒 <strong style="font-weight: 700; color: #f8fafc; -webkit-text-fill-color: #f8fafc;">[LOCKED]</strong>: Upgrade to view sector bias and algo catalyst.
+    🔒 <strong style="font-weight: 700; color: #f8fafc; -webkit-text-fill-color: #f8fafc;">[LOCKED]</strong>: Visit macro-bias.com/today for the full read and deeper context.
   </li>`;
 }
 
 function renderPlaybookListHtml(content: string) {
-  const items = parsePlaybookListItems(content);
+  const items = parseBulletListItems(content);
 
   if (items.length === 0) {
     return renderParagraphsHtml(content);
@@ -688,7 +634,7 @@ function renderPlaybookListHtml(content: string) {
 }
 
 function renderFreeTierPlaybookListHtml(content: string) {
-  const items = parsePlaybookListItems(content);
+  const items = parseBulletListItems(content);
 
   if (items.length === 0) {
     return `<ul style="margin: 0; padding: 0 0 0 22px; color: #dbe4ee;">
@@ -733,6 +679,7 @@ function renderNewsletterCopyHtml(
   const renderedSections: string[] = [];
   const bottomLineSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
   const playbookSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook);
+  const whySection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest);
   const macroOverlaySection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus);
   const quantCornerSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner);
 
@@ -759,6 +706,19 @@ function renderNewsletterCopyHtml(
         {
           marginTop: 28,
           titleColor: accentColor,
+        },
+      ),
+    );
+  }
+
+  if (tier === 'premium' && whySection) {
+    renderedSections.push(
+      renderSectionBlock(
+        whySection.title,
+        renderParagraphsHtml(whySection.content, '#dbe4ee', 16, 14),
+        {
+          marginTop: 28,
+          titleColor: '#cbd5e1',
         },
       ),
     );
@@ -1129,7 +1089,7 @@ export function createQuantBriefingEmailContent(
       : '';
   const labelText = `${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
   const subject = isOverrideActive
-    ? `⚠️ HIGH ALERT | ${labelText}${weeklyTag}`
+    ? `⚠️ Pattern Broken | ${labelText}${weeklyTag}`
     : `${labelText}${weeklyTag}`;
 
   return {
