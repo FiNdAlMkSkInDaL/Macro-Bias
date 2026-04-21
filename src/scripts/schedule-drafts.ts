@@ -23,7 +23,7 @@ import path from "node:path";
 const draftsFileName = process.argv[2] ?? "x-queue-drafts.json";
 const DRAFTS_PATH = path.join(process.cwd(), "src", "content", "marketing", draftsFileName);
 const SCHEDULED_PATH = path.join(process.cwd(), "src", "content", "marketing", "x-queue-scheduled.json");
-const CANONICAL_LINK = "https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled";
+const CANONICAL_LINK = "https://www.macro-bias.com/emails?utm_source=x&utm_campaign=scheduled";
 
 type Draft = {
   id: string;

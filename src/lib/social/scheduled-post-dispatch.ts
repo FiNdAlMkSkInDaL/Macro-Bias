@@ -8,10 +8,11 @@ import { TwitterApi } from 'twitter-api-v2';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isBlueskyConfigured, publishToBluesky } from './bluesky';
 import { sanitizeForSocial } from './sanitize';
+import { formatForThreads } from './threads-format';
 import { isThreadsConfigured, publishToThreads } from './threads';
 
-const CANONICAL_EMAIL_LINK = 'https://macro-bias.com/emails?utm_source=x&utm_campaign=scheduled';
-const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/emails\b/gi;
+const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails?utm_source=x&utm_campaign=scheduled';
+const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/email(?:s)?\b/gi;
 const MAX_X_POST_LENGTH = 280;
 
 type XEnvName = 'X_API_KEY' | 'X_API_SECRET' | 'X_ACCESS_TOKEN' | 'X_ACCESS_SECRET';
@@ -86,7 +87,24 @@ function isAuthorizedCronRequest(request: NextRequest) {
 }
 
 function containsEmailLink(value: string) {
-  return /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/emails\b/i.test(value);
+  return /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/email(?:s)?\b/i.test(value);
+}
+
+function normalizeMacroBiasLink(link: string) {
+  const withScheme = link.startsWith('http') ? link : `https://${link}`;
+
+  try {
+    const parsed = new URL(withScheme);
+    if (parsed.hostname === 'macro-bias.com' || parsed.hostname === 'www.macro-bias.com') {
+      parsed.protocol = 'https:';
+      parsed.hostname = 'www.macro-bias.com';
+      return parsed.toString();
+    }
+  } catch {
+    return link;
+  }
+
+  return link;
 }
 
 function normalizeScheduledPostLink(link: string | null) {
@@ -100,7 +118,7 @@ function normalizeScheduledPostLink(link: string | null) {
     return CANONICAL_EMAIL_LINK;
   }
 
-  return trimmedLink;
+  return normalizeMacroBiasLink(trimmedLink);
 }
 
 function buildTweetContent(post: ScheduledPostRow) {
@@ -274,7 +292,7 @@ async function dispatchAllDueScheduledPosts() {
 
       if (threadsEnabled) {
         try {
-          threadsId = await publishToThreads(tweetContent);
+          threadsId = await publishToThreads(formatForThreads(tweetContent));
           console.log(`[social-dispatch] Threads post published: ${threadsId}`);
         } catch (threadsError) {
           const threadsMessage = threadsError instanceof Error ? threadsError.message : 'Unknown Threads error';

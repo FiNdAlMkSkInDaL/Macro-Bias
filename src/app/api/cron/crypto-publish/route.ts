@@ -20,6 +20,7 @@ import { getAppUrl } from "@/lib/server-env";
 import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
 import { sanitizeForSocial } from "@/lib/social/sanitize";
 import { isTelegramConfigured, publishToTelegram } from "@/lib/social/telegram";
+import { formatForThreads } from "@/lib/social/threads-format";
 import { isThreadsConfigured, publishToThreads } from "@/lib/social/threads";
 import type {
   BiasLabel,
@@ -592,7 +593,7 @@ function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: strin
   const lines = [
     `Daily Crypto Bias: ${signedScore} (${labelText})`,
     summaryLine || null,
-    `Free daily crypto briefing: macro-bias.com/emails?utm_source=x&utm_campaign=crypto`,
+    `Free daily crypto briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=crypto`,
   ].filter((line): line is string => Boolean(line));
 
   return lines.join("\n\n");
@@ -671,7 +672,7 @@ async function publishCryptoToSocial(
   // Post to Threads
   if (isThreadsConfigured()) {
     try {
-      await publishToThreads(xText);
+      await publishToThreads(formatForThreads(xText));
       threadsPosted = true;
       console.log("[crypto-publish] Posted to Threads.");
     } catch (err) {

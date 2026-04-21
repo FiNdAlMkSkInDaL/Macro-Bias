@@ -11,6 +11,7 @@ import {
   isBlueskyConfigured,
   publishToBluesky,
 } from '@/lib/social/bluesky';
+import { formatForThreads } from '@/lib/social/threads-format';
 import {
   isThreadsConfigured,
   publishToThreads,
@@ -200,7 +201,7 @@ async function handlePostMarketScorecard(request: NextRequest) {
     // Publish to Threads
     if (isThreadsConfigured()) {
       try {
-        const threadsId = await publishToThreads(postContent);
+        const threadsId = await publishToThreads(formatForThreads(postContent));
         results.push({ destination: 'threads', ok: true });
         console.log(
           `[post-market-scorecard] Published to Threads: ${threadsId}`,

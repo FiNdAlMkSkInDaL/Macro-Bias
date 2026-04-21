@@ -24,6 +24,7 @@ import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
 import { sanitizeForSocial } from '../../../../lib/social/sanitize';
 import { isTelegramConfigured, publishToTelegram } from '../../../../lib/social/telegram';
+import { formatForThreads } from '../../../../lib/social/threads-format';
 import { isThreadsConfigured, publishToThreads } from '../../../../lib/social/threads';
 import { getWeeklyDigestData } from '../../../../lib/briefing/weekly-digest-data';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
@@ -499,7 +500,7 @@ function buildPublishPayload(
     `Today's Macro Bias: ${formatSignedNumber(snapshot.score)} (${label})`,
     regimeSentence,
     xPlaybookSummary,
-    `Free daily briefing: macro-bias.com/emails?utm_source=x&utm_campaign=daily`,
+    `Free daily briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=daily`,
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n'));
@@ -529,7 +530,7 @@ function buildMacroOverrideXText(
     'MACRO OVERRIDE ACTIVE',
     `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
     rationaleSnippet,
-    `Free daily briefing: macro-bias.com/emails?utm_source=x&utm_campaign=override`,
+    `Free daily briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=override`,
   ].join('\n\n');
 }
 
@@ -954,7 +955,9 @@ async function handlePublish(request: NextRequest) {
 
     if (isThreadsConfigured()) {
       publishResults.push(
-        await safePublish('threads', () => publishToThreads(finalPublishPayload.xText).then(() => undefined)),
+        await safePublish('threads', () =>
+          publishToThreads(formatForThreads(finalPublishPayload.xText)).then(() => undefined),
+        ),
       );
     }
 
