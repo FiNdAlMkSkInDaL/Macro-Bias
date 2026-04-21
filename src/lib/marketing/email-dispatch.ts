@@ -116,12 +116,9 @@ function formatSignedNumber(value: number) {
   return value > 0 ? `+${value}` : `${value}`;
 }
 
-function getMacroOverlayLabel(isOverrideActive: boolean) {
-  return isOverrideActive ? 'HIGH ALERT' : 'CONTAINED';
-}
-
 function buildHeaderSummary(score: number, label: string, isOverrideActive: boolean) {
-  return `TODAY'S SCORE: ${formatDisplayLabel(label)} (${formatSignedNumber(score)}) | MACRO OVERLAY: ${getMacroOverlayLabel(isOverrideActive)}`;
+  const scoreText = `TODAY'S SCORE: ${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
+  return isOverrideActive ? `${scoreText} | ⚠️ MACRO OVERRIDE ACTIVE` : scoreText;
 }
 
 function renderMonospaceSpan(value: string, color?: string) {
@@ -1126,15 +1123,18 @@ export function createQuantBriefingEmailContent(
   tier: QuantBriefingTier = 'premium',
   weeklyDigest?: WeeklyDigestData | null,
 ): QuantBriefingEmailContent {
-  const subjectPrefix = getMacroOverlayLabel(isOverrideActive);
   const weeklyTag =
     weeklyDigest && weeklyDigest.sessionCount > 0
       ? ` + Weekly Recap ${getTrendEmoji(weeklyDigest.trendDirection)}`
       : '';
+  const labelText = `${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
+  const subject = isOverrideActive
+    ? `⚠️ HIGH ALERT | ${labelText}${weeklyTag}`
+    : `${labelText}${weeklyTag}`;
 
   return {
     html: buildEmailHtml(newsletterCopy, score, label, isOverrideActive, tier, weeklyDigest),
-    subject: `${subjectPrefix} | ${formatDisplayLabel(label)} ${formatSignedNumber(score)}${weeklyTag}`,
+    subject,
     text: buildEmailText(newsletterCopy, score, label, isOverrideActive, tier, weeklyDigest),
   };
 }

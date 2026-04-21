@@ -97,13 +97,24 @@ function summarizeHeadlines(headlines: string[]) {
 }
 
 function detectOverrideCatalyst(headlines: string[]) {
+  // Only match genuine macro shocks — not routine data releases or scheduled events.
+  // Words like "fed", "rate", "policy", "treasury", "inflation", "cpi", "payrolls"
+  // appear in financial headlines every single day and must NOT trigger an override.
   const overridePatterns = [
-    /fed|ecb|boj|rate|policy/i,
-    /tariff|sanction|embargo/i,
-    /war|attack|missile|conflict/i,
-    /bank|liquidity|default|credit/i,
-    /oil|opec|energy shock/i,
-    /inflation|cpi|payrolls|treasury/i,
+    // Military / geopolitical escalation
+    /\b(war|invasion|nuclear|missile.{0,8}strike)\b/i,
+    // Financial system failure
+    /\b(bank.{0,8}(collapse|fail|run)|flash.{0,5}crash|circuit.{0,3}breaker|market.{0,8}(halt|suspend|close))\b/i,
+    // Unscheduled / emergency policy action (not scheduled meetings)
+    /\bemergency.{0,20}(rate|cut|hike|action|meeting)\b/i,
+    // Sovereign / credit crisis
+    /\b(sovereign.{0,8}default|debt.{0,8}crisis|liquidity.{0,8}crisis)\b/i,
+    // Commodity supply shock (requires shock qualifier, not just mentioning oil/opec)
+    /\b(oil.{0,10}shock|energy.{0,8}crisis|opec.{0,10}(emergency|surprise.{0,10}cut))\b/i,
+    // New tariff escalation (not ongoing coverage of existing tariffs)
+    /\b(tariff.{0,15}(shock|escalat)|major.{0,10}new.{0,10}tariff)\b/i,
+    // Sanctions with clear new-action language
+    /\b(sanctions?.{0,10}(imposed|announced|expand)|embargo.{0,10}(announced|impos))\b/i,
   ];
 
   return headlines.find((headline) => overridePatterns.some((pattern) => pattern.test(headline))) ?? null;

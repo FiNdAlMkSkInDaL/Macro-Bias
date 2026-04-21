@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/publish",
-      "schedule": "45 12 * * 1-5"
+      "schedule": "0 12 * * 1-5"
     },
     {
       "path": "/api/cron/welcome-drip",
@@ -26,7 +26,7 @@
     },
     {
       "path": "/api/cron/crypto-publish",
-      "schedule": "0 13 * * *"
+      "schedule": "30 12 * * *"
     },
     {
       "path": "/api/cron/post-market-scorecard",

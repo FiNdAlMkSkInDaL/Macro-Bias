@@ -301,6 +301,7 @@ async function fetchTickerHistory<TTicker extends MarketDataTicker>(
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         },
         cache: "no-store",
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (response.status === 429 || (response.status >= 500 && response.status < 600)) {

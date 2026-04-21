@@ -832,36 +832,6 @@ async function handlePublish(request: NextRequest) {
       : publishPayload;
     const publishResults: PublishResult[] = [];
 
-    if (DISCORD_PUBLISHING_ENABLED && discordWebhookUrl) {
-      publishResults.push(
-        await safePublish('discord', () =>
-          publishToDiscord(discordWebhookUrl, latestSnapshot, finalPublishPayload),
-        ),
-      );
-    }
-
-    if (xCredentials) {
-      publishResults.push(await safePublish('x', () => publishToX(xCredentials, finalPublishPayload)));
-    }
-
-    if (isBlueskyConfigured()) {
-      publishResults.push(
-        await safePublish('bluesky', () => publishToBluesky(finalPublishPayload.xText).then(() => undefined)),
-      );
-    }
-
-    if (isTelegramConfigured()) {
-      publishResults.push(
-        await safePublish('telegram', () => publishToTelegram(finalPublishPayload.xText).then(() => undefined)),
-      );
-    }
-
-    if (isThreadsConfigured()) {
-      publishResults.push(
-        await safePublish('threads', () => publishToThreads(finalPublishPayload.xText).then(() => undefined)),
-      );
-    }
-
     if (resendApiKeyConfigured && !skipEmail) {
       publishResults.push(
         await safePublish('email', async () => {
@@ -956,6 +926,36 @@ async function handlePublish(request: NextRequest) {
         console.warn('[publish-cron] RESEND_API_KEY is not configured; skipping email dispatch.');
         failures.push('Email dispatch skipped: RESEND_API_KEY is not configured.');
       }
+    }
+
+    if (DISCORD_PUBLISHING_ENABLED && discordWebhookUrl) {
+      publishResults.push(
+        await safePublish('discord', () =>
+          publishToDiscord(discordWebhookUrl, latestSnapshot, finalPublishPayload),
+        ),
+      );
+    }
+
+    if (xCredentials) {
+      publishResults.push(await safePublish('x', () => publishToX(xCredentials, finalPublishPayload)));
+    }
+
+    if (isBlueskyConfigured()) {
+      publishResults.push(
+        await safePublish('bluesky', () => publishToBluesky(finalPublishPayload.xText).then(() => undefined)),
+      );
+    }
+
+    if (isTelegramConfigured()) {
+      publishResults.push(
+        await safePublish('telegram', () => publishToTelegram(finalPublishPayload.xText).then(() => undefined)),
+      );
+    }
+
+    if (isThreadsConfigured()) {
+      publishResults.push(
+        await safePublish('threads', () => publishToThreads(finalPublishPayload.xText).then(() => undefined)),
+      );
     }
 
     const publishedTo = publishResults.flatMap((result) => (result.ok ? [result.destination] : []));
