@@ -121,20 +121,20 @@ function getHeroCopy(status: ReturnType<typeof buildPromotedTrustCheck>['status'
   if (status === 'pattern_intact') {
     return {
       title: 'Press when the tape confirms.',
-      body: 'Use this before the open to know whether the tape is worth trusting. Today it is.',
+      body: 'The setup is aligned enough that the score can lead the read this morning.',
     };
   }
 
   if (status === 'pattern_shaky') {
     return {
       title: 'Stay selective. Do not force it.',
-      body: 'Use this before the open to know whether the tape is worth trusting. Today is selective, not clean.',
+      body: 'The setup is mixed enough that price still needs to prove the read before you size up.',
     };
   }
 
   return {
     title: 'Stand down on index conviction.',
-    body: 'Use this before the open to know whether the tape is worth trusting. Today it is not.',
+    body: 'Fresh headlines are strong enough that the score is background, not signal, this morning.',
   };
 }
 
@@ -321,6 +321,37 @@ function getMeaningHeadline(status: ReturnType<typeof buildPromotedTrustCheck>['
   return 'Keep the score in the background';
 }
 
+function getActionLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return 'Press';
+  }
+
+  if (status === 'pattern_shaky') {
+    return 'Stay selective';
+  }
+
+  return 'Stand down';
+}
+
+function getAtAGlanceSummary(input: {
+  score: number;
+  regimeLabel: string;
+  status: ReturnType<typeof buildPromotedTrustCheck>['status'];
+  whyNowSummary: string;
+}) {
+  const scoreText = `${formatScore(input.score)} ${input.regimeLabel.toLowerCase()}`;
+
+  if (input.status === 'pattern_intact') {
+    return `${scoreText} score. The setup is aligned, so the read is usable this morning.`;
+  }
+
+  if (input.status === 'pattern_shaky') {
+    return `${scoreText} score. The setup is mixed, so keep size down until price confirms the read.`;
+  }
+
+  return `${scoreText} score. The driver is ${input.whyNowSummary.toLowerCase()}, so the read should stay in the background for now.`;
+}
+
 export default async function TestTodayPreviewPage() {
   await requireTestLabAccess();
 
@@ -345,118 +376,104 @@ export default async function TestTodayPreviewPage() {
     analogConsensus: underTheHoodFactors[0]?.value,
     status: trustCheck.status,
   });
+  const atAGlanceSummary = getAtAGlanceSummary({
+    score,
+    regimeLabel: regime.label,
+    status: trustCheck.status,
+    whyNowSummary,
+  });
 
   return (
     <main className="min-h-screen font-sans font-[family:var(--font-heading)]">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
-          <div className="min-w-0">
-            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Morning Read Terminal ]
-            </p>
-            <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
-              {hero.title}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{hero.body}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Date
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">{morningDate}</p>
-              <p className="mt-1 font-[family:var(--font-data)] text-[10px] text-zinc-500">
-                Data as of: {formatShortDate(trustCheck.asOf)}
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Score
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                {formatScore(score)} {regime.label}
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Trust
-              </p>
-              <p className={`mt-2 text-base font-semibold tracking-tight ${tone.accent}`}>
-                {formatStatus(trustCheck.status)}
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Why
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">{whyNowSummary}</p>
-            </div>
-          </div>
+        <header className="border-b border-white/5 py-4">
+          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+            [ Morning Read Terminal ]
+          </p>
+          <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
+            {hero.title}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{hero.body}</p>
         </header>
 
         <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
-          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
-            <section className={moduleClassName}>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)]">
-                <div>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                    Today&apos;s Score
+          <section className={`${moduleClassName} lg:col-span-2 ${tone.module}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                  At a glance
+                </p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-white md:text-2xl">
+                  {getMeaningHeadline(trustCheck.status)}
+                </h2>
+              </div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                {morningDate} / Data as of {formatShortDate(trustCheck.asOf)}
+              </p>
+            </div>
+
+            <div className={`mt-5 grid grid-cols-1 gap-0 ${terminalDividerClassName} pt-5 md:grid-cols-4`}>
+              {[
+                ['Score', `${formatScore(score)} ${regime.label}`],
+                ['Trust', formatStatus(trustCheck.status)],
+                ['Why', whyNowSummary],
+                ['Action', getActionLabel(trustCheck.status)],
+              ].map(([label, value], index) => (
+                <div
+                  key={label}
+                  className={`py-3 md:px-4 ${index > 0 ? 'md:border-l md:border-white/5' : ''}`}
+                >
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    {label}
                   </p>
-                  <p className="mt-4 font-[family:var(--font-data)] text-7xl font-semibold leading-none text-white">
-                    {formatScore(score)}
-                  </p>
-                  <p className="mt-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-300">
-                    {regime.label}
+                  <p className={`mt-2 text-lg font-semibold tracking-tight ${label === 'Trust' ? tone.accent : 'text-white'}`}>
+                    {value}
                   </p>
                 </div>
+              ))}
+            </div>
+
+            <div className={`${terminalDividerClassName} mt-2 pt-4`}>
+              <div className="grid gap-3 lg:grid-cols-[0.18fr_1fr]">
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  What&apos;s happening
+                </p>
                 <div>
-                  <p className="text-sm leading-6 text-zinc-400">{regime.summary}</p>
-                  <div className={`mt-6 grid grid-cols-1 gap-3 ${terminalDividerClassName} pt-4 sm:grid-cols-3`}>
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                        Strongest
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-white">{strongestMove?.ticker ?? '--'}</p>
-                      <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                        {formatMove(strongestMove?.percentChange)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                        Weakest
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-white">{weakestMove?.ticker ?? '--'}</p>
-                      <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                        {formatMove(weakestMove?.percentChange)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                        Breadth
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
-                      <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">Core ETFs</p>
-                    </div>
-                  </div>
+                  <p className="text-[15px] leading-7 text-white sm:text-base">{atAGlanceSummary}</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">{trustCheck.reason}</p>
                 </div>
               </div>
-            </section>
+            </div>
 
-            <section className={`${moduleClassName} ${tone.module}`}>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                What this means
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                {getMeaningHeadline(trustCheck.status)}
-              </h2>
-              <p className={`mt-3 text-sm font-medium leading-6 ${tone.accent}`}>
-                {formatStatus(trustCheck.status)} / Confidence {formatConfidence(trustCheck.confidenceScore)}
-              </p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">{trustCheck.summary}</p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">{trustCheck.reason}</p>
-            </section>
-          </div>
+            <div className={`mt-5 grid grid-cols-1 gap-3 ${terminalDividerClassName} pt-4 sm:grid-cols-3`}>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  Strongest
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">{strongestMove?.ticker ?? '--'}</p>
+                <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
+                  {formatMove(strongestMove?.percentChange)}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  Weakest
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">{weakestMove?.ticker ?? '--'}</p>
+                <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
+                  {formatMove(weakestMove?.percentChange)}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                  Best read
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">
+                  {bestExpression ? formatExpressionLabel(bestExpression.label) : 'Stay selective'}
+                </p>
+              </div>
+            </div>
+          </section>
 
           <div className="min-w-0 lg:col-span-2">
             <div className="space-y-4 md:space-y-6">
