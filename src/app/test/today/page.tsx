@@ -66,6 +66,27 @@ function formatStatus(status: ReturnType<typeof buildPromotedTrustCheck>['status
   return 'Pattern Broken';
 }
 
+function getTradingStance(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return {
+      long: 'Press when the tape confirms',
+      short: 'Press',
+    };
+  }
+
+  if (status === 'pattern_shaky') {
+    return {
+      long: 'Stay selective',
+      short: 'Selective',
+    };
+  }
+
+  return {
+    long: 'Stand down on index conviction',
+    short: 'Stand down',
+  };
+}
+
 function getStatusTone(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_broken') {
     return {
@@ -120,21 +141,21 @@ function getRegimeDisplay(score: number) {
 function getHeroCopy(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
     return {
-      title: 'The score deserves weight today.',
-      body: 'This is the kind of session where the model should help frame the day instead of sitting quietly in the background.',
+      title: 'Press when the tape confirms.',
+      body: 'Check this before the open to know whether today is a day to press, stay selective, or stand down. Today the read deserves real weight.',
     };
   }
 
   if (status === 'pattern_shaky') {
     return {
-      title: 'Use the score, but make it earn it.',
-      body: 'There is information in the read, but not enough to lean hard on it before the tape confirms the setup.',
+      title: 'Stay selective. Do not force it.',
+      body: 'Check this before the open to know whether today is a day to press, stay selective, or stand down. Today is a selective day, not a conviction day.',
     };
   }
 
   return {
-    title: "Don't trust the score yet.",
-    body: 'Something in the current setup is strong enough that the usual historical pattern should not be treated as signal on its own.',
+    title: 'Stand down on index conviction.',
+    body: 'Check this before the open to know whether today is a day to press, stay selective, or stand down. Today is a stand-down day: the score is background, not signal.',
   };
 }
 
@@ -219,6 +240,68 @@ function getBreadthSummary(
   return `${advancing}/${tickerMoves.length} advancing`;
 }
 
+function formatFactorLabel(label: string) {
+  switch (label) {
+    case 'Analog agreement':
+      return 'Historical agreement';
+    case 'Regime stability':
+      return 'Setup stability';
+    case 'News disruption':
+      return 'Headline risk';
+    default:
+      return label;
+  }
+}
+
+function formatExpressionLabel(label: string | null) {
+  if (!label) {
+    return null;
+  }
+
+  switch (label) {
+    case 'Safety Demand':
+      return 'Defensives over equities';
+    case 'Growth Leadership':
+      return 'Growth over the broad tape';
+    case 'Defensive Leadership':
+      return 'Defensives over the broad tape';
+    case 'Duration Versus Equities':
+      return 'Duration over equities';
+    case 'Credit Over Duration':
+      return 'Credit over duration';
+    case 'Energy Impulse':
+      return 'Energy over the broad tape';
+    case 'Cyclical Commodity Bid':
+      return 'Cyclicals over safety';
+    default:
+      return label;
+  }
+}
+
+function getEdgeHeading(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return 'Why this helps today';
+  }
+
+  if (status === 'pattern_shaky') {
+    return 'Why this saves you today';
+  }
+
+  return 'What this keeps you out of';
+}
+
+function getEdgeSubhead(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return 'The advantage is pressing when the market is actually worth trusting.';
+  }
+
+  if (status === 'pattern_shaky') {
+    return 'The advantage is avoiding oversized conviction in a mixed tape.';
+  }
+
+  return 'The advantage is not confusing noise and headlines for a clean tradable trend.';
+}
+
 function getTopMove(
   tickerMoves: Array<{ ticker: string; percentChange: number }> | null | undefined,
   direction: 'strongest' | 'weakest',
@@ -252,6 +335,7 @@ export default async function TestTodayPreviewPage() {
   const regime = getRegimeDisplay(score);
   const hero = getHeroCopy(trustCheck.status);
   const tone = getStatusTone(trustCheck.status);
+  const stance = getTradingStance(trustCheck.status);
   const bestExpression = cockpit.crossSectional?.leadingLenses[0] ?? null;
   const underTheHoodFactors = trustCheck.factors.slice(0, 3);
   const breadthSummary = getBreadthSummary(cockpit.bias?.tickerMoves ?? null);
@@ -293,10 +377,10 @@ export default async function TestTodayPreviewPage() {
             </div>
             <div>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Trust
+                Trading stance
               </p>
               <p className={`mt-2 text-base font-semibold tracking-tight ${tone.accent}`}>
-                {formatStatus(trustCheck.status)}
+                {stance.short}
               </p>
             </div>
           </div>
@@ -321,11 +405,11 @@ export default async function TestTodayPreviewPage() {
                   <p className="text-sm leading-6 text-zinc-400">{regime.summary}</p>
                   <div className={`mt-6 ${terminalDividerClassName} pt-4`}>
                     <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Trust Check
+                      Trading stance
                     </p>
-                    <p className={`mt-2 text-2xl font-semibold ${tone.accent}`}>{formatStatus(trustCheck.status)}</p>
+                    <p className={`mt-2 text-2xl font-semibold ${tone.accent}`}>{stance.long}</p>
                     <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                      Confidence {formatConfidence(trustCheck.confidenceScore)}
+                      {formatStatus(trustCheck.status)} / Confidence {formatConfidence(trustCheck.confidenceScore)}
                     </p>
                   </div>
                 </div>
@@ -335,10 +419,10 @@ export default async function TestTodayPreviewPage() {
             <section className={`${moduleClassName} ${tone.module}`}>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                  Morning Call
+                  Today&apos;s call
                 </p>
                 <h2 className={`mt-3 text-2xl font-semibold tracking-tight ${tone.accent}`}>
-                  {formatStatus(trustCheck.status)}
+                  {stance.long}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-zinc-300">{trustCheck.summary}</p>
                 <p className="mt-3 text-sm leading-6 text-zinc-400">{trustCheck.reason}</p>
@@ -366,16 +450,16 @@ export default async function TestTodayPreviewPage() {
                 </div>
 
                 <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Breadth
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
-                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
-                    Core basket
-                  </p>
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                      Breadth
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
+                    <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
+                      Core ETFs
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
           </div>
 
           <div className="min-w-0 lg:col-span-2">
@@ -388,11 +472,11 @@ export default async function TestTodayPreviewPage() {
                         Read This In 20 Seconds
                       </p>
                       <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                        Session framing
+                        Premarket map
                       </h3>
                     </div>
                     <p className="max-w-md text-sm leading-6 text-zinc-500">
-                      The fastest useful read before the open.
+                      What kind of day this is, and how not to trade it the wrong way.
                     </p>
                   </div>
 
@@ -430,14 +514,14 @@ export default async function TestTodayPreviewPage() {
                   <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                       <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                        Bottom Line
+                        Why traders check this
                       </p>
                       <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                        Where the edge is
+                        {getEdgeHeading(trustCheck.status)}
                       </h3>
                     </div>
                     <p className="max-w-md text-sm leading-6 text-zinc-500">
-                      The deeper layer, after the first glance.
+                      {getEdgeSubhead(trustCheck.status)}
                     </p>
                   </div>
 
@@ -446,7 +530,7 @@ export default async function TestTodayPreviewPage() {
                     {bestExpression ? (
                       <p>
                         The cleanest expression underneath the hood is{' '}
-                        <span className="font-medium text-white">{bestExpression.label}</span>, which
+                        <span className="font-medium text-white">{formatExpressionLabel(bestExpression.label)}</span>, which
                         has been the strongest relative pocket inside this regime.
                       </p>
                     ) : null}
@@ -460,18 +544,18 @@ export default async function TestTodayPreviewPage() {
 
               <section className={moduleClassName}>
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                      Under The Hood
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        Why we&apos;re saying that
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        The evidence behind the call
+                      </h3>
+                    </div>
+                    <p className="max-w-md text-sm leading-6 text-zinc-500">
+                      The supporting read, kept out of the way until you want it.
                     </p>
-                    <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                      Why the trust read looks like this
-                    </h3>
                   </div>
-                  <p className="max-w-md text-sm leading-6 text-zinc-500">
-                    Supporting diagnostics, kept out of the way until you want them.
-                  </p>
-                </div>
 
                 <div className="mt-4 space-y-0">
                   {underTheHoodFactors.map((factor) => (
@@ -480,7 +564,7 @@ export default async function TestTodayPreviewPage() {
                       className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
                     >
                       <div className="grid gap-3 md:grid-cols-[0.34fr_0.14fr_1fr]">
-                        <p className="text-sm font-medium text-white">{factor.label}</p>
+                        <p className="text-sm font-medium text-white">{formatFactorLabel(factor.label)}</p>
                         <p className="font-[family:var(--font-data)] text-sm text-zinc-300">{factor.value}</p>
                         <p className="text-sm leading-7 text-zinc-400">{factor.summary}</p>
                       </div>
