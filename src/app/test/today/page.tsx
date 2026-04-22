@@ -66,27 +66,6 @@ function formatStatus(status: ReturnType<typeof buildPromotedTrustCheck>['status
   return 'Pattern Broken';
 }
 
-function getTradingStance(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
-  if (status === 'pattern_intact') {
-    return {
-      long: 'Press when the tape confirms',
-      short: 'Press',
-    };
-  }
-
-  if (status === 'pattern_shaky') {
-    return {
-      long: 'Stay selective',
-      short: 'Selective',
-    };
-  }
-
-  return {
-    long: 'Stand down on index conviction',
-    short: 'Stand down',
-  };
-}
-
 function getStatusTone(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_broken') {
     return {
@@ -343,7 +322,6 @@ export default async function TestTodayPreviewPage() {
   const regime = getRegimeDisplay(score);
   const hero = getHeroCopy(trustCheck.status);
   const tone = getStatusTone(trustCheck.status);
-  const stance = getTradingStance(trustCheck.status);
   const bestExpression = cockpit.crossSectional?.leadingLenses[0] ?? null;
   const underTheHoodFactors = trustCheck.factors.slice(0, 3);
   const breadthSummary = getBreadthSummary(cockpit.bias?.tickerMoves ?? null);
@@ -385,10 +363,10 @@ export default async function TestTodayPreviewPage() {
             </div>
             <div>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                Trading stance
+                Trust
               </p>
               <p className={`mt-2 text-base font-semibold tracking-tight ${tone.accent}`}>
-                {stance.short}
+                {formatStatus(trustCheck.status)}
               </p>
             </div>
           </div>
@@ -413,11 +391,11 @@ export default async function TestTodayPreviewPage() {
                   <p className="text-sm leading-6 text-zinc-400">{regime.summary}</p>
                   <div className={`mt-6 ${terminalDividerClassName} pt-4`}>
                     <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Trading stance
+                      Trust check
                     </p>
-                    <p className={`mt-2 text-2xl font-semibold ${tone.accent}`}>{stance.long}</p>
+                    <p className={`mt-2 text-2xl font-semibold ${tone.accent}`}>{formatStatus(trustCheck.status)}</p>
                     <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                      {formatStatus(trustCheck.status)} / Confidence {formatConfidence(trustCheck.confidenceScore)}
+                      Confidence {formatConfidence(trustCheck.confidenceScore)}
                     </p>
                   </div>
                 </div>
