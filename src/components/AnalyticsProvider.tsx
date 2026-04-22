@@ -81,6 +81,7 @@ export function AnalyticsProvider() {
           href,
           label: getElementLabel(trackedElement),
           location: trackedElement.dataset.analyticsLocation ?? null,
+          method: trackedElement.dataset.analyticsMethod ?? null,
         },
       });
     }

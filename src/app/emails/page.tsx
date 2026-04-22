@@ -60,6 +60,7 @@ export default function EmailsPage() {
           location: "emails_page",
           stocks: stocksOptedIn ? "true" : "false",
           crypto: cryptoOptedIn ? "true" : "false",
+          funnel: "emails_page_signup",
         },
       });
       setEmail("");
@@ -73,6 +74,7 @@ export default function EmailsPage() {
         metadata: {
           location: "emails_page",
           message: error instanceof Error ? error.message : "Unable to add email.",
+          funnel: "emails_page_signup",
         },
       });
     }
@@ -89,7 +91,7 @@ export default function EmailsPage() {
           Know what the market is doing before you trade.
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-center text-lg text-zinc-400">
-          Free daily email. 90 seconds. Before the bell.
+          Free daily email. Under a minute. Before the bell.
         </p>
 
         {/* Form */}
@@ -236,15 +238,15 @@ export default function EmailsPage() {
             </li>
             <li className="flex gap-3">
               <span className="mt-0.5 text-zinc-600">&#9656;</span>
-              <span><strong className="text-white">Bottom line</strong> &mdash; What the market is actually doing today, in plain English, before you open a single chart.</span>
+              <span><strong className="text-white">Bottom line</strong> &mdash; The one thing that matters most today, in plain English, before you open a single chart.</span>
             </li>
             <li className="flex gap-3">
               <span className="mt-0.5 text-zinc-600">&#9656;</span>
-              <span><strong className="text-white">Sector snapshot</strong> &mdash; Which sectors are leading, which are under pressure, and why it matters for your trades.</span>
+              <span><strong className="text-white">Day type</strong> &mdash; Whether it looks like a trend day, a chop day, or a headline-driven mess you should treat carefully.</span>
             </li>
             <li className="flex gap-3">
               <span className="mt-0.5 text-zinc-600">&#9656;</span>
-              <span><strong className="text-white">Historical context</strong> &mdash; How similar market conditions played out in the past, so you know what to expect.</span>
+              <span><strong className="text-white">Trust check</strong> &mdash; Whether the model is worth leaning on today, or whether the news matters more than the score.</span>
             </li>
             {cryptoOptedIn && (
               <li className="flex gap-3">
@@ -253,6 +255,38 @@ export default function EmailsPage() {
               </li>
             )}
           </ul>
+        </div>
+
+        <div className="mt-14">
+          <h2 className="text-center text-sm uppercase tracking-[0.3em] text-zinc-500">
+            Why people keep opening it
+          </h2>
+          <div className="mx-auto mt-6 grid max-w-3xl gap-4 sm:grid-cols-3">
+            <div className="border border-zinc-800 bg-zinc-950/60 p-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-500">
+                What you know in 60 seconds
+              </p>
+              <p className="mt-3 text-sm leading-7 text-zinc-300">
+                The score, the day type, and whether the model is worth trusting before the open.
+              </p>
+            </div>
+            <div className="border border-zinc-800 bg-zinc-950/60 p-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-500">
+                What most traders miss
+              </p>
+              <p className="mt-3 text-sm leading-7 text-zinc-300">
+                They look for setups first and context second. This flips that order and keeps you out of bad days.
+              </p>
+            </div>
+            <div className="border border-zinc-800 bg-zinc-950/60 p-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-500">
+                Why it becomes a habit
+              </p>
+              <p className="mt-3 text-sm leading-7 text-zinc-300">
+                It is short, calm, and useful. You open it to frame the session, not to get sold another opinion.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Sample Briefings */}
@@ -270,14 +304,14 @@ export default function EmailsPage() {
               <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-zinc-300">
                 <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Bottom Line</p>
                 <p>
-                  Credit spreads are tightening, oil momentum is positive, and volatility is falling. The tape favors buyers today.
+                  Risk-on day. Breadth and credit are supportive, so the score is worth trusting.
                 </p>
-                <p className="mt-4 text-xs font-medium uppercase tracking-widest text-zinc-400">Sector Breakdown</p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-widest text-zinc-400">Day Type</p>
                 <p>
-                  <strong className="text-white">Tech:</strong> Strong. Semis leading pre-market, broad risk appetite confirmed by falling VIX.
+                  <strong className="text-white">Best area:</strong> Pullbacks in strong names, not defensive hiding.
                 </p>
                 <p className="text-zinc-600">
-                  3 more sectors + risk check + model notes...
+                  Trust check + model note...
                 </p>
               </div>
               <div className="mt-5 border-t border-zinc-800 pt-4">
@@ -297,12 +331,12 @@ export default function EmailsPage() {
                 <p>
                   BTC reclaimed the 200-day moving average with volume confirmation. Funding rates are positive but not overheated.
                 </p>
-                <p className="mt-4 text-xs font-medium uppercase tracking-widest text-violet-400/80">Market Breakdown</p>
+                <p className="mt-4 text-xs font-medium uppercase tracking-widest text-violet-400/80">Trust Check</p>
                 <p>
-                  <strong className="text-white">Bitcoin:</strong> Strong. Breaking above key resistance with spot-led demand.
+                  <strong className="text-white">Pattern intact:</strong> The model still lines up with the tape.
                 </p>
                 <p className="text-zinc-600">
-                  Altcoins + risk check + model notes...
+                  Day type + model note...
                 </p>
               </div>
               <div className="mt-5 border-t border-zinc-800 pt-4">
@@ -317,7 +351,7 @@ export default function EmailsPage() {
         {/* Final CTA */}
         <div className="mt-14 text-center">
           <p className="text-sm text-zinc-500">
-            No spam. No picks. Just data. Unsubscribe anytime.
+            No spam. No picks. Just context. Unsubscribe anytime.
           </p>
         </div>
       </div>

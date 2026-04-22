@@ -189,6 +189,24 @@ function buildUnsubscribeUrl(email: string) {
   return url.toString();
 }
 
+function buildWelcomeDripOpenUrl(deliveryId: string) {
+  const url = new URL("/api/marketing/welcome-drip/open", getAppUrl());
+  url.searchParams.set("delivery", deliveryId);
+  return url.toString();
+}
+
+function buildWelcomeDripClickUrl(
+  deliveryId: string,
+  href: string,
+  linkType: "primary" | "secondary",
+) {
+  const url = new URL("/api/marketing/welcome-drip/click", getAppUrl());
+  url.searchParams.set("delivery", deliveryId);
+  url.searchParams.set("target", href);
+  url.searchParams.set("linkType", linkType);
+  return url.toString();
+}
+
 function getWelcomeStep(sequenceOrder: number) {
   return WELCOME_DRIP_STEPS.find((step) => step.order === sequenceOrder) ?? null;
 }
@@ -280,10 +298,19 @@ function personalizeWelcomeStep1(step: WelcomeDripStep, prefs: { stocks_opted_in
   return mutable;
 }
 
-function createWelcomeDripEmailContent(step: WelcomeDripStep | MutableWelcomeDripStep, recipientEmail: string) {
+function createWelcomeDripEmailContent(
+  step: WelcomeDripStep | MutableWelcomeDripStep,
+  recipientEmail: string,
+  deliveryId: string,
+) {
   const unsubscribeUrl = buildUnsubscribeUrl(recipientEmail);
   const primaryHref = new URL(step.ctaHref, getAppUrl()).toString();
   const secondaryHref = step.secondaryHref ? new URL(step.secondaryHref, getAppUrl()).toString() : null;
+  const trackedPrimaryHref = buildWelcomeDripClickUrl(deliveryId, primaryHref, "primary");
+  const trackedSecondaryHref = secondaryHref
+    ? buildWelcomeDripClickUrl(deliveryId, secondaryHref, "secondary")
+    : null;
+  const openPixelUrl = buildWelcomeDripOpenUrl(deliveryId);
   const html = `<!doctype html>
 <html lang="en">
   <body style="margin: 0; padding: 0; background: #09090b; color: #f4f4f5; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
@@ -314,8 +341,8 @@ function createWelcomeDripEmailContent(step: WelcomeDripStep | MutableWelcomeDri
           .join("")}
 
         <div style="margin-top: 28px;">
-          ${renderButton(primaryHref, step.ctaLabel, true)}
-          ${secondaryHref && step.secondaryLabel ? renderButton(secondaryHref, step.secondaryLabel, false) : ""}
+          ${renderButton(trackedPrimaryHref, step.ctaLabel, true)}
+          ${trackedSecondaryHref && step.secondaryLabel ? renderButton(trackedSecondaryHref, step.secondaryLabel, false) : ""}
         </div>
       </div>
 
@@ -323,6 +350,7 @@ function createWelcomeDripEmailContent(step: WelcomeDripStep | MutableWelcomeDri
         You are receiving this because you joined the Macro Bias free daily signal list.
         <a href="${escapeHtml(unsubscribeUrl)}" style="color: #a1a1aa; text-decoration: underline;">Unsubscribe</a>
       </p>
+      <img src="${escapeHtml(openPixelUrl)}" alt="" width="1" height="1" style="display:block;border:0;outline:none;text-decoration:none;" />
     </div>
   </body>
 </html>`;
@@ -340,8 +368,8 @@ function createWelcomeDripEmailContent(step: WelcomeDripStep | MutableWelcomeDri
     "",
     ...step.paragraphs,
     "",
-    `${step.ctaLabel}: ${primaryHref}`,
-    secondaryHref && step.secondaryLabel ? `${step.secondaryLabel}: ${secondaryHref}` : null,
+    `${step.ctaLabel}: ${trackedPrimaryHref}`,
+    trackedSecondaryHref && step.secondaryLabel ? `${step.secondaryLabel}: ${trackedSecondaryHref}` : null,
     `Unsubscribe: ${unsubscribeUrl}`,
   ]
     .filter(Boolean)
@@ -554,7 +582,7 @@ export async function dispatchPendingWelcomeDripEmails(
       }
 
       const recipient = shadowRunRecipient ?? row.email;
-      const emailContent = createWelcomeDripEmailContent(finalStep, row.email);
+      const emailContent = createWelcomeDripEmailContent(finalStep, row.email, row.id);
 
       return {
         from: fromAddress,

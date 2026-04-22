@@ -45,7 +45,7 @@ function buildShareHref(kind: "x" | "email" | "sms", referralLink: string) {
   }
 
   if (kind === "email") {
-    return `mailto:?subject=${encodeURIComponent("Daily market regime briefings")}&body=${encodeURIComponent(`${inviteMessage}\n\n1 referral unlocks 7 days of Premium.`)}`;
+    return `mailto:?subject=${encodeURIComponent("Daily market regime briefings")}&body=${encodeURIComponent(`${inviteMessage}\n\n3 verified referrals unlock 7 days of Premium.`)}`;
   }
 
   return `sms:?&body=${encodeURIComponent(inviteMessage)}`;
@@ -120,7 +120,13 @@ export default function ReferPageClient() {
       await navigator.clipboard.writeText(data.referralLink);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-      trackClientEvent({ eventName: "referral_link_copied", pagePath: "/refer" });
+      trackClientEvent({
+        eventName: "referral_share_clicked",
+        pagePath: "/refer",
+        metadata: {
+          method: "copy_link",
+        },
+      });
     } catch {
       prompt("Copy your referral link:", data.referralLink);
     }
@@ -295,6 +301,7 @@ export default function ReferPageClient() {
                         data-analytics-event="referral_share_clicked"
                         data-analytics-label="Open Referral Landing"
                         data-analytics-location="referral_hub"
+                        data-analytics-method="open_landing"
                         target="_blank"
                       >
                         Open Landing
@@ -329,6 +336,7 @@ export default function ReferPageClient() {
                           data-analytics-event="referral_share_clicked"
                           data-analytics-label="Share on X"
                           data-analytics-location="referral_hub"
+                          data-analytics-method="x"
                         >
                           Share on X
                         </a>
@@ -338,6 +346,7 @@ export default function ReferPageClient() {
                           data-analytics-event="referral_share_clicked"
                           data-analytics-label="Share by Email"
                           data-analytics-location="referral_hub"
+                          data-analytics-method="email"
                         >
                           Share by Email
                         </a>
@@ -347,6 +356,7 @@ export default function ReferPageClient() {
                           data-analytics-event="referral_share_clicked"
                           data-analytics-label="Share by Text"
                           data-analytics-location="referral_hub"
+                          data-analytics-method="sms"
                         >
                           Share by Text
                         </a>

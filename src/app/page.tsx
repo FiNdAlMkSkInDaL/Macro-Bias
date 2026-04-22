@@ -326,34 +326,33 @@ export default function HomePage() {
             Trade with the weather. Not against it.
           </h1>
           <p className="mt-6 max-w-3xl text-balance text-lg leading-8 text-zinc-300 md:text-xl">
-            Macro Bias gives day traders an institutional-grade regime read before the
-            open — now covering stocks and crypto. Stop forcing trades into the wrong
-            volatility, credit, and trend backdrop.
+            Macro Bias gives you a fast daily market read before the open. Get the
+            score, the day type, and the trust check before you place a trade.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
               className="inline-flex w-full sm:w-auto sm:min-w-[220px] items-center justify-center rounded-md bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
-              href="#auth-console"
+              href="#free-briefing"
               data-analytics-event="landing_cta_click"
-              data-analytics-label="Access the Dashboard"
+              data-analytics-label="Get Free Daily Briefing"
               data-analytics-location="landing_hero"
             >
-              Access the Dashboard
+              Get the Free Daily Briefing
             </a>
             <a
               className="inline-flex w-full sm:w-auto sm:min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
-              href="/track-record"
+              href="/today"
               data-analytics-event="landing_cta_click"
-              data-analytics-label="View Track Record"
+              data-analytics-label="See Today's Read"
               data-analytics-location="landing_hero"
             >
-              View Track Record
+              See Today's Read
             </a>
           </div>
 
-          <div className="mt-10 w-full max-w-xl">
+          <div id="free-briefing" className="mt-10 w-full max-w-xl">
             <p className="mb-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Free Daily Signal — No Account Required ]
+              [ Free Daily Briefing � No Account Required ]
             </p>
             <form
               className="flex flex-col gap-3 sm:flex-row"
@@ -391,7 +390,7 @@ export default function HomePage() {
               }`}
               aria-live="polite"
             >
-              {newsletterMessage ?? "Stocks + crypto regime scores. Daily. Free. Unsubscribe anytime."}
+              {newsletterMessage ?? "Free every morning: the score, the day type, and whether to trust it. Stocks and crypto. Unsubscribe anytime."}
             </p>
             <p className="mt-2 text-center text-xs text-zinc-500">
               Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
@@ -441,10 +440,10 @@ export default function HomePage() {
               The Edge
             </p>
             <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-              Three Core Pillars. Zero Discretion.
+              Three inputs that tell you what kind of day you are in.
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              We compress raw intermarket data into a singular, actionable daily bias. Trade the regime, not the noise.
+              We turn cross-asset data into one simple morning read, so you can size up on the right days and stay out of trouble on the wrong ones.
             </p>
           </div>
 
@@ -477,13 +476,13 @@ export default function HomePage() {
           <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
             <div className="max-w-3xl">
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                Access Console
+                Already using Macro Bias?
               </p>
               <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-                Terminal Access.
+                Sign in to the dashboard.
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-                Log in to view today's macro risk score, historical analogs, and the intraday playbook.
+                The free email is the first step. If you already have an account, the dashboard gives you the fuller session context, historical analogs, and the live terminal view.
               </p>
             </div>
 
@@ -529,8 +528,8 @@ export default function HomePage() {
 
               <p className="mt-6 text-sm leading-7 text-zinc-400">
                 {authMode === "signin"
-                  ? "View today's macro risk score, historical analogs, and the intraday playbook."
-                  : "Create access to the macro terminal and daily regime data feed."}
+                  ? "View the dashboard, historical analogs, and the fuller session context."
+                  : "Create access to the dashboard and daily regime data feed."}
               </p>
 
               {browserClientConfigError ? (
@@ -626,3 +625,4 @@ export default function HomePage() {
     </main>
   );
 }
+

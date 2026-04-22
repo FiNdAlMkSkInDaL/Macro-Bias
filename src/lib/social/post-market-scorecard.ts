@@ -219,7 +219,7 @@ export function buildScorecardPost(data: ScorecardData): string {
 
   // Line 4: CTA
   const ctaLine =
-    'Full track record + free daily briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=scorecard';
+    'See the live daily read: https://www.macro-bias.com/today?utm_source=x&utm_campaign=scorecard';
 
   const lines = [resultVerdict, statsLine, streakLine, ctaLine].filter(
     (line): line is string => Boolean(line),

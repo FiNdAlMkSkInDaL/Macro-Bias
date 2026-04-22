@@ -12,6 +12,7 @@ import { formatForThreads } from './threads-format';
 import { isThreadsConfigured, publishToThreads } from './threads';
 
 const CANONICAL_EMAIL_LINK = 'https://www.macro-bias.com/emails?utm_source=x&utm_campaign=scheduled';
+const CANONICAL_TODAY_LINK = 'https://www.macro-bias.com/today?utm_source=x&utm_campaign=scheduled';
 const EMAIL_LINK_PATTERN = /(?:https?:\/\/)?(?:www\.)?macro-bias\.com\/email(?:s)?\b/gi;
 const MAX_X_POST_LENGTH = 280;
 
@@ -118,7 +119,31 @@ function normalizeScheduledPostLink(link: string | null) {
     return CANONICAL_EMAIL_LINK;
   }
 
-  return normalizeMacroBiasLink(trimmedLink);
+  const normalizedLink = normalizeMacroBiasLink(trimmedLink);
+
+  try {
+    const parsed = new URL(normalizedLink);
+    const path = parsed.pathname.toLowerCase();
+
+    if (path === "/today" || path.startsWith("/today/")) {
+      return CANONICAL_TODAY_LINK;
+    }
+
+    if (
+      path === "/track-record" ||
+      path === "/pricing" ||
+      path === "/briefings" ||
+      path === "/dashboard" ||
+      path === "/regime" ||
+      path.startsWith("/regime/")
+    ) {
+      return CANONICAL_EMAIL_LINK;
+    }
+  } catch {
+    return normalizedLink;
+  }
+
+  return normalizedLink;
 }
 
 function buildTweetContent(post: ScheduledPostRow) {

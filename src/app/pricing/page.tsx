@@ -252,9 +252,9 @@ export default function PricingPage() {
                 What do free subscribers get?
               </h3>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                Free subscribers receive a daily email with the regime score and
-                top-line alpha protocol — the one-sentence directional call — every
-                trading day. No account required, no credit card, no expiration.
+                Free subscribers receive the daily market email with the regime score,
+                the bottom line, the day type, and the trust check every trading day.
+                No account required, no credit card, no expiration.
               </p>
             </div>
             <div className="py-5">
@@ -293,3 +293,4 @@ export default function PricingPage() {
     </main>
   );
 }
+

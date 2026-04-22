@@ -47,7 +47,12 @@ export function TodaySignupForm() {
       setMessage("You are on the list. Check your inbox.");
       trackClientEvent({
         eventName: "email_signup_success",
-        metadata: { location: "today_page", stocks: stocksOptedIn, crypto: cryptoOptedIn },
+        metadata: {
+          location: "today_page",
+          stocks: stocksOptedIn,
+          crypto: cryptoOptedIn,
+          funnel: "today_signup_form",
+        },
       });
       setEmail("");
     } catch {
@@ -58,6 +63,7 @@ export function TodaySignupForm() {
         metadata: {
           location: "today_page",
           message: "Network error. Try again.",
+          funnel: "today_signup_form",
         },
       });
     }
