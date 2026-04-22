@@ -142,20 +142,20 @@ function getHeroCopy(status: ReturnType<typeof buildPromotedTrustCheck>['status'
   if (status === 'pattern_intact') {
     return {
       title: 'Press when the tape confirms.',
-      body: 'Check this before the open to know whether today is a day to press, stay selective, or stand down. Today the read deserves real weight.',
+      body: 'Use this before the open to know whether the tape is worth trusting. Today it is.',
     };
   }
 
   if (status === 'pattern_shaky') {
     return {
       title: 'Stay selective. Do not force it.',
-      body: 'Check this before the open to know whether today is a day to press, stay selective, or stand down. Today is a selective day, not a conviction day.',
+      body: 'Use this before the open to know whether the tape is worth trusting. Today is selective, not clean.',
     };
   }
 
   return {
     title: 'Stand down on index conviction.',
-    body: 'Check this before the open to know whether today is a day to press, stay selective, or stand down. Today is a stand-down day: the score is background, not signal.',
+    body: 'Use this before the open to know whether the tape is worth trusting. Today it is not.',
   };
 }
 
@@ -203,6 +203,14 @@ function getMistakeCopy(status: ReturnType<typeof buildPromotedTrustCheck>['stat
   }
 
   return 'Trading the index like today is clean and directional when the setup is still being rewritten in real time.';
+}
+
+function getAvoidLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return 'Big mistake';
+  }
+
+  return 'Avoid';
 }
 
 function getReversalLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
@@ -280,26 +288,26 @@ function formatExpressionLabel(label: string | null) {
 
 function getEdgeHeading(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
-    return 'Why this helps today';
+    return 'Why this matters';
   }
 
   if (status === 'pattern_shaky') {
-    return 'Why this saves you today';
+    return 'Why this matters';
   }
 
-  return 'What this keeps you out of';
+  return 'Why this matters';
 }
 
 function getEdgeSubhead(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
-    return 'The advantage is pressing when the market is actually worth trusting.';
+    return 'The edge is knowing when the read deserves conviction.';
   }
 
   if (status === 'pattern_shaky') {
-    return 'The advantage is avoiding oversized conviction in a mixed tape.';
+    return 'The edge is keeping size and conviction in line with the setup.';
   }
 
-  return 'The advantage is not confusing noise and headlines for a clean tradable trend.';
+  return 'The edge is not forcing trades in the wrong market.';
 }
 
 function getTopMove(
@@ -417,49 +425,15 @@ export default async function TestTodayPreviewPage() {
             </section>
 
             <section className={`${moduleClassName} ${tone.module}`}>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                  Today&apos;s call
-                </p>
-                <h2 className={`mt-3 text-2xl font-semibold tracking-tight ${tone.accent}`}>
-                  {stance.long}
-                </h2>
-                <p className="mt-3 text-sm leading-6 text-zinc-300">{trustCheck.summary}</p>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">{trustCheck.reason}</p>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Strongest
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">{strongestMove?.ticker ?? '--'}</p>
-                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                    {formatMove(strongestMove?.percentChange)}
-                  </p>
-                </div>
-
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Weakest
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">{weakestMove?.ticker ?? '--'}</p>
-                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                    {formatMove(weakestMove?.percentChange)}
-                  </p>
-                </div>
-
-                <div className={`${terminalDividerClassName} pt-3`}>
-                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      Breadth
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
-                    <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
-                      Core ETFs
-                    </p>
-                  </div>
-                </div>
-              </section>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                Morning call
+              </p>
+              <h2 className={`mt-3 text-2xl font-semibold tracking-tight ${tone.accent}`}>
+                {formatStatus(trustCheck.status)}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">{trustCheck.summary}</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">{trustCheck.reason}</p>
+            </section>
           </div>
 
           <div className="min-w-0 lg:col-span-2">
@@ -476,7 +450,7 @@ export default async function TestTodayPreviewPage() {
                       </h3>
                     </div>
                     <p className="max-w-md text-sm leading-6 text-zinc-500">
-                      What kind of day this is, and how not to trade it the wrong way.
+                      What kind of day this is and what to do with that information.
                     </p>
                   </div>
 
@@ -488,7 +462,7 @@ export default async function TestTodayPreviewPage() {
                         bestExpressionSummary: bestExpression?.summary ?? null,
                         status: trustCheck.status,
                       })],
-                      ['Big mistake', getMistakeCopy(trustCheck.status)],
+                      [getAvoidLabel(trustCheck.status), getMistakeCopy(trustCheck.status)],
                       [getReversalLabel(trustCheck.status), getReversalCopy(trustCheck.status)],
                     ].map(([label, copy]) => (
                       <article
@@ -526,7 +500,11 @@ export default async function TestTodayPreviewPage() {
                   </div>
 
                   <div className="mt-4 space-y-4 text-sm leading-7 text-zinc-300">
-                    <p>{trustCheck.summary}</p>
+                    <p>
+                      This page is useful because it helps you avoid trading the wrong market. The
+                      value is not the score by itself. The value is knowing when the score deserves
+                      trust and when it does not.
+                    </p>
                     {bestExpression ? (
                       <p>
                         The cleanest expression underneath the hood is{' '}
@@ -535,8 +513,8 @@ export default async function TestTodayPreviewPage() {
                       </p>
                     ) : null}
                     <p>
-                      If the market starts settling and the tape stops fighting the setup, this read
-                      can regain weight quickly. If it does not, keep the score in the background.
+                      That means fewer forced trades, less confusion in the first hour, and a much
+                      faster read on whether today is a day to press or a day to back off.
                     </p>
                   </div>
                 </section>
@@ -552,9 +530,11 @@ export default async function TestTodayPreviewPage() {
                         The evidence behind the call
                       </h3>
                     </div>
-                    <p className="max-w-md text-sm leading-6 text-zinc-500">
-                      The supporting read, kept out of the way until you want it.
-                    </p>
+                    <div className="flex items-center gap-6 text-sm leading-6 text-zinc-500">
+                      <span>{breadthSummary}</span>
+                      <span>Strongest {strongestMove?.ticker ?? '--'} {formatMove(strongestMove?.percentChange)}</span>
+                      <span>Weakest {weakestMove?.ticker ?? '--'} {formatMove(weakestMove?.percentChange)}</span>
+                    </div>
                   </div>
 
                 <div className="mt-4 space-y-0">
