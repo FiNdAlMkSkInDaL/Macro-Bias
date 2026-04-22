@@ -15,17 +15,21 @@ export const metadata: Metadata = {
   },
 };
 
+const terminalBorderClassName = 'border border-white/5';
+const terminalDividerClassName = 'border-t border-white/5';
+const moduleClassName = `${terminalBorderClassName} min-w-0 p-4 sm:p-5 md:p-6`;
+
 function formatScore(score: number) {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
 function formatConfidence(value: number | null) {
-  return value == null ? 'n/a' : `${value}/100`;
+  return value == null ? 'Pending' : `${value}/100`;
 }
 
 function formatTradeDate(dateStr: string | null) {
   if (!dateStr) {
-    return 'Latest available session';
+    return 'Pending';
   }
 
   return new Intl.DateTimeFormat('en-US', {
@@ -34,42 +38,47 @@ function formatTradeDate(dateStr: string | null) {
     day: 'numeric',
     year: 'numeric',
     timeZone: 'UTC',
-  }).format(new Date(dateStr));
+  }).format(new Date(`${dateStr}T12:00:00Z`));
+}
+
+function formatShortDate(dateStr: string | null) {
+  if (!dateStr) {
+    return 'Pending';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${dateStr}T12:00:00Z`));
 }
 
 function formatStatus(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
-    return 'Pattern intact';
+    return 'Pattern Intact';
   }
 
   if (status === 'pattern_shaky') {
-    return 'Pattern shaky';
+    return 'Pattern Shaky';
   }
 
-  return 'Pattern broken';
+  return 'Pattern Broken';
 }
 
-function getStatusClasses(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
-  if (status === 'pattern_intact') {
+function getStatusTone(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_broken') {
     return {
-      accent: 'text-white',
-      border: 'border-white/15',
-      wash: 'bg-white/[0.03]',
-    };
-  }
-
-  if (status === 'pattern_shaky') {
-    return {
-      accent: 'text-white',
-      border: 'border-white/15',
-      wash: 'bg-white/[0.03]',
+      accent: 'text-rose-300',
+      pill: 'border-rose-400/20 bg-rose-400/[0.08] text-rose-200',
+      module: 'border-rose-400/15 bg-rose-400/[0.04]',
     };
   }
 
   return {
-    accent: 'text-rose-300',
-    border: 'border-rose-400/20',
-    wash: 'bg-rose-400/[0.06]',
+    accent: 'text-white',
+    pill: 'border-white/10 bg-white/[0.03] text-zinc-200',
+    module: '',
   };
 }
 
@@ -112,20 +121,20 @@ function getHeroCopy(status: ReturnType<typeof buildPromotedTrustCheck>['status'
   if (status === 'pattern_intact') {
     return {
       title: 'The score deserves weight today.',
-      dek: 'This is the kind of session where the model should help frame the day instead of sitting quietly in the background.',
+      body: 'This is the kind of session where the model should help frame the day instead of sitting quietly in the background.',
     };
   }
 
   if (status === 'pattern_shaky') {
     return {
       title: 'Use the score, but make it earn it.',
-      dek: 'There is information in the read, but not enough to lean hard on it before the tape confirms the setup.',
+      body: 'There is information in the read, but not enough to lean hard on it before the tape confirms the setup.',
     };
   }
 
   return {
     title: "Don't trust the score yet.",
-    dek: 'Something in the current setup is strong enough that the usual historical pattern should not be treated as signal on its own.',
+    body: 'Something in the current setup is strong enough that the usual historical pattern should not be treated as signal on its own.',
   };
 }
 
@@ -199,6 +208,37 @@ function getReversalCopy(status: ReturnType<typeof buildPromotedTrustCheck>['sta
   return 'The read improves only when the market stops reacting to every fresh headline and leadership starts to settle into something coherent.';
 }
 
+function getBreadthSummary(
+  tickerMoves: Array<{ percentChange: number }> | null | undefined,
+) {
+  if (!tickerMoves || tickerMoves.length === 0) {
+    return 'Pending';
+  }
+
+  const advancing = tickerMoves.filter((move) => move.percentChange > 0).length;
+  return `${advancing}/${tickerMoves.length} advancing`;
+}
+
+function getTopMove(
+  tickerMoves: Array<{ ticker: string; percentChange: number }> | null | undefined,
+  direction: 'strongest' | 'weakest',
+) {
+  if (!tickerMoves || tickerMoves.length === 0) {
+    return null;
+  }
+
+  const sorted = [...tickerMoves].sort((left, right) => left.percentChange - right.percentChange);
+  return direction === 'strongest' ? sorted.at(-1) ?? null : sorted[0] ?? null;
+}
+
+function formatMove(value: number | null | undefined) {
+  if (value == null) {
+    return 'Pending';
+  }
+
+  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+}
+
 export default async function TestTodayPreviewPage() {
   await requireTestLabAccess();
 
@@ -211,135 +251,247 @@ export default async function TestTodayPreviewPage() {
   const score = latestSnapshot?.score ?? cockpit.bias?.score ?? 0;
   const regime = getRegimeDisplay(score);
   const hero = getHeroCopy(trustCheck.status);
-  const statusStyles = getStatusClasses(trustCheck.status);
+  const tone = getStatusTone(trustCheck.status);
   const bestExpression = cockpit.crossSectional?.leadingLenses[0] ?? null;
   const underTheHoodFactors = trustCheck.factors.slice(0, 3);
+  const breadthSummary = getBreadthSummary(cockpit.bias?.tickerMoves ?? null);
+  const strongestMove = getTopMove(cockpit.bias?.tickerMoves ?? null, 'strongest');
+  const weakestMove = getTopMove(cockpit.bias?.tickerMoves ?? null, 'weakest');
+  const morningDate = formatTradeDate(trustCheck.asOf);
 
   return (
-    <article className="mx-auto max-w-5xl">
-      <header className="max-w-4xl border-b border-white/10 pb-10">
-        <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
-          Morning read / {formatTradeDate(trustCheck.asOf)}
-        </p>
-        <h1 className="mt-6 max-w-3xl font-[family:var(--font-heading)] text-5xl font-semibold tracking-tight text-white sm:text-7xl">
-          {hero.title}
-        </h1>
-        <p className="mt-5 max-w-3xl text-lg leading-9 text-zinc-200">{hero.dek}</p>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-400">{trustCheck.reason}</p>
-      </header>
-
-      <section className="mt-12 grid gap-14 lg:grid-cols-[0.72fr_1.28fr]">
-        <aside className="space-y-10 lg:pr-8">
-          <div className="border-l border-white/10 pl-6">
-            <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
-              Today&apos;s score
+    <main className="min-h-screen font-sans font-[family:var(--font-heading)]">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              [ Morning Read Terminal ]
             </p>
-            <p className="mt-5 font-[family:var(--font-data)] text-7xl font-semibold leading-none text-white">
-              {formatScore(score)}
-            </p>
-            <p className="mt-3 font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.36em] text-zinc-300">
-              {regime.label}
-            </p>
-            <p className="mt-5 text-sm leading-7 text-zinc-400">{regime.summary}</p>
+            <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
+              {hero.title}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{hero.body}</p>
           </div>
 
-          <div className={`border-l ${statusStyles.border} ${statusStyles.wash} pl-6 py-1`}>
-            <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
-              Trust check
-            </p>
-            <p className={`mt-4 text-2xl font-semibold ${statusStyles.accent}`}>
-              {formatStatus(trustCheck.status)}
-            </p>
-            <p className="mt-3 font-[family:var(--font-data)] text-sm text-zinc-300">
-              Confidence {formatConfidence(trustCheck.confidenceScore)}
-            </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-6">
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Date
+              </p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">{morningDate}</p>
+              <p className="mt-1 font-[family:var(--font-data)] text-[10px] text-zinc-500">
+                Data as of: {formatShortDate(trustCheck.asOf)}
+              </p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Score
+              </p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {formatScore(score)} {regime.label}
+              </p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Trust
+              </p>
+              <p className={`mt-2 text-base font-semibold tracking-tight ${tone.accent}`}>
+                {formatStatus(trustCheck.status)}
+              </p>
+            </div>
           </div>
-        </aside>
+        </header>
 
-        <section>
-          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-400">
-            Read this in 20 seconds
-          </p>
-          <div className="mt-6 divide-y divide-white/10 border-y border-white/10">
-            <div className="grid gap-4 py-6 md:grid-cols-[0.24fr_1fr]">
-              <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-zinc-500">
-                Base case
-              </p>
-              <p className="text-lg leading-8 text-zinc-100">
-                {getBaseCaseCopy({
-                  regimeSummary: regime.summary,
-                  score,
-                  status: trustCheck.status,
-                })}
-              </p>
-            </div>
+        <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
+          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+            <section className={moduleClassName}>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)]">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                    Today&apos;s Score
+                  </p>
+                  <p className="mt-4 font-[family:var(--font-data)] text-7xl font-semibold leading-none text-white">
+                    {formatScore(score)}
+                  </p>
+                  <p className="mt-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-300">
+                    {regime.label}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm leading-6 text-zinc-400">{regime.summary}</p>
+                  <div className={`mt-6 ${terminalDividerClassName} pt-4`}>
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                      Trust Check
+                    </p>
+                    <p className={`mt-2 text-2xl font-semibold ${tone.accent}`}>{formatStatus(trustCheck.status)}</p>
+                    <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
+                      Confidence {formatConfidence(trustCheck.confidenceScore)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-            <div className="grid gap-4 py-6 md:grid-cols-[0.24fr_1fr]">
-              <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-zinc-500">
-                Best area
-              </p>
-              <p className="text-lg leading-8 text-zinc-100">
-                {getBestAreaCopy({
-                  bestExpressionLabel: bestExpression?.label ?? null,
-                  bestExpressionSummary: bestExpression?.summary ?? null,
-                  status: trustCheck.status,
-                })}
-              </p>
-            </div>
+            <section className={`${moduleClassName} ${tone.module}`}>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+                  Morning Call
+                </p>
+                <h2 className={`mt-3 text-2xl font-semibold tracking-tight ${tone.accent}`}>
+                  {formatStatus(trustCheck.status)}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-zinc-300">{trustCheck.summary}</p>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">{trustCheck.reason}</p>
+              </div>
 
-            <div className="grid gap-4 py-6 md:grid-cols-[0.24fr_1fr]">
-              <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-zinc-500">
-                Big mistake
-              </p>
-              <p className="text-lg leading-8 text-zinc-100">{getMistakeCopy(trustCheck.status)}</p>
-            </div>
+              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className={`${terminalDividerClassName} pt-3`}>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    Strongest
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">{strongestMove?.ticker ?? '--'}</p>
+                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
+                    {formatMove(strongestMove?.percentChange)}
+                  </p>
+                </div>
 
-            <div className="grid gap-4 py-6 md:grid-cols-[0.24fr_1fr]">
-              <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-zinc-500">
-                {getReversalLabel(trustCheck.status)}
-              </p>
-              <p className="text-lg leading-8 text-zinc-100">{getReversalCopy(trustCheck.status)}</p>
+                <div className={`${terminalDividerClassName} pt-3`}>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    Weakest
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">{weakestMove?.ticker ?? '--'}</p>
+                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
+                    {formatMove(weakestMove?.percentChange)}
+                  </p>
+                </div>
+
+                <div className={`${terminalDividerClassName} pt-3`}>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                    Breadth
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
+                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
+                    Core basket
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="min-w-0 lg:col-span-2">
+            <div className="space-y-4 md:space-y-6">
+              <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
+                <section className={`${moduleClassName} h-full`}>
+                  <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        Read This In 20 Seconds
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        Session framing
+                      </h3>
+                    </div>
+                    <p className="max-w-md text-sm leading-6 text-zinc-500">
+                      The fastest useful read before the open.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-0">
+                    {[
+                      ['Base case', getBaseCaseCopy({ regimeSummary: regime.summary, score, status: trustCheck.status })],
+                      ['Best area', getBestAreaCopy({
+                        bestExpressionLabel: bestExpression?.label ?? null,
+                        bestExpressionSummary: bestExpression?.summary ?? null,
+                        status: trustCheck.status,
+                      })],
+                      ['Big mistake', getMistakeCopy(trustCheck.status)],
+                      [getReversalLabel(trustCheck.status), getReversalCopy(trustCheck.status)],
+                    ].map(([label, copy]) => (
+                      <article
+                        key={label}
+                        className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="sm:min-w-[9rem]">
+                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                              {label}
+                            </p>
+                          </div>
+                          <p className="max-w-[52ch] text-[15px] leading-[1.75] text-white sm:text-base">
+                            {copy}
+                          </p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className={`${moduleClassName} h-full`}>
+                  <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        Bottom Line
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        Where the edge is
+                      </h3>
+                    </div>
+                    <p className="max-w-md text-sm leading-6 text-zinc-500">
+                      The deeper layer, after the first glance.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-4 text-sm leading-7 text-zinc-300">
+                    <p>{trustCheck.summary}</p>
+                    {bestExpression ? (
+                      <p>
+                        The cleanest expression underneath the hood is{' '}
+                        <span className="font-medium text-white">{bestExpression.label}</span>, which
+                        has been the strongest relative pocket inside this regime.
+                      </p>
+                    ) : null}
+                    <p>
+                      If the market starts settling and the tape stops fighting the setup, this read
+                      can regain weight quickly. If it does not, keep the score in the background.
+                    </p>
+                  </div>
+                </section>
+              </div>
+
+              <section className={moduleClassName}>
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      Under The Hood
+                    </p>
+                    <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                      Why the trust read looks like this
+                    </h3>
+                  </div>
+                  <p className="max-w-md text-sm leading-6 text-zinc-500">
+                    Supporting diagnostics, kept out of the way until you want them.
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-0">
+                  {underTheHoodFactors.map((factor) => (
+                    <article
+                      key={factor.label}
+                      className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
+                    >
+                      <div className="grid gap-3 md:grid-cols-[0.34fr_0.14fr_1fr]">
+                        <p className="text-sm font-medium text-white">{factor.label}</p>
+                        <p className="font-[family:var(--font-data)] text-sm text-zinc-300">{factor.value}</p>
+                        <p className="text-sm leading-7 text-zinc-400">{factor.summary}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
         </section>
-      </section>
-
-      <section className="mt-16 grid gap-14 border-t border-white/10 pt-10 lg:grid-cols-[1.08fr_0.92fr]">
-        <div>
-          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
-            Bottom line
-          </p>
-          <div className="mt-5 max-w-3xl space-y-5 text-base leading-8 text-zinc-300">
-            <p>{trustCheck.summary}</p>
-            {bestExpression ? (
-              <p>
-                The cleanest expression underneath the hood is{' '}
-                <span className="font-semibold text-white">{bestExpression.label}</span>, which has
-                been the strongest relative pocket inside this regime.
-              </p>
-            ) : null}
-            <p>
-              If the market starts settling and the tape stops fighting the setup, this read can
-              regain weight quickly. If it does not, keep the score in the background.
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
-            Under the hood
-          </p>
-          <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
-            {underTheHoodFactors.map((factor) => (
-              <div key={factor.label} className="grid gap-3 py-5 md:grid-cols-[0.42fr_0.18fr_1fr]">
-                <p className="text-sm font-medium text-white">{factor.label}</p>
-                <p className="font-[family:var(--font-data)] text-sm text-zinc-300">{factor.value}</p>
-                <p className="text-sm leading-7 text-zinc-400">{factor.summary}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </article>
+      </div>
+    </main>
   );
 }
