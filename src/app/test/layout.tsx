@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default function TestLabLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.08),_transparent_28%),linear-gradient(to_bottom,_#07090d,_#040508)] text-white">
+    <main className="min-h-screen bg-[#050608] text-white">
       <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 lg:px-10">
         <div className="border-b border-white/10 pb-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -31,7 +31,7 @@ export default function TestLabLayout({ children }: { children: ReactNode }) {
                 MACRO BIAS
               </Link>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.3em] text-amber-300">
+                <span className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.3em] text-zinc-200">
                   Test Lab
                 </span>
                 <span className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.32em] text-zinc-500">

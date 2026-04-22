@@ -52,17 +52,17 @@ function formatStatus(status: ReturnType<typeof buildPromotedTrustCheck>['status
 function getStatusClasses(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
     return {
-      accent: 'text-emerald-300',
-      border: 'border-emerald-400/20',
-      wash: 'bg-emerald-400/[0.05]',
+      accent: 'text-white',
+      border: 'border-white/15',
+      wash: 'bg-white/[0.03]',
     };
   }
 
   if (status === 'pattern_shaky') {
     return {
-      accent: 'text-amber-300',
-      border: 'border-amber-400/20',
-      wash: 'bg-amber-400/[0.05]',
+      accent: 'text-white',
+      border: 'border-white/15',
+      wash: 'bg-white/[0.03]',
     };
   }
 
@@ -219,7 +219,7 @@ export default async function TestTodayPreviewPage() {
     <article className="mx-auto max-w-5xl">
       <header className="max-w-4xl border-b border-white/10 pb-10">
         <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
-          Morning read · {formatTradeDate(trustCheck.asOf)}
+          Morning read / {formatTradeDate(trustCheck.asOf)}
         </p>
         <h1 className="mt-6 max-w-3xl font-[family:var(--font-heading)] text-5xl font-semibold tracking-tight text-white sm:text-7xl">
           {hero.title}
@@ -257,7 +257,7 @@ export default async function TestTodayPreviewPage() {
         </aside>
 
         <section>
-          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-amber-300">
+          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-400">
             Read this in 20 seconds
           </p>
           <div className="mt-6 divide-y divide-white/10 border-y border-white/10">

@@ -56,7 +56,7 @@ export default async function TestLabHomePage() {
     <div className="space-y-16">
       <header className="grid gap-12 border-b border-white/10 pb-12 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
-          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-amber-300">
+          <p className="font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.34em] text-zinc-500">
             Private Research Environment
           </p>
           <h1 className="mt-4 max-w-3xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tight text-white sm:text-6xl">
@@ -128,9 +128,9 @@ export default async function TestLabHomePage() {
             </p>
           </div>
           <div className="space-y-4 text-sm leading-7 text-zinc-300">
-            <p>1. `Today Preview` should feel like a product, not a demo.</p>
-            <p>2. `Research Ledger` should make the promotion path obvious and disciplined.</p>
-            <p>3. Everything else exists to support those two, not compete with them.</p>
+            <p>1. `Today Preview` should stop the scroll immediately.</p>
+            <p>2. It should get more insightful the longer you stay with it.</p>
+            <p>3. `Research Ledger` should stay useful without stealing focus.</p>
           </div>
         </div>
       </section>
@@ -150,7 +150,7 @@ export default async function TestLabHomePage() {
             <Link
               key={module.slug}
               href={`/test/${module.slug}`}
-              className="grid gap-4 px-1 py-5 transition hover:bg-white/[0.02] md:grid-cols-[0.85fr_0.2fr_1fr]"
+              className="grid gap-4 px-1 py-5 transition hover:bg-white/[0.02] md:grid-cols-[0.85fr_0.18fr_1fr]"
             >
               <div>
                 <p className="text-lg font-semibold text-white">{module.title}</p>
@@ -159,7 +159,9 @@ export default async function TestLabHomePage() {
               <div className="md:pt-1">
                 <span
                   className={`font-[family:var(--font-data)] text-[11px] uppercase tracking-[0.28em] ${
-                    STATUS_STYLES[module.status] ?? 'text-zinc-400'
+                    module.status === 'candidate'
+                      ? STATUS_STYLES[module.status]
+                      : 'text-zinc-500'
                   }`}
                 >
                   {formatStatus(module.status)}
