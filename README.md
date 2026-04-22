@@ -21,7 +21,7 @@ This README was refreshed against the git history after the previous README edit
 | Stocks research       | `/today`, `/dashboard`, `/track-record`, `/briefings`                       | Daily bias snapshot, dashboard, track record, and archive                    |
 | Crypto research       | `/crypto`, `/crypto/dashboard`, `/crypto/track-record`, `/crypto/briefings` | Crypto landing page, live dashboard, track record, and archive               |
 | Conversion and growth | `/emails`, `/pricing`, `/refer`, `/intel/[slug]`, `/feed.json`, `/feed.xml` | Newsletter signup, billing, referrals, marketing posts, and feeds            |
-| Admin                 | `/analytics`                                                                | Server-rendered analytics dashboard restricted to the configured admin email |
+| Admin                 | `/analytics`                                                                | Server-rendered analytics and paper-trading dashboard restricted to the configured admin email |
 | Auth callback         | `/auth/callback`                                                            | Supabase auth completion flow                                                |
 
 ## How The System Works
@@ -41,6 +41,22 @@ Methods: `GET` and `POST`
 7. Publish social snippets to the configured outbound channels.
 
 Same-day reruns do not generate a second briefing row. They load the already-persisted briefing and attempt a re-publish or re-distribution pass instead.
+
+### Paper trading pipeline
+
+Route: `/api/cron/paper-trade`  
+Schedule: `15 13 * * 1-5` UTC  
+Methods: `GET` and `POST`
+
+1. Validate cron auth using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
+2. Load the latest persisted `daily_market_briefings` row for the requested `briefing_date`.
+3. Load the linked `macro_bias_scores` row plus the synced `SPY` close from `etf_daily_prices`.
+4. Load the latest `paper_trading_portfolio_snapshots` row to derive current simulated cash, exposure, and equity.
+5. Ask Anthropic for a strict JSON allocation decision using only the saved briefing, quant score, and current portfolio state.
+6. Deterministically fall back to `HOLD` with unchanged weights if the model output is invalid, inconsistent, or unavailable.
+7. Write one `paper_trading_runs` row, any required `paper_trading_executions` row, and one new `paper_trading_portfolio_snapshots` row.
+
+The paper-trade cron is intentionally scheduled after the stocks publish job so it only runs against persisted briefing data. Same-day reruns are idempotent because `paper_trading_runs.briefing_date` is unique.
 
 ### Crypto daily pipeline
 
@@ -65,6 +81,7 @@ Same-day reruns follow the same re-publish pattern as the stocks pipeline.
 - `/api/referral/status` returns referral progress, masked recent referrals, and reward state for the client.
 - `/api/checkout`, `/api/stripe/portal`, and `/api/webhooks/stripe` handle paid subscriptions and billing state.
 - `/api/analytics/track` and `/api/analytics/dashboard` power first-party marketing analytics.
+- `/api/cron/paper-trade` powers the simulated portfolio agent and writes the paper trading ledger after the stocks briefing completes.
 - Markdown posts in `src/content/marketing/` are published into `published_marketing_posts` and rendered at `/intel/[slug]`.
 
 ## Cron Schedule
@@ -154,6 +171,7 @@ The admin analytics page aggregates:
 - top pages, top events, UTM sources, and recent event logs
 - welcome drip, referral, and reward metrics
 - latest stocks and crypto briefing counts and recent bias history
+- paper trading portfolio equity, current cash and SPY weights, and the latest run and execution
 
 Access is currently restricted by a hard-coded admin email check in `src/app/analytics/page.tsx`.
 
@@ -167,6 +185,7 @@ Access is currently restricted by a hard-coded admin email check in `src/app/ana
 | `/api/bias/latest`           | `GET`         | Latest bias snapshot for the frontend                                                  |
 | `/api/analytics/track`       | `POST`        | First-party analytics ingest                                                           |
 | `/api/analytics/dashboard`   | `GET`         | Analytics data for the admin dashboard                                                 |
+| `/api/cron/paper-trade`      | `GET`, `POST` | Paper trading agent run, simulated execution, and daily portfolio snapshot persistence |
 | `/api/checkout`              | `GET`, `POST` | Stripe checkout session creation                                                       |
 | `/api/stripe/portal`         | `GET`         | Stripe billing portal redirect                                                         |
 | `/api/webhooks/stripe`       | `POST`        | Stripe webhook ingestion and entitlement sync                                          |
@@ -184,9 +203,9 @@ These are the main tables the current system depends on:
 | `crypto_bias_scores`             | Daily crypto regime scores and component data                           |
 | `daily_market_briefings`         | Persisted stocks briefing ledger                                        |
 | `crypto_daily_briefings`         | Persisted crypto briefing ledger                                        |
-| `paper_trading_runs`             | One decision ledger row per simulated trading day                       |
-| `paper_trading_executions`       | Simulated buy and sell executions produced by the paper trading agent   |
-| `paper_trading_portfolio_snapshots` | Daily mark-to-market portfolio state and equity history             |
+| `paper_trading_runs`             | One decision ledger row per simulated trading day, including prompt metadata, conviction, and risk flags |
+| `paper_trading_executions`       | Simulated buy and sell executions produced by the paper trading agent using the stored `SPY` close |
+| `paper_trading_portfolio_snapshots` | Daily mark-to-market portfolio state, allocation weights, and equity history |
 | `free_subscribers`               | Free email list, preferences, referral data, and temporary unlock state |
 | `users`                          | Authenticated paid-user billing record                                  |
 | `scheduled_posts`                | Social queue used by the weekday dispatch crons                         |
@@ -222,12 +241,13 @@ src/
       threads/                # Meta compliance callbacks
       webhooks/stripe/        # Stripe webhook
   components/
+    analytics/                # Admin paper trading chart components
     dashboard/                # Stocks dashboard UI
     track-record/             # Stocks and crypto performance charts
   content/
     marketing/                # Markdown posts and social queue JSON
   lib/
-    analytics/                # Event logging helpers
+    analytics/                # Event logging helpers and shared dashboard loaders
     billing/                  # Subscription status helpers
     briefing/                 # Stocks briefing pipeline
     crypto-bias/              # Crypto scoring logic
@@ -306,7 +326,7 @@ The table below reflects the current codebase, not just the checked-in `.env.exa
 | Variable            | Required                                      | Purpose                  |
 | ------------------- | --------------------------------------------- | ------------------------ |
 | `FINNHUB_API_KEY`   | Yes for stocks briefing generation            | Pre-market news source   |
-| `ANTHROPIC_API_KEY` | Yes for stocks and crypto briefing generation | Structured LLM synthesis |
+| `ANTHROPIC_API_KEY` | Yes for stocks briefing, crypto briefing, and paper trading | Structured LLM synthesis |
 
 ### Email delivery
 
@@ -373,6 +393,10 @@ curl -X POST http://localhost:3000/api/cron/publish \
 
 # Paper trading simulation
 curl -X POST http://localhost:3000/api/cron/paper-trade \
+  -H "Authorization: Bearer <CRON_SECRET>"
+
+# Paper trading backfill for a specific briefing date
+curl -X POST "http://localhost:3000/api/cron/paper-trade?briefingDate=2026-04-22" \
   -H "Authorization: Bearer <CRON_SECRET>"
 
 # Crypto daily pipeline
