@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "security:audit": "tsx scripts/audit-supabase-security.ts",
+    "schema:audit": "tsx scripts/audit-supabase-schema-usage.ts",
     "referral:report": "tsx src/scripts/report-referral-funnel.ts",
     "referral:simulate": "tsx src/scripts/simulate-referral-funnel.ts",
     "typecheck": "tsc --noEmit",

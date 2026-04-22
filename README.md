@@ -29,7 +29,7 @@ This README was refreshed against the git history after the previous README edit
 ### Stocks daily pipeline
 
 Route: `/api/cron/publish`  
-Schedule: `45 12 * * *` UTC  
+Schedule: `45 12 * * 1-5` UTC  
 Methods: `GET` and `POST`
 
 1. Validate cron auth using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
@@ -45,7 +45,7 @@ Same-day reruns do not generate a second briefing row. They load the already-per
 ### Crypto daily pipeline
 
 Route: `/api/cron/crypto-publish`  
-Schedule: `0 13 * * *` UTC  
+Schedule: `30 12 * * *` UTC  
 Methods: `GET` and `POST`
 
 1. Validate cron auth.
@@ -72,14 +72,17 @@ Same-day reruns follow the same re-publish pattern as the stocks pipeline.
 | Path                              | Schedule (UTC)  | Purpose                                    |
 | --------------------------------- | --------------- | ------------------------------------------ |
 | `/api/cron/welcome-drip`          | `0 10 * * *`    | Daily welcome drip processing              |
-| `/api/cron/publish`               | `45 12 * * *`   | Stocks briefing pipeline                   |
-| `/api/cron/crypto-publish`        | `0 13 * * *`    | Crypto briefing pipeline                   |
+| `/api/cron/publish`               | `45 12 * * 1-5` | Stocks briefing pipeline                   |
+| `/api/cron/crypto-publish`        | `30 12 * * *`   | Crypto briefing pipeline                   |
+| `/api/cron/paper-trade`           | `15 13 * * 1-5` | Paper trading simulation after publish     |
 | `/api/cron/social-dispatch`       | `15 13 * * 1-5` | Weekday queue drain, morning window        |
 | `/api/cron/marketing`             | `30 14 * * 1-5` | Weekday queue drain, midday window         |
 | `/api/cron/social-dispatch-pm`    | `0 15 * * 1-5`  | Weekday queue drain, afternoon window      |
 | `/api/cron/social-dispatch-eod`   | `0 16 * * 1-5`  | Weekday queue drain, end-of-day window     |
 | `/api/cron/post-market-scorecard` | `15 21 * * 1-5` | Publish the daily accountability scorecard |
 | `/api/cron/threads-token-refresh` | `0 9 * * 1`     | Weekly Threads token refresh check         |
+
+The paper-trade cron is intentionally scheduled after the stocks publish job so it can depend on the persisted `daily_market_briefings` and `macro_bias_scores` rows for the same market session.
 
 The four weekday queue-drain routes all call the same `handleSocialDispatch()` function in `src/lib/social/scheduled-post-dispatch.ts`. Each run selects all due rows from `scheduled_posts`, sanitizes the copy for social, canonicalizes email CTA links, posts to X, and optionally cross-posts to Bluesky and Threads.
 
@@ -181,6 +184,9 @@ These are the main tables the current system depends on:
 | `crypto_bias_scores`             | Daily crypto regime scores and component data                           |
 | `daily_market_briefings`         | Persisted stocks briefing ledger                                        |
 | `crypto_daily_briefings`         | Persisted crypto briefing ledger                                        |
+| `paper_trading_runs`             | One decision ledger row per simulated trading day                       |
+| `paper_trading_executions`       | Simulated buy and sell executions produced by the paper trading agent   |
+| `paper_trading_portfolio_snapshots` | Daily mark-to-market portfolio state and equity history             |
 | `free_subscribers`               | Free email list, preferences, referral data, and temporary unlock state |
 | `users`                          | Authenticated paid-user billing record                                  |
 | `scheduled_posts`                | Social queue used by the weekday dispatch crons                         |
@@ -231,6 +237,7 @@ src/
     macro-bias/               # Stocks scoring logic
     market-data/              # Stocks data sync and news fetch
     marketing/                # Email delivery, welcome drip, markdown parser
+    paper-trading/            # Paper trading agent context and portfolio state
     referral/                 # Referral attribution, rewards, premium unlock
     social/                   # X, Bluesky, Threads, Telegram, scorecard, shared queue dispatch
     supabase/                 # Client factories
@@ -249,6 +256,8 @@ vercel.json                   # Cron definitions
 ```bash
 npm install
 npm run dev
+npm run security:audit
+npm run schema:audit
 npm run typecheck
 npm run build
 npm run macro-bias:sync
@@ -345,13 +354,25 @@ The table below reflects the current codebase, not just the checked-in `.env.exa
 3. Fill in the core env vars above. If you want Bluesky, Threads, or the full email and AI stack, add those manually because they are not all present in `.env.example`.
 4. Apply Supabase migrations from `supabase/migrations/`.
 5. Run `npm run dev`.
-6. Run `npm run typecheck` and `npm run build` before deploying.
+6. Run `npm run security:audit`, `npm run schema:audit`, `npm run typecheck`, and `npm run build` before deploying.
+
+## Supabase Security Guardrails
+
+- Every repo-managed table is expected to have `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY` in migrations.
+- New application code must not reference Supabase tables that are missing from `supabase/migrations/`.
+- `npm run security:audit` enforces those rules and also flags `SECURITY DEFINER` functions that do not lock `search_path`.
+- `npm run schema:audit` checks literal table/column usage in app code against the migrated schema and flags drift.
+- Treat a failing security audit as a deployment blocker, even if the app still builds.
 
 ### Local cron testing
 
 ```bash
 # Stocks daily pipeline
 curl -X POST http://localhost:3000/api/cron/publish \
+  -H "Authorization: Bearer <CRON_SECRET>"
+
+# Paper trading simulation
+curl -X POST http://localhost:3000/api/cron/paper-trade \
   -H "Authorization: Bearer <CRON_SECRET>"
 
 # Crypto daily pipeline

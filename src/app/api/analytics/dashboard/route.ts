@@ -112,8 +112,8 @@ export async function GET() {
     // Latest crypto briefing
     admin
       .from('crypto_daily_briefings')
-      .select('briefing_date, score, bias_label')
-      .order('briefing_date', { ascending: false })
+      .select('trade_date, score, bias_label')
+      .order('trade_date', { ascending: false })
       .limit(1)
       .maybeSingle(),
   ]);

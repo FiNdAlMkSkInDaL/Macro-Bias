@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/publish",
-      "schedule": "0 12 * * 1-5"
+      "schedule": "45 12 * * 1-5"
+    },
+    {
+      "path": "/api/cron/paper-trade",
+      "schedule": "15 13 * * 1-5"
     },
     {
       "path": "/api/cron/welcome-drip",

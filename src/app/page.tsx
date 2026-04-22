@@ -352,7 +352,7 @@ export default function HomePage() {
 
           <div id="free-briefing" className="mt-10 w-full max-w-xl">
             <p className="mb-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Free Daily Briefing • No Account Required ]
+              [ Free Daily Briefing - No Account Required ]
             </p>
             <form
               className="flex flex-col gap-3 sm:flex-row"

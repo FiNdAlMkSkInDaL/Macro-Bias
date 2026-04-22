@@ -262,12 +262,12 @@ async function main() {
 
   const { data: latestCrypto } = await supabase
     .from("crypto_daily_briefings")
-    .select("briefing_date, score, bias_label")
-    .order("briefing_date", { ascending: false })
+    .select("trade_date, score, bias_label")
+    .order("trade_date", { ascending: false })
     .limit(3);
   console.log("\nLatest crypto briefings:");
   for (const b of latestCrypto ?? []) {
-    console.log(`  ${b.briefing_date}: score=${b.score} label=${b.bias_label}`);
+    console.log(`  ${b.trade_date}: score=${b.score} label=${b.bias_label}`);
   }
 
   // ── SOCIAL POSTS ──
