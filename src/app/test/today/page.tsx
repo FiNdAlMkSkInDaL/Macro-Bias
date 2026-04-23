@@ -234,10 +234,28 @@ function formatFactorLabel(label: string) {
     case 'Regime stability':
       return 'Setup stability';
     case 'News disruption':
-      return 'Headline risk';
+      return 'Headline state';
     default:
       return label;
   }
+}
+
+function formatFactorValue(label: string, value: string) {
+  if (label === 'News disruption') {
+    if (value === 'broken') {
+      return 'Disruptive';
+    }
+
+    if (value === 'shaky') {
+      return 'Unsettled';
+    }
+
+    if (value === 'intact') {
+      return 'Calm';
+    }
+  }
+
+  return value;
 }
 
 function formatExpressionLabel(label: string | null) {
@@ -311,14 +329,14 @@ function getWhyNowSummary(input: {
 
 function getMeaningHeadline(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
-    return 'Lean on the read';
+    return 'The read is usable';
   }
 
   if (status === 'pattern_shaky') {
-    return 'Keep size and conviction measured';
+    return 'Keep size measured';
   }
 
-  return 'Keep the score in the background';
+  return 'The pattern is broken';
 }
 
 function getActionLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
@@ -333,6 +351,18 @@ function getActionLabel(status: ReturnType<typeof buildPromotedTrustCheck>['stat
   return 'Stand down';
 }
 
+function getSetupLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return 'Clean';
+  }
+
+  if (status === 'pattern_shaky') {
+    return 'Mixed';
+  }
+
+  return 'Broken';
+}
+
 function getAtAGlanceSummary(input: {
   score: number;
   regimeLabel: string;
@@ -342,14 +372,14 @@ function getAtAGlanceSummary(input: {
   const scoreText = `${formatScore(input.score)} ${input.regimeLabel.toLowerCase()}`;
 
   if (input.status === 'pattern_intact') {
-    return `${scoreText} score. The setup is aligned, so the read is usable this morning.`;
+    return `${scoreText} score. The setup is aligned enough to trust the read.`;
   }
 
   if (input.status === 'pattern_shaky') {
-    return `${scoreText} score. The setup is mixed, so keep size down until price confirms the read.`;
+    return `${scoreText} score. The setup is mixed, so wait for price to confirm it.`;
   }
 
-  return `${scoreText} score. The driver is ${input.whyNowSummary.toLowerCase()}, so the read should stay in the background for now.`;
+  return `${scoreText} score. ${input.whyNowSummary} are overriding the normal read.`;
 }
 
 export default async function TestTodayPreviewPage() {
@@ -414,10 +444,10 @@ export default async function TestTodayPreviewPage() {
 
             <div className={`mt-5 grid grid-cols-1 gap-0 ${terminalDividerClassName} pt-5 md:grid-cols-4`}>
               {[
+                ['Setup', getSetupLabel(trustCheck.status)],
                 ['Score', `${formatScore(score)} ${regime.label}`],
-                ['Trust', formatStatus(trustCheck.status)],
                 ['Why', whyNowSummary],
-                ['Action', getActionLabel(trustCheck.status)],
+                ['Do this', getActionLabel(trustCheck.status)],
               ].map(([label, value], index) => (
                 <div
                   key={label}
@@ -426,7 +456,7 @@ export default async function TestTodayPreviewPage() {
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     {label}
                   </p>
-                  <p className={`mt-2 text-lg font-semibold tracking-tight ${label === 'Trust' ? tone.accent : 'text-white'}`}>
+                  <p className={`mt-2 text-lg font-semibold tracking-tight ${label === 'Setup' ? tone.accent : 'text-white'}`}>
                     {value}
                   </p>
                 </div>
@@ -448,7 +478,7 @@ export default async function TestTodayPreviewPage() {
             <div className={`mt-5 grid grid-cols-1 gap-3 ${terminalDividerClassName} pt-4 sm:grid-cols-3`}>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Strongest
+                  Leadership
                 </p>
                 <p className="mt-2 text-sm font-medium text-white">{strongestMove?.ticker ?? '--'}</p>
                 <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
@@ -457,7 +487,7 @@ export default async function TestTodayPreviewPage() {
               </div>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Weakest
+                  Lagging
                 </p>
                 <p className="mt-2 text-sm font-medium text-white">{weakestMove?.ticker ?? '--'}</p>
                 <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
@@ -466,7 +496,7 @@ export default async function TestTodayPreviewPage() {
               </div>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Best read
+                  Cleanest expression
                 </p>
                 <p className="mt-2 text-sm font-medium text-white">
                   {bestExpression ? formatExpressionLabel(bestExpression.label) : 'Stay selective'}
@@ -527,7 +557,7 @@ export default async function TestTodayPreviewPage() {
                   <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                       <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                        Why this matters
+                        What this keeps you out of
                       </p>
                       <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
                         The edge is not trading the wrong market
@@ -562,10 +592,10 @@ export default async function TestTodayPreviewPage() {
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <div>
                     <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                      Why we&apos;re saying that
+                      Why this call is here
                     </p>
                     <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                      The evidence behind the call
+                      What supports the read
                     </h3>
                   </div>
                 </div>
@@ -578,7 +608,9 @@ export default async function TestTodayPreviewPage() {
                     >
                       <div className="grid gap-3 md:grid-cols-[0.34fr_0.14fr_1fr]">
                         <p className="text-sm font-medium text-white">{formatFactorLabel(factor.label)}</p>
-                        <p className="font-[family:var(--font-data)] text-sm text-zinc-300">{factor.value}</p>
+                        <p className="font-[family:var(--font-data)] text-sm text-zinc-300">
+                          {formatFactorValue(factor.label, factor.value)}
+                        </p>
                         <p className="text-sm leading-7 text-zinc-400">{factor.summary}</p>
                       </div>
                     </article>
