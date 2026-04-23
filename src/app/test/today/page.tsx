@@ -66,6 +66,18 @@ function formatStatus(status: ReturnType<typeof buildPromotedTrustCheck>['status
   return 'Pattern Broken';
 }
 
+function getTrustLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
+  if (status === 'pattern_intact') {
+    return 'Trustworthy';
+  }
+
+  if (status === 'pattern_shaky') {
+    return 'Use caution';
+  }
+
+  return 'Untrustworthy';
+}
+
 function getStatusTone(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_broken') {
     return {
@@ -329,14 +341,14 @@ function getWhyNowSummary(input: {
 
 function getMeaningHeadline(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
   if (status === 'pattern_intact') {
-    return 'The read is usable';
+    return 'The score is usable';
   }
 
   if (status === 'pattern_shaky') {
-    return 'Keep size measured';
+    return 'The score needs confirmation';
   }
 
-  return 'The pattern is broken';
+  return 'The score is not trustworthy';
 }
 
 function getActionLabel(status: ReturnType<typeof buildPromotedTrustCheck>['status']) {
@@ -382,6 +394,21 @@ function getAtAGlanceSummary(input: {
   return `${scoreText} score. ${input.whyNowSummary} are overriding the normal read.`;
 }
 
+function getWhyLine(input: {
+  status: ReturnType<typeof buildPromotedTrustCheck>['status'];
+  whyNowSummary: string;
+}) {
+  if (input.status === 'pattern_intact') {
+    return 'Cross-asset signals are aligned with the normal historical read.';
+  }
+
+  if (input.status === 'pattern_shaky') {
+    return `${input.whyNowSummary} are making the setup less reliable than usual.`;
+  }
+
+  return `${input.whyNowSummary} are overriding the normal historical read.`;
+}
+
 export default async function TestTodayPreviewPage() {
   await requireTestLabAccess();
 
@@ -409,6 +436,10 @@ export default async function TestTodayPreviewPage() {
   const atAGlanceSummary = getAtAGlanceSummary({
     score,
     regimeLabel: regime.label,
+    status: trustCheck.status,
+    whyNowSummary,
+  });
+  const whyLine = getWhyLine({
     status: trustCheck.status,
     whyNowSummary,
   });
@@ -442,12 +473,12 @@ export default async function TestTodayPreviewPage() {
               </p>
             </div>
 
-            <div className={`mt-5 grid grid-cols-1 gap-0 ${terminalDividerClassName} pt-5 md:grid-cols-4`}>
+            <div className={`mt-5 grid grid-cols-1 gap-0 ${terminalDividerClassName} pt-5 md:grid-cols-2 lg:grid-cols-4`}>
               {[
-                ['Setup', getSetupLabel(trustCheck.status)],
                 ['Score', `${formatScore(score)} ${regime.label}`],
-                ['Why', whyNowSummary],
-                ['Do this', getActionLabel(trustCheck.status)],
+                ['Trust', getTrustLabel(trustCheck.status)],
+                ['Why', whyLine],
+                ['Leadership', `${strongestMove?.ticker ?? '--'} ${formatMove(strongestMove?.percentChange)}`],
               ].map(([label, value], index) => (
                 <div
                   key={label}
@@ -456,7 +487,7 @@ export default async function TestTodayPreviewPage() {
                   <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                     {label}
                   </p>
-                  <p className={`mt-2 text-lg font-semibold tracking-tight ${label === 'Setup' ? tone.accent : 'text-white'}`}>
+                  <p className={`mt-2 text-lg font-semibold tracking-tight ${label === 'Trust' ? tone.accent : 'text-white'}`}>
                     {value}
                   </p>
                 </div>
@@ -475,16 +506,7 @@ export default async function TestTodayPreviewPage() {
               </div>
             </div>
 
-            <div className={`mt-5 grid grid-cols-1 gap-3 ${terminalDividerClassName} pt-4 sm:grid-cols-3`}>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Leadership
-                </p>
-                <p className="mt-2 text-sm font-medium text-white">{strongestMove?.ticker ?? '--'}</p>
-                <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-300">
-                  {formatMove(strongestMove?.percentChange)}
-                </p>
-              </div>
+            <div className={`mt-5 grid grid-cols-1 gap-3 ${terminalDividerClassName} pt-4 sm:grid-cols-2`}>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
                   Lagging
@@ -496,9 +518,12 @@ export default async function TestTodayPreviewPage() {
               </div>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Cleanest expression
+                  Do this
                 </p>
                 <p className="mt-2 text-sm font-medium text-white">
+                  {getActionLabel(trustCheck.status)}
+                </p>
+                <p className="mt-1 text-sm text-zinc-300">
                   {bestExpression ? formatExpressionLabel(bestExpression.label) : 'Stay selective'}
                 </p>
               </div>
