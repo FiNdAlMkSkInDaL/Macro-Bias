@@ -444,58 +444,56 @@ function validateNewsletterCopy(newsletterCopy: string) {
     throw new Error(`Anthropic daily briefing used banned phrasing: "${bannedPhrase}".`);
   }
 
-  const bottomLine = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine) ?? "";
-  const dayType = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook) ?? "";
-  const edge = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest) ?? "";
-  const trustCheck = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? "";
-  const modelNote = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) ?? "";
+  const regimeStatus = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine) ?? "";
+  const tradingImplication = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook) ?? "";
+  const baseScore = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest) ?? "";
+  const whyItMatters = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? "";
+  const modelContext = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) ?? "";
 
-  if (countSentences(bottomLine) !== 2) {
-    throw new Error("Anthropic daily briefing bottom line must be exactly 2 sentences.");
+  if (countSentences(regimeStatus) !== 1) {
+    throw new Error("Anthropic daily briefing regime status must be exactly 1 sentence.");
   }
 
-  const dayTypeLines = dayType
+  const tradingImplicationLines = tradingImplication
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  if (dayTypeLines.length !== 3) {
-    throw new Error("Anthropic daily briefing day type section must contain exactly 3 bullets.");
+  if (tradingImplicationLines.length !== 3) {
+    throw new Error("Anthropic daily briefing trading implication section must contain exactly 3 bullets.");
   }
 
-  const expectedBulletPrefixes = ["- **Day type:**", "- **Best area:**", "- **Big risk:**"];
+  const expectedBulletPrefixes = ["- **Setup:**", "- **Focus:**", "- **Risk:**"];
 
   expectedBulletPrefixes.forEach((prefix, index) => {
-    if (!dayTypeLines[index]?.startsWith(prefix)) {
-      throw new Error(`Anthropic daily briefing day type bullet ${index + 1} is malformed.`);
+    if (!tradingImplicationLines[index]?.startsWith(prefix)) {
+      throw new Error(`Anthropic daily briefing trading implication bullet ${index + 1} is malformed.`);
     }
   });
 
-  if (countSentences(edge) !== 2) {
-    throw new Error("Anthropic daily briefing edge section must be exactly 2 sentences.");
+  if (countSentences(baseScore) !== 1) {
+    throw new Error("Anthropic daily briefing base score section must be exactly 1 sentence.");
   }
 
-  const trustCheckSentenceCount = countSentences(trustCheck);
-
-  if (trustCheckSentenceCount < 1 || trustCheckSentenceCount > 2) {
-    throw new Error("Anthropic daily briefing trust check must be 1 or 2 short sentences.");
+  if (countSentences(whyItMatters) !== 2) {
+    throw new Error("Anthropic daily briefing why it matters section must be exactly 2 sentences.");
   }
 
-  const modelNoteLines = modelNote
+  const modelContextLines = modelContext
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  if (modelNoteLines.length < 2 || modelNoteLines.length > 3) {
-    throw new Error("Anthropic daily briefing model note must be 2 short sentences plus optional diagnostics.");
+  if (modelContextLines.length < 2 || modelContextLines.length > 3) {
+    throw new Error("Anthropic daily briefing model context must be 2 short sentences plus optional diagnostics.");
   }
 
-  if (countSentences(modelNoteLines[0]) + countSentences(modelNoteLines[1]) !== 2) {
-    throw new Error("Anthropic daily briefing model note must begin with exactly 2 sentences.");
+  if (countSentences(modelContextLines[0]) + countSentences(modelContextLines[1]) !== 2) {
+    throw new Error("Anthropic daily briefing model context must begin with exactly 2 sentences.");
   }
 
-  if (modelNoteLines.length === 3 && !modelNoteLines[2].startsWith("Model Diagnostics:")) {
-    throw new Error("Anthropic daily briefing model note diagnostics line is malformed.");
+  if (modelContextLines.length === 3 && !modelContextLines[2].startsWith("Model Diagnostics:")) {
+    throw new Error("Anthropic daily briefing model context diagnostics line is malformed.");
   }
 }
 
@@ -551,24 +549,17 @@ function looksLikeNewsletterCopy(newsletterCopy: string) {
 }
 
 function inferOverrideFromNewsletterCopy(newsletterCopy: string) {
-  const lines = normalizeNewsletterCopy(newsletterCopy)
-    .split(/\r?\n/)
-    .map((line) => line.trim());
-  const macroProtocolIndex = lines.findIndex((line) =>
-    line.startsWith(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus),
-  );
+  const normalized = normalizeNewsletterCopy(newsletterCopy);
 
-  if (macroProtocolIndex === -1) {
+  if (/\bOverride active:\b/i.test(normalized) || /\bPattern broken\b/i.test(normalized)) {
+    return true;
+  }
+
+  if (/\bPattern intact\b/i.test(normalized) || /\bPattern shaky\b/i.test(normalized)) {
     return false;
   }
 
-  const macroProtocolWindow = lines.slice(macroProtocolIndex, macroProtocolIndex + 4).join(" ");
-
-  if (/\bINACTIVE\b/i.test(macroProtocolWindow)) {
-    return false;
-  }
-
-  return /\bACTIVE\b/i.test(macroProtocolWindow);
+  return /\bOverride ACTIVE\b/i.test(normalized);
 }
 
 function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMResponse {

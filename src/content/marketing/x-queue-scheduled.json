@@ -950,5 +950,389 @@
     "link": null,
     "scheduled_at": "2026-07-09T14:00:00.000Z",
     "status": "scheduled"
+  },
+  {
+    "id": "eng-81",
+    "category": "engagement",
+    "copy": "You can tell who has a real process by how calm they are on big red days.",
+    "link": null,
+    "scheduled_at": "2026-07-09T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-82",
+    "category": "engagement",
+    "copy": "Most bad trades start with \"I know I shouldn't, but...\" and somehow we keep acting surprised.",
+    "link": null,
+    "scheduled_at": "2026-07-10T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-83",
+    "category": "engagement",
+    "copy": "What's one setup you stopped trading because it looked good on charts but never paid you in real life?",
+    "link": null,
+    "scheduled_at": "2026-07-10T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-84",
+    "category": "engagement",
+    "copy": "The best traders I know aren't prediction machines. They're just faster at admitting when they're wrong.",
+    "link": null,
+    "scheduled_at": "2026-07-13T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-85",
+    "category": "engagement",
+    "copy": "How much of your trading is actually strategy and how much is just trying to manage your own brain?",
+    "link": null,
+    "scheduled_at": "2026-07-13T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-86",
+    "category": "engagement",
+    "copy": "A lot of people don't want an edge. They want a reason to click buttons all day.",
+    "link": null,
+    "scheduled_at": "2026-07-14T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-87",
+    "category": "engagement",
+    "copy": "What's harder for you: cutting a loser fast or letting a winner breathe?",
+    "link": null,
+    "scheduled_at": "2026-07-14T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-88",
+    "category": "engagement",
+    "copy": "Every trader says they respect risk until the trade starts working and they decide risk management is optional.",
+    "link": null,
+    "scheduled_at": "2026-07-15T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-89",
+    "category": "engagement",
+    "copy": "If tomorrow's open gaps 2% against your position, do you already know what you're doing or are you winging it?",
+    "link": null,
+    "scheduled_at": "2026-07-15T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-90",
+    "category": "engagement",
+    "copy": "People love saying \"price action knows all\" right up until bonds, vol, and dollar say the opposite.",
+    "link": null,
+    "scheduled_at": "2026-07-16T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-91",
+    "category": "engagement",
+    "copy": "Name a market opinion you held with full confidence that turned out completely wrong.",
+    "link": null,
+    "scheduled_at": "2026-07-16T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-92",
+    "category": "engagement",
+    "copy": "You don't need to catch the whole move. You just need to stop donating money trying to nail the exact turn.",
+    "link": null,
+    "scheduled_at": "2026-07-17T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-93",
+    "category": "engagement",
+    "copy": "Friday check-in: are you trading your plan today or just trying to get your week back?",
+    "link": null,
+    "scheduled_at": "2026-07-17T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-94",
+    "category": "engagement",
+    "copy": "The number of traders who think \"doing nothing\" is a waste of a session is exactly why most accounts go nowhere.",
+    "link": null,
+    "scheduled_at": "2026-07-20T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-95",
+    "category": "engagement",
+    "copy": "What's one habit outside trading that made you noticeably better at trading?",
+    "link": null,
+    "scheduled_at": "2026-07-20T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-96",
+    "category": "engagement",
+    "copy": "Everyone wants high conviction until high conviction means sitting through noise without flinching.",
+    "link": null,
+    "scheduled_at": "2026-07-21T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-97",
+    "category": "engagement",
+    "copy": "Which hurts more: missing a move you called perfectly or taking a move you knew was low quality and losing anyway?",
+    "link": null,
+    "scheduled_at": "2026-07-21T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-98",
+    "category": "engagement",
+    "copy": "Some of the best market reads look boring in real time. That's why most people miss them.",
+    "link": null,
+    "scheduled_at": "2026-07-22T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-99",
+    "category": "engagement",
+    "copy": "What's the one thing you track now that you wish you'd been tracking from day one?",
+    "link": null,
+    "scheduled_at": "2026-07-22T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-100",
+    "category": "engagement",
+    "copy": "If your entire edge disappears when volatility changes, it wasn't much of an edge to begin with.",
+    "link": null,
+    "scheduled_at": "2026-07-23T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-101",
+    "category": "engagement",
+    "copy": "Serious question: how often do you review your winners with the same honesty you review your losers?",
+    "link": null,
+    "scheduled_at": "2026-07-23T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-102",
+    "category": "engagement",
+    "copy": "A lot of \"conviction\" on this app is just oversized positions wearing a confident tone.",
+    "link": null,
+    "scheduled_at": "2026-07-24T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-103",
+    "category": "engagement",
+    "copy": "You're allowed to have a great read and still not have a trade. More people need to hear that.",
+    "link": null,
+    "scheduled_at": "2026-07-24T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-104",
+    "category": "engagement",
+    "copy": "Weekend risk is just delayed humility for people who refuse to close anything on Friday.",
+    "link": null,
+    "scheduled_at": "2026-07-27T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-105",
+    "category": "engagement",
+    "copy": "People say they want signal, but what they usually want is someone to make the uncertainty feel smaller.",
+    "link": null,
+    "scheduled_at": "2026-07-27T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-106",
+    "category": "engagement",
+    "copy": "What's a market rule you follow now that would've sounded boring to the old version of you?",
+    "link": null,
+    "scheduled_at": "2026-07-28T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-107",
+    "category": "engagement",
+    "copy": "A lot of traders don't have an execution problem. They have a boredom problem dressed up as execution.",
+    "link": null,
+    "scheduled_at": "2026-07-28T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-108",
+    "category": "engagement",
+    "copy": "You know someone's underprepared when every move feels \"unexpected\" to them.",
+    "link": null,
+    "scheduled_at": "2026-07-29T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-109",
+    "category": "engagement",
+    "copy": "What's one thing the market taught you that also made you better outside the market?",
+    "link": null,
+    "scheduled_at": "2026-07-29T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-110",
+    "category": "engagement",
+    "copy": "Most people don't blow up because they were wrong. They blow up because they couldn't tolerate being wrong early.",
+    "link": null,
+    "scheduled_at": "2026-07-30T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-111",
+    "category": "engagement",
+    "copy": "If you removed P&L from the screen, how many of your decisions would instantly get better?",
+    "link": null,
+    "scheduled_at": "2026-07-30T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-112",
+    "category": "engagement",
+    "copy": "Friday question: are you taking trades because they're there or because they actually fit your plan?",
+    "link": null,
+    "scheduled_at": "2026-07-31T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-113",
+    "category": "engagement",
+    "copy": "There are traders who respect the tape and traders who keep arguing with it until their account forces a compromise.",
+    "link": null,
+    "scheduled_at": "2026-07-31T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-114",
+    "category": "engagement",
+    "copy": "The market gets easier the second you stop needing every trade to mean something about you.",
+    "link": null,
+    "scheduled_at": "2026-08-03T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-115",
+    "category": "engagement",
+    "copy": "What's more dangerous for you personally: FOMO, revenge trading, or talking yourself into one more setup?",
+    "link": null,
+    "scheduled_at": "2026-08-03T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-116",
+    "category": "engagement",
+    "copy": "If your process only works when the market is clean and obvious, your process is unfinished.",
+    "link": null,
+    "scheduled_at": "2026-08-04T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-117",
+    "category": "engagement",
+    "copy": "What's the fastest way you can tell you're about to force a trade?",
+    "link": null,
+    "scheduled_at": "2026-08-04T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-118",
+    "category": "engagement",
+    "copy": "A calm trader with average tools usually beats an emotional trader with elite tools. Every time.",
+    "link": null,
+    "scheduled_at": "2026-08-05T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-119",
+    "category": "engagement",
+    "copy": "What's one chart or market relationship you trust more now than you did a year ago?",
+    "link": null,
+    "scheduled_at": "2026-08-05T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-120",
+    "category": "engagement",
+    "copy": "The market doesn't usually punish you for not trading. It punishes you for trading when you needed action more than edge.",
+    "link": null,
+    "scheduled_at": "2026-08-06T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-121",
+    "category": "engagement",
+    "copy": "How often do you change your opinion because the data changed vs because the position got uncomfortable?",
+    "link": null,
+    "scheduled_at": "2026-08-06T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-122",
+    "category": "engagement",
+    "copy": "The difference between discipline and hesitation is whether the trade was in your plan before the market opened.",
+    "link": null,
+    "scheduled_at": "2026-08-07T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-123",
+    "category": "engagement",
+    "copy": "What's one market belief you had to unlearn before you started getting better results?",
+    "link": null,
+    "scheduled_at": "2026-08-07T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-124",
+    "category": "engagement",
+    "copy": "Most drawdowns don't begin with a bad setup. They begin with ignoring the first small sign that you're off rhythm.",
+    "link": null,
+    "scheduled_at": "2026-08-10T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-125",
+    "category": "engagement",
+    "copy": "What's the most useful thing you do on weekends that actually improves your Monday?",
+    "link": null,
+    "scheduled_at": "2026-08-10T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-126",
+    "category": "engagement",
+    "copy": "Some traders need a better setup. Some need better sleep. Guess which one matters more most days.",
+    "link": null,
+    "scheduled_at": "2026-08-11T14:00:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-127",
+    "category": "engagement",
+    "copy": "What's a trade management rule you hated at first but now wouldn't trade without?",
+    "link": null,
+    "scheduled_at": "2026-08-11T15:30:00.000Z",
+    "status": "scheduled"
+  },
+  {
+    "id": "eng-128",
+    "category": "engagement",
+    "copy": "Every market cycle creates a new group of people who think risk management is optional. The market usually handles the onboarding.",
+    "link": null,
+    "scheduled_at": "2026-08-12T14:00:00.000Z",
+    "status": "scheduled"
   }
 ]

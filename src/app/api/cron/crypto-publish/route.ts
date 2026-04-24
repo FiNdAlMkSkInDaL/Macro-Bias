@@ -140,7 +140,7 @@ function escapeHtml(text: string): string {
 }
 
 function parseCryptoEmailSections(copy: string): Array<{ title: string; content: string }> {
-  const HEADERS = ["BOTTOM LINE", "MARKET BREAKDOWN", "RISK CHECK", "MODEL NOTES"];
+  const HEADERS = ["REGIME STATUS", "MARKET MAP", "RISK FRAME", "MODEL CONTEXT"];
   const lines = copy.split("\n");
   const sections: Array<{ title: string; content: string }> = [];
   let current: { title: string; lines: string[] } | null = null;
@@ -201,10 +201,10 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
   const sections = parseCryptoEmailSections(newsletterCopy);
   const sectionHtml = sections.map((s, i) => {
     const colors: Record<string, string> = {
-      "BOTTOM LINE": "#7dd3fc",
-      "MARKET BREAKDOWN": "#a78bfa",
-      "RISK CHECK": "#fb923c",
-      "MODEL NOTES": "#6ee7b7",
+      "REGIME STATUS": "#7dd3fc",
+      "MARKET MAP": "#a78bfa",
+      "RISK FRAME": "#fb923c",
+      "MODEL CONTEXT": "#6ee7b7",
     };
     return renderCryptoSectionHtml(s.title, s.content, colors[s.title] ?? "#94a3b8", i === 0 ? 0 : 28);
   }).join("");
@@ -237,9 +237,11 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
       <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;-webkit-text-fill-color:#52525b;">
         Daily Crypto Bias
       </p>
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#64748b;-webkit-text-fill-color:#64748b;">
+        Base Score
+      </p>
       <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
-        ${escapeHtml(labelText)}
-        <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
+        ${escapeHtml(labelText)} <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
       </p>
     </div>
 
@@ -276,21 +278,19 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
     : "#fbbf24";
 
   const sections = parseCryptoEmailSections(newsletterCopy);
-  const bottomLine = sections.find((s) => s.title === "BOTTOM LINE");
-  const marketBreakdown = sections.find((s) => s.title === "MARKET BREAKDOWN");
+  const regimeStatus = sections.find((s) => s.title === "REGIME STATUS");
+  const marketMap = sections.find((s) => s.title === "MARKET MAP");
 
-  // Render bottom line section
-  const bottomLineHtml = bottomLine
-    ? renderCryptoSectionHtml("BOTTOM LINE", bottomLine.content, "#7dd3fc", 0)
+  const regimeStatusHtml = regimeStatus
+    ? renderCryptoSectionHtml("REGIME STATUS", regimeStatus.content, "#7dd3fc", 0)
     : "";
 
-  // Render first bullet/paragraph of market breakdown
   let marketPreviewHtml = "";
-  if (marketBreakdown) {
-    const lines = marketBreakdown.content.split("\n").filter((l) => l.trim());
+  if (marketMap) {
+    const lines = marketMap.content.split("\n").filter((l) => l.trim());
     const firstLine = lines[0] ?? "";
     if (firstLine) {
-      marketPreviewHtml = renderCryptoSectionHtml("MARKET BREAKDOWN", firstLine, "#a78bfa", 28);
+      marketPreviewHtml = renderCryptoSectionHtml("MARKET MAP", firstLine, "#a78bfa", 28);
     }
   }
 
@@ -337,15 +337,17 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
       <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;-webkit-text-fill-color:#52525b;">
         Daily Crypto Bias
       </p>
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#64748b;-webkit-text-fill-color:#64748b;">
+        Base Score
+      </p>
       <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
-        ${escapeHtml(labelText)}
-        <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
+        ${escapeHtml(labelText)} <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
       </p>
     </div>
 
     <!-- Body -->
     <div style="border:1px solid rgba(255,255,255,0.08);background:#18181b;padding:24px 20px;margin-bottom:4px;">
-      ${bottomLineHtml}
+      ${regimeStatusHtml}
       ${marketPreviewHtml}
       ${paywallHtml}
     </div>
@@ -579,7 +581,7 @@ function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: strin
   const labelText = label.replace(/_/g, " ");
 
   // Extract the BOTTOM LINE from the newsletter copy for a concise summary
-  const bottomLineMatch = newsletterCopy.match(/BOTTOM LINE[:\s]*\n?([\s\S]*?)(?=\n\s*(?:MARKET BREAKDOWN|RISK CHECK|MODEL NOTES)|$)/i);
+  const bottomLineMatch = newsletterCopy.match(/REGIME STATUS[:\s]*\n?([\s\S]*?)(?=\n\s*(?:MARKET MAP|RISK FRAME|MODEL CONTEXT)|$)/i);
   let summaryLine = "";
   if (bottomLineMatch) {
     // Take first sentence of the bottom line

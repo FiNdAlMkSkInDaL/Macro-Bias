@@ -114,8 +114,8 @@ function formatSignedNumber(value: number) {
 }
 
 function buildHeaderSummary(score: number, label: string, isOverrideActive: boolean) {
-  const scoreText = `TODAY'S SCORE: ${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
-  return isOverrideActive ? `${scoreText} | ⚠️ MACRO OVERRIDE ACTIVE` : scoreText;
+  const scoreText = `BASE SCORE: ${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
+  return isOverrideActive ? `OVERRIDE ACTIVE | ${scoreText}` : scoreText;
 }
 
 function renderMonospaceSpan(value: string, color?: string) {
@@ -259,13 +259,13 @@ function buildFreeTierNewsletterCopyText(newsletterCopy: string) {
 
   const sectionMap = new Map(sections.map((section) => [section.title, section] as const));
   const visibleSections: string[] = [];
-  const bottomLineSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
+  const regimeStatusSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
   const playbookSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook);
-  const trustCheckSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus);
+  const baseScoreSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest);
 
-  if (bottomLineSection) {
+  if (regimeStatusSection) {
     visibleSections.push(
-      buildNewsletterSectionText(bottomLineSection.title, bottomLineSection.content),
+      buildNewsletterSectionText(regimeStatusSection.title, regimeStatusSection.content),
     );
   }
 
@@ -278,9 +278,9 @@ function buildFreeTierNewsletterCopyText(newsletterCopy: string) {
     );
   }
 
-  if (trustCheckSection) {
+  if (baseScoreSection) {
     visibleSections.push(
-      buildNewsletterSectionText(trustCheckSection.title, trustCheckSection.content),
+      buildNewsletterSectionText(baseScoreSection.title, baseScoreSection.content),
     );
   }
 
@@ -363,9 +363,9 @@ function buildEmailHeadHtml() {
         padding: 0 !important;
         width: 100% !important;
         min-width: 100% !important;
-        background-color: #020617 !important;
-        background-image: linear-gradient(#020617, #020617) !important;
-        color: #e2e8f0 !important;
+        background-color: #09090b !important;
+        background-image: linear-gradient(#09090b, #09090b) !important;
+        color: #e4e4e7 !important;
         -webkit-text-size-adjust: 100% !important;
         -ms-text-size-adjust: 100% !important;
       }
@@ -382,12 +382,17 @@ function buildEmailHeadHtml() {
 
       .email-body,
       .email-wrapper,
-      .email-shell,
       .email-content,
       .email-surface {
-        background-color: #020617 !important;
-        background-image: linear-gradient(#020617, #020617) !important;
-        color: #e2e8f0 !important;
+        background-color: #09090b !important;
+        background-image: linear-gradient(#09090b, #09090b) !important;
+        color: #e4e4e7 !important;
+      }
+
+      .email-card {
+        background-color: #18181b !important;
+        background-image: linear-gradient(#18181b, #18181b) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
 
       .email-heading {
@@ -396,8 +401,8 @@ function buildEmailHeadHtml() {
       }
 
       .email-label {
-        color: #64748b !important;
-        -webkit-text-fill-color: #64748b !important;
+        color: #52525b !important;
+        -webkit-text-fill-color: #52525b !important;
       }
 
       .email-eyebrow {
@@ -406,14 +411,14 @@ function buildEmailHeadHtml() {
       }
 
       .email-copy {
-        color: #dbe4ee !important;
-        -webkit-text-fill-color: #dbe4ee !important;
+        color: #cbd5e1 !important;
+        -webkit-text-fill-color: #cbd5e1 !important;
       }
 
       .email-button-cell {
-        background-color: #0b1220 !important;
-        background-image: linear-gradient(#0b1220, #0b1220) !important;
-        border: 1px solid #38bdf8 !important;
+        background-color: #0ea5e9 !important;
+        background-image: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+        border: 1px solid #7dd3fc !important;
       }
 
       .email-button-link {
@@ -427,12 +432,17 @@ function buildEmailHeadHtml() {
         body,
         .email-body,
         .email-wrapper,
-        .email-shell,
         .email-content,
         .email-surface {
-          background-color: #020617 !important;
-          background-image: linear-gradient(#020617, #020617) !important;
-          color: #e2e8f0 !important;
+          background-color: #09090b !important;
+          background-image: linear-gradient(#09090b, #09090b) !important;
+          color: #e4e4e7 !important;
+        }
+
+        .email-card {
+          background-color: #18181b !important;
+          background-image: linear-gradient(#18181b, #18181b) !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
         }
 
         .email-heading {
@@ -441,8 +451,8 @@ function buildEmailHeadHtml() {
         }
 
         .email-label {
-          color: #64748b !important;
-          -webkit-text-fill-color: #64748b !important;
+          color: #52525b !important;
+          -webkit-text-fill-color: #52525b !important;
         }
 
         .email-eyebrow {
@@ -451,14 +461,14 @@ function buildEmailHeadHtml() {
         }
 
         .email-copy {
-          color: #dbe4ee !important;
-          -webkit-text-fill-color: #dbe4ee !important;
+          color: #cbd5e1 !important;
+          -webkit-text-fill-color: #cbd5e1 !important;
         }
 
         .email-button-cell {
-          background-color: #0b1220 !important;
-          background-image: linear-gradient(#0b1220, #0b1220) !important;
-          border: 1px solid #38bdf8 !important;
+          background-color: #0ea5e9 !important;
+          background-image: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+          border: 1px solid #7dd3fc !important;
         }
 
         .email-button-link {
@@ -472,12 +482,17 @@ function buildEmailHeadHtml() {
         body,
         .email-body,
         .email-wrapper,
-        .email-shell,
         .email-content,
         .email-surface {
-          background-color: #020617 !important;
-          background-image: linear-gradient(#020617, #020617) !important;
-          color: #e2e8f0 !important;
+          background-color: #09090b !important;
+          background-image: linear-gradient(#09090b, #09090b) !important;
+          color: #e4e4e7 !important;
+        }
+
+        .email-card {
+          background-color: #18181b !important;
+          background-image: linear-gradient(#18181b, #18181b) !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
         }
 
         .email-heading {
@@ -486,8 +501,8 @@ function buildEmailHeadHtml() {
         }
 
         .email-label {
-          color: #64748b !important;
-          -webkit-text-fill-color: #64748b !important;
+          color: #52525b !important;
+          -webkit-text-fill-color: #52525b !important;
         }
 
         .email-eyebrow {
@@ -496,14 +511,14 @@ function buildEmailHeadHtml() {
         }
 
         .email-copy {
-          color: #dbe4ee !important;
-          -webkit-text-fill-color: #dbe4ee !important;
+          color: #cbd5e1 !important;
+          -webkit-text-fill-color: #cbd5e1 !important;
         }
 
         .email-button-cell {
-          background-color: #0b1220 !important;
-          background-image: linear-gradient(#0b1220, #0b1220) !important;
-          border: 1px solid #38bdf8 !important;
+          background-color: #0ea5e9 !important;
+          background-image: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+          border: 1px solid #7dd3fc !important;
         }
 
         .email-button-link {
@@ -514,12 +529,17 @@ function buildEmailHeadHtml() {
 
       [data-ogsc] .email-body,
       [data-ogsc] .email-wrapper,
-      [data-ogsc] .email-shell,
       [data-ogsc] .email-content,
       [data-ogsc] .email-surface {
-        background-color: #020617 !important;
-        background-image: linear-gradient(#020617, #020617) !important;
-        color: #e2e8f0 !important;
+        background-color: #09090b !important;
+        background-image: linear-gradient(#09090b, #09090b) !important;
+        color: #e4e4e7 !important;
+      }
+
+      [data-ogsc] .email-card {
+        background-color: #18181b !important;
+        background-image: linear-gradient(#18181b, #18181b) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
 
       [data-ogsc] .email-heading {
@@ -528,8 +548,8 @@ function buildEmailHeadHtml() {
       }
 
       [data-ogsc] .email-label {
-        color: #64748b !important;
-        -webkit-text-fill-color: #64748b !important;
+        color: #52525b !important;
+        -webkit-text-fill-color: #52525b !important;
       }
 
       [data-ogsc] .email-eyebrow {
@@ -538,14 +558,14 @@ function buildEmailHeadHtml() {
       }
 
       [data-ogsc] .email-copy {
-        color: #dbe4ee !important;
-        -webkit-text-fill-color: #dbe4ee !important;
+        color: #cbd5e1 !important;
+        -webkit-text-fill-color: #cbd5e1 !important;
       }
 
       [data-ogsc] .email-button-cell {
-        background-color: #0b1220 !important;
-        background-image: linear-gradient(#0b1220, #0b1220) !important;
-        border: 1px solid #38bdf8 !important;
+        background-color: #0ea5e9 !important;
+        background-image: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+        border: 1px solid #7dd3fc !important;
       }
 
       [data-ogsc] .email-button-link {
@@ -565,24 +585,21 @@ function buildHeaderTickerHtml(
 ) {
   const baselineLabel = formatDisplayLabel(label);
   const baselineScore = formatSignedNumber(score);
-  const overlayLabel = isOverrideActive ? 'PATTERN BROKEN' : 'PATTERN INTACT';
+  const statusLabel = isOverrideActive ? 'OVERRIDE ACTIVE' : 'PATTERN INTACT';
+  const statusSubline = isOverrideActive ? 'Headline-driven session' : 'Score is in play';
 
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td style="padding: 0 0 14px;">
-        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">TODAY'S SCORE</div>
-        <div class="email-heading" style="margin-top: 8px; color: #f8fafc; font-size: 30px; font-weight: 700; line-height: 1.2;">
-          ${renderMonospaceSpan(baselineLabel)} <span style="color: ${accentColor};">${renderMonospaceSpan(`(${baselineScore})`)}</span>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 14px 0 0; border-top: 1px solid #1e293b;">
-        <div class="email-label" style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">TRUST CHECK</div>
-        <div style="margin-top: 8px; color: ${overrideStatusColor}; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.2;">${renderMonospaceSpan(overlayLabel, overrideStatusColor)}</div>
-      </td>
-    </tr>
-  </table>`;
+  return `<div>
+    <div class="email-label" style="color: #52525b; font-size: 10px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase;">Daily Macro Bias</div>
+    <div style="margin-top: 12px; color: ${accentColor}; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;">
+      ${escapeHtml(baselineLabel)}
+      <span style="font-size: 20px; margin-left: 8px;">${escapeHtml(`(${baselineScore})`)}</span>
+    </div>
+    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+      <div class="email-label" style="color: #52525b; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;">Regime Status</div>
+      <div style="margin-top: 8px; color: ${overrideStatusColor}; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.2;">${renderMonospaceSpan(statusLabel, overrideStatusColor)}</div>
+      <div style="margin-top: 6px; color: #cbd5e1; -webkit-text-fill-color: #cbd5e1; font-size: 14px; line-height: 1.5;">${escapeHtml(statusSubline)}</div>
+    </div>
+  </div>`;
 }
 
 function buildDashboardCtaHtml(dashboardUrl: string) {
@@ -677,17 +694,17 @@ function renderNewsletterCopyHtml(
 
   const sectionMap = new Map(sections.map((section) => [section.title, section] as const));
   const renderedSections: string[] = [];
-  const bottomLineSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
+  const regimeStatusSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
   const playbookSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook);
-  const whySection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest);
-  const macroOverlaySection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus);
-  const quantCornerSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner);
+  const baseScoreSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest);
+  const whyItMattersSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus);
+  const modelContextSection = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner);
 
-  if (bottomLineSection) {
+  if (regimeStatusSection) {
     renderedSections.push(
       renderSectionBlock(
-        bottomLineSection.title,
-        renderParagraphsHtml(bottomLineSection.content, '#eef6ff', 18, 16),
+        regimeStatusSection.title,
+        renderParagraphsHtml(regimeStatusSection.content, '#eef6ff', 18, 16),
         {
           marginTop: 0,
           titleColor: '#7dd3fc',
@@ -711,24 +728,24 @@ function renderNewsletterCopyHtml(
     );
   }
 
-  if (tier === 'premium' && whySection) {
+  if (tier === 'premium' && baseScoreSection) {
     renderedSections.push(
       renderSectionBlock(
-        whySection.title,
-        renderParagraphsHtml(whySection.content, '#dbe4ee', 16, 14),
+        baseScoreSection.title,
+        renderParagraphsHtml(baseScoreSection.content, '#dbe4ee', 16, 14),
         {
           marginTop: 28,
-          titleColor: '#cbd5e1',
+          titleColor: accentColor,
         },
       ),
     );
   }
 
-  if (tier === 'premium' && macroOverlaySection) {
+  if (tier === 'premium' && whyItMattersSection) {
     renderedSections.push(
       renderSectionBlock(
-        macroOverlaySection.title,
-        renderParagraphsHtml(macroOverlaySection.content, '#e5eefb', 16, 14),
+        whyItMattersSection.title,
+        renderParagraphsHtml(whyItMattersSection.content, '#e5eefb', 16, 14),
         {
           marginTop: 28,
           titleColor: overrideStatusColor,
@@ -737,11 +754,11 @@ function renderNewsletterCopyHtml(
     );
   }
 
-  if (tier === 'premium' && quantCornerSection) {
+  if (tier === 'premium' && modelContextSection) {
     renderedSections.push(
       renderSectionBlock(
-        quantCornerSection.title,
-        renderParagraphsHtml(quantCornerSection.content, '#dbe4ee', 16, 14),
+        modelContextSection.title,
+        renderParagraphsHtml(modelContextSection.content, '#dbe4ee', 16, 14),
         {
           marginTop: 28,
           titleColor: '#cbd5e1',
@@ -1000,26 +1017,35 @@ function buildEmailHtml(
   return `<!doctype html>
 <html lang="en">
   ${buildEmailHeadHtml()}
-  <body class="email-body" bgcolor="#020617" style="margin: 0; padding: 0; background: #020617; background-color: #020617; background-image: linear-gradient(#020617, #020617); color: #e2e8f0; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  <body class="email-body" bgcolor="#09090b" style="margin: 0; padding: 0; background: #09090b; background-color: #09090b; background-image: linear-gradient(#09090b, #09090b); color: #e4e4e7; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
     <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; mso-hide: all;">${headerSummary}</div>
-    <table role="presentation" class="email-wrapper email-surface" bgcolor="#020617" width="100%" cellspacing="0" cellpadding="0" style="background: #020617; background-color: #020617; background-image: linear-gradient(#020617, #020617); padding: 32px 12px 40px;">
+    <table role="presentation" class="email-wrapper email-surface" bgcolor="#09090b" width="100%" cellspacing="0" cellpadding="0" style="background: #09090b; background-color: #09090b; background-image: linear-gradient(#09090b, #09090b); padding: 32px 16px;">
       <tr>
-        <td class="email-content" align="center" bgcolor="#020617" style="background: #020617; background-color: #020617; background-image: linear-gradient(#020617, #020617);">
-          <table role="presentation" class="email-shell email-surface" bgcolor="#020617" width="100%" cellspacing="0" cellpadding="0" style="max-width: 720px; background: #020617; background-color: #020617; background-image: linear-gradient(#020617, #020617);">
+        <td class="email-content" align="center" bgcolor="#09090b" style="background: #09090b; background-color: #09090b; background-image: linear-gradient(#09090b, #09090b);">
+          <table role="presentation" class="email-surface" bgcolor="#09090b" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background: #09090b; background-color: #09090b; background-image: linear-gradient(#09090b, #09090b);">
             <tr>
-              <td style="padding: 0 8px;">
-                <div class="email-eyebrow" style="color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Daily Macro Bias</div>
-                <div style="margin-top: 16px;">${headerTickerHtml}</div>
-                <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid #1e293b;">
-                  ${bodyCopyHtml}
+              <td>
+                <div class="email-card" style="border: 1px solid rgba(255,255,255,0.08); background: #18181b; background-color: #18181b; background-image: linear-gradient(#18181b, #18181b); padding: 24px 20px; margin-bottom: 4px;">
+                  ${headerTickerHtml}
                 </div>
-                ${weeklyRecapHtml}
+                <div class="email-card" style="border: 1px solid rgba(255,255,255,0.08); background: #18181b; background-color: #18181b; background-image: linear-gradient(#18181b, #18181b); padding: 24px 20px; margin-bottom: 4px;">
+                  ${bodyCopyHtml}
+                  ${weeklyRecapHtml}
+                </div>
                 <div style="margin-top: 32px;">
                   ${footerCtaHtml}
                 </div>
                 ${referralWidgetHtml}
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #1e293b; text-align: center;">
-                  <a href="${UNSUBSCRIBE_PLACEHOLDER}" style="color: #475569; font-size: 11px; text-decoration: underline;">Unsubscribe from daily emails</a>
+                <div style="padding: 20px 0; text-align: center;">
+                  <p style="margin: 0 0 8px; font-size: 11px; color: #3f3f46; -webkit-text-fill-color: #3f3f46;">
+                    <a href="${cryptoBriefingUrl}" style="color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; text-decoration: none;">macro-bias.com/crypto</a>
+                  </p>
+                  <p style="margin: 0; font-size: 10px; color: #3f3f46; -webkit-text-fill-color: #3f3f46;">
+                    You're receiving this because you opted into Macro Bias daily emails.
+                  </p>
+                  <p style="margin: 8px 0 0; font-size: 10px; color: #3f3f46; -webkit-text-fill-color: #3f3f46;">
+                    <a href="${UNSUBSCRIBE_PLACEHOLDER}" style="color: #52525b; -webkit-text-fill-color: #52525b; text-decoration: underline;">Unsubscribe</a>
+                  </p>
                 </div>
               </td>
             </tr>
@@ -1089,7 +1115,7 @@ export function createQuantBriefingEmailContent(
       : '';
   const labelText = `${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
   const subject = isOverrideActive
-    ? `⚠️ Pattern Broken | ${labelText}${weeklyTag}`
+    ? `Override Active | ${labelText}${weeklyTag}`
     : `${labelText}${weeklyTag}`;
 
   return {

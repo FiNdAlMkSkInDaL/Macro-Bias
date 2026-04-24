@@ -103,19 +103,19 @@ function buildModelDiagnostics(context: DailyBriefingStrategyContext) {
 
 function buildQuantCorner(context: DailyBriefingStrategyContext) {
   if (!context.quant.analogReference) {
-    const firstSentence = "There is not enough clean history here, so the score is leaning more on the live tape than the analog set.";
+    const firstSentence = "There is not enough clean history here, so the analog comparison is weak today.";
     const secondSentence = context.suggestedOverrideActive
       ? "That matters even less than usual because the news changed the setup."
-      : "That makes this read a little softer than usual.";
+      : "That makes the score usable, but less sturdy than a clean analog day.";
 
     return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
   }
 
   const analogReference = getAnalogReferenceText(context.quant);
-  const firstSentence = `Closest match is ${analogReference}, a quieter session than today.`;
+  const firstSentence = `Closest match is ${analogReference}, which was a quieter session than this one.`;
   const secondSentence = context.suggestedOverrideActive
-    ? "On a normal day this setup would usually stay contained, but today's news makes that comparison less useful."
-    : "A normal day like this would usually stay fairly contained, and that comparison still matters because the setup has not broken.";
+    ? "On a normal day this setup would usually stay contained, but today's news makes that comparison more of a baseline than a guide."
+    : "On a normal day this setup would usually stay fairly contained, and that comparison still deserves weight because the pattern is still intact.";
 
   return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
 }
@@ -128,63 +128,63 @@ function buildTraderPlaybook(context: DailyBriefingStrategyContext) {
   const pressuredGroups = context.suggestedOverrideActive
     ? "index chasing"
     : summarizeFocus(context.playbook.pressuredGroups);
-  const dayTypeText = context.suggestedOverrideActive
-    ? "Neutral setup, but headlines are driving the tape."
+  const setupText = context.suggestedOverrideActive
+    ? "Headline-driven session, so the index read is unstable."
     : context.playbook.posture;
-  const bestAreaText = context.suggestedOverrideActive
+  const focusText = context.suggestedOverrideActive
     ? `${convictionText} conviction. Focus on ${favoredGroups}, not ${pressuredGroups}.`
     : `${convictionText} conviction. Focus on ${favoredGroups}, not ${pressuredGroups}.`;
-  const bigRiskText = context.suggestedOverrideActive
-    ? "Treating a noisy tape like a clean trend day."
+  const riskText = context.suggestedOverrideActive
+    ? "Treating a reactive tape like a clean trend day."
     : context.playbook.invalidationSignal;
 
   return [
     `${DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook}:`,
-    `- **Day type:** ${dayTypeText}`,
-    `- **Best area:** ${bestAreaText}`,
-    `- **Big risk:** ${bigRiskText}`,
+    `- **Setup:** ${setupText}`,
+    `- **Focus:** ${focusText}`,
+    `- **Risk:** ${riskText}`,
   ].join("\n");
 }
 
 function buildStressTest(context: DailyBriefingStrategyContext) {
-  const firstSentence = context.suggestedOverrideActive
-    ? "The edge is in stock-specific setups while the index gets pushed around by headlines."
-    : context.stressTest.counterThesis;
-  const secondSentence = context.suggestedOverrideActive
-    ? "If the market keeps reacting to every new headline, use the score as background, not signal."
-    : context.stressTest.provingSignals;
+  const scoreText = `${formatBiasLabel(context.quant.label)} (${context.quant.score > 0 ? "+" : ""}${context.quant.score.toFixed(0)})`;
+  const sentence = context.suggestedOverrideActive
+    ? `Base model score: ${scoreText}, but it is de-emphasized until the market stops trading on fresh headlines.`
+    : `Base model score: ${scoreText}, and it still deserves weight because the setup has not broken.`;
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.stressTest}: ${firstSentence} ${secondSentence}`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.stressTest}: ${sentence}`;
 }
 
 function buildTrustCheck(context: DailyBriefingStrategyContext) {
   if (context.suggestedOverrideActive) {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern broken. ${formatCatalyst(context.catalyst)} changed the setup enough that the historical pattern is not reliable right now.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: ${formatCatalyst(context.catalyst)} is moving the tape more than the normal setup this morning. If the market keeps repricing every new headline, the pattern is still broken.`;
   }
 
   if (context.news.status === "unavailable") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern shaky. The score still matters, but the live news read is unavailable.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: The score still matters, but the live news read is unavailable. Trust improves if price action and breadth stay aligned with the base read after the open.`;
   }
 
   if (context.playbook.conviction === "LOW") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern shaky. The score is near neutral, so this read needs confirmation from price action.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: The score is near neutral, so the historical read is not strong on its own. Trust improves if the tape starts confirming the same direction instead of flipping around it.`;
   }
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: Pattern intact. The news does not do enough damage to break the historical read.`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: The news does not do enough damage to break the historical read today. If leadership and breadth keep lining up with the score, confidence should hold.`;
 }
 
 function buildBottomLine(context: DailyBriefingStrategyContext) {
-  const labelText = formatBiasLabel(context.quant.label);
-
   if (context.suggestedOverrideActive) {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern broken this morning. ${formatCatalyst(context.catalyst)} matters more than the ${labelText.toLowerCase()} score right now.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Override active: headline-driven session, so the score is background context for now.`;
   }
 
   if (context.news.status === "unavailable") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} score, but trust it less than usual. News is unavailable, so the setup needs more confirmation from price action.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the score is usable, but the missing news read lowers confidence.`;
   }
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: ${labelText} score, and the setup is still intact. The news is not doing enough damage to break the historical read.`;
+  if (context.playbook.conviction === "LOW") {
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the score is usable, but it still needs confirmation from the tape.`;
+  }
+
+  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern intact: the score deserves real weight today.`;
 }
 
 class NewsAwareBriefingStrategy implements DailyBriefingStrategy {

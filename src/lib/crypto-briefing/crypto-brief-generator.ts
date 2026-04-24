@@ -45,6 +45,86 @@ type CryptoBriefingPromptPayload = {
   averageForward3DayReturn: number | null;
 };
 
+function countSentences(value: string) {
+  return value
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0).length;
+}
+
+function validateCryptoNewsletterCopy(newsletterCopy: string) {
+  const headers = Object.values(CRYPTO_BRIEFING_SECTION_HEADERS);
+  const matches = [...newsletterCopy.matchAll(
+    new RegExp(`^(${headers.map((header) => header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s*:?[ \t]*$`, "gm"),
+  )];
+
+  if (matches.length !== headers.length) {
+    throw new Error("Anthropic crypto briefing failed section parsing.");
+  }
+
+  const sections = new Map<string, string>();
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const title = match[1];
+    const start = match.index! + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index! : newsletterCopy.length;
+    sections.set(title, newsletterCopy.slice(start, end).trim());
+  }
+
+  const regimeStatus = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.bottomLine) ?? "";
+  const marketMap = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.marketBreakdown) ?? "";
+  const riskFrame = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.riskCheck) ?? "";
+  const modelContext = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.modelNotes) ?? "";
+
+  if (countSentences(regimeStatus) !== 1) {
+    throw new Error("Anthropic crypto briefing regime status must be exactly 1 sentence.");
+  }
+
+  const marketLines = marketMap
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (marketLines.length !== 4) {
+    throw new Error("Anthropic crypto briefing market map must contain exactly 4 bullets.");
+  }
+
+  const expectedPrefixes = [
+    "- **Bitcoin**:",
+    "- **Altcoins (ETH-led)**:",
+    "- **DeFi/L1s**:",
+    "- **Stablecoins/Flows**:",
+  ];
+
+  expectedPrefixes.forEach((prefix, index) => {
+    if (!marketLines[index]?.startsWith(prefix)) {
+      throw new Error(`Anthropic crypto briefing market map bullet ${index + 1} is malformed.`);
+    }
+  });
+
+  if (countSentences(riskFrame) !== 2) {
+    throw new Error("Anthropic crypto briefing risk frame must be exactly 2 sentences.");
+  }
+
+  const modelContextLines = modelContext
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (modelContextLines.length !== 3) {
+    throw new Error("Anthropic crypto briefing model context must be 2 sentences plus diagnostics.");
+  }
+
+  if (countSentences(modelContextLines[0]) + countSentences(modelContextLines[1]) !== 2) {
+    throw new Error("Anthropic crypto briefing model context must begin with exactly 2 sentences.");
+  }
+
+  if (!modelContextLines[2].startsWith("Model Diagnostics:")) {
+    throw new Error("Anthropic crypto briefing diagnostics line is malformed.");
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -112,7 +192,13 @@ function parseCryptoBriefingResponse(raw: string): CryptoBriefingLLMResponse {
   // Try direct parse
   try {
     const parsed = JSON.parse(raw);
-    if (isCryptoBriefingResponse(parsed)) return parsed;
+    if (isCryptoBriefingResponse(parsed)) {
+      validateCryptoNewsletterCopy(parsed.newsletter_copy.trim());
+      return {
+        ...parsed,
+        newsletter_copy: parsed.newsletter_copy.trim(),
+      };
+    }
   } catch { /* ignore */ }
 
   // Try extracting embedded JSON
@@ -121,14 +207,22 @@ function parseCryptoBriefingResponse(raw: string): CryptoBriefingLLMResponse {
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     try {
       const embedded = JSON.parse(raw.slice(firstBrace, lastBrace + 1));
-      if (isCryptoBriefingResponse(embedded)) return embedded;
+      if (isCryptoBriefingResponse(embedded)) {
+        validateCryptoNewsletterCopy(embedded.newsletter_copy.trim());
+        return {
+          ...embedded,
+          newsletter_copy: embedded.newsletter_copy.trim(),
+        };
+      }
     } catch { /* ignore */ }
   }
 
   // Fallback: treat entire response as newsletter copy
   const hasHeaders = Object.values(CRYPTO_BRIEFING_SECTION_HEADERS).every((h) => raw.includes(h));
   if (hasHeaders) {
-    return { is_override_active: false, newsletter_copy: raw.trim() };
+    const normalized = raw.trim();
+    validateCryptoNewsletterCopy(normalized);
+    return { is_override_active: false, newsletter_copy: normalized };
   }
 
   throw new Error("Anthropic crypto briefing response was not valid JSON.");
@@ -144,19 +238,20 @@ function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
 
   return [
     `${CRYPTO_BRIEFING_SECTION_HEADERS.bottomLine}:`,
-    `The crypto regime algo scored ${label} (${score}) today. **BTC** moved ${btcPct} in the last session. The model is reading a mixed picture, so staying patient makes sense.`,
+    `Crypto is in a ${label.toLowerCase()} regime, and the score still deserves weight today.`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.marketBreakdown}:`,
-    `- **Bitcoin**: Neutral -- BTC closed at $${btcChange?.close.toLocaleString() ?? "n/a"} with a ${btcPct} move.`,
-    `- **Altcoins (ETH-led)**: Neutral -- ETH is tracking BTC without clear leadership.`,
-    `- **DeFi/L1s**: Neutral -- No standout moves in the L1 space today.`,
-    `- **Stablecoins/Flows**: Neutral -- Flow data is inconclusive.`,
+    `- **Bitcoin**: Neutral -- **BTC** closed at $${btcChange?.close.toLocaleString() ?? "n/a"} with a ${btcPct} move, so price alone is not giving a strong message.`,
+    `- **Altcoins (ETH-led)**: Neutral -- **ETH** is tracking **BTC** without clear leadership or stress.`,
+    `- **DeFi/L1s**: Neutral -- The higher-beta part of crypto is not showing a clean expansion signal yet.`,
+    `- **Stablecoins/Flows**: Neutral -- No obvious flow disruption is showing up in the stablecoin backdrop.`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.riskCheck}:`,
-    `No major override catalysts detected. The model's historical pattern still applies.`,
+    `The close in **BTC** matters less than the broader macro and relative-strength backdrop. Confidence improves if **ETH** and higher-beta crypto stop lagging while the dollar backdrop eases.`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.modelNotes}:`,
-    `The K-NN model found 5 historical analogs. Briefing was generated from quant data only because the LLM was unavailable.`,
+    `The nearest analog set gives a usable baseline, but this fallback is leaning on compressed quant context rather than a full narrative read. Similar setups were mixed enough that the score should be treated as a directional lean, not a precise path forecast.`,
+    `Model Diagnostics: BTC Close $${btcChange?.close.toLocaleString() ?? "n/a"} | BTC Daily Change ${btcPct} | Score ${score} | Analogs ${biasResult.componentScores[0]?.analogDates?.slice(0, 3).join(", ") || "n/a"}.`,
   ].join("\n");
 }
 
