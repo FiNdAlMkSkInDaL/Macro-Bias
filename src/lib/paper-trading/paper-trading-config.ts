@@ -76,30 +76,21 @@ export const PAPER_TRADING_DECISION_RESPONSE_SCHEMA = {
     },
     target_spy_weight: {
       type: "number",
-      minimum: 0,
-      maximum: 1,
     },
     target_cash_weight: {
       type: "number",
-      minimum: 0,
-      maximum: 1,
     },
     conviction_score: {
       type: "integer",
-      minimum: 0,
-      maximum: 100,
     },
     reasoning_summary: {
       type: "string",
-      minLength: 1,
     },
     risk_flags: {
       type: "array",
       items: {
         type: "string",
-        minLength: 1,
       },
-      maxItems: PAPER_TRADING_MAX_RISK_FLAGS,
     },
   },
 } satisfies Record<string, unknown>;
