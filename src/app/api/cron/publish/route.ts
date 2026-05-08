@@ -35,7 +35,8 @@ export const maxDuration = 300;
 export const revalidate = 0;
 
 const EMAIL_RECIPIENT_PAGE_SIZE = 1000;
-const MAX_HISTORY_ROWS = 180;
+const STOCK_EMAIL_FAILURE_ALERT_RECIPIENT = 'finphillips21@gmail.com';
+const MAX_RECENT_FULL_SNAPSHOT_ROWS = 10;
 const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 120;
 const DISCORD_PUBLISHING_ENABLED = false;
 const MARKET_TIME_ZONE = 'America/New_York';
@@ -75,6 +76,13 @@ type PublishResult = {
   destination: PublishDestination;
   failure?: string;
   ok: boolean;
+};
+
+type StockEmailFailureAlertInput = {
+  briefingDate: string;
+  reason: string;
+  requestUrl: string;
+  tradeDate?: string;
 };
 
 type BriefingRecipientRow = {
@@ -621,16 +629,78 @@ async function safePublish(destination: PublishDestination, publish: () => Promi
   }
 }
 
+async function sendStockEmailFailureAlert(input: StockEmailFailureAlertInput) {
+  const resendApiKey = getOptionalServerEnv('RESEND_API_KEY');
+
+  if (!resendApiKey) {
+    console.warn(
+      `[publish-cron] Unable to send stock email failure alert to ${STOCK_EMAIL_FAILURE_ALERT_RECIPIENT}: RESEND_API_KEY is not configured.`,
+    );
+    return;
+  }
+
+  try {
+    const { Resend } = await import('resend');
+    const resend = new Resend(resendApiKey);
+    const fromAddress =
+      getOptionalServerEnv('RESEND_FROM_ADDRESS') ?? 'Macro Bias <briefing@macro-bias.com>';
+    const tradeDateText = input.tradeDate ? `Trade date: ${input.tradeDate}\n` : '';
+    const text = [
+      'The Macro Bias stock email did not go out.',
+      '',
+      `Briefing date: ${input.briefingDate}`,
+      tradeDateText.trimEnd(),
+      `Reason: ${input.reason}`,
+      `Cron URL: ${input.requestUrl}`,
+      '',
+      'Fix it.',
+    ]
+      .filter((line) => line.length > 0)
+      .join('\n');
+
+    const response = await resend.emails.send({
+      from: fromAddress,
+      to: [STOCK_EMAIL_FAILURE_ALERT_RECIPIENT],
+      subject: `Stock email failed for ${input.briefingDate}`,
+      text,
+    });
+
+    if (response.error) {
+      console.warn(
+        `[publish-cron] Stock email failure alert failed: ${response.error.message}`,
+      );
+    } else {
+      console.log(
+        `[publish-cron] Sent stock email failure alert to ${STOCK_EMAIL_FAILURE_ALERT_RECIPIENT}.`,
+      );
+    }
+  } catch (alertError) {
+    const message = alertError instanceof Error ? alertError.message : 'Unknown alert failure.';
+    console.warn(`[publish-cron] Stock email failure alert failed: ${message}`);
+  }
+}
+
+function getStockEmailFailureAlertBriefingDate() {
+  try {
+    return getMarketCalendarContext().briefingDate;
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
 async function getRecentSnapshots() {
   const supabase = createSupabaseAdminClient();
+
+  // engine_inputs can contain the full analog price universe, so keep this query
+  // narrow. Historical analog context is loaded separately with lightweight rows.
   const { data, error } = await supabase
     .from('macro_bias_scores')
     .select('trade_date, score, bias_label, component_scores, model_version, engine_inputs, technical_indicators')
     .order('trade_date', { ascending: false })
-    .limit(MAX_HISTORY_ROWS);
+    .limit(MAX_RECENT_FULL_SNAPSHOT_ROWS);
 
   if (error) {
-    throw error;
+    throw new Error(`Failed to load recent macro bias snapshots: ${error.message}`);
   }
 
   return (data as StoredBiasSnapshot[] | null) ?? [];
@@ -832,6 +902,7 @@ async function handlePublish(request: NextRequest) {
         }
       : publishPayload;
     const publishResults: PublishResult[] = [];
+    let emailRecipientCount: number | null = null;
 
     if (resendApiKeyConfigured && !skipEmail) {
       publishResults.push(
@@ -913,6 +984,7 @@ async function handlePublish(request: NextRequest) {
             premiumDispatchResult.recipientCount +
             unlockedDispatchResult.recipientCount +
             freeDispatchResult.recipientCount;
+          emailRecipientCount = totalRecipientCount;
 
           console.log(
             `[publish-cron] Finished dispatchQuantBriefing() with ${totalRecipientCount} recipients across ${totalBatchCount} batches (${premiumDispatchResult.recipientCount} premium, ${unlockedDispatchResult.recipientCount} unlocked, ${freeDispatchResult.recipientCount} free)`,
@@ -964,6 +1036,29 @@ async function handlePublish(request: NextRequest) {
     const publishedTo = publishResults.flatMap((result) => (result.ok ? [result.destination] : []));
     failures.push(...publishResults.flatMap((result) => (result.ok || !result.failure ? [] : [result.failure])));
 
+    const emailPublishResult = publishResults.find((result) => result.destination === 'email');
+    const emailFailureReason =
+      skipEmail
+        ? null
+        : !resendApiKeyConfigured
+          ? 'RESEND_API_KEY is not configured, so stock email dispatch was skipped.'
+          : !emailPublishResult
+            ? 'Stock email dispatch did not run.'
+            : !emailPublishResult.ok
+              ? emailPublishResult.failure ?? 'Stock email dispatch failed.'
+              : emailRecipientCount === 0
+                ? 'Stock email dispatch completed but sent to zero recipients.'
+                : null;
+
+    if (emailFailureReason) {
+      await sendStockEmailFailureAlert({
+        briefingDate,
+        reason: emailFailureReason,
+        requestUrl: request.nextUrl.toString(),
+        tradeDate: dailyBriefing.quant.tradeDate,
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       publishedTo,
@@ -980,6 +1075,11 @@ async function handlePublish(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to publish the daily Macro Bias payload.';
     console.error(`[publish-cron] Fatal error: ${message}`);
+    await sendStockEmailFailureAlert({
+      briefingDate: getStockEmailFailureAlertBriefingDate(),
+      reason: message,
+      requestUrl: request.nextUrl.toString(),
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
