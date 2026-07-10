@@ -1,52 +1,38 @@
 ---
-title: "Backtested: +41,576% Long-Only vs +941% BTC Buy-and-Hold"
+title: "Why We Stopped Leading With a 40,000% Crypto Backtest"
 slug: "backtested-41576-vs-btc"
 campaignType: "marketing"
 published: true
 ---
 
-Those numbers are real. Since January 2020, the Macro Bias crypto regime model has returned +41,576% on a long-only strategy vs +941% for BTC buy-and-hold. Same asset. Same time period. No leverage, no shorting. Just knowing which days to be in and which days to sit out.
+For a while, our crypto research backtest produced an eye-watering long-only multiple versus BTC buy-and-hold. That number was real as a spreadsheet output. It was not a credible promise of what live trading would deliver.
 
-That is a 44x difference in performance. And the explanation is simpler than you think.
+So we stopped leading with it.
 
-## What the Strategy Actually Does
+## What that number actually was
 
-The model does not pick entries. It does not draw support and resistance lines. It does not watch the order book or read Twitter.
+It came from a full-history re-sim of a regime filter on daily closes: long BTC when the model was risk-on, cash otherwise. No leverage. Still, a multi-decade-style multiple over a few years is almost always a warning label, not a headline.
 
-Every day, it measures four things: BTC realized volatility, the ETH/BTC ratio, dollar index correlation, and cross-asset momentum. It compresses those into a single score and classifies the market into one of five regimes: Extreme Risk-Off, Risk-Off, Neutral, Risk-On, or Extreme Risk-On.
+Path dependence, one crypto cycle, optimistic costs, and marketing that freezes a lucky equity curve will destroy trust the first time the live book has a dull quarter.
 
-On Risk-On and Extreme Risk-On days, you are in. On everything else, you are out. That is the entire strategy.
+## What we publish instead
 
-## Where the Edge Comes From
+1. **Research backtest** — full re-sim of the production algorithm, with friction, labeled as research.
+2. **Live paper ledger** — equity from scores that were actually published to the database, lagged one session, with friction and a size-scaled path.
+3. **Tradable output** — LONG / FLAT / NO_TRADE, a size cue from 0 to 1, and a reliability grade.
 
-Most people assume the outperformance comes from catching the big moves up. It does not. BTC buy-and-hold captured every single rally. The regime strategy missed some of them.
+If the live paper ledger underperforms a sexy re-sim, that is the point. Honesty compounds better than vanity multiples.
 
-The edge comes almost entirely from the drawdowns. BTC dropped 53% in May 2021. The regime model was out. BTC ground down 77% from the November 2021 high to the June 2022 low. The regime model was out for most of it. BTC flash-crashed 30% in August 2024 during the yen carry unwind. The regime model was out.
+## How to use the crypto model
 
-When you avoid those drops, your compounding base stays intact. Buy-and-hold recovers from a 50% drawdown when the asset doubles. But if you avoided the drawdown entirely, you did not need the recovery. You were already ahead.
+Treat it as a permission layer, not an autopilot:
 
-## Why This Matters More Than Entry Timing
+- Risk-on with solid reliability: you may size up within your own rules.
+- Neutral or NO_TRADE: sit out or cut size.
+- Never ignore your own risk limits because a chart from 2020 looked heroic.
 
-Retail crypto traders spend an enormous amount of energy on entries. Where to buy, what level to wait for, which pattern confirms the move. But the data shows that market conditions matter more than entry quality.
+## The honest caveat
 
-A mediocre entry on a strong Risk-On day has a higher probability of profit than a perfect entry on a Risk-Off day. That is not intuition. That is what 2,297 days of backtested data show.
+Past research results do not guarantee future results. Crypto is path dependent. Friction, gaps, and weekends are real. The product is daily context with a graded signal, not a guaranteed alpha factory.
 
-The regime model does not give you better entries. It tells you whether today is the kind of day where entries tend to work at all.
-
-## What About the Long/Short Strategy?
-
-The model also supports a long/short variant that returned +352,206% over the same period. That number looks absurd, and it comes with significantly more risk and complexity. The long-only variant at +41,576% is the more realistic benchmark for most traders because it only requires one decision: in or out.
-
-Both strategies use the same regime signal. The difference is that long/short takes the other side during Risk-Off periods, capturing value from the declines instead of just avoiding them.
-
-## The Honest Caveats
-
-Past performance does not guarantee future results. The backtest uses daily close prices without slippage or fees. Real trading will differ from the theoretical returns. The model can and will have losing periods. No strategy works every day.
-
-What the backtest does prove is that systematically reading market conditions and adjusting exposure produces dramatically different outcomes than passive holding. That is not a controversial claim. It is what the numbers show across 2,297 trading days.
-
-## See It for Yourself
-
-The full track record is published at macro-bias.com/crypto/track-record. Every daily score, every regime call, every trade the backtest took. Nothing is hidden.
-
-The free daily crypto briefing delivers the current regime read to your inbox every morning. You do not need to take our word for the numbers. Watch the model work in real time and decide for yourself.
+Full numbers, including the live paper ledger when enough published days exist: macro-bias.com/crypto/track-record.

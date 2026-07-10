@@ -1,5 +1,11 @@
 import { calculateDecayedDistance } from "../../utils/knn";
-import { CRYPTO_ANALOG_MODEL_SETTINGS } from "./constants";
+import {
+  buildTradableSignal,
+  CRYPTO_STRATEGY_RULES,
+  inverseDistanceWeight,
+  weightedMean,
+} from "../signal";
+import { CRYPTO_ANALOG_MODEL_SETTINGS, CRYPTO_MODEL_VERSION } from "./constants";
 import type {
   BiasLabel,
   CryptoAnalogFeatureKey,
@@ -38,8 +44,6 @@ const FEATURE_TO_PILLAR: Record<CryptoAnalogFeatureKey, CryptoPillarKey> = {
   tltMomentum: "macroCorrelation",
 };
 
-// macroCorrelation contains 3 features (btcGldRatio, dxyMomentum, tltMomentum) vs 1 each
-// for the other pillars. Weight it proportionally to avoid diluting those signals.
 const PILLAR_WEIGHTS: Record<CryptoPillarKey, number> = {
   trendAndMomentum: 20,
   cryptoStructure: 20,
@@ -55,6 +59,7 @@ type FeatureStatistics = Record<
 type NeighborWithStandardizedVector = {
   analog: CryptoHistoricalAnalogVector;
   distance: number;
+  weight: number;
   standardizedVector: CryptoAnalogStateVector;
 };
 
@@ -106,16 +111,42 @@ function assertFiniteNumber(value: number | undefined, label: string): number {
   return value;
 }
 
+const MS_PER_DAY = 86_400_000;
+
+function calendarDaysBetween(a: string, b: string): number {
+  return Math.abs(
+    Math.round(
+      (Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)) -
+        Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10))) /
+        MS_PER_DAY,
+    ),
+  );
+}
+
 function buildTodayStateVector(input: CryptoDailyBiasInput): CryptoAnalogStateVector {
   const d = input.expandedData;
   if (!d) throw new Error("The crypto KNN model requires expandedData.");
 
+  // Prefer walk-forward percentiles for trending level features (model v3+).
+  const ethBtcRatio =
+    d.ethBtcRatioPercentile != null && Number.isFinite(d.ethBtcRatioPercentile)
+      ? d.ethBtcRatioPercentile
+      : assertFiniteNumber(d.ethBtcRatio, "ETH/BTC ratio");
+  const btcGldRatio =
+    d.btcGldRatioPercentile != null && Number.isFinite(d.btcGldRatioPercentile)
+      ? d.btcGldRatioPercentile
+      : assertFiniteNumber(d.btcGldRatio, "BTC/GLD ratio");
+  const btcRealizedVol =
+    d.btcRealizedVolPercentile != null && Number.isFinite(d.btcRealizedVolPercentile)
+      ? d.btcRealizedVolPercentile
+      : assertFiniteNumber(d.btcRealizedVol, "BTC realized vol");
+
   return {
     btcRsi: assertFiniteNumber(d.btc14DayRsi, "BTC RSI"),
-    ethBtcRatio: assertFiniteNumber(d.ethBtcRatio, "ETH/BTC ratio"),
-    btcGldRatio: assertFiniteNumber(d.btcGldRatio, "BTC/GLD ratio"),
+    ethBtcRatio,
+    btcGldRatio,
     dxyMomentum: assertFiniteNumber(d.dxyMomentum, "DXY momentum"),
-    btcRealizedVol: assertFiniteNumber(d.btcRealizedVol, "BTC realized vol"),
+    btcRealizedVol,
     tltMomentum: assertFiniteNumber(d.tltMomentum, "TLT momentum"),
   };
 }
@@ -155,43 +186,80 @@ function standardizeVector(
   }, {} as CryptoAnalogStateVector);
 }
 
+/**
+ * Coarse crypto regime from RSI + realized vol so neighbors share market character.
+ */
+function classifyCryptoRegime(vector: CryptoAnalogStateVector): "HIGH_VOL" | "TREND" | "RANGE" {
+  if (vector.btcRealizedVol >= 70) return "HIGH_VOL";
+  if (vector.btcRsi >= 58 || vector.btcRsi <= 42) return "TREND";
+  return "RANGE";
+}
+
+function filterAnalogsByRegime(
+  todayVector: CryptoAnalogStateVector,
+  analogs: CryptoHistoricalAnalogVector[],
+) {
+  const regime = classifyCryptoRegime(todayVector);
+  const sameRegime = analogs.filter((a) => classifyCryptoRegime(a.vector) === regime);
+  if (sameRegime.length >= CRYPTO_ANALOG_MODEL_SETTINGS.minimumHistoricalAnalogs) {
+    return sameRegime;
+  }
+  return analogs;
+}
+
 function buildNeighborMatches(
   todayDate: string,
   todayVector: CryptoAnalogStateVector,
   analogs: CryptoHistoricalAnalogVector[],
 ) {
-  const stats = buildFeatureStatistics(analogs);
+  const pool = filterAnalogsByRegime(todayVector, analogs);
+  const stats = buildFeatureStatistics(pool);
   const zToday = standardizeVector(todayVector, stats);
   const todaySnapshot = { tradeDate: todayDate, vector: zToday };
+  const minGap = CRYPTO_ANALOG_MODEL_SETTINGS.minAnalogCalendarGapDays;
 
-  const neighbors = analogs
+  const ranked = pool
+    .filter((analog) => calendarDaysBetween(todayDate, analog.tradeDate) >= minGap)
     .map<NeighborWithStandardizedVector>((analog) => {
       const zAnalog = standardizeVector(analog.vector, stats);
+      const distance = calculateDecayedDistance(
+        todaySnapshot,
+        { tradeDate: analog.tradeDate, vector: zAnalog },
+        CRYPTO_ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+      );
       return {
         analog,
-        distance: calculateDecayedDistance(
-          todaySnapshot,
-          { tradeDate: analog.tradeDate, vector: zAnalog },
-          CRYPTO_ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+        distance,
+        weight: inverseDistanceWeight(
+          distance,
+          CRYPTO_ANALOG_MODEL_SETTINGS.distanceWeightEpsilon,
         ),
         standardizedVector: zAnalog,
       };
     })
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, CRYPTO_ANALOG_MODEL_SETTINGS.nearestNeighborCount);
+    .sort((a, b) => a.distance - b.distance);
 
-  if (neighbors.length < CRYPTO_ANALOG_MODEL_SETTINGS.nearestNeighborCount) {
-    throw new Error(
-      `Need ${CRYPTO_ANALOG_MODEL_SETTINGS.nearestNeighborCount} neighbors, got ${neighbors.length}.`,
-    );
+  const kMin = CRYPTO_ANALOG_MODEL_SETTINGS.nearestNeighborCount;
+  const kMax = CRYPTO_ANALOG_MODEL_SETTINGS.maxNeighborCount;
+  if (ranked.length < kMin) {
+    throw new Error(`Need at least ${kMin} neighbors, got ${ranked.length}.`);
   }
+
+  const kthDistance = ranked[kMin - 1].distance;
+  const radius = kthDistance * CRYPTO_ANALOG_MODEL_SETTINGS.neighborRadiusMultiplier;
+  const neighbors = ranked
+    .filter((n, index) => index < kMin || n.distance <= radius)
+    .slice(0, kMax);
 
   return { nearestNeighbors: neighbors, standardizedTodayVector: zToday };
 }
 
 function buildExpectancySummary(neighbors: NeighborWithStandardizedVector[]): ExpectancySummary {
-  const avg1d = mean(neighbors.map((n) => n.analog.btcForward1DayReturn));
-  const avg3d = mean(neighbors.map((n) => n.analog.btcForward3DayReturn));
+  const weights = neighbors.map((n) => n.weight);
+  const fwd1d = neighbors.map((n) => n.analog.btcForward1DayReturn);
+  const fwd3d = neighbors.map((n) => n.analog.btcForward3DayReturn);
+  const avg1d = weightedMean(fwd1d, weights);
+  const avg3d = weightedMean(fwd3d, weights);
   const bearish1d = neighbors.filter((n) => n.analog.btcForward1DayReturn < 0).length / neighbors.length;
   const bearish3d = neighbors.filter((n) => n.analog.btcForward3DayReturn < 0).length / neighbors.length;
 
@@ -201,7 +269,10 @@ function buildExpectancySummary(neighbors: NeighborWithStandardizedVector[]): Ex
     averageForward3DayReturn: roundTo(avg3d),
     bearishHitRate1Day: roundTo(bearish1d, 4),
     bearishHitRate3Day: roundTo(bearish3d, 4),
-    blendedForwardReturn: roundTo(avg1d * 0.4 + avg3d * 0.6),
+    blendedForwardReturn: roundTo(
+      avg1d * CRYPTO_ANALOG_MODEL_SETTINGS.oneDayBlendWeight +
+        avg3d * CRYPTO_ANALOG_MODEL_SETTINGS.threeDayBlendWeight,
+    ),
   };
 }
 
@@ -225,6 +296,7 @@ function buildAnalogMatches(neighbors: NeighborWithStandardizedVector[]): Crypto
     btcForward1DayReturn: roundTo(n.analog.btcForward1DayReturn),
     btcForward3DayReturn: roundTo(n.analog.btcForward3DayReturn),
     tradeDate: n.analog.tradeDate,
+    weight: roundTo(n.weight, 4),
   }));
 }
 
@@ -276,28 +348,28 @@ function buildPillarSummary(
   }
   if (pillar === "cryptoStructure") {
     return (
-      `ETH/BTC ratio is ${roundTo(todayVector.ethBtcRatio, 5)}. ` +
-      `${todayVector.ethBtcRatio >= 0.055
-        ? "Alts are gaining on Bitcoin, which usually signals broader risk appetite in crypto."
-        : todayVector.ethBtcRatio <= 0.035
-          ? "Bitcoin is dominating at the expense of alts, which tends to happen when the market is defensive or uncertain."
-          : "The ratio is middle-of-the-road, so neither BTC dominance nor alt season is clearly in control."}`
+      `ETH/BTC percentile is ${roundTo(todayVector.ethBtcRatio, 1)} (rank vs ~1y history). ` +
+      `${todayVector.ethBtcRatio >= 65
+        ? "Alts are relatively strong versus Bitcoin, which usually signals broader risk appetite in crypto."
+        : todayVector.ethBtcRatio <= 35
+          ? "Bitcoin is relatively dominant versus alts, which tends to happen when the market is defensive or uncertain."
+          : "Relative alt strength is middle-of-the-road, so neither BTC dominance nor alt season is clearly extreme."}`
     );
   }
   if (pillar === "macroCorrelation") {
     return (
-      `BTC/GLD ratio is ${roundTo(todayVector.btcGldRatio, 2)}, DXY momentum is ${formatSignedPercent(todayVector.dxyMomentum)}, and TLT momentum is ${formatSignedPercent(todayVector.tltMomentum)}. ` +
-      `A stronger dollar and rising rates tend to weigh on BTC, while gold strength relative to BTC usually flags a risk-off macro backdrop. ` +
+      `BTC/GLD percentile is ${roundTo(todayVector.btcGldRatio, 1)}, DXY momentum is ${formatSignedPercent(todayVector.dxyMomentum)}, and TLT momentum is ${formatSignedPercent(todayVector.tltMomentum)}. ` +
+      `Percentile ranks keep the BTC/gold relationship comparable across years instead of letting the absolute ratio trend dominate. ` +
       `In similar conditions, the blended forward move was ${formatSignedPercent(summary.blendedForwardReturn)}.`
     );
   }
   return (
-    `BTC realized vol is ${roundTo(todayVector.btcRealizedVol, 1)}%. ` +
-    `${todayVector.btcRealizedVol >= 80
-      ? "That is elevated, which means bigger swings and more uncertainty. "
-      : todayVector.btcRealizedVol >= 55
-        ? "Vol is moderate, keeping BTC responsive to catalysts. "
-        : "Vol is low by crypto standards, which usually gives trends a cleaner path. "}` +
+    `BTC realized-vol percentile is ${roundTo(todayVector.btcRealizedVol, 1)}. ` +
+    `${todayVector.btcRealizedVol >= 75
+      ? "That is elevated versus recent history, which means bigger swings and more uncertainty. "
+      : todayVector.btcRealizedVol >= 45
+        ? "Vol is moderate relative to history, keeping BTC responsive to catalysts. "
+        : "Vol is low relative to history, which usually gives trends a cleaner path. "}` +
     `In similar vol conditions, downside showed up ${roundTo(summary.bearishHitRate1Day * 100, 0)}% of the time over 1 day and ${roundTo(summary.bearishHitRate3Day * 100, 0)}% over 3 days.`
   );
 }
@@ -354,11 +426,44 @@ export function calculateCryptoDailyBias(input: CryptoDailyBiasInput): CryptoDai
     summary,
   );
 
+  const w1 = CRYPTO_ANALOG_MODEL_SETTINGS.oneDayBlendWeight;
+  const w3 = CRYPTO_ANALOG_MODEL_SETTINGS.threeDayBlendWeight;
+  const blendedNeighborReturns = nearestNeighbors.map(
+    (n) => n.analog.btcForward1DayReturn * w1 + n.analog.btcForward3DayReturn * w3,
+  );
+
+  // Trend proxy from RSI when no SMA is on the vector: oversold/overbought as soft trend.
+  const trendSign =
+    todayVector.btcRsi >= 55 ? 1 : todayVector.btcRsi <= 45 ? -1 : 0;
+  const volPercentile =
+    todayVector.btcRealizedVol >= 0 && todayVector.btcRealizedVol <= 100
+      ? todayVector.btcRealizedVol
+      : null;
+
+  const signal = buildTradableSignal({
+    score,
+    neighborForwardReturns: blendedNeighborReturns,
+    neighborDistances: nearestNeighbors.map((n) => n.distance),
+    rules: CRYPTO_STRATEGY_RULES,
+    trendVeto: CRYPTO_ANALOG_MODEL_SETTINGS.enableTrendVeto
+      ? {
+          trendSign: trendSign as -1 | 0 | 1,
+          volPercentile,
+          volStressThreshold: 75,
+        }
+      : undefined,
+  });
+
+  const label = signal.position === "NO_TRADE" ? "NEUTRAL" : getBiasLabel(score);
+
   return {
     tradeDate: input.tradeDate,
     score,
-    label: getBiasLabel(score),
+    label,
     componentScores: components,
     tickerChanges: input.tickerChanges,
+    signal,
+    blendedForwardReturn: summary.blendedForwardReturn,
+    modelVersion: CRYPTO_MODEL_VERSION,
   };
 }

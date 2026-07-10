@@ -2,7 +2,7 @@
 
 Macro Bias is a Next.js 15 and Supabase SaaS that publishes automated daily regime research for equities and crypto. The platform combines quantitative regime models, live market context, structured LLM synthesis, tiered email distribution, track-record dashboards, referral growth loops, and scheduled social distribution.
 
-This README was refreshed against the git history after the previous README edit on 2026-04-16 and against the current `main` branch. The main changes since that edit were Threads publishing support, Meta compliance callbacks, a weekly Threads token-refresh cron, and a refactor of the shared social dispatch pipeline.
+The product goal is simple: every morning, publish a **permission layer** (LONG / SHORT / FLAT / NO_TRADE) for the next session, with reliability grades and risk size — not a vanity backtest, and not a “certainty” claim. Walk-forward measurement against next-session open→close is the gate for shipping model changes.
 
 ## Stack
 
@@ -24,6 +24,56 @@ This README was refreshed against the git history after the previous README edit
 | Admin                 | `/analytics`                                                                | Server-rendered analytics and paper-trading dashboard restricted to the configured admin email |
 | Auth callback         | `/auth/callback`                                                            | Supabase auth completion flow                                                |
 
+## Quant Model (Stocks)
+
+The stocks score is a **walk-forward K-nearest-neighbor regime model**, not a linear factor stack. Honest naming matters: the vol feature is VIX momentum, not “dealer gamma.”
+
+### Features and distance
+
+- **KNN features** (model v8+): SPY RSI, VIX momentum, HYG/TLT ratio, CPER/GLD ratio, USO momentum  
+- Level features are stationarized to rolling percentiles so drifting raw ratios do not dominate distance  
+- **Cosine distance** on z-scored features (v10) with optional temporal decay  
+- **Adaptive K by VIX** (v18): K = 5 when VIX ≥ 20, else K = 7  
+
+### From neighbors to published score
+
+1. Inverse-distance-weighted blend of neighbor forward returns (1d / 3d weights **0.55 / 0.45**)  
+2. Map blended expectancy to a score in **[-100, 100]** via `tanh`  
+3. **Reliability gates**: agreement × distance quality → grades A–F; **F forces NO_TRADE**  
+4. Soft dead zone: **|score| ≤ 22 → FLAT** (v16)  
+5. Selective post-processing (measured, kept only when next-session open→close improved):  
+   - flat when neighbor return dispersion is too tight (low-vol filter)  
+   - fade after large same-day SPY moves  
+   - soft overnight amplify when the open gap agrees; hard veto when it fights the lean  
+   - **Monday publish dampener** (score 0 / FLAT)  
+
+### Tradable permission layer
+
+Shared library: `src/lib/signal/`
+
+| Field        | Meaning                                              |
+| ------------ | ---------------------------------------------------- |
+| `position`   | `LONG` / `SHORT` / `FLAT` / `NO_TRADE`               |
+| `size`       | Suggested risk scale in [0, 1]                       |
+| `reliability`| `A`–`F` analog-quality grade                         |
+| `reason`     | Plain-English explanation for email / UI / social    |
+
+Delivery (email, dashboard, social) is **permission-first**: what you may do next session, not a forecast headline.
+
+### Quality loop
+
+Model knobs ship only if they improve **lagged next-session open→close** walk-forward metrics (hit rate when in, long-minus-short edge, cash rate, year stability). Scripts:
+
+```bash
+npm run verify:signal      # pure signal + paper ledger logic
+npm run verify:model       # signal + percentiles + live eval + trend veto + latest model gate
+npm run verify:v18         # current stocks package gate (adaptive K)
+npm run measure:quality    # walk-forward measure harness
+npm run optimize:quality   # ablation / optimization search
+```
+
+Current locked stocks version string: **`macro-model-v18-adaptive-k`** (see `src/lib/macro-bias/constants.ts`). Crypto has a parallel calibrated path under `src/lib/crypto-bias/`.
+
 ## How The System Works
 
 ### Stocks daily pipeline
@@ -33,11 +83,11 @@ Schedule: `45 12 * * 1-5` UTC
 Methods: `GET` and `POST`
 
 1. Validate cron auth using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
-2. Refresh daily market data with `upsertDailyMarketData()`.
-3. Load recent `macro_bias_scores` history.
+2. Refresh daily market data with `upsertDailyMarketData()` (prices + analog features + daily bias score).
+3. Load recent `macro_bias_scores` history (includes tradable signal in `engine_inputs` when present).
 4. Generate the briefing with `generateDailyBriefing()`, which runs the quant and news branches in parallel.
 5. Persist the result to `daily_market_briefings`.
-6. Deliver tiered emails through Resend.
+6. Deliver tiered emails through Resend (permission line + reliability, not score-only).
 7. Publish social snippets to the configured outbound channels.
 
 Same-day reruns do not generate a second briefing row. They load the already-persisted briefing and attempt a re-publish or re-distribution pass instead.
@@ -232,7 +282,7 @@ src/
     today/                    # SEO/share landing page
     api/
       analytics/              # Track + dashboard APIs
-      bias/                   # Latest bias API
+      bias/                   # Latest bias API (score + tradable signal)
       checkout/               # Stripe checkout
       cron/                   # Stocks, crypto, drip, social, scorecard, Threads refresh
       referral/               # Referral status API
@@ -253,18 +303,20 @@ src/
     crypto-bias/              # Crypto scoring logic
     crypto-briefing/          # Crypto briefing pipeline
     crypto-market-data/       # Crypto data sync
-    crypto-track-record/      # Crypto backtest logic
-    macro-bias/               # Stocks scoring logic
-    market-data/              # Stocks data sync and news fetch
+    crypto-track-record/      # Crypto backtest + live paper eval
+    macro-bias/               # Stocks KNN regime scoring
+    market-data/              # Stocks data sync, analogs, news fetch
     marketing/                # Email delivery, welcome drip, markdown parser
     paper-trading/            # Paper trading agent context and portfolio state
     referral/                 # Referral attribution, rewards, premium unlock
+    signal/                   # Shared tradable signal, paper ledger, quality metrics
     social/                   # X, Bluesky, Threads, Telegram, scorecard, shared queue dispatch
     supabase/                 # Client factories
-    track-record/             # Stocks backtest logic
+    track-record/             # Stocks backtest + published-score live eval
   scripts/                    # Operational scripts that run against the app data model
+  utils/                      # KNN distance, regime classifier
 
-scripts/                      # Standalone utility scripts
+scripts/                      # Standalone verify / measure / utility scripts
 supabase/migrations/          # Schema history
 vercel.json                   # Cron definitions
 ```
@@ -284,6 +336,10 @@ npm run macro-bias:sync
 npm run social:arm-queue
 npm run referral:report
 npm run referral:simulate
+npm run verify:model          # offline model + signal checks
+npm run verify:v18            # stocks package gate (adaptive K)
+npm run measure:quality       # walk-forward quality measure
+npm run optimize:quality      # ablation / search harness
 ```
 
 ### Additional operational scripts
@@ -419,3 +475,10 @@ The app is deployed on Vercel with cron jobs defined in `vercel.json`. Supabase 
 ```bash
 vercel --prod
 ```
+
+## Design Notes For Readers
+
+- **Permission over prophecy.** The UI and emails lead with LONG / SHORT / FLAT / NO_TRADE and reliability, not a single “certainty” number.  
+- **Measure before marketing.** Model versions are bumped only after walk-forward next-session open→close metrics improve; failed ideas (e.g. aggressive cash gates, A/B-only directional bans, OTC-trained labels) are left off.  
+- **Honest feature names.** Vol impulse is VIX momentum, not dealer gamma.  
+- **Shared stocks/crypto signal layer.** Gates, paper ledger, and quality reporting live under `src/lib/signal/` so both assets speak the same permission language.

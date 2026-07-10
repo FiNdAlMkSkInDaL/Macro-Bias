@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { getCryptoBacktestData } from "@/lib/crypto-track-record/crypto-backtest-engine";
+import { getCryptoLivePaperLedger } from "@/lib/crypto-track-record/crypto-live-paper-ledger";
 import CryptoPerformanceChart from "@/components/track-record/CryptoPerformanceChart";
+import PerformanceChart from "@/components/track-record/PerformanceChart";
 import { AssetToggle } from "@/components/AssetToggle";
 
 const SITE_URL = "https://macro-bias.com";
@@ -11,7 +13,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Crypto Track Record — Model vs BTC | Macro Bias",
   description:
-    "See how the Macro Bias crypto signal performed against BTC buy-and-hold since January 2020. Equity curve with 10 bps friction.",
+    "Research backtest of the Macro Bias crypto regime model vs BTC buy-and-hold since January 2020. Long-only benchmark with 15 bps friction.",
   alternates: {
     canonical: `${SITE_URL}/crypto/track-record`,
   },
@@ -49,8 +51,12 @@ function fmtDateRange(from: string, to: string): string {
 }
 
 export default async function CryptoTrackRecordPage() {
-  const backtest = await getCryptoBacktestData();
+  const [backtest, paperLedger] = await Promise.all([
+    getCryptoBacktestData(),
+    getCryptoLivePaperLedger("long_only"),
+  ]);
   const hasData = backtest.totalDays > 0 && backtest.equityCurve.length > 0;
+  const hasPaper = paperLedger.totalSessions > 0;
 
   const stratReturn = backtest.strategyReturn;
   const longOnlyReturn = backtest.longOnlyReturn;
@@ -67,6 +73,26 @@ export default async function CryptoTrackRecordPage() {
     longOnly: d.longOnly,
   }));
 
+  const paperEquityCurve =
+    paperLedger.days.length <= 300
+      ? paperLedger.days.map((d) => ({
+          date: d.tradeDate,
+          spy: Number(d.assetEquity.toFixed(2)),
+          strategy: Number(d.strategyEquity.toFixed(2)),
+        }))
+      : paperLedger.days
+          .filter(
+            (_, i) =>
+              i === 0 ||
+              i === paperLedger.days.length - 1 ||
+              i % 5 === 0,
+          )
+          .map((d) => ({
+            date: d.tradeDate,
+            spy: Number(d.assetEquity.toFixed(2)),
+            strategy: Number(d.strategyEquity.toFixed(2)),
+          }));
+
   return (
     <main className="min-h-screen font-sans">
       <div className="mx-auto w-full max-w-7xl px-6 sm:px-8 lg:px-10">
@@ -82,14 +108,92 @@ export default async function CryptoTrackRecordPage() {
             Crypto Model vs BTC
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-300">
-            The same algo that runs every day, replayed since January 2020.
-            Long-only mode goes to cash when Risk Off. Long/short mode
-            also shorts BTC on bearish signals. Both include 10 bps friction.
+            Research backtest plus a live paper ledger from published scores only.
+            Public benchmark is long-only with 15 bps friction. Research curves are
+            path-dependent. Use the paper ledger for live accountability.
           </p>
+        </section>
+
+        {/* Live paper ledger */}
+        <section className="border-b border-white/10 py-12">
+          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-emerald-400/80">
+            [ Live paper ledger · long only ]
+          </p>
+          <h2 className="mt-4 max-w-3xl font-[family:var(--font-heading)] text-2xl font-semibold tracking-tighter text-white md:text-3xl">
+            Published crypto scores only
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+            Built from rows in the production crypto score table, lagged one day,
+            cash when not LONG. Not a full historical re-sim.
+            {hasPaper
+              ? ` ${paperLedger.totalSessions} sessions graded.`
+              : " Waiting for published crypto scores."}
+          </p>
+          {hasPaper ? (
+            <>
+              <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Paper long-only
+                  </p>
+                  <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-emerald-400">
+                    {fmtReturn(paperLedger.strategyReturn)}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Size-scaled
+                  </p>
+                  <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-white">
+                    {fmtReturn(paperLedger.sizeScaledReturn)}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    BTC (same window)
+                  </p>
+                  <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-zinc-400">
+                    {fmtReturn(paperLedger.assetReturn)}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    Next-day hit rate
+                  </p>
+                  <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-white">
+                    {paperLedger.forward1DHitRate !== null
+                      ? `${paperLedger.forward1DHitRate.toFixed(1)}%`
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+              {paperEquityCurve.length > 1 && (
+                <div className="mt-6">
+                  <div className="mb-4 flex flex-wrap gap-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block h-px w-4 bg-white" /> Paper
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block h-px w-4 bg-zinc-600" /> BTC
+                    </span>
+                  </div>
+                  <PerformanceChart data={paperEquityCurve} />
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="mt-6 text-sm text-zinc-500">
+              No published crypto scores yet. After the crypto cron runs, this
+              section will fill automatically.
+            </p>
+          )}
         </section>
 
         {hasData ? (
           <>
+            <p className="border-b border-white/10 py-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              [ Research backtest · full history re-sim ]
+            </p>
             {/* Stats */}
             <section className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-4 border-b border-white/10">
               <div className="border-b min-[420px]:border-b-0 min-[420px]:border-r border-white/10 py-4 min-[420px]:py-6 pr-0 min-[420px]:pr-4 sm:pr-6">
@@ -138,7 +242,7 @@ export default async function CryptoTrackRecordPage() {
 
             {/* Chart */}
             <section className="border-b border-white/10 py-8">
-              <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2nter gap-x-6 gap-y-2">
+              <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2">
                 <span className="flex items-center gap-2 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
                   <span className="inline-block h-px w-4 bg-white" />
                   Long/Short
@@ -159,17 +263,7 @@ export default async function CryptoTrackRecordPage() {
             <section className="grid grid-cols-2 gap-6 border-b border-white/10 py-8 sm:grid-cols-4">
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Same-Day Hit Rate
-                </p>
-                <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-white">
-                  {backtest.sameDayHitRate !== null
-                    ? `${backtest.sameDayHitRate.toFixed(1)}%`
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Fwd 1D Hit Rate
+                  Next-Day Hit Rate
                 </p>
                 <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-white">
                   {backtest.forward1DHitRate !== null
@@ -179,21 +273,31 @@ export default async function CryptoTrackRecordPage() {
               </div>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Avg Return (Bull)
+                  NO_TRADE Rate
                 </p>
-                <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-green-400">
-                  {backtest.avgReturnBullish !== null
-                    ? `${backtest.avgReturnBullish > 0 ? "+" : ""}${backtest.avgReturnBullish.toFixed(3)}%`
+                <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-white">
+                  {backtest.noTradeRate !== null
+                    ? `${backtest.noTradeRate.toFixed(1)}%`
                     : "—"}
                 </p>
               </div>
               <div>
                 <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Avg Return (Bear)
+                  Max DD (Long Only)
                 </p>
                 <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-orange-400">
-                  {backtest.avgReturnBearish !== null
-                    ? `${backtest.avgReturnBearish > 0 ? "+" : ""}${backtest.avgReturnBearish.toFixed(3)}%`
+                  {backtest.maxDrawdownLongOnly !== null
+                    ? `${backtest.maxDrawdownLongOnly.toFixed(1)}%`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Max DD (BTC)
+                </p>
+                <p className="mt-2 font-[family:var(--font-data)] text-xl font-bold text-zinc-400">
+                  {backtest.maxDrawdownBtc !== null
+                    ? `${backtest.maxDrawdownBtc.toFixed(1)}%`
                     : "—"}
                 </p>
               </div>

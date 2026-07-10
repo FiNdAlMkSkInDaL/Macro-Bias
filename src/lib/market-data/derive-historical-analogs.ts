@@ -3,13 +3,18 @@ import {
   calculateDecayedDistance,
 } from "../../utils/knn";
 import { filterDatasetByRegime } from "../../utils/regime-classifier";
-import { ANALOG_MODEL_SETTINGS } from "../macro-bias/constants";
+import {
+  ANALOG_MODEL_SETTINGS,
+  STOCKS_KNN_FEATURE_KEYS,
+  STOCKS_LEVEL_FEATURES_FOR_PERCENTILE,
+} from "../macro-bias/constants";
 import { calculateRelativeStrengthIndex } from "../macro-bias/technical-analysis";
 import type {
   AnalogStateVector,
   HistoricalAnalogMatch as PersistedHistoricalAnalogMatch,
   HistoricalAnalogVector,
 } from "../macro-bias/types";
+import { stationarizeLevelFeatures } from "../signal/rolling-percentile";
 
 const FEATURE_TICKERS = ["SPY", "QQQ", "XLP", "TLT", "GLD", "USO", "VIX", "HYG", "CPER"] as const;
 const ANALOG_FEATURE_COUNT = 6;
@@ -307,12 +312,13 @@ function buildUsoMomentumByTradeDate(
   return usoMomentumByTradeDate;
 }
 
-function buildGammaExposureByTradeDate(
+/** −(VIX 5-session % change). Honest name: vixMomentum (not dealer GEX). */
+function buildVixMomentumByTradeDate(
   vixSeries: HistoricalArrayPoint[],
   sortedCommonTradeDates: string[],
 ) {
   const vixHistoryByTradeDate = buildTradeDateLookup(vixSeries);
-  const gammaExposureByTradeDate: Record<string, number> = {};
+  const vixMomentumByTradeDate: Record<string, number> = {};
 
   for (
     let index = ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions;
@@ -335,10 +341,10 @@ function buildGammaExposureByTradeDate(
       continue;
     }
 
-    gammaExposureByTradeDate[tradeDate] = roundTo(-vixRateOfChange);
+    vixMomentumByTradeDate[tradeDate] = roundTo(-vixRateOfChange);
   }
 
-  return gammaExposureByTradeDate;
+  return vixMomentumByTradeDate;
 }
 
 function buildHistoricalAnalogVectors(
@@ -356,31 +362,50 @@ function buildHistoricalAnalogVectors(
     historicalArrays.USO ?? [],
     sortedCommonTradeDates,
   );
-  const gammaExposureByTradeDate = buildGammaExposureByTradeDate(
+  const vixMomentumByTradeDate = buildVixMomentumByTradeDate(
     historicalArrays.VIX ?? [],
     sortedCommonTradeDates,
   );
-  const historicalAnalogVectors: HistoricalAnalogVector[] = [];
+  type RawPoint = {
+    tradeDate: string;
+    vector: AnalogStateVector;
+    spyForward1DayReturn: number | null;
+    spyForward3DayReturn: number | null;
+  };
+
+  const rawPoints: RawPoint[] = [];
 
   for (
     let index = ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions;
-    index < sortedCommonTradeDates.length - 3;
+    index < sortedCommonTradeDates.length;
     index += 1
   ) {
     const tradeDate = sortedCommonTradeDates[index];
-    const nextTradeDate = sortedCommonTradeDates[index + 1];
-    const thirdForwardTradeDate = sortedCommonTradeDates[index + 3];
+    const nextTradeDate =
+      index + 1 < sortedCommonTradeDates.length
+        ? sortedCommonTradeDates[index + 1]
+        : null;
+    const thirdForwardTradeDate =
+      index + 3 < sortedCommonTradeDates.length
+        ? sortedCommonTradeDates[index + 3]
+        : null;
     const currentSpyPoint = spyHistoryByTradeDate.get(tradeDate);
-    const nextSpyPoint = spyHistoryByTradeDate.get(nextTradeDate);
-    const thirdForwardSpyPoint = spyHistoryByTradeDate.get(thirdForwardTradeDate);
+    const nextSpyPoint = nextTradeDate
+      ? spyHistoryByTradeDate.get(nextTradeDate)
+      : undefined;
+    const thirdForwardSpyPoint = thirdForwardTradeDate
+      ? spyHistoryByTradeDate.get(thirdForwardTradeDate)
+      : undefined;
     const hygPoint = hygHistoryByTradeDate.get(tradeDate);
     const tltPoint = tltHistoryByTradeDate.get(tradeDate);
     const cperPoint = cperHistoryByTradeDate.get(tradeDate);
     const gldPoint = gldHistoryByTradeDate.get(tradeDate);
     const vixPoint = vixHistoryByTradeDate.get(tradeDate);
-    const gammaExposure = gammaExposureByTradeDate[tradeDate];
+    const vixMomentum = vixMomentumByTradeDate[tradeDate];
     const spyRsi = spyRsiByTradeDate[tradeDate];
     const usoMomentum = usoMomentumByTradeDate[tradeDate];
+    // Close→close neighbor labels (OTC training measured worse on fair metrics;
+    // product still *evaluates* published scores on open→close via live eval).
     const spyForward1DayReturn =
       currentSpyPoint && nextSpyPoint
         ? calculatePercentChange(nextSpyPoint.close, currentSpyPoint.close)
@@ -392,27 +417,25 @@ function buildHistoricalAnalogVectors(
 
     if (
       !currentSpyPoint ||
-      !nextSpyPoint ||
-      !thirdForwardSpyPoint ||
       !hygPoint ||
       !tltPoint ||
       !cperPoint ||
       !gldPoint ||
       !vixPoint ||
-      gammaExposure == null ||
+      vixMomentum == null ||
       spyRsi == null ||
       usoMomentum == null ||
-      spyForward1DayReturn == null ||
-      spyForward3DayReturn == null
+      tltPoint.close <= 0 ||
+      gldPoint.close <= 0
     ) {
       continue;
     }
 
-    historicalAnalogVectors.push({
+    rawPoints.push({
       tradeDate,
       vector: {
         spyRsi,
-        gammaExposure,
+        vixMomentum,
         hygTltRatio: hygPoint.close / tltPoint.close,
         cperGldRatio: cperPoint.close / gldPoint.close,
         usoMomentum,
@@ -423,10 +446,38 @@ function buildHistoricalAnalogVectors(
     });
   }
 
+  const stationarized = stationarizeLevelFeatures(
+    rawPoints,
+    STOCKS_LEVEL_FEATURES_FOR_PERCENTILE,
+    {
+      window: ANALOG_MODEL_SETTINGS.percentileWindowSessions,
+      minHistory: ANALOG_MODEL_SETTINGS.percentileMinHistorySessions,
+    },
+  );
+
+  const historicalAnalogVectors: HistoricalAnalogVector[] = stationarized
+    .filter(
+      (point) =>
+        point.spyForward1DayReturn != null && point.spyForward3DayReturn != null,
+    )
+    .map((point) => ({
+      tradeDate: point.tradeDate,
+      vector: point.vector,
+      spyForward1DayReturn: point.spyForward1DayReturn as number,
+      spyForward3DayReturn: point.spyForward3DayReturn as number,
+    }));
+
+  const stationarizedByDate = new Map(
+    stationarized.map((point) => [point.tradeDate, point.vector]),
+  );
+
   return {
-    gammaExposureByTradeDate,
+    vixMomentumByTradeDate,
+    // Legacy alias for older call sites.
+    gammaExposureByTradeDate: vixMomentumByTradeDate,
     historicalAnalogVectors,
     usoMomentumByTradeDate,
+    stationarizedByDate,
   };
 }
 
@@ -435,8 +486,15 @@ function buildCurrentAnalogStateVector(
   technicalIndicators: unknown,
   latestTradeDate: string,
   usoMomentumByTradeDate: Record<string, number>,
-  gammaExposureByTradeDate: Record<string, number>,
+  vixMomentumByTradeDate: Record<string, number>,
+  stationarizedByDate?: Map<string, AnalogStateVector>,
 ) {
+  // Prefer precomputed walk-forward percentile vector when available (model v6).
+  const stationarizedToday = stationarizedByDate?.get(latestTradeDate);
+  if (stationarizedToday) {
+    return stationarizedToday;
+  }
+
   const latestSnapshots = {
     ...collectSnapshots(engineInputs.coreTickerChanges),
     ...collectSnapshots(engineInputs.supplementalTickerChanges),
@@ -450,8 +508,10 @@ function buildCurrentAnalogStateVector(
   const cperClose = latestSnapshots.CPER?.close ?? null;
   const gldClose = latestSnapshots.GLD?.close ?? null;
   const vixClose = latestSnapshots.VIX?.close ?? null;
-  const persistedGammaExposure = marketPlumbing ? getNumericValue(marketPlumbing.gammaExposure) : null;
-  const gammaExposure = gammaExposureByTradeDate[latestTradeDate] ?? persistedGammaExposure;
+  const persistedVixMomentum = marketPlumbing
+    ? (getNumericValue(marketPlumbing.vixMomentum) ?? getNumericValue(marketPlumbing.gammaExposure))
+    : null;
+  const vixMomentum = vixMomentumByTradeDate[latestTradeDate] ?? persistedVixMomentum;
 
   if (
     spyRsi == null ||
@@ -465,9 +525,10 @@ function buildCurrentAnalogStateVector(
     return null;
   }
 
+  // Fallback raw levels only if stationarized map missing (legacy paths).
   return {
     spyRsi,
-    gammaExposure: gammaExposure ?? 0,
+    vixMomentum: vixMomentum ?? 0,
     hygTltRatio: hygClose / tltClose,
     cperGldRatio: cperClose / gldClose,
     usoMomentum,
@@ -547,9 +608,10 @@ function buildReconstructedRankedMatches(
 
   const sortedCommonTradeDates = buildSortedCommonTradeDates(historicalArrays);
   const {
-    gammaExposureByTradeDate,
+    vixMomentumByTradeDate,
     historicalAnalogVectors,
     usoMomentumByTradeDate,
+    stationarizedByDate,
   } = buildHistoricalAnalogVectors(
     historicalArrays,
     sortedCommonTradeDates,
@@ -562,7 +624,8 @@ function buildReconstructedRankedMatches(
     technicalIndicators,
     latestTradeDate,
     usoMomentumByTradeDate,
-    gammaExposureByTradeDate,
+    vixMomentumByTradeDate,
+    stationarizedByDate,
   );
 
   if (!currentVector) {
@@ -608,6 +671,8 @@ function buildReconstructedRankedMatches(
             vector: standardizeVector(analog.vector, featureStatistics),
           },
           lambda,
+          ANALOG_MODEL_SETTINGS.distanceMetric,
+          [...STOCKS_KNN_FEATURE_KEYS],
         ),
         tradeDate: analog.tradeDate,
       }))

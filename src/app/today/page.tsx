@@ -770,19 +770,19 @@ export default async function TodayPage() {
         {/* ── Bottom CTA ── */}
         <section className="mt-14 rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 text-center">
           <p className="text-sm text-zinc-400">
-            Backtested since 2020:{" "}
+            See the honest numbers:{" "}
             <Link
               href="/track-record"
               className="font-semibold text-white underline decoration-zinc-600 underline-offset-4 hover:decoration-white transition-colors"
             >
-              +295% strategy vs +116% S&amp;P 500
+              stocks research + live paper ledger
             </Link>
             {" "}·{" "}
             <Link
               href="/crypto/track-record"
               className="font-semibold text-white underline decoration-zinc-600 underline-offset-4 hover:decoration-white transition-colors"
             >
-              +41,576% long-only vs +941% BTC
+              crypto research + live paper ledger
             </Link>
           </p>
         </section>

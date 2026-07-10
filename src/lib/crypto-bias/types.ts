@@ -2,6 +2,7 @@ import type {
   CRYPTO_ANALOG_MODEL_SETTINGS,
   CRYPTO_TRACKED_TICKERS,
 } from "./constants";
+import type { TradableSignal } from "../signal";
 
 export type CryptoTrackedTicker = (typeof CRYPTO_TRACKED_TICKERS)[number];
 
@@ -58,6 +59,7 @@ export type CryptoHistoricalAnalogMatch = {
   btcForward1DayReturn: number;
   btcForward3DayReturn: number;
   tradeDate: string;
+  weight?: number;
 };
 
 export type CryptoExpandedDailyBiasData = {
@@ -68,6 +70,13 @@ export type CryptoExpandedDailyBiasData = {
   btcRealizedVol?: number;
   tltMomentum?: number;
   historicalAnalogVectors?: CryptoHistoricalAnalogVector[];
+  /**
+   * Model v3+: when set, these walk-forward percentiles override raw level fields
+   * for ethBtcRatio / btcGldRatio / btcRealizedVol in the KNN vector.
+   */
+  ethBtcRatioPercentile?: number;
+  btcGldRatioPercentile?: number;
+  btcRealizedVolPercentile?: number;
 };
 
 export type CryptoDailyBiasInput = {
@@ -97,6 +106,9 @@ export type CryptoDailyBiasResult = {
   label: BiasLabel;
   componentScores: CryptoBiasComponentResult[];
   tickerChanges: CryptoTickerChangeMap;
+  signal: TradableSignal;
+  blendedForwardReturn: number;
+  modelVersion: string;
 };
 
 export type CryptoBiasScoreRow = {
@@ -111,3 +123,5 @@ export type CryptoBiasScoreRow = {
   created_at: string;
   updated_at: string;
 };
+
+export type _CryptoAnalogModelSettings = typeof CRYPTO_ANALOG_MODEL_SETTINGS;

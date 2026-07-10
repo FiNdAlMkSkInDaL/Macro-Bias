@@ -4,7 +4,8 @@ export type SignalBreakdownPillarKey =
   | "trendAndMomentum"
   | "dealerPositioning"
   | "positioning"
-  | "gammaExposure";
+  | "gammaExposure"
+  | "vixMomentum";
 
 export interface SignalBreakdownScore {
   contribution: number;
@@ -50,8 +51,13 @@ const PILLAR_CONFIG = [
 ] as const;
 
 function getPillarLookupKeys(key: SignalBreakdownPillarKey): readonly string[] {
-  if (key === "positioning" || key === "dealerPositioning" || key === "gammaExposure") {
-    return ["positioning", "dealerPositioning", "gammaExposure"];
+  if (
+    key === "positioning" ||
+    key === "dealerPositioning" ||
+    key === "gammaExposure" ||
+    key === "vixMomentum"
+  ) {
+    return ["positioning", "dealerPositioning", "gammaExposure", "vixMomentum"];
   }
 
   return [key];

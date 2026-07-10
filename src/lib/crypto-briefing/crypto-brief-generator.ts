@@ -43,6 +43,14 @@ type CryptoBriefingPromptPayload = {
   topAnalogDates: string[];
   averageForward1DayReturn: number | null;
   averageForward3DayReturn: number | null;
+  tradableSignal: {
+    position: string;
+    size: number;
+    reliability: string;
+    neighborAgreement: number;
+    noTrade: boolean;
+    reason: string;
+  } | null;
 };
 
 function countSentences(value: string) {
@@ -154,6 +162,7 @@ async function withExponentialBackoff<T>(
 
 function buildPromptPayload(biasResult: CryptoDailyBiasResult): CryptoBriefingPromptPayload {
   const firstComponent = biasResult.componentScores[0];
+  const signal = biasResult.signal ?? null;
   return {
     tradeDate: biasResult.tradeDate,
     score: biasResult.score,
@@ -168,6 +177,16 @@ function buildPromptPayload(biasResult: CryptoDailyBiasResult): CryptoBriefingPr
     topAnalogDates: firstComponent?.analogDates ?? [],
     averageForward1DayReturn: firstComponent?.averageForward1DayReturn ?? null,
     averageForward3DayReturn: firstComponent?.averageForward3DayReturn ?? null,
+    tradableSignal: signal
+      ? {
+          position: signal.position,
+          size: signal.size,
+          reliability: signal.reliability,
+          neighborAgreement: signal.neighborAgreement,
+          noTrade: signal.noTrade,
+          reason: signal.reason,
+        }
+      : null,
   };
 }
 
@@ -231,6 +250,10 @@ function parseCryptoBriefingResponse(raw: string): CryptoBriefingLLMResponse {
 function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
   const label = biasResult.label.replace(/_/g, " ");
   const score = biasResult.score > 0 ? `+${biasResult.score}` : `${biasResult.score}`;
+  const signal = biasResult.signal;
+  const permission = signal
+    ? `Permission: ${signal.position} · Reliability ${signal.reliability} · Size ${Math.round(signal.size * 100)}%`
+    : `Permission unavailable · score ${score}`;
   const btcChange = biasResult.tickerChanges["BTC-USD"];
   const btcPct = btcChange
     ? `${btcChange.percentChange > 0 ? "+" : ""}${btcChange.percentChange.toFixed(2)}%`
@@ -238,7 +261,7 @@ function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
 
   return [
     `${CRYPTO_BRIEFING_SECTION_HEADERS.bottomLine}:`,
-    `Crypto is in a ${label.toLowerCase()} regime, and the score still deserves weight today.`,
+    `${permission}. Crypto is in a ${label.toLowerCase()} regime (${score}). **BTC** moved ${btcPct} in the last session.${signal?.reason ? ` ${signal.reason}` : ""}`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.marketBreakdown}:`,
     `- **Bitcoin**: Neutral -- **BTC** closed at $${btcChange?.close.toLocaleString() ?? "n/a"} with a ${btcPct} move, so price alone is not giving a strong message.`,
@@ -250,7 +273,7 @@ function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
     `The close in **BTC** matters less than the broader macro and relative-strength backdrop. Confidence improves if **ETH** and higher-beta crypto stop lagging while the dollar backdrop eases.`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.modelNotes}:`,
-    `The nearest analog set gives a usable baseline, but this fallback is leaning on compressed quant context rather than a full narrative read. Similar setups were mixed enough that the score should be treated as a directional lean, not a precise path forecast.`,
+    `${permission}. The nearest analog set gives a usable baseline, but this fallback is leaning on compressed quant context rather than a full narrative read.`,
     `Model Diagnostics: BTC Close $${btcChange?.close.toLocaleString() ?? "n/a"} | BTC Daily Change ${btcPct} | Score ${score} | Analogs ${biasResult.componentScores[0]?.analogDates?.slice(0, 3).join(", ") || "n/a"}.`,
   ].join("\n");
 }

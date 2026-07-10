@@ -1,4 +1,5 @@
 import type { BiasLabel } from "@/lib/macro-bias/types";
+import { formatPermissionLine } from "@/lib/signal/format-tradable-signal";
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from "./daily-briefing-config";
 import type {
@@ -97,8 +98,11 @@ function buildModelDiagnostics(context: DailyBriefingStrategyContext) {
   const matchConfidence = leadAnalog?.matchConfidence ?? null;
   const analogReference = context.quant.analogReference ?? "n/a";
   const overrideState = context.suggestedOverrideActive ? "ACTIVE" : "INACTIVE";
+  const signal = context.quant.signal;
+  const agreement =
+    signal != null ? `${Math.round(signal.neighborAgreement * 100)}%` : "n/a";
 
-  return `Model Diagnostics: Closest Match ${analogReference} | Intraday Net ${formatSignedPercent(intradayNet)} | Session Range ${formatSignedPercent(sessionRange)} | Match Confidence ${formatMatchConfidence(matchConfidence)} | Override ${overrideState}.`;
+  return `Model Diagnostics: ${formatPermissionLine(signal, context.quant.score)} | Closest Match ${analogReference} | Intraday Net ${formatSignedPercent(intradayNet)} | Session Range ${formatSignedPercent(sessionRange)} | Match Confidence ${formatMatchConfidence(matchConfidence)} | Neighbor Agreement ${agreement} | Override ${overrideState}.`;
 }
 
 function buildQuantCorner(context: DailyBriefingStrategyContext) {
@@ -172,19 +176,24 @@ function buildTrustCheck(context: DailyBriefingStrategyContext) {
 }
 
 function buildBottomLine(context: DailyBriefingStrategyContext) {
+  const labelText = formatBiasLabel(context.quant.label);
+  const permission = context.suggestedOverrideActive
+    ? "Permission: NO_TRADE · Reliability F · Size 0% (macro overlay override)"
+    : formatPermissionLine(context.quant.signal, context.quant.score);
+
   if (context.suggestedOverrideActive) {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Override active: headline-driven session, so the score is background context for now.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Override active: ${permission}. Headline-driven session, so the score is background context for now.`;
   }
 
   if (context.news.status === "unavailable") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the score is usable, but the missing news read lowers confidence.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: ${permission}. Label ${labelText}, score ${context.quant.score}. Usable, but the missing news read lowers confidence.`;
   }
 
   if (context.playbook.conviction === "LOW") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the score is usable, but it still needs confirmation from the tape.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: ${permission}. Label ${labelText}, score ${context.quant.score}. Still needs confirmation from the tape.`;
   }
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern intact: the score deserves real weight today.`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern intact: ${permission}. Label ${labelText}, score ${context.quant.score}. The score deserves real weight today.`;
 }
 
 class NewsAwareBriefingStrategy implements DailyBriefingStrategy {

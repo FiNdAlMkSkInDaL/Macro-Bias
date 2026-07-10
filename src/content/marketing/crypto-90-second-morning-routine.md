@@ -33,7 +33,7 @@ Most crypto traders get caught chasing setups without understanding the environm
 
 The traders who consistently make money in crypto are not the ones with the best entries. They are the ones who show up on the right days and sit out the wrong ones. The regime score makes that decision mechanical instead of emotional.
 
-Since 2020, the long-only strategy based on this regime model has returned +41,576% vs +941% for BTC buy-and-hold. That outperformance comes almost entirely from the days it did not trade. The days it sat out while gut traders were catching falling knives.
+The useful edge is not a frozen equity-curve multiple. It is a mechanical answer to whether today is a day to push or a day to protect, plus a live paper ledger that grades published scores after the fact.
 
 ## Try It Tomorrow Morning
 

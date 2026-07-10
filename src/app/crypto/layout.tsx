@@ -5,7 +5,7 @@ const SITE_URL = "https://macro-bias.com";
 export const metadata: Metadata = {
   title: "Daily Crypto Regime Briefing — BTC Signal | Macro Bias",
   description:
-    "A quantitative daily crypto regime score covering BTC, ETH, and altcoins. Backtested +41,576% long-only vs +944% BTC buy-and-hold since 2020.",
+    "A quantitative daily crypto regime score covering BTC, ETH, and altcoins. Tradable permission, reliability grade, and a live paper ledger from published scores.",
   alternates: {
     canonical: `${SITE_URL}/crypto`,
   },
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Daily Crypto Regime Briefing | Macro Bias",
     description:
-      "Quantitative daily crypto regime score. Backtested +41,576% vs +944% BTC buy-and-hold.",
+      "Quantitative daily crypto regime score with a live paper ledger from published scores.",
   },
 };
 

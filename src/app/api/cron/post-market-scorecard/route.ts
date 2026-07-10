@@ -159,7 +159,7 @@ async function handlePostMarketScorecard(request: NextRequest) {
 
     console.log(
       `[post-market-scorecard] Built scorecard for ${scorecardData.tradeDate}: ` +
-        `score=${scorecardData.score}, SPY=${scorecardData.spyChangePercent.toFixed(2)}%, ` +
+        `score=${scorecardData.score}, nextDaySPY=${scorecardData.spyForward1DReturn.toFixed(2)}%, ` +
         `correct=${scorecardData.callCorrect}`,
     );
 
@@ -229,7 +229,7 @@ async function handlePostMarketScorecard(request: NextRequest) {
       ok: true,
       tradeDate: scorecardData.tradeDate,
       score: scorecardData.score,
-      spyChange: scorecardData.spyChangePercent,
+      spyForward1D: scorecardData.spyForward1DReturn,
       callCorrect: scorecardData.callCorrect,
       rollingHitRate: scorecardData.rollingHitRate,
       publishedTo,

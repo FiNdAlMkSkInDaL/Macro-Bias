@@ -23,6 +23,22 @@ type Scenario = {
   biasResult: CryptoDailyBiasResult;
 };
 
+function mockSignal(
+  position: CryptoDailyBiasResult["signal"]["position"],
+  score: number,
+): CryptoDailyBiasResult["signal"] {
+  return {
+    position,
+    size: position === "LONG" || position === "SHORT" ? Math.min(Math.abs(score) / 100, 1) : 0,
+    reliability: position === "NO_TRADE" ? "F" : "B",
+    neighborAgreement: 0.8,
+    meanNeighborDistance: 1.2,
+    distanceQuality: 0.6,
+    noTrade: position === "NO_TRADE",
+    reason: `Test fixture for ${position}.`,
+  };
+}
+
 const SCENARIOS: Scenario[] = [
   {
     name: "Extreme Risk On",
@@ -48,6 +64,9 @@ const SCENARIOS: Scenario[] = [
         "ETH-USD": { ticker: "ETH-USD", tradeDate: "2025-04-15", close: 3800, previousClose: 3650, percentChange: 4.11 },
         "SOL-USD": { ticker: "SOL-USD", tradeDate: "2025-04-15", close: 185, previousClose: 174, percentChange: 6.32 },
       },
+      signal: mockSignal("LONG", 72),
+      blendedForwardReturn: 3.72,
+      modelVersion: "crypto-model-v2-tradable-signal",
     },
   },
   {
@@ -74,6 +93,9 @@ const SCENARIOS: Scenario[] = [
         "ETH-USD": { ticker: "ETH-USD", tradeDate: "2025-04-15", close: 2100, previousClose: 2400, percentChange: -12.5 },
         "SOL-USD": { ticker: "SOL-USD", tradeDate: "2025-04-15", close: 95, previousClose: 115, percentChange: -17.39 },
       },
+      signal: mockSignal("SHORT", -68),
+      blendedForwardReturn: -5.72,
+      modelVersion: "crypto-model-v2-tradable-signal",
     },
   },
   {
@@ -100,6 +122,9 @@ const SCENARIOS: Scenario[] = [
         "ETH-USD": { ticker: "ETH-USD", tradeDate: "2025-04-15", close: 3100, previousClose: 3080, percentChange: 0.65 },
         "SOL-USD": { ticker: "SOL-USD", tradeDate: "2025-04-15", close: 148, previousClose: 146, percentChange: 1.37 },
       },
+      signal: mockSignal("FLAT", 5),
+      blendedForwardReturn: 0.02,
+      modelVersion: "crypto-model-v2-tradable-signal",
     },
   },
 ];

@@ -2,6 +2,8 @@ import { calculateRelativeStrengthIndex } from "../macro-bias/technical-analysis
 import { calculateCryptoDailyBias } from "../crypto-bias/calculate-crypto-bias";
 import {
   CRYPTO_ANALOG_MODEL_SETTINGS,
+  CRYPTO_LEVEL_FEATURES_FOR_PERCENTILE,
+  CRYPTO_MODEL_VERSION,
   CRYPTO_TRACKED_TICKERS,
 } from "../crypto-bias/constants";
 import type {
@@ -12,6 +14,7 @@ import type {
   CryptoTickerChangeMap,
   CryptoTrackedTicker,
 } from "../crypto-bias/types";
+import { stationarizeLevelFeatures } from "../signal/rolling-percentile";
 import { createSupabaseAdminClient } from "../supabase/admin";
 
 type CryptoSyncOptions = {
@@ -69,7 +72,6 @@ type MacroBiasAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
 const CRYPTO_ONLY_TICKERS = ["BTC-USD", "ETH-USD", "SOL-USD", "DX-Y.NYB"] as const;
 const SHARED_TICKERS = ["GLD", "TLT"] as const;
-const MODEL_VERSION = "crypto-model-v1";
 const MAX_ANALOG_LOOKBACK_YEARS = 10;
 const DEFAULT_ANALOG_LOOKBACK_DAYS = 3653;
 const MIN_ANALOG_LOOKBACK_DAYS = 45;
@@ -345,6 +347,13 @@ function buildBtcTechnicalIndicatorsByTradeDate(btcHistory: HistoricalPriceRow[]
   return result;
 }
 
+type CryptoFeaturePoint = {
+  tradeDate: string;
+  vector: CryptoHistoricalAnalogVector["vector"];
+  btcForward1DayReturn: number | null;
+  btcForward3DayReturn: number | null;
+};
+
 function buildCryptoHistoricalAnalogVectors(
   btcHistory: HistoricalPriceRow[],
   ethHistory: HistoricalPriceRow[],
@@ -356,7 +365,15 @@ function buildCryptoHistoricalAnalogVectors(
   dxyMomentumByDate: Record<string, number>,
   tltMomentumByDate: Record<string, number>,
   sortedCommonDates: string[],
-): CryptoHistoricalAnalogVector[] {
+  latestTradeDate: string,
+): {
+  historicalAnalogVectors: CryptoHistoricalAnalogVector[];
+  todayLevelPercentiles: {
+    ethBtcRatioPercentile: number;
+    btcGldRatioPercentile: number;
+    btcRealizedVolPercentile: number;
+  } | null;
+} {
   const btcByDate = buildTradeDateLookup(btcHistory);
   const ethByDate = buildTradeDateLookup(ethHistory);
   const gldByDate = buildTradeDateLookup(gldHistory);
@@ -367,16 +384,20 @@ function buildCryptoHistoricalAnalogVectors(
     CRYPTO_ANALOG_MODEL_SETTINGS.btcRealizedVolWindow,
   );
 
-  const vectors: CryptoHistoricalAnalogVector[] = [];
+  const rawPoints: CryptoFeaturePoint[] = [];
 
-  for (let i = minLookback; i < sortedCommonDates.length - 3; i += 1) {
+  for (let i = minLookback; i < sortedCommonDates.length; i += 1) {
     const tradeDate = sortedCommonDates[i];
-    const nextDate = sortedCommonDates[i + 1];
-    const thirdForwardDate = sortedCommonDates[i + 3];
+    const nextDate =
+      i + 1 < sortedCommonDates.length ? sortedCommonDates[i + 1] : null;
+    const thirdForwardDate =
+      i + 3 < sortedCommonDates.length ? sortedCommonDates[i + 3] : null;
 
     const btcRow = btcByDate.get(tradeDate);
-    const nextBtcRow = btcByDate.get(nextDate);
-    const thirdBtcRow = btcByDate.get(thirdForwardDate);
+    const nextBtcRow = nextDate ? btcByDate.get(nextDate) : undefined;
+    const thirdBtcRow = thirdForwardDate
+      ? btcByDate.get(thirdForwardDate)
+      : undefined;
     const ethRow = ethByDate.get(tradeDate);
     const gldRow = gldByDate.get(tradeDate);
 
@@ -386,14 +407,20 @@ function buildCryptoHistoricalAnalogVectors(
     const tltMomentum = tltMomentumByDate[tradeDate];
 
     if (
-      !btcRow || !nextBtcRow || !thirdBtcRow || !ethRow || !gldRow ||
-      btcRsi == null || btcRealizedVol == null ||
-      dxyMomentum == null || tltMomentum == null
+      !btcRow ||
+      !ethRow ||
+      !gldRow ||
+      btcRsi == null ||
+      btcRealizedVol == null ||
+      dxyMomentum == null ||
+      tltMomentum == null ||
+      btcRow.close <= 0 ||
+      gldRow.close <= 0
     ) {
       continue;
     }
 
-    vectors.push({
+    rawPoints.push({
       tradeDate,
       vector: {
         btcRsi,
@@ -403,12 +430,53 @@ function buildCryptoHistoricalAnalogVectors(
         btcRealizedVol,
         tltMomentum,
       },
-      btcForward1DayReturn: calculatePercentChange(nextBtcRow.close, btcRow.close),
-      btcForward3DayReturn: calculatePercentChange(thirdBtcRow.close, btcRow.close),
+      // Close→close neighbor labels (OTC training measured worse on fair metrics).
+      btcForward1DayReturn:
+        nextBtcRow != null
+          ? calculatePercentChange(nextBtcRow.close, btcRow.close)
+          : null,
+      btcForward3DayReturn:
+        thirdBtcRow != null
+          ? calculatePercentChange(thirdBtcRow.close, btcRow.close)
+          : null,
     });
   }
 
-  return vectors;
+  // dxyHistory / tltHistory are only used via momentum maps above.
+  void dxyHistory;
+  void tltHistory;
+
+  const stationarized = stationarizeLevelFeatures(
+    rawPoints,
+    CRYPTO_LEVEL_FEATURES_FOR_PERCENTILE,
+    {
+      window: CRYPTO_ANALOG_MODEL_SETTINGS.percentileWindowSessions,
+      minHistory: CRYPTO_ANALOG_MODEL_SETTINGS.percentileMinHistorySessions,
+    },
+  );
+
+  const historicalAnalogVectors: CryptoHistoricalAnalogVector[] = stationarized
+    .filter(
+      (point) =>
+        point.btcForward1DayReturn != null && point.btcForward3DayReturn != null,
+    )
+    .map((point) => ({
+      tradeDate: point.tradeDate,
+      vector: point.vector,
+      btcForward1DayReturn: point.btcForward1DayReturn as number,
+      btcForward3DayReturn: point.btcForward3DayReturn as number,
+    }));
+
+  const todayPoint = stationarized.find((point) => point.tradeDate === latestTradeDate);
+  const todayLevelPercentiles = todayPoint
+    ? {
+        ethBtcRatioPercentile: todayPoint.vector.ethBtcRatio,
+        btcGldRatioPercentile: todayPoint.vector.btcGldRatio,
+        btcRealizedVolPercentile: todayPoint.vector.btcRealizedVol,
+      }
+    : null;
+
+  return { historicalAnalogVectors, todayLevelPercentiles };
 }
 
 function buildSortedCommonTradeDates(
@@ -585,19 +653,21 @@ export async function upsertCryptoMarketData(
     CRYPTO_ANALOG_MODEL_SETTINGS.tltMomentumLookbackSessions,
   );
 
-  // Build historical analog vectors
-  const historicalAnalogVectors = buildCryptoHistoricalAnalogVectors(
-    btcHistory,
-    ethHistory,
-    gldFilled,
-    dxyFilled,
-    tltFilled,
-    btcTechnicalsByDate,
-    btcRealizedVolByDate,
-    dxyMomentumByDate,
-    tltMomentumByDate,
-    sortedCommonDates,
-  );
+  // Build historical analog vectors (level features → walk-forward percentiles)
+  const { historicalAnalogVectors, todayLevelPercentiles } =
+    buildCryptoHistoricalAnalogVectors(
+      btcHistory,
+      ethHistory,
+      gldFilled,
+      dxyFilled,
+      tltFilled,
+      btcTechnicalsByDate,
+      btcRealizedVolByDate,
+      dxyMomentumByDate,
+      tltMomentumByDate,
+      sortedCommonDates,
+      latestTradeDate,
+    );
 
   // Build today's expanded data
   const btcRsi = btcTechnicalsByDate[latestTradeDate]?.rsi14;
@@ -616,14 +686,24 @@ export async function upsertCryptoMarketData(
     throw new Error("Not enough data to compute crypto bias features for today.");
   }
 
+  if (!todayLevelPercentiles) {
+    throw new Error(
+      "Not enough history to compute walk-forward percentiles for ETH/BTC, BTC/GLD, and BTC realized vol.",
+    );
+  }
+
   const expandedData: CryptoExpandedDailyBiasData = {
     btc14DayRsi: btcRsi,
+    // Raw levels retained for display; KNN uses percentile overrides below.
     ethBtcRatio: ethRow.close / btcRow.close,
     btcGldRatio: btcRow.close / gldRow.close,
     dxyMomentum,
     btcRealizedVol,
     tltMomentum,
     historicalAnalogVectors,
+    ethBtcRatioPercentile: todayLevelPercentiles.ethBtcRatioPercentile,
+    btcGldRatioPercentile: todayLevelPercentiles.btcGldRatioPercentile,
+    btcRealizedVolPercentile: todayLevelPercentiles.btcRealizedVolPercentile,
   };
 
   // Build ticker changes for tracked tickers
@@ -702,7 +782,7 @@ export async function upsertCryptoMarketData(
   if (priceError) throw priceError;
   log("Finished crypto price upsert.");
 
-  // Upsert crypto bias score
+  // Upsert crypto bias score (model v2 includes tradable signal layer)
   const scoreRows = [
     {
       trade_date: biasResult.tradeDate,
@@ -710,7 +790,13 @@ export async function upsertCryptoMarketData(
       bias_label: biasResult.label,
       component_scores: biasResult.componentScores,
       ticker_changes: biasResult.tickerChanges,
-      engine_inputs: expandedData,
+      model_version: biasResult.modelVersion ?? CRYPTO_MODEL_VERSION,
+      engine_inputs: {
+        ...expandedData,
+        tradableSignal: biasResult.signal,
+        blendedForwardReturn: biasResult.blendedForwardReturn,
+        modelVersion: biasResult.modelVersion ?? CRYPTO_MODEL_VERSION,
+      },
       technical_indicators: { BTC: btcTechnicalsByDate[latestTradeDate] ?? {} },
     },
   ];

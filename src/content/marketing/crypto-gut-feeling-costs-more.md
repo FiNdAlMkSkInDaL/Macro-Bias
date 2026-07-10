@@ -29,7 +29,7 @@ Macro Bias tracks BTC realized volatility, the ETH/BTC ratio, DXY correlation, a
 
 When the model says the regime is Risk-On and 70% of similar historical sessions saw follow-through buying, that is useful context before you size a position. When it says Risk-Off and similar conditions preceded extended drawdowns, that is useful context before you catch a falling knife.
 
-The backtest speaks for itself: +41,576% long-only strategy return vs +941% BTC buy-and-hold since 2020. The difference is not a better entry. It is knowing which days to show up and which days to sit out.
+The research backtest is only half the story. The live paper ledger grades published scores after the fact. The difference is not a better entry. It is knowing which days to show up and which days to sit out.
 
 ## The 10-Second Test for Crypto Traders
 

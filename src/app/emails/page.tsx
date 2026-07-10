@@ -185,16 +185,11 @@ export default function EmailsPage() {
             href="/track-record"
             className="block min-w-0 border border-zinc-800 bg-zinc-950/60 px-6 py-5 transition hover:border-zinc-700 hover:bg-zinc-950/80"
           >
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center">
-              <div className="min-w-0">
-                <p className="text-2xl font-semibold text-white">+295%</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Macro Bias</p>
-              </div>
-              <div className="text-center text-zinc-600">vs</div>
-              <div className="min-w-0">
-                <p className="text-2xl font-semibold text-zinc-400">+116%</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">S&amp;P 500</p>
-              </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-white">Stocks regime + size cue</p>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                Research backtest + live paper ledger from published scores
+              </p>
             </div>
             <div className="mt-4 border-t border-zinc-800 pt-3 text-right">
               <span className="text-xs text-zinc-500 underline underline-offset-2 transition hover:text-zinc-300">
@@ -207,16 +202,11 @@ export default function EmailsPage() {
             href="/crypto/track-record"
             className="block min-w-0 border border-zinc-800 bg-zinc-950/60 px-6 py-5 transition hover:border-zinc-700 hover:bg-zinc-950/80"
           >
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center">
-              <div className="min-w-0">
-                <p className="text-xl font-semibold text-white">+41,576%</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">Long Only</p>
-              </div>
-              <div className="text-center text-zinc-600">vs</div>
-              <div className="min-w-0">
-                <p className="text-xl font-semibold text-zinc-400">+941%</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-zinc-500">BTC</p>
-              </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-white">Crypto regime + size cue</p>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                Long-only permission layer with reliability grades
+              </p>
             </div>
             <div className="mt-4 border-t border-zinc-800 pt-3 text-right">
               <span className="text-xs text-zinc-500 underline underline-offset-2 transition hover:text-zinc-300">

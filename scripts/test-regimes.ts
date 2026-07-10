@@ -164,6 +164,39 @@ function buildQuantContext(input: {
     label: input.label,
     score: input.score,
     tradeDate: input.tradeDate,
+    signal:
+      input.score > 20
+        ? {
+            position: "LONG" as const,
+            size: 0.7,
+            reliability: "B" as const,
+            neighborAgreement: 0.8,
+            meanNeighborDistance: 1.0,
+            distanceQuality: 0.55,
+            noTrade: false,
+            reason: "Test fixture long permission.",
+          }
+        : input.score < -20
+          ? {
+              position: "SHORT" as const,
+              size: 0.7,
+              reliability: "B" as const,
+              neighborAgreement: 0.8,
+              meanNeighborDistance: 1.0,
+              distanceQuality: 0.55,
+              noTrade: false,
+              reason: "Test fixture short permission.",
+            }
+          : {
+              position: "FLAT" as const,
+              size: 0,
+              reliability: "C" as const,
+              neighborAgreement: 0.5,
+              meanNeighborDistance: 1.5,
+              distanceQuality: 0.4,
+              noTrade: false,
+              reason: "Test fixture flat permission.",
+            },
   };
 }
 
