@@ -1,7 +1,18 @@
-import { calculateDecayedDistance } from "../../utils/knn";
+import { classifyRegime, type RegimeState } from "../../utils/regime-classifier";
+import { calculateBaseDistance, isUsEquityMonday } from "../../utils/knn";
+import {
+  buildTradableSignal,
+  inverseDistanceWeight,
+  weightedMean,
+} from "../signal";
+import type { TradableSignal } from "../signal";
+import { trendSignFromCloseVsSma } from "../signal/trend-veto";
 import {
   ANALOG_MODEL_SETTINGS,
   BIAS_SIGNAL_WEIGHTS,
+  MODEL_VERSION,
+  STOCKS_KNN_FEATURE_KEYS,
+  STRATEGY_RULES,
 } from "./constants";
 import type {
   AnalogFeatureKey,
@@ -15,14 +26,18 @@ import type {
   HistoricalAnalogVector,
 } from "./types";
 
+/** Full vector keys (includes vixLevel for regime/display). */
 const FEATURE_ORDER: AnalogFeatureKey[] = [
   "spyRsi",
-  "gammaExposure",
+  "vixMomentum",
   "hygTltRatio",
   "cperGldRatio",
   "usoMomentum",
   "vixLevel",
 ];
+
+/** KNN distance keys only (v8 ablation). */
+const KNN_FEATURE_ORDER: AnalogFeatureKey[] = [...STOCKS_KNN_FEATURE_KEYS];
 
 const PILLAR_ORDER: BiasPillarKey[] = [
   "trendAndMomentum",
@@ -33,7 +48,7 @@ const PILLAR_ORDER: BiasPillarKey[] = [
 
 const FEATURE_TO_PILLAR: Record<AnalogFeatureKey, BiasPillarKey> = {
   spyRsi: "trendAndMomentum",
-  gammaExposure: "positioning",
+  vixMomentum: "volatility",
   hygTltRatio: "creditAndRiskSpreads",
   cperGldRatio: "creditAndRiskSpreads",
   usoMomentum: "creditAndRiskSpreads",
@@ -51,6 +66,7 @@ type FeatureStatistics = Record<
 type NeighborWithStandardizedVector = {
   analog: HistoricalAnalogVector;
   distance: number;
+  weight: number;
   standardizedVector: AnalogStateVector;
 };
 
@@ -122,10 +138,37 @@ function assertFiniteNumber(value: number | undefined, label: string): number {
   return value;
 }
 
+const MS_PER_DAY = 86_400_000;
+
+function calendarDaysBetween(a: string, b: string): number {
+  return Math.abs(
+    Math.round(
+      (Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)) -
+        Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10))) /
+        MS_PER_DAY,
+    ),
+  );
+}
+
+/**
+ * Resolve vixMomentum with legacy gammaExposure fallback so older payloads still score.
+ */
+function resolveVixMomentum(expandedData: NonNullable<DailyBiasInput["expandedData"]>): number {
+  if (expandedData.vixMomentum != null && Number.isFinite(expandedData.vixMomentum)) {
+    return expandedData.vixMomentum;
+  }
+
+  if (expandedData.gammaExposure != null && Number.isFinite(expandedData.gammaExposure)) {
+    return expandedData.gammaExposure;
+  }
+
+  return 0;
+}
+
 // Today's vector is the market fingerprint the engine will match against history.
 // Ratios are level-based because they describe cross-asset leadership right now,
-// gamma captures market-plumbing positioning, and USO uses a 5-session momentum
-// term to reduce daily noise in the energy tape.
+// vixMomentum captures short-horizon vol impulse (honestly named; not dealer GEX),
+// and USO uses a 5-session momentum term to reduce daily noise in the energy tape.
 function buildTodayStateVector(input: DailyBiasInput): AnalogStateVector {
   const expandedData = input.expandedData;
 
@@ -133,20 +176,33 @@ function buildTodayStateVector(input: DailyBiasInput): AnalogStateVector {
     throw new Error("The KNN model requires expandedData inputs to build today's vector.");
   }
 
+  // Level features: prefer walk-forward percentiles (model v6+) when present.
+  const hygTltRatio =
+    expandedData.hygTltRatioPercentile != null &&
+    Number.isFinite(expandedData.hygTltRatioPercentile)
+      ? expandedData.hygTltRatioPercentile
+      : assertFiniteNumber(expandedData.hyg?.close, "HYG close") /
+        assertFiniteNumber(input.tickerChanges.TLT.close, "TLT close");
+
+  const cperGldRatio =
+    expandedData.cperGldRatioPercentile != null &&
+    Number.isFinite(expandedData.cperGldRatioPercentile)
+      ? expandedData.cperGldRatioPercentile
+      : assertFiniteNumber(expandedData.cper?.close, "CPER close") /
+        assertFiniteNumber(input.tickerChanges.GLD.close, "GLD close");
+
+  const vixLevel =
+    expandedData.vixLevelPercentile != null && Number.isFinite(expandedData.vixLevelPercentile)
+      ? expandedData.vixLevelPercentile
+      : assertFiniteNumber(expandedData.vix?.close, "VIX close");
+
   return {
     spyRsi: assertFiniteNumber(expandedData.spy14DayRsi, "SPY RSI"),
-    gammaExposure:
-      expandedData.gammaExposure == null
-        ? 0
-        : assertFiniteNumber(expandedData.gammaExposure, "dealer gamma exposure"),
-    hygTltRatio:
-      assertFiniteNumber(expandedData.hyg?.close, "HYG close") /
-      assertFiniteNumber(input.tickerChanges.TLT.close, "TLT close"),
-    cperGldRatio:
-      assertFiniteNumber(expandedData.cper?.close, "CPER close") /
-      assertFiniteNumber(input.tickerChanges.GLD.close, "GLD close"),
+    vixMomentum: resolveVixMomentum(expandedData),
+    hygTltRatio,
+    cperGldRatio,
     usoMomentum: assertFiniteNumber(expandedData.uso5DayMomentum, "USO 5-day momentum"),
-    vixLevel: assertFiniteNumber(expandedData.vix?.close, "VIX close"),
+    vixLevel,
   };
 }
 
@@ -163,13 +219,29 @@ function getHistoricalAnalogVectors(input: DailyBiasInput): HistoricalAnalogVect
     );
   }
 
-  return historicalAnalogVectors;
+  // Normalize legacy gammaExposure key on vectors if present.
+  return historicalAnalogVectors.map((analog) => {
+    const vector = analog.vector as AnalogStateVector & { gammaExposure?: number };
+    if (vector.vixMomentum == null && vector.gammaExposure != null) {
+      return {
+        ...analog,
+        vector: {
+          spyRsi: vector.spyRsi,
+          vixMomentum: vector.gammaExposure,
+          hygTltRatio: vector.hygTltRatio,
+          cperGldRatio: vector.cperGldRatio,
+          usoMomentum: vector.usoMomentum,
+          vixLevel: vector.vixLevel,
+        },
+      };
+    }
+
+    return analog;
+  });
 }
 
-// Euclidean distance only makes sense if each dimension lives on a comparable scale.
-// The engine therefore z-scores every feature using the historical sample before
-// comparing today's vector to the past.
 function buildFeatureStatistics(historicalAnalogs: HistoricalAnalogVector[]): FeatureStatistics {
+  // Z-score only KNN features used in distance; still fill full vector keys for safety.
   return FEATURE_ORDER.reduce<FeatureStatistics>((statistics, feature) => {
     const values = historicalAnalogs.map((analog) => analog.vector[feature]);
     const standardDeviation = populationStandardDeviation(values);
@@ -196,57 +268,292 @@ function standardizeVector(
   }, {} as AnalogStateVector);
 }
 
+/** Distance on ablated KNN feature set only (cosine in v10, was Euclidean in v8). */
+function knnDistance(a: AnalogStateVector, b: AnalogStateVector): number {
+  return calculateBaseDistance(
+    { tradeDate: "1970-01-01", vector: a },
+    { tradeDate: "1970-01-01", vector: b },
+    ANALOG_MODEL_SETTINGS.distanceMetric,
+    KNN_FEATURE_ORDER,
+  );
+}
+
+/**
+ * After a large same-day SPY move, shrink the analog score and fade the day
+ * (mean-reversion nudge). Measured v11 on next-session open→close.
+ */
+export function applyFadeBigDay(
+  score: number,
+  sameDayCtcPct: number | null | undefined,
+): number {
+  if (!ANALOG_MODEL_SETTINGS.fadeBigDayEnabled) return score;
+  if (sameDayCtcPct == null || !Number.isFinite(sameDayCtcPct)) return score;
+  const thr = ANALOG_MODEL_SETTINGS.fadeBigDayThresholdPct;
+  if (Math.abs(sameDayCtcPct) <= thr) return score;
+  const scaled = score * ANALOG_MODEL_SETTINGS.fadeBigDayScoreScale;
+  const push =
+    -Math.sign(sameDayCtcPct) * ANALOG_MODEL_SETTINGS.fadeBigDayPushPoints;
+  return clamp(Math.round(scaled + push), -100, 100);
+}
+
+/**
+ * Overnight gap = open vs prior close (%). Positive = gap up.
+ * Returns null when open/previousClose unavailable.
+ */
+export function computeOvernightGapPct(
+  open: number | null | undefined,
+  previousClose: number | null | undefined,
+): number | null {
+  if (
+    open == null ||
+    previousClose == null ||
+    !Number.isFinite(open) ||
+    !Number.isFinite(previousClose) ||
+    previousClose <= 0
+  ) {
+    return null;
+  }
+  return ((open - previousClose) / previousClose) * 100;
+}
+
+/**
+ * If KNN lean fights the overnight gap by more than threshold, zero the score.
+ * Measured v12: hit ~55% edge ~+0.31 on next-session OTC (yE+/yH+ 6/7).
+ */
+export function applyOvernightVeto(
+  score: number,
+  overnightGapPct: number | null | undefined,
+  scoreThreshold = STRATEGY_RULES.scoreThreshold,
+): number {
+  if (!ANALOG_MODEL_SETTINGS.overnightVetoEnabled) return score;
+  if (overnightGapPct == null || !Number.isFinite(overnightGapPct)) return score;
+  const thr = ANALOG_MODEL_SETTINGS.overnightVetoThresholdPct;
+  if (score > scoreThreshold && overnightGapPct < -thr) return 0;
+  if (score < -scoreThreshold && overnightGapPct > thr) return 0;
+  return score;
+}
+
+/** Population stdev of neighbor blended forward returns. */
+export function neighborReturnDispersion(blendedReturns: number[]): number {
+  if (blendedReturns.length < 2) return 0;
+  const m = mean(blendedReturns);
+  const variance =
+    blendedReturns.reduce((sum, value) => sum + (value - m) ** 2, 0) /
+    blendedReturns.length;
+  return Math.sqrt(variance);
+}
+
+/**
+ * Force flat when the neighbor cluster is suspiciously tight (low return dispersion).
+ * Measured v14 on next-session OTC.
+ */
+export function applyLowNeighborVolFlat(
+  score: number,
+  blendedReturns: number[],
+): number {
+  if (!ANALOG_MODEL_SETTINGS.flatLowNeighborVolEnabled) return score;
+  const sd = neighborReturnDispersion(blendedReturns);
+  if (sd < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold) return 0;
+  return score;
+}
+
+/**
+ * Soft overnight amplify: ×up when gap agrees with lean, ×down when it mildly
+ * disagrees. Hard overnight veto still applied separately for big fights.
+ * Measured v14.
+ */
+export function applySoftOvernightAmp(
+  score: number,
+  overnightGapPct: number | null | undefined,
+  scoreThreshold = STRATEGY_RULES.scoreThreshold,
+): number {
+  if (!ANALOG_MODEL_SETTINGS.softOvernightAmpEnabled) return score;
+  if (overnightGapPct == null || !Number.isFinite(overnightGapPct)) return score;
+  const gap = ANALOG_MODEL_SETTINGS.softOvernightAmpGapPct;
+  const up = ANALOG_MODEL_SETTINGS.softOvernightAmpUp;
+  const down = ANALOG_MODEL_SETTINGS.softOvernightAmpDown;
+  if (score > scoreThreshold && overnightGapPct > gap) {
+    return clamp(Math.round(score * up), -100, 100);
+  }
+  if (score < -scoreThreshold && overnightGapPct < -gap) {
+    return clamp(Math.round(score * up), -100, 100);
+  }
+  if (score > scoreThreshold && overnightGapPct < -gap) {
+    return clamp(Math.round(score * down), -100, 100);
+  }
+  if (score < -scoreThreshold && overnightGapPct > gap) {
+    return clamp(Math.round(score * down), -100, 100);
+  }
+  return score;
+}
+
+/** Monday publish dampener: neutral score + FLAT (measured v10 package). */
+function applyMondayDampener(
+  tradeDate: string,
+  score: number,
+  signal: TradableSignal,
+): { score: number; signal: TradableSignal } {
+  if (!ANALOG_MODEL_SETTINGS.skipMondayScores || !isUsEquityMonday(tradeDate)) {
+    return { score, signal };
+  }
+
+  if (signal.position === "NO_TRADE") {
+    return {
+      score: 0,
+      signal: {
+        ...signal,
+        reason: `Monday dampener: ${signal.reason}`,
+      },
+    };
+  }
+
+  return {
+    score: 0,
+    signal: {
+      ...signal,
+      position: "FLAT",
+      size: 0,
+      noTrade: false,
+      reason:
+        "Monday publish dampener. Analogs may lean, but Monday scores are withheld (measured noise).",
+    },
+  };
+}
+
+/**
+ * Prefer same-regime analogs when enough exist; otherwise fall back to full history.
+ */
+function filterAnalogsByRegime(
+  todayVector: AnalogStateVector,
+  historicalAnalogs: HistoricalAnalogVector[],
+): { pool: HistoricalAnalogVector[]; regime: RegimeState; regimeFiltered: boolean } {
+  const regime = classifyRegime(todayVector, { calibrationDataset: historicalAnalogs });
+  const sameRegime = historicalAnalogs.filter(
+    (analog) => classifyRegime(analog.vector, { calibrationDataset: historicalAnalogs }) === regime,
+  );
+
+  if (sameRegime.length >= ANALOG_MODEL_SETTINGS.minimumHistoricalAnalogs) {
+    return { pool: sameRegime, regime, regimeFiltered: true };
+  }
+
+  return { pool: historicalAnalogs, regime, regimeFiltered: false };
+}
+
+/** VIX-regime adaptive K (v18): high vol → K=5, calm → K=7. */
+export function selectNeighborK(vixLevel: number): number {
+  if (!ANALOG_MODEL_SETTINGS.adaptiveNeighborKEnabled) {
+    return ANALOG_MODEL_SETTINGS.nearestNeighborCount;
+  }
+  return vixLevel >= ANALOG_MODEL_SETTINGS.adaptiveKVixThreshold
+    ? ANALOG_MODEL_SETTINGS.adaptiveKHighVix
+    : ANALOG_MODEL_SETTINGS.adaptiveKLowVix;
+}
+
+/**
+ * Dual-arm agreement (v18): only keep a lean when temporal-decay and no-decay
+ * scores share a sign. Average magnitudes when they agree.
+ */
+export function applyDualNoDecayAgree(
+  scoreWithDecay: number,
+  scoreNoDecay: number,
+): number {
+  if (!ANALOG_MODEL_SETTINGS.dualNoDecayAgreeEnabled) {
+    return scoreWithDecay;
+  }
+  if (scoreWithDecay === 0 || scoreNoDecay === 0) return 0;
+  if (Math.sign(scoreWithDecay) !== Math.sign(scoreNoDecay)) return 0;
+  return clamp(Math.round((scoreWithDecay + scoreNoDecay) / 2), -100, 100);
+}
+
 function buildNeighborMatches(
   todayTradeDate: string,
   todayVector: AnalogStateVector,
   historicalAnalogs: HistoricalAnalogVector[],
+  options?: {
+    temporalDecayLambda?: number;
+    neighborCount?: number;
+  },
 ) {
-  const featureStatistics = buildFeatureStatistics(historicalAnalogs);
+  const { pool, regime, regimeFiltered } = filterAnalogsByRegime(todayVector, historicalAnalogs);
+  const featureStatistics = buildFeatureStatistics(pool);
   const standardizedTodayVector = standardizeVector(todayVector, featureStatistics);
-  const standardizedTodaySnapshot = {
-    tradeDate: todayTradeDate,
-    vector: standardizedTodayVector,
-  };
 
-  const nearestNeighbors = historicalAnalogs
+  const minGap = ANALOG_MODEL_SETTINGS.minAnalogCalendarGapDays;
+  const lambda =
+    options?.temporalDecayLambda ?? ANALOG_MODEL_SETTINGS.temporalDecayLambda;
+  const k = options?.neighborCount ?? selectNeighborK(todayVector.vixLevel);
+
+  const ranked = pool
+    .filter(
+      (analog) => calendarDaysBetween(todayTradeDate, analog.tradeDate) >= minGap,
+    )
     .map<NeighborWithStandardizedVector>((analog) => {
       const standardizedVector = standardizeVector(analog.vector, featureStatistics);
+      // Distance on KNN features only (not full vector / not vixLevel).
+      const base = knnDistance(standardizedTodayVector, standardizedVector);
+      const dayDiff = calendarDaysBetween(todayTradeDate, analog.tradeDate);
+      const distance = base * Math.exp(lambda * dayDiff);
 
       return {
         analog,
-        distance: calculateDecayedDistance(
-          standardizedTodaySnapshot,
-          {
-            tradeDate: analog.tradeDate,
-            vector: standardizedVector,
-          },
-          ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+        distance,
+        weight: inverseDistanceWeight(
+          distance,
+          ANALOG_MODEL_SETTINGS.distanceWeightEpsilon,
         ),
         standardizedVector,
       };
     })
-    .sort((leftNeighbor, rightNeighbor) => leftNeighbor.distance - rightNeighbor.distance)
-    .slice(0, ANALOG_MODEL_SETTINGS.nearestNeighborCount);
+    .sort((leftNeighbor, rightNeighbor) => leftNeighbor.distance - rightNeighbor.distance);
 
-  if (nearestNeighbors.length < ANALOG_MODEL_SETTINGS.nearestNeighborCount) {
+  if (ranked.length < k) {
     throw new Error(
-      `The KNN model requires ${ANALOG_MODEL_SETTINGS.nearestNeighborCount} nearest neighbors, but only ${nearestNeighbors.length} were available.`,
+      `The KNN model requires at least ${k} nearest neighbors, but only ${ranked.length} were available.`,
     );
   }
+
+  // Fixed K slice (radius expansion disabled when kMax === kMin historically).
+  const nearestNeighbors = ranked.slice(0, k);
 
   return {
     nearestNeighbors,
     standardizedTodayVector,
+    regime,
+    regimeFiltered,
   };
 }
 
+/** Full post-processing chain from a neighbor set → pre-Monday score. */
+function scoreFromNeighborArm(
+  nearestNeighbors: NeighborWithStandardizedVector[],
+  sameDayCtc: number | null | undefined,
+  overnightGap: number | null,
+): number {
+  const expectancySummary = buildExpectancySummary(nearestNeighbors);
+  const w1 = ANALOG_MODEL_SETTINGS.oneDayBlendWeight;
+  const w3 = ANALOG_MODEL_SETTINGS.threeDayBlendWeight;
+  const blendedNeighborReturns = nearestNeighbors.map(
+    (neighbor) =>
+      neighbor.analog.spyForward1DayReturn * w1 + neighbor.analog.spyForward3DayReturn * w3,
+  );
+
+  let score = mapExpectancyToScore(expectancySummary);
+  score = applyLowNeighborVolFlat(score, blendedNeighborReturns);
+  score = applyFadeBigDay(score, sameDayCtc);
+  score = applySoftOvernightAmp(score, overnightGap);
+  score = applyOvernightVeto(score, overnightGap);
+  return score;
+}
+
 function buildExpectancySummary(nearestNeighbors: NeighborWithStandardizedVector[]): ExpectancySummary {
-  const averageForward1DayReturn = mean(
-    nearestNeighbors.map((neighbor) => neighbor.analog.spyForward1DayReturn),
-  );
-  const averageForward3DayReturn = mean(
-    nearestNeighbors.map((neighbor) => neighbor.analog.spyForward3DayReturn),
-  );
+  const weights = nearestNeighbors.map((neighbor) => neighbor.weight);
+  const forward1d = nearestNeighbors.map((neighbor) => neighbor.analog.spyForward1DayReturn);
+  const forward3d = nearestNeighbors.map((neighbor) => neighbor.analog.spyForward3DayReturn);
+
+  const averageForward1DayReturn = weightedMean(forward1d, weights);
+  const averageForward3DayReturn = weightedMean(forward3d, weights);
+
+  // Unweighted hit rates for interpretability.
   const bearishHitRate1Day =
     nearestNeighbors.filter((neighbor) => neighbor.analog.spyForward1DayReturn < 0).length /
     nearestNeighbors.length;
@@ -260,13 +567,13 @@ function buildExpectancySummary(nearestNeighbors: NeighborWithStandardizedVector
     averageForward3DayReturn: roundTo(averageForward3DayReturn),
     bearishHitRate1Day: roundTo(bearishHitRate1Day, 4),
     bearishHitRate3Day: roundTo(bearishHitRate3Day, 4),
-    blendedForwardReturn: roundTo(averageForward1DayReturn * 0.4 + averageForward3DayReturn * 0.6),
+    blendedForwardReturn: roundTo(
+      averageForward1DayReturn * ANALOG_MODEL_SETTINGS.oneDayBlendWeight +
+        averageForward3DayReturn * ANALOG_MODEL_SETTINGS.threeDayBlendWeight,
+    ),
   };
 }
 
-// The analog engine is nonlinear by design. We first translate the 5-neighbor
-// forward-return expectancy into a blended percentage return, then pass it through
-// tanh so outsized analog clusters saturate gracefully toward +/-100.
 function mapExpectancyToScore(expectancySummary: ExpectancySummary) {
   const normalizedExpectancy =
     expectancySummary.blendedForwardReturn / ANALOG_MODEL_SETTINGS.blendedReturnScale;
@@ -293,13 +600,10 @@ function buildAnalogMatches(nearestNeighbors: NeighborWithStandardizedVector[]):
     spyForward1DayReturn: roundTo(neighbor.analog.spyForward1DayReturn),
     spyForward3DayReturn: roundTo(neighbor.analog.spyForward3DayReturn),
     tradeDate: neighbor.analog.tradeDate,
+    weight: roundTo(neighbor.weight, 4),
   }));
 }
 
-// Even though the final score comes from KNN expectancy, the dashboard still needs
-// four Glass Box diagnostics. We allocate the final score across pillars according
-// to how closely each pillar's feature block aligns with the centroid of the nearest
-// analog cluster in standardized feature space.
 function buildPillarSimilarityShares(
   standardizedTodayVector: AnalogStateVector,
   standardizedNeighborCentroid: AnalogStateVector,
@@ -371,31 +675,31 @@ function buildPillarSummary(
 
   if (pillar === "creditAndRiskSpreads") {
     return (
-      `HYG/TLT is ${roundTo(todayVector.hygTltRatio, 4)}, CPER/GLD is ${roundTo(todayVector.cperGldRatio, 4)}, and USO momentum is ${formatSignedPercent(todayVector.usoMomentum)}. ` +
-      `That mix helps show whether risk appetite is broadening or fading beneath the index. Firmer readings usually help breakouts hold, while weaker readings tend to produce thinner rallies and more defensive rotation. ` +
+      `HYG/TLT percentile is ${roundTo(todayVector.hygTltRatio, 1)}, CPER/GLD percentile is ${roundTo(todayVector.cperGldRatio, 1)}, and USO momentum is ${formatSignedPercent(todayVector.usoMomentum)}. ` +
+      `Percentile ranks compare credit and commodity risk appetite to the last year of history, so drifting ratio levels do not dominate the match. ` +
       `In similar sessions, downside showed up ${roundTo(expectancySummary.bearishHitRate1Day * 100, 0)}% of the time over 1 day and ${roundTo(expectancySummary.bearishHitRate3Day * 100, 0)}% of the time over 3 days.`
     );
   }
 
   if (pillar === "positioning") {
     return (
-      `Dealer gamma exposure is ${roundTo(todayVector.gammaExposure, 2)}. ` +
-      `${todayVector.gammaExposure > 0
-        ? "That usually means options positioning is more likely to absorb moves, which can keep intraday swings tighter and favor mean reversion."
-        : todayVector.gammaExposure < 0
-          ? "That usually means options positioning can amplify moves, which raises the odds of fast trend days and wider intraday ranges."
-          : "That leaves options positioning close to neutral, so price is more likely to respond directly to incoming flow and headlines."}`
+      `VIX 5-session momentum proxy is ${roundTo(todayVector.vixMomentum, 2)} (negative of VIX % change; not dealer gamma). ` +
+      `${todayVector.vixMomentum > 0
+        ? "Vol impulse is cooling, which often favors mean reversion and tighter ranges."
+        : todayVector.vixMomentum < 0
+          ? "Vol impulse is rising, which raises the odds of fast trend days and wider ranges."
+          : "Vol impulse is near flat, so price is more likely to respond directly to flow and headlines."}`
     );
   }
 
   return (
-    `VIX is ${roundTo(todayVector.vixLevel, 2)}. ` +
-    `${todayVector.vixLevel >= 25
-      ? "That points to a stressed tape where intraday ranges can stay wide and reversals can come fast. "
-      : todayVector.vixLevel >= 18
-        ? "That keeps the tape sensitive, so moves may need wider risk limits and quicker profit-taking. "
-        : "That points to a calmer tape, which usually gives continuation setups a cleaner path. "}` +
-    `In similar volatility conditions, the blended short-term move leaned ${formatSignedPercent(expectancySummary.blendedForwardReturn)}.`
+    `Vol impulse (VIX momentum proxy) is ${roundTo(todayVector.vixMomentum, 2)}; VIX level percentile is ${roundTo(todayVector.vixLevel, 1)} for context. ` +
+    `${todayVector.vixMomentum < 0
+      ? "Vol is rising, so ranges can stay wide. "
+      : todayVector.vixMomentum > 0
+        ? "Vol is cooling, which often favors cleaner follow-through. "
+        : "Vol impulse is flat. "}` +
+    `In similar conditions, the blended short-term move leaned ${formatSignedPercent(expectancySummary.blendedForwardReturn)}.`
   );
 }
 
@@ -439,23 +743,119 @@ function buildComponentScores(
   });
 }
 
-// Historical analog engine:
-// 1. Build today's 6-factor vector.
-// 2. Standardize it against the historical distribution.
-// 3. Measure Euclidean distance in z-scored space and apply temporal decay.
-// 4. Take the 5 nearest adjusted matches.
-// 5. Average their 1-day and 3-day forward SPY returns.
-// 6. Map that forward-return expectancy back onto the legacy -100 to +100 score scale.
+/**
+ * Historical analog engine (model v18):
+ * 1. Build today's factor vector.
+ * 2. Regime pool + cosine distance; adaptive K by VIX.
+ * 3. Dual arms: temporal-decay KNN + no-decay KNN; require sign agreement.
+ * 4. Per-arm: low-vol flat, fade big day, soft overnight amp, hard overnight veto.
+ * 5. Tradable permission + Monday dampener.
+ */
 export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
   const todayVector = buildTodayStateVector(input);
   const historicalAnalogs = getHistoricalAnalogVectors(input);
-  const { nearestNeighbors, standardizedTodayVector } = buildNeighborMatches(
-    input.tradeDate,
-    todayVector,
-    historicalAnalogs,
+  const k = selectNeighborK(todayVector.vixLevel);
+
+  const primary = buildNeighborMatches(input.tradeDate, todayVector, historicalAnalogs, {
+    temporalDecayLambda: ANALOG_MODEL_SETTINGS.temporalDecayLambda,
+    neighborCount: k,
+  });
+  const { nearestNeighbors, standardizedTodayVector } = primary;
+
+  const sameDayCtc = input.tickerChanges.SPY?.percentChange;
+  const spySnap = input.tickerChanges.SPY;
+  const overnightGap = computeOvernightGapPct(spySnap?.open, spySnap?.previousClose);
+
+  const scoreWithDecay = scoreFromNeighborArm(
+    nearestNeighbors,
+    sameDayCtc,
+    overnightGap,
   );
+
+  let vetoedScore = scoreWithDecay;
+  let dualNote: string | null = null;
+  if (ANALOG_MODEL_SETTINGS.dualNoDecayAgreeEnabled) {
+    const noDecayNeighbors = buildNeighborMatches(
+      input.tradeDate,
+      todayVector,
+      historicalAnalogs,
+      { temporalDecayLambda: 0, neighborCount: k },
+    ).nearestNeighbors;
+    const scoreNoDecay = scoreFromNeighborArm(
+      noDecayNeighbors,
+      sameDayCtc,
+      overnightGap,
+    );
+    const dualScore = applyDualNoDecayAgree(scoreWithDecay, scoreNoDecay);
+    if (dualScore === 0 && (scoreWithDecay !== 0 || scoreNoDecay !== 0)) {
+      dualNote = `dual no-decay disagree (decay=${scoreWithDecay}, noDecay=${scoreNoDecay})`;
+    } else if (
+      dualScore !== 0 &&
+      dualScore !== scoreWithDecay &&
+      scoreWithDecay !== 0 &&
+      scoreNoDecay !== 0
+    ) {
+      dualNote = `dual no-decay agree (avg of ${scoreWithDecay} and ${scoreNoDecay})`;
+    }
+    vetoedScore = dualScore;
+  }
+
   const expectancySummary = buildExpectancySummary(nearestNeighbors);
-  const score = mapExpectancyToScore(expectancySummary);
+  const w1 = ANALOG_MODEL_SETTINGS.oneDayBlendWeight;
+  const w3 = ANALOG_MODEL_SETTINGS.threeDayBlendWeight;
+  const blendedNeighborReturns = nearestNeighbors.map(
+    (neighbor) =>
+      neighbor.analog.spyForward1DayReturn * w1 + neighbor.analog.spyForward3DayReturn * w3,
+  );
+  const dispersion = neighborReturnDispersion(blendedNeighborReturns);
+
+  const spyClose = spySnap?.close;
+  const spySma = input.expandedData?.spy20DaySma;
+  const trendSign = ANALOG_MODEL_SETTINGS.enableTrendVeto
+    ? trendSignFromCloseVsSma(spyClose ?? Number.NaN, spySma)
+    : 0;
+  const volPercentile =
+    todayVector.vixLevel >= 0 && todayVector.vixLevel <= 100 ? todayVector.vixLevel : null;
+
+  const rawSignal = buildTradableSignal({
+    score: vetoedScore,
+    neighborForwardReturns: blendedNeighborReturns,
+    neighborDistances: nearestNeighbors.map((neighbor) => neighbor.distance),
+    rules: STRATEGY_RULES,
+    trendVeto: ANALOG_MODEL_SETTINGS.enableTrendVeto
+      ? { trendSign, volPercentile }
+      : undefined,
+  });
+
+  // Annotate structural post-processing for the glass box.
+  let signalForPublish = rawSignal;
+  const notes: string[] = [];
+  if (ANALOG_MODEL_SETTINGS.adaptiveNeighborKEnabled) {
+    notes.push(`adaptive K=${k} (VIX level ${roundTo(todayVector.vixLevel, 1)})`);
+  }
+  if (dualNote) notes.push(dualNote);
+  if (
+    dispersion < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold &&
+    scoreWithDecay === 0
+  ) {
+    notes.push(
+      `low neighbor-vol flat (dispersion ${dispersion.toFixed(2)} < ${ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold})`,
+    );
+  }
+  if (notes.length > 0) {
+    signalForPublish = {
+      ...rawSignal,
+      reason: `${notes.join("; ")}. ${rawSignal.reason}`,
+    };
+  }
+
+  const { score, signal } = applyMondayDampener(
+    input.tradeDate,
+    vetoedScore,
+    signalForPublish,
+  );
+
+  // Component glass-box uses the published (possibly dampened) score so pillars match UI.
   const componentScores = buildComponentScores(
     score,
     todayVector,
@@ -464,11 +864,18 @@ export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
     expectancySummary,
   );
 
+  // Keep the published score for delivery. Trading permission lives on `signal`.
+  // When the model refuses a trade, surface NEUTRAL so UI does not imply a lean.
+  const label = signal.position === "NO_TRADE" ? "NEUTRAL" : getBiasLabel(score);
+
   return {
     tradeDate: input.tradeDate,
     score,
-    label: getBiasLabel(score),
+    label,
     componentScores,
     tickerChanges: input.tickerChanges,
+    signal,
+    blendedForwardReturn: expectancySummary.blendedForwardReturn,
+    modelVersion: MODEL_VERSION,
   };
 }

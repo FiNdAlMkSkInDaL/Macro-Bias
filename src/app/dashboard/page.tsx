@@ -10,6 +10,7 @@ import { AssetToggle } from "../../components/AssetToggle";
 import { getUserSubscriptionStatus, isSubscriptionActive } from "../../lib/billing/subscription";
 import type { BiasLabel } from "../../lib/macro-bias/types";
 import { getAppUrl } from "../../lib/server-env";
+import { getStocksPublishedLiveEval } from "../../lib/track-record/published-score-live-eval";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,17 @@ type ApiTickerChange = {
   previousClose: number;
   ticker: BiasAsset["ticker"];
   tradeDate: string;
+};
+
+type ApiTradableSignal = {
+  position: "LONG" | "SHORT" | "FLAT" | "NO_TRADE";
+  size: number;
+  reliability: "A" | "B" | "C" | "D" | "F";
+  neighborAgreement: number;
+  meanNeighborDistance: number;
+  distanceQuality: number;
+  noTrade: boolean;
+  reason: string;
 };
 
 type ApiBiasSnapshot = {
@@ -53,6 +65,9 @@ type ApiBiasSnapshot = {
   } | null;
   label: BiasLabel;
   score: number;
+  signal?: ApiTradableSignal | null;
+  blendedForwardReturn?: number | null;
+  modelVersion?: string | null;
   tickerChanges: Partial<Record<BiasAsset["ticker"], ApiTickerChange>>;
   tradeDate: string;
   updatedAt: string;
@@ -155,8 +170,13 @@ const proSignalPillars = [
 }>;
 
 function getSignalPillarLookupKeys(key: SignalBreakdownScore["key"]): readonly string[] {
-  if (key === "positioning" || key === "dealerPositioning" || key === "gammaExposure") {
-    return ["positioning", "dealerPositioning", "gammaExposure"];
+  if (
+    key === "positioning" ||
+    key === "dealerPositioning" ||
+    key === "gammaExposure" ||
+    key === "vixMomentum"
+  ) {
+    return ["positioning", "dealerPositioning", "gammaExposure", "vixMomentum"];
   }
 
   return [key];
@@ -559,11 +579,13 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
 export default async function DashboardPage() {
   noStore();
 
-  const [baseUrl, { isPro, subscriptionStatus, user }, supplementalCrossAssetMapAssets] = await Promise.all([
-    getRequestBaseUrl(),
-    getUserSubscriptionStatus(),
-    getSupplementalCrossAssetMapAssets(),
-  ]);
+  const [baseUrl, { isPro, subscriptionStatus, user }, supplementalCrossAssetMapAssets, liveEval] =
+    await Promise.all([
+      getRequestBaseUrl(),
+      getUserSubscriptionStatus(),
+      getSupplementalCrossAssetMapAssets(),
+      getStocksPublishedLiveEval().catch(() => null),
+    ]);
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
   const isProUser = isSubscriptionActive(subscriptionStatus);
   const shouldRenderManageSubscription = isPro;
@@ -592,6 +614,7 @@ export default async function DashboardPage() {
       ? "text-rose-400"
       : "text-zinc-300";
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
+  const tradableSignal = snapshot?.signal ?? null;
   const componentScores = snapshot?.componentScores ?? [];
   const signalScoreByKey = new Map<string, SignalBreakdownScore>(
     componentScores.map((score) => [score.key, score]),
@@ -707,6 +730,118 @@ export default async function DashboardPage() {
               Latest sync issue
             </p>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-100">{errorMessage}</p>
+          </section>
+        ) : null}
+
+        {tradableSignal ? (
+          <section className="grid grid-cols-2 gap-3 border-b border-white/5 py-4 sm:grid-cols-4 md:gap-6">
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Permission
+              </p>
+              <p
+                className={`mt-2 text-base font-semibold tracking-tight ${
+                  tradableSignal.position === "LONG"
+                    ? "text-emerald-400"
+                    : tradableSignal.position === "SHORT"
+                      ? "text-rose-400"
+                      : tradableSignal.position === "NO_TRADE"
+                        ? "text-amber-300"
+                        : "text-zinc-300"
+                }`}
+              >
+                {tradableSignal.position}
+              </p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Size
+              </p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {Math.round(tradableSignal.size * 100)}%
+              </p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Reliability
+              </p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {tradableSignal.reliability}
+              </p>
+            </div>
+            <div>
+              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                Agreement
+              </p>
+              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+                {Math.round(tradableSignal.neighborAgreement * 100)}%
+              </p>
+            </div>
+            <p className="col-span-2 text-sm leading-6 text-zinc-400 sm:col-span-4">
+              {tradableSignal.reason}
+            </p>
+          </section>
+        ) : null}
+
+        {liveEval && liveEval.totalGraded > 0 ? (
+          <section className="border-b border-white/5 py-4">
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-400/80">
+              Live accuracy · published scores only
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Next-session hit
+                </p>
+                <p className="mt-1 text-base font-semibold text-white">
+                  {liveEval.forwardHitRate !== null
+                    ? `${liveEval.forwardHitRate.toFixed(1)}%`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Graded sessions
+                </p>
+                <p className="mt-1 text-base font-semibold text-white">
+                  {liveEval.totalGraded}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Avg when LONG
+                </p>
+                <p className="mt-1 text-base font-semibold text-emerald-400">
+                  {liveEval.avgReturnLong !== null
+                    ? `${liveEval.avgReturnLong > 0 ? "+" : ""}${liveEval.avgReturnLong.toFixed(3)}%`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                  Avg when SHORT
+                </p>
+                <p className="mt-1 text-base font-semibold text-rose-400">
+                  {liveEval.avgReturnShort !== null
+                    ? `${liveEval.avgReturnShort > 0 ? "+" : ""}${liveEval.avgReturnShort.toFixed(3)}%`
+                    : "—"}
+                </p>
+              </div>
+            </div>
+            {liveEval.reliabilityBuckets.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {liveEval.reliabilityBuckets.map((bucket) => (
+                  <span
+                    key={bucket.reliability}
+                    className="rounded border border-white/10 px-2 py-1 font-[family:var(--font-data)] text-[10px] text-zinc-400"
+                  >
+                    Rel {bucket.reliability}:{" "}
+                    {bucket.hitRate !== null ? `${bucket.hitRate.toFixed(0)}%` : "—"} hit ·{" "}
+                    {bucket.sessions}n
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </section>
         ) : null}
 

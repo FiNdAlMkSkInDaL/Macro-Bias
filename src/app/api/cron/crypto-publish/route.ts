@@ -122,12 +122,29 @@ async function hasCryptoBriefingForDate(tradeDate: string): Promise<boolean> {
 }
 
 function snapshotToBiasResult(row: CryptoBiasScoreRow): CryptoDailyBiasResult {
+  const engine = (row.engine_inputs ?? {}) as Record<string, unknown>;
+  const storedSignal = engine.tradableSignal as CryptoDailyBiasResult["signal"] | undefined;
+
   return {
     tradeDate: row.trade_date,
     score: row.score,
     label: row.bias_label,
     componentScores: row.component_scores ?? [],
     tickerChanges: row.ticker_changes ?? ({} as CryptoDailyBiasResult["tickerChanges"]),
+    signal: storedSignal ?? {
+      position: "FLAT",
+      size: 0,
+      reliability: "C",
+      neighborAgreement: 0,
+      meanNeighborDistance: 0,
+      distanceQuality: 0,
+      noTrade: false,
+      reason: "Legacy score without tradable signal metadata.",
+    },
+    blendedForwardReturn:
+      typeof engine.blendedForwardReturn === "number" ? engine.blendedForwardReturn : 0,
+    modelVersion:
+      typeof engine.modelVersion === "string" ? engine.modelVersion : "crypto-model-legacy",
   };
 }
 
@@ -190,13 +207,21 @@ function renderCryptoSectionHtml(title: string, content: string, titleColor: str
 </div>`;
 }
 
-function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, label: BiasLabel): string {
+function buildCryptoBriefingEmailHtml(
+  newsletterCopy: string,
+  score: number,
+  label: BiasLabel,
+  permissionLine?: string | null,
+): string {
   const signedScore = score > 0 ? `+${score}` : `${score}`;
   const labelText = label.replace(/_/g, " ");
   const scoreColor =
     label === "EXTREME_RISK_ON" || label === "RISK_ON" ? "#4ade80"
     : label === "EXTREME_RISK_OFF" || label === "RISK_OFF" ? "#fb923c"
     : "#fbbf24";
+  const permissionHtml = permissionLine
+    ? `<p style="margin:0 0 10px;font-size:16px;font-weight:600;color:#e4e4e7;-webkit-text-fill-color:#e4e4e7;">${escapeHtml(permissionLine)}</p>`
+    : "";
 
   const sections = parseCryptoEmailSections(newsletterCopy);
   const sectionHtml = sections.map((s, i) => {
@@ -237,11 +262,10 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
       <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;-webkit-text-fill-color:#52525b;">
         Daily Crypto Bias
       </p>
-      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#64748b;-webkit-text-fill-color:#64748b;">
-        Base Score
-      </p>
-      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
-        ${escapeHtml(labelText)} <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
+      ${permissionHtml}
+      <p style="margin:0;font-size:22px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
+        ${escapeHtml(labelText)}
+        <span style="font-size:18px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
       </p>
     </div>
 
@@ -268,7 +292,12 @@ function buildCryptoBriefingEmailHtml(newsletterCopy: string, score: number, lab
 </html>`;
 }
 
-function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: number, label: BiasLabel): string {
+function buildFreeTierCryptoBriefingEmailHtml(
+  newsletterCopy: string,
+  score: number,
+  label: BiasLabel,
+  permissionLine?: string | null,
+): string {
   const signedScore = score > 0 ? `+${score}` : `${score}`;
   const labelText = label.replace(/_/g, " ");
   const referralPageUrl = escapeHtml(new URL("/refer", getAppUrl()).toString());
@@ -276,6 +305,9 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
     label === "EXTREME_RISK_ON" || label === "RISK_ON" ? "#4ade80"
     : label === "EXTREME_RISK_OFF" || label === "RISK_OFF" ? "#fb923c"
     : "#fbbf24";
+  const permissionHtml = permissionLine
+    ? `<p style="margin:0 0 10px;font-size:16px;font-weight:600;color:#e4e4e7;-webkit-text-fill-color:#e4e4e7;">${escapeHtml(permissionLine)}</p>`
+    : "";
 
   const sections = parseCryptoEmailSections(newsletterCopy);
   const regimeStatus = sections.find((s) => s.title === "REGIME STATUS");
@@ -337,11 +369,10 @@ function buildFreeTierCryptoBriefingEmailHtml(newsletterCopy: string, score: num
       <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#52525b;-webkit-text-fill-color:#52525b;">
         Daily Crypto Bias
       </p>
-      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#64748b;-webkit-text-fill-color:#64748b;">
-        Base Score
-      </p>
-      <p style="margin:0;font-size:28px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
-        ${escapeHtml(labelText)} <span style="font-size:20px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
+      ${permissionHtml}
+      <p style="margin:0;font-size:22px;font-weight:700;color:${scoreColor};-webkit-text-fill-color:${scoreColor};letter-spacing:-0.02em;">
+        ${escapeHtml(labelText)}
+        <span style="font-size:18px;margin-left:8px;">(${escapeHtml(signedScore)})</span>
       </p>
     </div>
 
@@ -413,6 +444,7 @@ async function dispatchCryptoBriefingEmails(
   newsletterCopy: string,
   score: number,
   label: BiasLabel,
+  permissionLine?: string | null,
 ) {
   const resendApiKey = getOptionalServerEnv("RESEND_API_KEY");
   if (!resendApiKey) {
@@ -492,9 +524,16 @@ async function dispatchCryptoBriefingEmails(
   const resend = new Resend(resendApiKey);
 
   const signedLabel = score > 0 ? `+${score}` : `${score}`;
-  const subject = `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel})`;
-  const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label);
-  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label);
+  const subject = permissionLine
+    ? `Crypto Bias: ${permissionLine}`
+    : `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel})`;
+  const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label, permissionLine);
+  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(
+    newsletterCopy,
+    score,
+    label,
+    permissionLine,
+  );
   const fromAddress = getCryptoFromAddress();
 
   let premiumSent = 0;
@@ -576,7 +615,12 @@ async function dispatchCryptoBriefingEmails(
 /*  Social posting (X + Bluesky)                                       */
 /* ------------------------------------------------------------------ */
 
-function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: string): string {
+function buildCryptoXText(
+  score: number,
+  label: BiasLabel,
+  newsletterCopy: string,
+  permissionLine?: string | null,
+): string {
   const signedScore = score > 0 ? `+${score}` : `${score}`;
   const labelText = label.replace(/_/g, " ");
 
@@ -593,7 +637,9 @@ function buildCryptoXText(score: number, label: BiasLabel, newsletterCopy: strin
   }
 
   const lines = [
-    `Daily Crypto Bias: ${signedScore} (${labelText})`,
+    permissionLine
+      ? `Crypto Bias: ${permissionLine}`
+      : `Daily Crypto Bias: ${signedScore} (${labelText})`,
     summaryLine || null,
     `Free daily crypto briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=crypto`,
   ].filter((line): line is string => Boolean(line));
@@ -621,8 +667,9 @@ async function publishCryptoToSocial(
   score: number,
   label: BiasLabel,
   newsletterCopy: string,
+  permissionLine?: string | null,
 ): Promise<{ xPosted: boolean; blueskyPosted: boolean; telegramPosted: boolean; threadsPosted: boolean }> {
-  const xText = buildCryptoXText(score, label, newsletterCopy);
+  const xText = buildCryptoXText(score, label, newsletterCopy, permissionLine);
   let xPosted = false;
   let blueskyPosted = false;
   let telegramPosted = false;
@@ -759,6 +806,14 @@ async function handleCryptoPublish(request: NextRequest) {
       console.log(`[crypto-publish] Persisted crypto briefing for ${latestSnapshot.trade_date}`);
     }
 
+    const { formatSignalSocialLine } = await import(
+      "../../../../lib/signal/format-tradable-signal"
+    );
+    const permissionLine = formatSignalSocialLine(
+      biasResult.signal,
+      latestSnapshot.score,
+    );
+
     /* Step 4: Email dispatch */
     let emailResult = { premiumSent: 0, freeSent: 0, skipped: true };
     if (!skipEmail) {
@@ -766,6 +821,7 @@ async function handleCryptoPublish(request: NextRequest) {
         briefingResult.newsletterCopy,
         latestSnapshot.score,
         latestSnapshot.bias_label,
+        permissionLine,
       );
       if (!emailResult.skipped) {
         await verifyPendingReferrals(createSupabaseAdminClient());
@@ -781,6 +837,7 @@ async function handleCryptoPublish(request: NextRequest) {
         latestSnapshot.score,
         latestSnapshot.bias_label,
         briefingResult.newsletterCopy,
+        permissionLine,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown";

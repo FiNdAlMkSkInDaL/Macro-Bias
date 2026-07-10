@@ -28,14 +28,16 @@ export type RegimeClassifierOptions = {
   thresholds?: RegimeThresholds;
 };
 
+// Defaults assume model v6+ percentile-ranked features (0–100 scale).
+// Prefer dynamic quantiles from calibrationDataset whenever available.
 const DEFAULT_REGIME_THRESHOLDS: RegimeThresholds = {
   expansion: {
-    maxVixLevel: 18,
-    minHygTltRatio: 0.88,
+    maxVixLevel: 40,
+    minHygTltRatio: 55,
   },
   contraction: {
-    minVixLevel: 24,
-    maxHygTltRatio: 0.82,
+    minVixLevel: 60,
+    maxHygTltRatio: 45,
   },
 };
 

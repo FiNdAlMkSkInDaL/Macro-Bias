@@ -35,11 +35,11 @@ Crypto information is a mess. Anonymous accounts, pump groups, insider threads, 
 
 The regime model ignores all of it. It only looks at quantitative data: BTC realized volatility, ETH/BTC ratio, DXY correlation, and cross-asset momentum. No opinions. No rumors. No influencer takes. Just numbers that have been backtested across 2,000+ trading days.
 
-## The Number That Proves It
+## What Actually Proves It
 
-Since 2020, the Macro Bias crypto regime model has returned +41,576% on a long-only basis vs +941% for BTC buy-and-hold. That is a 44x difference in performance, almost entirely driven by avoiding the wrong days.
+A frozen research multiple does not prove a product. A process does: a daily score, a tradable permission, reliability grades, and a live paper ledger built only from published scores.
 
-Stock traders using the equity model have seen +295% vs +116% for SPY. That is a meaningful edge. But the crypto edge is an order of magnitude larger because the volatility is an order of magnitude larger. The same discipline, applied to a more volatile market, produces dramatically bigger results.
+Crypto is more volatile than equities, so bad days hurt more. The same discipline that helps stock traders read the tape matters more when the asset never sleeps.
 
 ## What This Means for Your Trading
 

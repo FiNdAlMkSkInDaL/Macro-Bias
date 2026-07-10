@@ -24,11 +24,13 @@ type SpyPriceRow = {
 
 export type ScorecardData = {
   tradeDate: string;
+  /** Score that was live for the session being graded (prior close fingerprint). */
   score: number;
   biasLabel: BiasLabel;
-  spyChangePercent: number;
+  /** Next-session SPY return after the score date (tradable horizon). */
+  spyForward1DReturn: number;
   callCorrect: boolean | null;
-  /** Rolling hit rate over the last 30 scored days, as a percentage. */
+  /** Rolling next-day hit rate over the last N scored days. */
   rollingHitRate: number | null;
   rollingWindow: number;
   streak: { count: number; type: 'correct' | 'incorrect' } | null;
@@ -76,15 +78,19 @@ function formatSignedScore(value: number): string {
 
 const ROLLING_WINDOW = 30;
 
+/**
+ * Grades the *previous* bias score against the *next* SPY session return.
+ * Same-day score vs same-day move is circular (features include that close).
+ */
 export async function getScorecardData(): Promise<ScorecardData | null> {
   const sb = createSupabaseAdminClient();
 
-  // Fetch the most recent 31 scored days (31 so we have enough for 30-day rolling window)
+  // Need enough history for rolling window + forward pairing
   const { data: scores, error: scoresErr } = await sb
     .from('macro_bias_scores')
     .select('trade_date, score, bias_label, ticker_changes')
     .order('trade_date', { ascending: false })
-    .limit(ROLLING_WINDOW + 1);
+    .limit(ROLLING_WINDOW + 5);
 
   if (scoresErr) {
     throw new Error(`Failed to load bias scores: ${scoresErr.message}`);
@@ -92,71 +98,106 @@ export async function getScorecardData(): Promise<ScorecardData | null> {
 
   const typedScores = (scores ?? []) as ScoreRow[];
 
-  if (typedScores.length === 0) {
+  if (typedScores.length < 2) {
     return null;
   }
 
-  const today = typedScores[0];
+  // Chronological ascending for pairing
+  const chronological = [...typedScores].reverse();
 
-  // SPY change comes from the score row's ticker_changes (same-day close vs prev close)
-  const spyChange = today.ticker_changes?.SPY;
+  // Pair score on day t with SPY return on day t+1 (from ticker_changes of day t+1)
+  type PairedDay = {
+    scoreDate: string;
+    score: number;
+    biasLabel: BiasLabel;
+    forward1DReturn: number;
+    correct: boolean | null;
+  };
 
-  if (!spyChange) {
-    return null;
+  const pairs: PairedDay[] = [];
+
+  for (let i = 0; i < chronological.length - 1; i++) {
+    const scoreDay = chronological[i];
+    const nextDay = chronological[i + 1];
+    const nextSpy = nextDay.ticker_changes?.SPY;
+    if (!nextSpy || typeof nextSpy.percentChange !== 'number') continue;
+
+    pairs.push({
+      scoreDate: scoreDay.trade_date,
+      score: scoreDay.score,
+      biasLabel: scoreDay.bias_label,
+      forward1DReturn: nextSpy.percentChange,
+      correct: directionCorrect(scoreDay.score, nextSpy.percentChange),
+    });
   }
 
-  const spyChangePercent = spyChange.percentChange;
-  const callCorrect = directionCorrect(today.score, spyChangePercent);
+  if (pairs.length === 0) {
+    // Fallback: use SPY prices if ticker_changes missing on next day
+    const dates = chronological.map((s) => s.trade_date);
+    const { data: spyRows } = await sb
+      .from('etf_daily_prices')
+      .select('trade_date, close')
+      .eq('ticker', 'SPY')
+      .in('trade_date', dates)
+      .order('trade_date', { ascending: true });
 
-  // Build rolling hit rate from the last ROLLING_WINDOW scored days
-  const scoredDays = typedScores.filter((s) => s.score !== 0);
-  const windowDays = scoredDays.slice(0, ROLLING_WINDOW);
+    const spyByDate = new Map(
+      ((spyRows ?? []) as SpyPriceRow[]).map((r) => [r.trade_date, r.close]),
+    );
 
-  let correctCount = 0;
-  let totalScored = 0;
-
-  for (const day of windowDays) {
-    const spy = day.ticker_changes?.SPY;
-    if (!spy) continue;
-    const correct = directionCorrect(day.score, spy.percentChange);
-    if (correct !== null) {
-      totalScored += 1;
-      if (correct) correctCount += 1;
+    for (let i = 0; i < chronological.length - 1; i++) {
+      const scoreDay = chronological[i];
+      const nextDate = chronological[i + 1].trade_date;
+      const c0 = spyByDate.get(scoreDay.trade_date);
+      const c1 = spyByDate.get(nextDate);
+      if (c0 == null || c1 == null || c0 === 0) continue;
+      const fwd = ((c1 - c0) / c0) * 100;
+      pairs.push({
+        scoreDate: scoreDay.trade_date,
+        score: scoreDay.score,
+        biasLabel: scoreDay.bias_label,
+        forward1DReturn: fwd,
+        correct: directionCorrect(scoreDay.score, fwd),
+      });
     }
   }
 
-  const rollingHitRate = totalScored > 0 ? (correctCount / totalScored) * 100 : null;
+  if (pairs.length === 0) {
+    return null;
+  }
 
-  // Calculate current streak (correct or incorrect)
+  // Latest completed pair (most recent score that has a next-day outcome)
+  const latest = pairs[pairs.length - 1];
+  const callCorrect = latest.correct;
+
+  // Rolling next-day hit rate over non-neutral scores
+  const scoredPairs = pairs.filter((p) => p.score !== 0 && p.correct !== null);
+  const windowPairs = scoredPairs.slice(-ROLLING_WINDOW);
+  const correctCount = windowPairs.filter((p) => p.correct === true).length;
+  const rollingHitRate =
+    windowPairs.length > 0 ? (correctCount / windowPairs.length) * 100 : null;
+
+  // Streak from the end of scored pairs
   let streak: ScorecardData['streak'] = null;
-
   if (callCorrect !== null) {
     let streakCount = 0;
-    const streakType = callCorrect ? 'correct' : 'incorrect';
-
-    for (const day of scoredDays) {
-      const spy = day.ticker_changes?.SPY;
-      if (!spy) break;
-      const dayCorrect = directionCorrect(day.score, spy.percentChange);
-      if (dayCorrect === null) break;
-      if (dayCorrect === callCorrect) {
-        streakCount += 1;
-      } else {
-        break;
-      }
+    for (let i = scoredPairs.length - 1; i >= 0; i--) {
+      if (scoredPairs[i].correct === callCorrect) streakCount += 1;
+      else break;
     }
-
-    streak = { count: streakCount, type: streakType };
+    if (streakCount > 0) {
+      streak = { count: streakCount, type: callCorrect ? 'correct' : 'incorrect' };
+    }
   }
 
   return {
-    tradeDate: today.trade_date,
-    score: today.score,
-    biasLabel: today.bias_label,
-    spyChangePercent,
+    tradeDate: latest.scoreDate,
+    score: latest.score,
+    biasLabel: latest.biasLabel,
+    spyForward1DReturn: latest.forward1DReturn,
     callCorrect,
     rollingHitRate,
-    rollingWindow: totalScored,
+    rollingWindow: windowPairs.length,
     streak,
   };
 }
@@ -167,53 +208,47 @@ export async function getScorecardData(): Promise<ScorecardData | null> {
 
 /**
  * Builds a plain-English scorecard post for X / Bluesky.
- *
- * Voice: confident, conversational, zero jargon. Like a trader updating
- * friends on how the day went. Matches the Macro Bias brand persona.
+ * Grades next-day SPY move after the published score (tradable horizon).
  */
 export function buildScorecardPost(data: ScorecardData): string {
   const {
     score,
     biasLabel,
-    spyChangePercent,
+    spyForward1DReturn,
     callCorrect,
     rollingHitRate,
     rollingWindow,
     streak,
   } = data;
 
-  const spyStr = formatSignedPercent(spyChangePercent);
+  const spyStr = formatSignedPercent(spyForward1DReturn);
   const scoreStr = formatSignedScore(score);
   const label = friendlyLabel(biasLabel);
 
-  // Line 1: the call and the result
   let resultVerdict: string;
 
   if (callCorrect === null) {
-    // Neutral score, can't judge direction
-    resultVerdict = `Today's call: Neutral (${scoreStr}). $SPY closed ${spyStr}. No directional lean today.`;
+    resultVerdict = `Prior call: Neutral (${scoreStr}). Next-day $SPY moved ${spyStr}. No directional lean to grade.`;
   } else if (callCorrect) {
-    resultVerdict = `Today's call: ${label} (${scoreStr}). $SPY closed ${spyStr}. Right again.`;
+    resultVerdict = `Prior call: ${label} (${scoreStr}). Next-day $SPY ${spyStr}. Direction matched.`;
   } else {
-    resultVerdict = `Today's call: ${label} (${scoreStr}). $SPY closed ${spyStr}. Wrong on this one.`;
+    resultVerdict = `Prior call: ${label} (${scoreStr}). Next-day $SPY ${spyStr}. Missed this one.`;
   }
 
-  // Line 2: rolling hit rate (only if we have enough data)
   let statsLine: string | null = null;
 
   if (rollingHitRate !== null && rollingWindow >= 5) {
     const hitRateStr = `${Math.round(rollingHitRate)}%`;
-    statsLine = `Rolling accuracy: ${hitRateStr} over the last ${rollingWindow} trading days.`;
+    statsLine = `Next-day hit rate: ${hitRateStr} over the last ${rollingWindow} graded sessions.`;
   }
 
-  // Line 3: streak colour (only if streak is 3+ days)
   let streakLine: string | null = null;
 
   if (streak && streak.count >= 3) {
     if (streak.type === 'correct') {
-      streakLine = `${streak.count}-day correct streak.`;
+      streakLine = `${streak.count}-session next-day correct streak.`;
     } else {
-      streakLine = `Working through a ${streak.count}-day miss streak. The model adapts.`;
+      streakLine = `Working through a ${streak.count}-session miss streak. The model adapts.`;
     }
   }
 

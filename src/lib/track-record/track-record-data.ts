@@ -219,14 +219,14 @@ export const getTrackRecordData = cache(
       };
     });
 
-    /* ---- Aggregate: same-day hit rate --------------------------- */
+    /* ---- Aggregate: same-day hit rate (diagnostic only) --------- */
 
     const withSameDay = days.filter((d) => d.score !== 0);
     const sameDayCorrectCount = withSameDay.filter(
       (d) => d.sameDayCorrect === true,
     ).length;
 
-    /* ---- Aggregate: forward 1D hit rate ------------------------- */
+    /* ---- Aggregate: forward 1D hit rate (tradable horizon) ------ */
 
     const with1D = days.filter(
       (d) => d.score !== 0 && d.spyForward1DReturn !== null,
@@ -235,32 +235,34 @@ export const getTrackRecordData = cache(
       (d) => d.forward1DCorrect === true,
     ).length;
 
-    /* ---- Aggregate: bullish vs bearish avg same-day return ------ */
+    /* ---- Aggregate: bullish vs bearish avg NEXT-day return ------ */
 
-    const bullishDays = days.filter((d) => d.score > 0);
-    const bearishDays = days.filter((d) => d.score < 0);
-    const avgReturnBullish = avg(bullishDays.map((d) => d.spyChangePercent));
-    const avgReturnBearish = avg(bearishDays.map((d) => d.spyChangePercent));
+    const bullishDays = days.filter(
+      (d) => d.score > 0 && d.spyForward1DReturn !== null,
+    );
+    const bearishDays = days.filter(
+      (d) => d.score < 0 && d.spyForward1DReturn !== null,
+    );
+    const avgReturnBullish = avg(bullishDays.map((d) => d.spyForward1DReturn!));
+    const avgReturnBearish = avg(bearishDays.map((d) => d.spyForward1DReturn!));
 
     /* ---- Per-regime hit rates ----------------------------------- */
 
     const regimeHitRates: RegimeHitRate[] = ALL_REGIMES.map(
       ({ label, displayName }) => {
         const inRegime = days.filter((d) => d.biasLabel === label);
-        const nonNeutral = inRegime.filter((d) => d.score !== 0);
-        const correct = nonNeutral.filter(
-          (d) => d.sameDayCorrect === true,
-        ).length;
+        const withFwd = inRegime.filter(
+          (d) => d.score !== 0 && d.spyForward1DReturn !== null,
+        );
+        const correct = withFwd.filter((d) => d.forward1DCorrect === true).length;
         return {
           label,
           displayName,
           totalDays: inRegime.length,
-          daysWithResult: nonNeutral.length,
+          daysWithResult: withFwd.length,
           correctCalls: correct,
           hitRate:
-            nonNeutral.length > 0
-              ? (correct / nonNeutral.length) * 100
-              : null,
+            withFwd.length > 0 ? (correct / withFwd.length) * 100 : null,
           avgSameDayReturn: avg(inRegime.map((d) => d.spyChangePercent)),
           avgForward1DReturn: avg(
             inRegime
@@ -279,26 +281,23 @@ export const getTrackRecordData = cache(
         const inBucket = days.filter(
           (d) => d.score >= min && d.score <= max,
         );
-        const nonNeutral = inBucket.filter((d) => d.score !== 0);
-        const correct = nonNeutral.filter(
-          (d) => d.sameDayCorrect === true,
-        ).length;
+        const withFwd = inBucket.filter(
+          (d) => d.score !== 0 && d.spyForward1DReturn !== null,
+        );
+        const correct = withFwd.filter((d) => d.forward1DCorrect === true).length;
         return {
           label,
           range,
           biasLabel,
           count: inBucket.length,
-          daysWithResult: nonNeutral.length,
+          daysWithResult: withFwd.length,
           avgSameDayReturn: avg(inBucket.map((d) => d.spyChangePercent)),
           avgForward1DReturn: avg(
             inBucket
               .filter((d) => d.spyForward1DReturn !== null)
               .map((d) => d.spyForward1DReturn!),
           ),
-          hitRate:
-            nonNeutral.length > 0
-              ? (correct / nonNeutral.length) * 100
-              : null,
+          hitRate: withFwd.length > 0 ? (correct / withFwd.length) * 100 : null,
         };
       },
     );

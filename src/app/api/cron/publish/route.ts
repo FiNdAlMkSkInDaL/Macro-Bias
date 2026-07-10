@@ -28,6 +28,7 @@ import { formatForThreads } from '../../../../lib/social/threads-format';
 import { isThreadsConfigured, publishToThreads } from '../../../../lib/social/threads';
 import { getWeeklyDigestData } from '../../../../lib/briefing/weekly-digest-data';
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
+import { extractTradableSignal, formatSignalSocialLine } from '../../../../lib/signal/format-tradable-signal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -486,7 +487,9 @@ function buildPublishPayload(
   shareUrl.searchParams.set('utm_campaign', 'daily_briefing');
   const formattedDate = formatDisplayDate(snapshot.trade_date);
   const label = snapshot.bias_label.replace(/_/g, ' ');
-  const headline = `Today's Macro Weather Report: ${label} (${formatSignedNumber(snapshot.score)})`;
+  const tradable = extractTradableSignal(snapshot.engine_inputs);
+  const permissionLine = formatSignalSocialLine(tradable, snapshot.score);
+  const headline = `Today's Macro Weather Report: ${permissionLine}`;
   const regimeTone = getRegimeTone(snapshot.bias_label);
   const regimeSentence = getRegimeSentence(snapshot.bias_label);
   const signalContext = buildSignalContext(snapshot);
@@ -497,6 +500,7 @@ function buildPublishPayload(
     `**${headline}**`,
     `${formattedDate}`,
     regimeTone,
+    `Label: ${label} (${formatSignedNumber(snapshot.score)})`,
     signalContext ? `Signal tape: ${signalContext}` : null,
     discordPlaybookSummary,
     `Closest historical analogs: ${analogSection}`,
@@ -505,7 +509,7 @@ function buildPublishPayload(
     .filter((line): line is string => Boolean(line))
     .join('\n');
   const xText = sanitizeForSocial([
-    `Today's Macro Bias: ${formatSignedNumber(snapshot.score)} (${label})`,
+    `Macro Bias: ${permissionLine}`,
     regimeSentence,
     xPlaybookSummary,
     `Free daily briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=daily`,
@@ -534,9 +538,11 @@ function buildMacroOverrideXText(
   const label = snapshot.bias_label.replace(/_/g, ' ');
   const rationaleSnippet = buildXSnippet(newsletterCopy, MACRO_OVERRIDE_X_SNIPPET_LENGTH);
 
+  const tradable = extractTradableSignal(snapshot.engine_inputs);
   return [
     'MACRO OVERRIDE ACTIVE',
-    `Today's Macro Bias Score: ${formatSignedNumber(snapshot.score)} (${label})`,
+    `Permission: ${formatSignalSocialLine(tradable, snapshot.score)}`,
+    `Label: ${label} (${formatSignedNumber(snapshot.score)})`,
     rationaleSnippet,
     `Free daily briefing: https://www.macro-bias.com/emails?utm_source=x&utm_campaign=override`,
   ].join('\n\n');
@@ -934,6 +940,7 @@ async function handlePublish(request: NextRequest) {
             freeRecipients,
           );
 
+          const briefingSignal = dailyBriefing.quant.signal;
           const premiumDispatchResult = await dispatchQuantBriefing(
             dailyBriefing.newsletterCopy,
             dailyBriefing.quant.score,
@@ -943,6 +950,7 @@ async function handlePublish(request: NextRequest) {
               recipients: premiumRecipients,
               tier: 'premium',
               weeklyDigest,
+              signal: briefingSignal,
             },
           );
           const unlockedDispatchResult =
@@ -956,6 +964,7 @@ async function handlePublish(request: NextRequest) {
                     recipients: unlockedEmails,
                     tier: 'premium',
                     weeklyDigest,
+                    signal: briefingSignal,
                   },
                 )
               : { batchCount: 0, emailIds: [], recipientCount: 0 };
@@ -969,6 +978,7 @@ async function handlePublish(request: NextRequest) {
                   {
                     recipients: regularFreeEmails,
                     tier: 'free',
+                    signal: briefingSignal,
                     weeklyDigest,
                   },
                 )

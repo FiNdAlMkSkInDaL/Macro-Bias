@@ -50,7 +50,7 @@ export const INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT = [
   `Use the exact literal section header ${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}.`,
   "",
   `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Exactly 1 short sentence.`,
-  "Lead with the actual regime status, not the score.",
+  "Lead with Permission (LONG / SHORT / FLAT / NO_TRADE), Reliability (A-F), and Size when tradableSignal is present; otherwise lead with regime status.",
   "On override days, start with 'Override active:' and state what kind of session it is in plain English.",
   "On normal days, start with 'Pattern intact:' or 'Pattern shaky:' and state whether the score deserves weight today.",
   "",
@@ -83,14 +83,15 @@ export const INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT = [
   "OVERRIDE LOGIC:",
   "If the news indicates a fresh macro shock, policy surprise, war escalation, liquidity event, or another material catalyst that makes the historical pattern unreliable, set is_override_active to true.",
   `When is_override_active is true, ${DAILY_BRIEFING_SECTION_HEADERS.bottomLine} must make the override the lead, and ${DAILY_BRIEFING_SECTION_HEADERS.stressTest} must explicitly say the score is de-emphasized.`,
+  `If tradableSignal.position is NO_TRADE, treat that as a hard quant refuse even if the raw score looks directional.`,
   `If news is sparse or unavailable, still generate the full report from the quantitative data. Include a brief note about news being unavailable in ${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}.`,
   "",
   "RESTRICTIONS:",
-  "Do not give specific trade advice. Do not say long, short, buy, sell, entry, target, or stop.",
+  "Do not give specific trade advice. Do not say buy, sell, entry, target, or stop.",
+  "You MAY state the model's Permission as LONG, SHORT, FLAT, or NO_TRADE. That is a regime permission, not an order ticket.",
   "Do not invent urgency. Do not write like a war correspondent or a strategist memo.",
   "If the structured inputs use awkward wording, rewrite them in natural language rather than repeating them literally.",
 ].join("\n");
-
 export const DAILY_BRIEFING_RESPONSE_SCHEMA = {
   type: "object",
   additionalProperties: false,

@@ -3,7 +3,27 @@ import "server-only";
 import { cache } from "react";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  ANALOG_MODEL_SETTINGS,
+  STOCKS_KNN_FEATURE_KEYS,
+  STOCKS_LEVEL_FEATURES_FOR_PERCENTILE,
+  STRATEGY_RULES,
+} from "@/lib/macro-bias/constants";
 import type { BiasLabel } from "@/lib/macro-bias/types";
+import {
+  buildTradableSignal,
+  inverseDistanceWeight,
+  positionFromSignal,
+  stationarizeLevelFeatures,
+  type TradableSignal,
+  weightedMean,
+} from "@/lib/signal";
+import { trendSignFromCloseVsSma } from "@/lib/signal/trend-veto";
+import {
+  computeQualityReport,
+  type QualityDay,
+  type QualityReport,
+} from "@/lib/signal/quality-metrics";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -16,14 +36,17 @@ export interface BacktestDay {
   spyClose: number;
   spyChangePercent: number;
   spyForward1DReturn: number | null;
+  /** @deprecated Prefer forward1DCorrect — same-day is not a tradable metric. */
   sameDayCorrect: boolean | null;
   forward1DCorrect: boolean | null;
+  signal: TradableSignal;
 }
 
 export interface BacktestSummary {
   days: BacktestDay[];
   totalDays: number;
   dateRange: { from: string; to: string } | null;
+  /** @deprecated Prefer forward1DHitRate. */
   sameDayHitRate: number | null;
   forward1DHitRate: number | null;
   avgReturnBullish: number | null;
@@ -36,18 +59,32 @@ export interface BacktestSummary {
   strategyReturn: number | null;
   /** Total SPY buy-and-hold return (%) */
   spyReturn: number | null;
+  /** Share of days the model issued NO_TRADE. */
+  noTradeRate: number | null;
+  maxDrawdownStrategy: number | null;
+  maxDrawdownSpy: number | null;
+  /** Next-session quality under lagged tradable signals. */
+  quality: QualityReport | null;
+  /** Naive score±threshold quality (no reliability/veto) for comparison. */
+  baselineQuality: QualityReport | null;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Model constants (mirrored from calculate-daily-bias.ts)            */
+/*  Model constants (aligned with macro-model-v5)                      */
 /* ------------------------------------------------------------------ */
 
-const K = 5;
-const BLENDED_RETURN_SCALE = 2.75;
-const TEMPORAL_DECAY_LAMBDA = 0.001;
-const USO_LOOKBACK = 5;
-const VIX_ROC_LOOKBACK = 5;
+const K_MIN = ANALOG_MODEL_SETTINGS.nearestNeighborCount;
+const K_MAX = ANALOG_MODEL_SETTINGS.maxNeighborCount;
+const RADIUS_MULT = ANALOG_MODEL_SETTINGS.neighborRadiusMultiplier;
+const BLENDED_RETURN_SCALE = ANALOG_MODEL_SETTINGS.blendedReturnScale;
+const TEMPORAL_DECAY_LAMBDA = ANALOG_MODEL_SETTINGS.temporalDecayLambda;
+const USO_LOOKBACK = ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions;
+const VIX_ROC_LOOKBACK = ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions;
 const RSI_PERIOD = 14;
+const MIN_ANALOG_GAP = ANALOG_MODEL_SETTINGS.minAnalogCalendarGapDays;
+const DISTANCE_EPS = ANALOG_MODEL_SETTINGS.distanceWeightEpsilon;
+const W1 = ANALOG_MODEL_SETTINGS.oneDayBlendWeight;
+const W3 = ANALOG_MODEL_SETTINGS.threeDayBlendWeight;
 
 /** Backtest start date — first trading day of 2020. */
 const BACKTEST_START = "2020-01-01";
@@ -56,7 +93,8 @@ const BACKTEST_START = "2020-01-01";
 /*  Bias label thresholds                                              */
 /* ------------------------------------------------------------------ */
 
-function getBiasLabel(score: number): BiasLabel {
+function getBiasLabel(score: number, signal: TradableSignal): BiasLabel {
+  if (signal.position === "NO_TRADE") return "NEUTRAL";
   if (score <= -60) return "EXTREME_RISK_OFF";
   if (score < -20) return "RISK_OFF";
   if (score <= 20) return "NEUTRAL";
@@ -132,7 +170,7 @@ function computeRsiSeries(closes: number[]): (number | null)[] {
 /*  Supabase row type                                                  */
 /* ------------------------------------------------------------------ */
 
-type PriceRow = { trade_date: string; close: number };
+type PriceRow = { trade_date: string; open: number; close: number };
 
 /* ------------------------------------------------------------------ */
 /*  Main backtest function                                             */
@@ -153,7 +191,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     while (true) {
       const { data } = await sb
         .from("etf_daily_prices")
-        .select("trade_date, close")
+        .select("trade_date, open, close")
         .eq("ticker", ticker)
         .order("trade_date", { ascending: true })
         .range(from, from + pageSize - 1);
@@ -186,13 +224,16 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
   /* ---- Build fast lookup maps ---------------------------------- */
 
   const closeMap: Record<string, Map<string, number>> = {};
+  const openMap: Record<string, Map<string, number>> = {};
   for (const t of tickers) {
     closeMap[t] = new Map(pricesByTicker[t].map((r) => [r.trade_date, r.close]));
+    openMap[t] = new Map(pricesByTicker[t].map((r) => [r.trade_date, r.open]));
   }
 
   /* ---- Build per-ticker arrays aligned to commonDates ---------- */
 
   const spyCloses = commonDates.map((d) => closeMap.SPY.get(d)!);
+  const spyOpens = commonDates.map((d) => openMap.SPY.get(d)!);
 
   /* ---- Compute RSI series for SPY ------------------------------ */
 
@@ -204,7 +245,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
   type FeatureVector = {
     spyRsi: number;
-    gammaExposure: number;
+    vixMomentum: number;
     hygTltRatio: number;
     cperGldRatio: number;
     usoMomentum: number;
@@ -231,7 +272,8 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     const vixClose = closeMap.VIX.get(date)!;
     const vixLookbackDate = commonDates[i - VIX_ROC_LOOKBACK];
     const vixPrev = closeMap.VIX.get(vixLookbackDate)!;
-    const gammaExposure = vixPrev > 0 ? -pctChange(vixPrev, vixClose) : 0;
+    // Honest name: −(VIX 5-session % change). Not dealer gamma.
+    const vixMomentum = vixPrev > 0 ? -pctChange(vixPrev, vixClose) : 0;
 
     const hygClose = closeMap.HYG.get(date)!;
     const tltClose = closeMap.TLT.get(date)!;
@@ -244,22 +286,23 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     const usoMomentum = usoPrev > 0 ? pctChange(usoPrev, usoNow) : 0;
 
     const spyClose = spyCloses[i];
+    const spyOpen = spyOpens[i];
 
-    // Forward returns
+    // Neighbor training labels: close→close (OTC training failed fair metrics).
     let fwd1d: number | null = null;
     let fwd3d: number | null = null;
     if (i + 1 < spyCloses.length) fwd1d = pctChange(spyClose, spyCloses[i + 1]);
     if (i + 3 < spyCloses.length) fwd3d = pctChange(spyClose, spyCloses[i + 3]);
 
-    // Same-day change
-    const spyPrevClose = spyCloses[i - 1];
-    const spyChangePercent = pctChange(spyPrevClose, spyClose);
+    // Session P&L for evaluation: open→close (morning-permission product horizon).
+    const spyChangePercent =
+      spyOpen > 0 ? pctChange(spyOpen, spyClose) : pctChange(spyCloses[i - 1], spyClose);
 
     allPoints.push({
       tradeDate: date,
       vector: {
         spyRsi: rsi,
-        gammaExposure,
+        vixMomentum,
         hygTltRatio: tltClose > 0 ? hygClose / tltClose : 0,
         cperGldRatio: gldClose > 0 ? cperClose / gldClose : 0,
         usoMomentum,
@@ -276,9 +319,25 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     return emptyBacktest();
   }
 
+  /* ---- Stationarize level features (walk-forward percentiles) --- */
+  /* Raw hygTlt / cperGld / vix levels are replaced by 0–100 ranks. */
+
+  const stationarizedPoints = stationarizeLevelFeatures(
+    allPoints,
+    STOCKS_LEVEL_FEATURES_FOR_PERCENTILE,
+    {
+      window: ANALOG_MODEL_SETTINGS.percentileWindowSessions,
+      minHistory: ANALOG_MODEL_SETTINGS.percentileMinHistorySessions,
+    },
+  );
+
+  if (stationarizedPoints.length < 30) {
+    return emptyBacktest();
+  }
+
   /* ---- Split: analog universe (pre-backtest) + backtest window -- */
 
-  const backtestStartIdx = allPoints.findIndex(
+  const backtestStartIdx = stationarizedPoints.findIndex(
     (p) => p.tradeDate >= BACKTEST_START,
   );
   if (backtestStartIdx < 20) {
@@ -288,14 +347,8 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
   /* ---- Z-score statistics from the FULL dataset              --- */
   /* (production model uses population stats of the analog pool)    */
 
-  const featureKeys: (keyof FeatureVector)[] = [
-    "spyRsi",
-    "gammaExposure",
-    "hygTltRatio",
-    "cperGldRatio",
-    "usoMomentum",
-    "vixLevel",
-  ];
+  // KNN distance features only (v8: vixLevel ablated)
+  const featureKeys = [...STOCKS_KNN_FEATURE_KEYS] as (keyof FeatureVector)[];
 
   function computeStats(pool: HistoricPoint[]) {
     const means: Record<string, number> = {};
@@ -315,9 +368,9 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
   const backtestDays: BacktestDay[] = [];
 
-  for (let ti = backtestStartIdx; ti < allPoints.length; ti++) {
-    const today = allPoints[ti];
-    const analogPool = allPoints.slice(0, ti); // only past data
+  for (let ti = backtestStartIdx; ti < stationarizedPoints.length; ti++) {
+    const today = stationarizedPoints[ti];
+    const analogPool = stationarizedPoints.slice(0, ti); // only past data
 
     if (analogPool.length < 20) continue;
 
@@ -329,45 +382,213 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
       todayZ[k] = (today.vector[k] - means[k]) / stds[k];
     }
 
-    // Z-score each analog and compute decayed distance
-    const ranked = analogPool
-      .filter((p) => p.spyForward1DReturn !== null) // must have known outcomes
+    // Z-score each analog, enforce min calendar gap, compute decayed distance
+    const rankedAll = analogPool
+      .filter((p) => p.spyForward1DReturn !== null)
+      .filter(
+        (p) => calendarDaysBetween(today.tradeDate, p.tradeDate) >= MIN_ANALOG_GAP,
+      )
       .map((analog) => {
         const analogZ: Record<string, number> = {};
         for (const k of featureKeys) {
           analogZ[k] = (analog.vector[k] - means[k]) / stds[k];
         }
-        // Euclidean distance in z-space
-        let sqDist = 0;
-        for (const k of featureKeys) {
-          sqDist += (todayZ[k] - analogZ[k]) ** 2;
+        let baseDist = 0;
+        if (ANALOG_MODEL_SETTINGS.distanceMetric === "cosine") {
+          let dot = 0,
+            nt = 0,
+            na = 0;
+          for (const k of featureKeys) {
+            dot += todayZ[k] * analogZ[k];
+            nt += todayZ[k] * todayZ[k];
+            na += analogZ[k] * analogZ[k];
+          }
+          const cos = nt > 0 && na > 0 ? dot / (Math.sqrt(nt) * Math.sqrt(na)) : 0;
+          baseDist = 1 - Math.min(1, Math.max(-1, cos));
+        } else {
+          let sqDist = 0;
+          for (const k of featureKeys) {
+            sqDist += (todayZ[k] - analogZ[k]) ** 2;
+          }
+          baseDist = Math.sqrt(sqDist);
         }
-        const euclidean = Math.sqrt(sqDist);
-        // Temporal decay
         const dayDiff = calendarDaysBetween(today.tradeDate, analog.tradeDate);
-        const distance = euclidean * Math.exp(TEMPORAL_DECAY_LAMBDA * dayDiff);
+        const distance = baseDist * Math.exp(TEMPORAL_DECAY_LAMBDA * dayDiff);
+        const distanceNoDecay = baseDist; // v18 dual arm
+        const weight = inverseDistanceWeight(distance, DISTANCE_EPS);
 
-        return { analog, distance };
+        return { analog, distance, distanceNoDecay, weight };
       })
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, K);
+      .sort((a, b) => a.distance - b.distance);
 
-    if (ranked.length < K) continue;
+    // v18 adaptive K: high VIX → 5, calm → 7
+    const kUse = ANALOG_MODEL_SETTINGS.adaptiveNeighborKEnabled
+      ? today.vector.vixLevel >= ANALOG_MODEL_SETTINGS.adaptiveKVixThreshold
+        ? ANALOG_MODEL_SETTINGS.adaptiveKHighVix
+        : ANALOG_MODEL_SETTINGS.adaptiveKLowVix
+      : K_MIN;
 
-    // Blended forward return
-    const avg1d =
-      ranked.reduce((s, r) => s + (r.analog.spyForward1DReturn ?? 0), 0) /
-      ranked.length;
-    const avg3d =
-      ranked.reduce((s, r) => s + (r.analog.spyForward3DReturn ?? 0), 0) /
-      ranked.length;
-    const blended = 0.4 * avg1d + 0.6 * avg3d;
+    if (rankedAll.length < kUse) continue;
 
-    // tanh mapping
-    const rawScore = Math.round(Math.tanh(blended / BLENDED_RETURN_SCALE) * 100);
-    const score = Math.max(-100, Math.min(100, rawScore));
-    const biasLabel = getBiasLabel(score);
+    const ranked = rankedAll.slice(0, kUse);
+    const rankedNoDecay = [...rankedAll]
+      .sort((a, b) => a.distanceNoDecay - b.distanceNoDecay)
+      .slice(0, kUse);
 
+    function armScore(
+      slice: Array<{
+        analog: (typeof stationarizedPoints)[number];
+        distance: number;
+        weight: number;
+      }>,
+    ) {
+      const weights = slice.map((r) => r.weight);
+      const avg1d = weightedMean(
+        slice.map((r) => r.analog.spyForward1DReturn ?? 0),
+        weights,
+      );
+      const avg3d = weightedMean(
+        slice.map((r) => r.analog.spyForward3DReturn ?? 0),
+        weights,
+      );
+      const blended = W1 * avg1d + W3 * avg3d;
+      let s = Math.max(
+        -100,
+        Math.min(100, Math.round(Math.tanh(blended / BLENDED_RETURN_SCALE) * 100)),
+      );
+      const rets = slice.map(
+        (r) =>
+          (r.analog.spyForward1DReturn ?? 0) * W1 +
+          (r.analog.spyForward3DReturn ?? 0) * W3,
+      );
+      if (ANALOG_MODEL_SETTINGS.flatLowNeighborVolEnabled && rets.length >= 2) {
+        const m = rets.reduce((a, v) => a + v, 0) / rets.length;
+        const sd = Math.sqrt(rets.reduce((a, v) => a + (v - m) ** 2, 0) / rets.length);
+        if (sd < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold) s = 0;
+      }
+      if (ANALOG_MODEL_SETTINGS.fadeBigDayEnabled && ti > 0 && s !== 0) {
+        const prevClose = stationarizedPoints[ti - 1]?.spyClose;
+        const ctc =
+          prevClose > 0 ? pctChange(prevClose, today.spyClose) : today.spyChangePercent;
+        if (Math.abs(ctc) > ANALOG_MODEL_SETTINGS.fadeBigDayThresholdPct) {
+          s = Math.max(
+            -100,
+            Math.min(
+              100,
+              Math.round(
+                s * ANALOG_MODEL_SETTINGS.fadeBigDayScoreScale -
+                  Math.sign(ctc) * ANALOG_MODEL_SETTINGS.fadeBigDayPushPoints,
+              ),
+            ),
+          );
+        }
+      }
+      if (ti > 0) {
+        const prevClose = stationarizedPoints[ti - 1]?.spyClose;
+        const open = openMap.SPY.get(today.tradeDate) ?? 0;
+        if (prevClose > 0 && open > 0) {
+          const overnight = pctChange(prevClose, open);
+          const gap = ANALOG_MODEL_SETTINGS.softOvernightAmpGapPct;
+          if (ANALOG_MODEL_SETTINGS.softOvernightAmpEnabled && s !== 0) {
+            if (s > STRATEGY_RULES.scoreThreshold && overnight > gap) {
+              s = Math.max(
+                -100,
+                Math.min(100, Math.round(s * ANALOG_MODEL_SETTINGS.softOvernightAmpUp)),
+              );
+            } else if (s < -STRATEGY_RULES.scoreThreshold && overnight < -gap) {
+              s = Math.max(
+                -100,
+                Math.min(100, Math.round(s * ANALOG_MODEL_SETTINGS.softOvernightAmpUp)),
+              );
+            } else if (s > STRATEGY_RULES.scoreThreshold && overnight < -gap) {
+              s = Math.max(
+                -100,
+                Math.min(100, Math.round(s * ANALOG_MODEL_SETTINGS.softOvernightAmpDown)),
+              );
+            } else if (s < -STRATEGY_RULES.scoreThreshold && overnight > gap) {
+              s = Math.max(
+                -100,
+                Math.min(100, Math.round(s * ANALOG_MODEL_SETTINGS.softOvernightAmpDown)),
+              );
+            }
+          }
+          if (ANALOG_MODEL_SETTINGS.overnightVetoEnabled) {
+            const thr = ANALOG_MODEL_SETTINGS.overnightVetoThresholdPct;
+            if (s > STRATEGY_RULES.scoreThreshold && overnight < -thr) s = 0;
+            if (s < -STRATEGY_RULES.scoreThreshold && overnight > thr) s = 0;
+          }
+        }
+      }
+      return s;
+    }
+
+    const scoreDecay = armScore(ranked);
+    const scoreNoDecay = armScore(
+      rankedNoDecay.map((r) => ({
+        analog: r.analog,
+        distance: r.distanceNoDecay,
+        weight: inverseDistanceWeight(r.distanceNoDecay, DISTANCE_EPS),
+      })),
+    );
+
+    let score = scoreDecay;
+    if (ANALOG_MODEL_SETTINGS.dualNoDecayAgreeEnabled) {
+      if (scoreDecay === 0 || scoreNoDecay === 0) score = 0;
+      else if (Math.sign(scoreDecay) !== Math.sign(scoreNoDecay)) score = 0;
+      else score = Math.max(-100, Math.min(100, Math.round((scoreDecay + scoreNoDecay) / 2)));
+    }
+
+    const blendedNeighborReturns = ranked.map(
+      (r) =>
+        (r.analog.spyForward1DReturn ?? 0) * W1 +
+        (r.analog.spyForward3DReturn ?? 0) * W3,
+    );
+
+    // SMA20 for trend veto from prior spy closes in the stationarized window
+    const lookbackCloses = stationarizedPoints
+      .slice(Math.max(0, ti - 19), ti + 1)
+      .map((p) => p.spyClose);
+    const sma20 =
+      lookbackCloses.length >= 20
+        ? lookbackCloses.reduce((s, v) => s + v, 0) / lookbackCloses.length
+        : null;
+    const trendSign = ANALOG_MODEL_SETTINGS.enableTrendVeto
+      ? trendSignFromCloseVsSma(today.spyClose, sma20)
+      : 0;
+
+    let signal = buildTradableSignal({
+      score,
+      neighborForwardReturns: blendedNeighborReturns,
+      neighborDistances: ranked.map((r) => r.distance),
+      rules: STRATEGY_RULES,
+      trendVeto: ANALOG_MODEL_SETTINGS.enableTrendVeto
+        ? {
+            trendSign,
+            volPercentile: today.vector.vixLevel,
+          }
+        : undefined,
+    });
+
+    // Monday dampener (v10): neutral score + FLAT
+    if (ANALOG_MODEL_SETTINGS.skipMondayScores) {
+      const dow = new Date(today.tradeDate + "T12:00:00Z").getUTCDay();
+      if (dow === 1) {
+        score = 0;
+        if (signal.position !== "NO_TRADE") {
+          signal = {
+            ...signal,
+            position: "FLAT",
+            size: 0,
+            noTrade: false,
+            reason: "Monday publish dampener.",
+          };
+        }
+      }
+    }
+
+    const biasLabel = getBiasLabel(score, signal);
+
+    // Forward accuracy uses the raw score sign (diagnostic). Trading uses signal.
     backtestDays.push({
       tradeDate: today.tradeDate,
       score,
@@ -383,6 +604,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
         today.spyForward1DReturn !== null
           ? directionCorrect(score, today.spyForward1DReturn)
           : null,
+      signal,
     });
   }
 
@@ -424,42 +646,39 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
   /* ---- Build equity curves (long/short strategy vs buy-and-hold) */
   /*                                                                */
-  /* Strategy rules (matches the published regime thresholds):      */
-  /*  • LONG  when yesterday's score > 20  (RISK_ON / EXTREME_ON)  */
-  /*  • SHORT when yesterday's score < -20 (RISK_OFF / EXTREME_OFF)*/
-  /*  • CASH  when  -20 ≤ score ≤ 20       (NEUTRAL)               */
-  /*                                                                */
-  /* A flat per-trade friction of 5 bps is deducted on every       */
-  /* position change to reflect SPY spread + slippage.              */
+  /* Strategy rules (unified STOCKS_STRATEGY_RULES):                */
+  /*  • Use yesterday's tradable signal (permission + reliability) */
+  /*  • NO_TRADE / FLAT → cash                                      */
+  /*  • LONG / SHORT → full unit exposure (size reserved for live) */
+  /*  • Friction on every position change                           */
 
-  const SCORE_THRESHOLD = 20;
-  const FRICTION_BPS = 5; // basis points per trade
-  const FRICTION = FRICTION_BPS / 10_000;
+  const FRICTION = STRATEGY_RULES.frictionBps / 10_000;
 
   const equityCurve: { date: string; spy: number; strategy: number }[] = [];
   let spyEquity = 100;
   let stratEquity = 100;
   let prevPosition: "LONG" | "SHORT" | "CASH" = "CASH";
+  let peakSpy = 100;
+  let peakStrat = 100;
+  let maxDdSpy = 0;
+  let maxDdStrat = 0;
 
   for (let i = 0; i < backtestDays.length; i++) {
     const day = backtestDays[i];
     const dailyReturn = day.spyChangePercent / 100;
     spyEquity *= 1 + dailyReturn;
 
-    // Determine position from yesterday's score
+    // Position from yesterday's tradable signal (not raw score alone)
     let position: "LONG" | "SHORT" | "CASH" = "CASH";
     if (i > 0) {
-      const prevScore = backtestDays[i - 1].score;
-      if (prevScore > SCORE_THRESHOLD) position = "LONG";
-      else if (prevScore < -SCORE_THRESHOLD) position = "SHORT";
+      const prev = backtestDays[i - 1];
+      position = positionFromSignal(prev.signal, prev.score, STRATEGY_RULES);
     }
 
-    // Apply friction on position change
     if (position !== prevPosition && i > 0) {
       stratEquity *= 1 - FRICTION;
     }
 
-    // Apply daily P&L
     if (position === "LONG") {
       stratEquity *= 1 + dailyReturn;
     } else if (position === "SHORT") {
@@ -468,12 +687,56 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
     prevPosition = position;
 
+    if (spyEquity > peakSpy) peakSpy = spyEquity;
+    if (stratEquity > peakStrat) peakStrat = stratEquity;
+    const ddSpy = (spyEquity - peakSpy) / peakSpy;
+    const ddStrat = (stratEquity - peakStrat) / peakStrat;
+    if (ddSpy < maxDdSpy) maxDdSpy = ddSpy;
+    if (ddStrat < maxDdStrat) maxDdStrat = ddStrat;
+
     equityCurve.push({
       date: day.tradeDate,
       spy: Number(spyEquity.toFixed(2)),
       strategy: Number(stratEquity.toFixed(2)),
     });
   }
+
+  const noTradeDays = backtestDays.filter((d) => d.signal.noTrade).length;
+
+  /* ---- Next-session quality: lagged signal vs naive score ------ */
+
+  const qualityDays: QualityDay[] = [];
+  const baselineQualityDays: QualityDay[] = [];
+  for (let i = 1; i < backtestDays.length; i++) {
+    const session = backtestDays[i];
+    const prior = backtestDays[i - 1];
+    const pos = positionFromSignal(prior.signal, prior.score, STRATEGY_RULES);
+    let directionCorrect: boolean | null = null;
+    if (pos === "LONG") directionCorrect = session.spyChangePercent >= 0;
+    else if (pos === "SHORT") directionCorrect = session.spyChangePercent <= 0;
+    qualityDays.push({
+      sessionReturnPct: session.spyChangePercent,
+      position: pos,
+      score: prior.score,
+      reliability: prior.signal.reliability,
+      directionCorrect,
+    });
+
+    let basePos: "LONG" | "SHORT" | "CASH" = "CASH";
+    if (prior.score > 20) basePos = "LONG";
+    else if (prior.score < -20) basePos = "SHORT";
+    let baseCorrect: boolean | null = null;
+    if (basePos === "LONG") baseCorrect = session.spyChangePercent >= 0;
+    else if (basePos === "SHORT") baseCorrect = session.spyChangePercent <= 0;
+    baselineQualityDays.push({
+      sessionReturnPct: session.spyChangePercent,
+      position: basePos,
+      score: prior.score,
+      directionCorrect: baseCorrect,
+    });
+  }
+  const quality = computeQualityReport(qualityDays);
+  const baselineQuality = computeQualityReport(baselineQualityDays);
 
   /* Downsample equity curve to weekly (every 5th trading day) +   */
   /* always keep first and last point for a clean chart.            */
@@ -508,6 +771,12 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
     equityCurve: sampledCurve,
     strategyReturn: stratEquity - 100,
     spyReturn: spyEquity - 100,
+    noTradeRate:
+      backtestDays.length > 0 ? (noTradeDays / backtestDays.length) * 100 : null,
+    maxDrawdownStrategy: maxDdStrat * 100,
+    maxDrawdownSpy: maxDdSpy * 100,
+    quality,
+    baselineQuality,
   };
 });
 
@@ -540,5 +809,10 @@ function emptyBacktest(): BacktestSummary {
     equityCurve: [],
     strategyReturn: null,
     spyReturn: null,
+    noTradeRate: null,
+    maxDrawdownStrategy: null,
+    maxDrawdownSpy: null,
+    quality: null,
+    baselineQuality: null,
   };
 }

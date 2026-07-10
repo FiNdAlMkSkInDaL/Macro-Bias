@@ -34,6 +34,8 @@ import {
   type SnapshotSummary,
   type StoredBiasSnapshot,
 } from "./types";
+import { extractTradableSignal } from "@/lib/signal/format-tradable-signal";
+
 import { getDailyBriefingStrategy } from "./daily-briefing-strategies";
 import { withExponentialBackoff } from "./retry";
 
@@ -71,6 +73,16 @@ type DailyBriefingPromptPayload = {
   score: number;
   stressTest: DailyBriefingStressTest;
   tradeDate: string;
+  /** Lead decision layer for the LLM. */
+  tradableSignal: {
+    position: string;
+    size: number;
+    reliability: string;
+    neighborAgreement: number;
+    distanceQuality: number;
+    noTrade: boolean;
+    reason: string;
+  } | null;
 };
 
 type NewsFetchOutcome = {
@@ -251,6 +263,8 @@ async function getQuantScore(
     );
     const analogs = buildPublishedAnalogs(historicalAnalogs, snapshotsByDate);
 
+    const signal = extractTradableSignal(latestSnapshot.engine_inputs);
+
     return {
       quant: {
         analogReference:
@@ -260,6 +274,7 @@ async function getQuantScore(
         label: latestSnapshot.bias_label,
         score: latestSnapshot.score,
         tradeDate: latestSnapshot.trade_date,
+        signal,
       },
       warnings: historicalAnalogs ? [] : ["Historical analog context was unavailable for the briefing."],
     };
@@ -274,6 +289,7 @@ async function getQuantScore(
         label: latestSnapshot.bias_label,
         score: latestSnapshot.score,
         tradeDate: latestSnapshot.trade_date,
+        signal: extractTradableSignal(latestSnapshot.engine_inputs),
       },
       warnings: [`Quant context degraded: ${message}`],
     };
@@ -297,6 +313,17 @@ function buildPromptPayload(
     headlines: news.headlines.slice(0, DAILY_BRIEFING_MAX_HEADLINES),
     playbook,
     stressTest,
+    tradableSignal: quant.signal
+      ? {
+          position: quant.signal.position,
+          size: quant.signal.size,
+          reliability: quant.signal.reliability,
+          neighborAgreement: quant.signal.neighborAgreement,
+          distanceQuality: quant.signal.distanceQuality,
+          noTrade: quant.signal.noTrade,
+          reason: quant.signal.reason,
+        }
+      : null,
     analogs: {
       alignedSessionCount: quant.historicalAnalogs?.alignedSessionCount ?? 0,
       candidateCount: quant.historicalAnalogs?.candidateCount ?? 0,

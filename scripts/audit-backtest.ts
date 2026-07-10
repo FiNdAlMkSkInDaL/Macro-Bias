@@ -132,7 +132,7 @@ async function main() {
 
   type Vec = {
     spyRsi: number;
-    gammaExposure: number;
+    vixMomentum: number;
     hygTltRatio: number;
     cperGldRatio: number;
     usoMomentum: number;
@@ -172,7 +172,7 @@ async function main() {
       date: d,
       vec: {
         spyRsi: rsi,
-        gammaExposure: gamma,
+        vixMomentum: gamma,
         hygTltRatio: tltC > 0 ? hygC / tltC : 0,
         cperGldRatio: gldC > 0 ? cperC / gldC : 0,
         usoMomentum: usoM,
@@ -200,7 +200,7 @@ async function main() {
 
   const featureKeys: (keyof Vec)[] = [
     "spyRsi",
-    "gammaExposure",
+    "vixMomentum",
     "hygTltRatio",
     "cperGldRatio",
     "usoMomentum",

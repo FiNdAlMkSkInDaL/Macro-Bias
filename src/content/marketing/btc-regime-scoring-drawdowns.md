@@ -45,4 +45,4 @@ That is the difference between a model and a gut feeling. Your gut says "this ti
 
 ## The Number That Tells the Whole Story
 
-Since 2020, the Macro Bias crypto regime model has returned +41,576% on a long-only basis vs +941% for BTC buy-and-hold. The difference is not better entries. It is the drawdowns you avoided while everyone else was trying to catch the bottom with their feelings.
+The difference is not better entries. It is the drawdowns you avoid when the model is flat or refuses a trade. We publish a live paper ledger from actual scores, not just a research re-sim, so that claim stays accountable.

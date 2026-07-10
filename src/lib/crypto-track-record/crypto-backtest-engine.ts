@@ -3,7 +3,20 @@ import "server-only";
 import { cache } from "react";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  CRYPTO_ANALOG_MODEL_SETTINGS,
+  CRYPTO_LEVEL_FEATURES_FOR_PERCENTILE,
+} from "@/lib/crypto-bias/constants";
 import type { BiasLabel } from "@/lib/crypto-bias/types";
+import {
+  buildTradableSignal,
+  CRYPTO_STRATEGY_RULES,
+  inverseDistanceWeight,
+  positionFromSignal,
+  stationarizeLevelFeatures,
+  type TradableSignal,
+  weightedMean,
+} from "@/lib/signal";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -16,8 +29,10 @@ export interface CryptoBacktestDay {
   btcClose: number;
   btcChangePercent: number;
   btcForward1DReturn: number | null;
+  /** @deprecated Prefer forward1DCorrect. */
   sameDayCorrect: boolean | null;
   forward1DCorrect: boolean | null;
+  signal: TradableSignal;
 }
 
 export interface CryptoEquityCurvePoint {
@@ -31,6 +46,7 @@ export interface CryptoBacktestSummary {
   days: CryptoBacktestDay[];
   totalDays: number;
   dateRange: { from: string; to: string } | null;
+  /** @deprecated Prefer forward1DHitRate. */
   sameDayHitRate: number | null;
   forward1DHitRate: number | null;
   avgReturnBullish: number | null;
@@ -41,19 +57,28 @@ export interface CryptoBacktestSummary {
   strategyReturn: number | null;
   longOnlyReturn: number | null;
   btcReturn: number | null;
+  noTradeRate: number | null;
+  maxDrawdownLongOnly: number | null;
+  maxDrawdownBtc: number | null;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Model constants                                                    */
+/*  Model constants (aligned with crypto-model-v2)                     */
 /* ------------------------------------------------------------------ */
 
-const K = 5;
-const BLENDED_RETURN_SCALE = 3.5;
-const TEMPORAL_DECAY_LAMBDA = 0.0015;
-const DXY_LOOKBACK = 5;
-const TLT_LOOKBACK = 5;
-const BTC_VOL_WINDOW = 20;
+const K_MIN = CRYPTO_ANALOG_MODEL_SETTINGS.nearestNeighborCount;
+const K_MAX = CRYPTO_ANALOG_MODEL_SETTINGS.maxNeighborCount;
+const RADIUS_MULT = CRYPTO_ANALOG_MODEL_SETTINGS.neighborRadiusMultiplier;
+const BLENDED_RETURN_SCALE = CRYPTO_ANALOG_MODEL_SETTINGS.blendedReturnScale;
+const TEMPORAL_DECAY_LAMBDA = CRYPTO_ANALOG_MODEL_SETTINGS.temporalDecayLambda;
+const DXY_LOOKBACK = CRYPTO_ANALOG_MODEL_SETTINGS.dxyMomentumLookbackSessions;
+const TLT_LOOKBACK = CRYPTO_ANALOG_MODEL_SETTINGS.tltMomentumLookbackSessions;
+const BTC_VOL_WINDOW = CRYPTO_ANALOG_MODEL_SETTINGS.btcRealizedVolWindow;
 const RSI_PERIOD = 14;
+const MIN_ANALOG_GAP = CRYPTO_ANALOG_MODEL_SETTINGS.minAnalogCalendarGapDays;
+const DISTANCE_EPS = CRYPTO_ANALOG_MODEL_SETTINGS.distanceWeightEpsilon;
+const W1 = CRYPTO_ANALOG_MODEL_SETTINGS.oneDayBlendWeight;
+const W3 = CRYPTO_ANALOG_MODEL_SETTINGS.threeDayBlendWeight;
 
 const BACKTEST_START = "2020-01-01";
 
@@ -61,7 +86,8 @@ const BACKTEST_START = "2020-01-01";
 /*  Bias label thresholds                                              */
 /* ------------------------------------------------------------------ */
 
-function getBiasLabel(score: number): BiasLabel {
+function getBiasLabel(score: number, signal: TradableSignal): BiasLabel {
+  if (signal.position === "NO_TRADE") return "NEUTRAL";
   if (score <= -60) return "EXTREME_RISK_OFF";
   if (score < -20) return "RISK_OFF";
   if (score <= 20) return "NEUTRAL";
@@ -161,7 +187,7 @@ function computeRealizedVolSeries(closes: number[]): (number | null)[] {
 /*  Supabase row type                                                  */
 /* ------------------------------------------------------------------ */
 
-type PriceRow = { trade_date: string; close: number };
+type PriceRow = { trade_date: string; open: number; close: number };
 
 /* ------------------------------------------------------------------ */
 /*  Main backtest function                                             */
@@ -179,7 +205,7 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
     while (true) {
       const { data } = await sb
         .from("etf_daily_prices")
-        .select("trade_date, close")
+        .select("trade_date, open, close")
         .eq("ticker", ticker)
         .order("trade_date", { ascending: true })
         .range(from, from + pageSize - 1);
@@ -204,10 +230,12 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
   const ethDates = new Set(pricesByTicker["ETH-USD"].map((r) => r.trade_date));
   const cryptoDates = [...btcDates].filter((d) => ethDates.has(d)).sort();
 
-  // Build fast close maps
+  // Build fast close/open maps
   const closeMap: Record<string, Map<string, number>> = {};
+  const openMap: Record<string, Map<string, number>> = {};
   for (const t of tickers) {
     closeMap[t] = new Map(pricesByTicker[t].map((r) => [r.trade_date, r.close]));
+    openMap[t] = new Map(pricesByTicker[t].map((r) => [r.trade_date, r.open]));
   }
 
   // Carry forward fill for GLD, DXY, TLT
@@ -223,11 +251,16 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
   const lastKnown = new Map<string, number>();
   const commonDates: string[] = [];
   const filledCloses: Record<string, number[]> = {};
-  for (const t of tickers) filledCloses[t] = [];
+  const filledOpens: Record<string, number[]> = {};
+  for (const t of tickers) {
+    filledCloses[t] = [];
+    filledOpens[t] = [];
+  }
 
   for (const date of cryptoDates) {
     const btcClose = closeMap["BTC-USD"].get(date);
     const ethClose = closeMap["ETH-USD"].get(date);
+    const btcOpen = openMap["BTC-USD"].get(date);
     if (btcClose === undefined || ethClose === undefined) continue;
 
     const gldClose = getCloseWithFill("GLD", date, lastKnown);
@@ -242,11 +275,13 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
     filledCloses["GLD"].push(gldClose);
     filledCloses["DXY"].push(dxyClose);
     filledCloses["TLT"].push(tltClose);
+    filledOpens["BTC-USD"].push(btcOpen && btcOpen > 0 ? btcOpen : btcClose);
   }
 
   /* ---- Compute feature series ---------------------------------- */
 
   const btcCloses = filledCloses["BTC-USD"];
+  const btcOpens = filledOpens["BTC-USD"];
   const ethCloses = filledCloses["ETH-USD"];
   const gldCloses = filledCloses["GLD"];
   const dxyCloses = filledCloses["DXY"];
@@ -295,13 +330,16 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
     const dxyMomentum = dxyPrev > 0 ? pctChange(dxyPrev, dxyNow) : 0;
     const tltMomentum = tltPrev > 0 ? pctChange(tltPrev, tltNow) : 0;
 
+    // Neighbor training labels: close→close (OTC training failed fair metrics).
     let fwd1d: number | null = null;
     let fwd3d: number | null = null;
     if (i + 1 < btcCloses.length) fwd1d = pctChange(btcClose, btcCloses[i + 1]);
     if (i + 3 < btcCloses.length) fwd3d = pctChange(btcClose, btcCloses[i + 3]);
 
-    const btcPrevClose = btcCloses[i - 1];
-    const btcChangePercent = pctChange(btcPrevClose, btcClose);
+    // Session P&L for evaluation: open→close (morning-permission product horizon).
+    const btcOpen = btcOpens[i];
+    const btcChangePercent =
+      btcOpen > 0 ? pctChange(btcOpen, btcClose) : pctChange(btcCloses[i - 1], btcClose);
 
     allPoints.push({
       tradeDate: date,
@@ -322,9 +360,24 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
 
   if (allPoints.length < 30) return emptyCryptoBacktest();
 
+  /* ---- Stationarize level features (walk-forward percentiles) --- */
+
+  const stationarizedPoints = stationarizeLevelFeatures(
+    allPoints,
+    CRYPTO_LEVEL_FEATURES_FOR_PERCENTILE,
+    {
+      window: CRYPTO_ANALOG_MODEL_SETTINGS.percentileWindowSessions,
+      minHistory: CRYPTO_ANALOG_MODEL_SETTINGS.percentileMinHistorySessions,
+    },
+  );
+
+  if (stationarizedPoints.length < 30) return emptyCryptoBacktest();
+
   /* ---- Split: analog pool vs backtest window ------------------- */
 
-  const backtestStartIdx = allPoints.findIndex((p) => p.tradeDate >= BACKTEST_START);
+  const backtestStartIdx = stationarizedPoints.findIndex(
+    (p) => p.tradeDate >= BACKTEST_START,
+  );
   if (backtestStartIdx < 20) return emptyCryptoBacktest();
 
   const featureKeys: (keyof FeatureVector)[] = [
@@ -353,9 +406,9 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
 
   const backtestDays: CryptoBacktestDay[] = [];
 
-  for (let ti = backtestStartIdx; ti < allPoints.length; ti++) {
-    const today = allPoints[ti];
-    const analogPool = allPoints.slice(0, ti);
+  for (let ti = backtestStartIdx; ti < stationarizedPoints.length; ti++) {
+    const today = stationarizedPoints[ti];
+    const analogPool = stationarizedPoints.slice(0, ti);
 
     if (analogPool.length < 20) continue;
 
@@ -366,8 +419,11 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
       todayZ[k] = (today.vector[k] - means[k]) / stds[k];
     }
 
-    const ranked = analogPool
+    const rankedAll = analogPool
       .filter((p) => p.btcForward1DReturn !== null)
+      .filter(
+        (p) => calendarDaysBetween(today.tradeDate, p.tradeDate) >= MIN_ANALOG_GAP,
+      )
       .map((analog) => {
         const analogZ: Record<string, number> = {};
         for (const k of featureKeys) {
@@ -380,20 +436,55 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
         const euclidean = Math.sqrt(sqDist);
         const dayDiff = calendarDaysBetween(today.tradeDate, analog.tradeDate);
         const distance = euclidean * Math.exp(TEMPORAL_DECAY_LAMBDA * dayDiff);
-        return { analog, distance };
+        const weight = inverseDistanceWeight(distance, DISTANCE_EPS);
+        return { analog, distance, weight };
       })
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, K);
+      .sort((a, b) => a.distance - b.distance);
 
-    if (ranked.length < K) continue;
+    if (rankedAll.length < K_MIN) continue;
 
-    const avg1d = ranked.reduce((s, r) => s + (r.analog.btcForward1DReturn ?? 0), 0) / ranked.length;
-    const avg3d = ranked.reduce((s, r) => s + (r.analog.btcForward3DReturn ?? 0), 0) / ranked.length;
-    const blended = 0.4 * avg1d + 0.6 * avg3d;
+    const kthDistance = rankedAll[K_MIN - 1].distance;
+    const radius = kthDistance * RADIUS_MULT;
+    const ranked = rankedAll
+      .filter((r, index) => index < K_MIN || r.distance <= radius)
+      .slice(0, K_MAX);
+
+    const weights = ranked.map((r) => r.weight);
+    const avg1d = weightedMean(
+      ranked.map((r) => r.analog.btcForward1DReturn ?? 0),
+      weights,
+    );
+    const avg3d = weightedMean(
+      ranked.map((r) => r.analog.btcForward3DReturn ?? 0),
+      weights,
+    );
+    const blended = W1 * avg1d + W3 * avg3d;
 
     const rawScore = Math.round(Math.tanh(blended / BLENDED_RETURN_SCALE) * 100);
     const score = Math.max(-100, Math.min(100, rawScore));
-    const biasLabel = getBiasLabel(score);
+
+    const blendedNeighborReturns = ranked.map(
+      (r) =>
+        (r.analog.btcForward1DReturn ?? 0) * W1 +
+        (r.analog.btcForward3DReturn ?? 0) * W3,
+    );
+
+    const trendSign =
+      today.vector.btcRsi >= 55 ? 1 : today.vector.btcRsi <= 45 ? -1 : 0;
+
+    const signal = buildTradableSignal({
+      score,
+      neighborForwardReturns: blendedNeighborReturns,
+      neighborDistances: ranked.map((r) => r.distance),
+      rules: CRYPTO_STRATEGY_RULES,
+      trendVeto: CRYPTO_ANALOG_MODEL_SETTINGS.enableTrendVeto
+        ? {
+            trendSign: trendSign as -1 | 0 | 1,
+            volPercentile: today.vector.btcRealizedVol,
+          }
+        : undefined,
+    });
+    const biasLabel = getBiasLabel(score, signal);
 
     backtestDays.push({
       tradeDate: today.tradeDate,
@@ -410,6 +501,7 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
         today.btcForward1DReturn !== null
           ? directionCorrect(score, today.btcForward1DReturn)
           : null,
+      signal,
     });
   }
 
@@ -445,14 +537,10 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
   });
 
   /* ---- Build equity curves ------------------------------------- */
-  /* LONG BTC when yesterday's score > 20                           */
-  /* SHORT BTC when yesterday's score < -20                         */
-  /* CASH otherwise                                                  */
-  /* 10 bps friction per trade (crypto spreads wider than SPY)      */
+  /* Primary public benchmark: long-only + cash (no short fantasy)  */
+  /* Long/short kept for research; both use tradable signal + 15bp */
 
-  const SCORE_THRESHOLD = 20;
-  const FRICTION_BPS = 10;
-  const FRICTION = FRICTION_BPS / 10_000;
+  const FRICTION = CRYPTO_STRATEGY_RULES.frictionBps / 10_000;
 
   const equityCurve: CryptoEquityCurvePoint[] = [];
   let btcEquity = 100;
@@ -460,18 +548,20 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
   let longOnlyEquity = 100;
   let prevPosition: "LONG" | "SHORT" | "CASH" = "CASH";
   let prevLongOnlyPosition: "LONG" | "CASH" = "CASH";
+  let peakBtc = 100;
+  let peakLongOnly = 100;
+  let maxDdBtc = 0;
+  let maxDdLongOnly = 0;
 
   for (let i = 0; i < backtestDays.length; i++) {
     const day = backtestDays[i];
     const dailyReturn = day.btcChangePercent / 100;
     btcEquity *= 1 + dailyReturn;
 
-    // Long/short strategy
     let position: "LONG" | "SHORT" | "CASH" = "CASH";
     if (i > 0) {
-      const prevScore = backtestDays[i - 1].score;
-      if (prevScore > SCORE_THRESHOLD) position = "LONG";
-      else if (prevScore < -SCORE_THRESHOLD) position = "SHORT";
+      const prev = backtestDays[i - 1];
+      position = positionFromSignal(prev.signal, prev.score, CRYPTO_STRATEGY_RULES);
     }
 
     if (position !== prevPosition && i > 0) {
@@ -486,11 +576,12 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
 
     prevPosition = position;
 
-    // Long-only strategy: LONG when score > 20, CASH otherwise (no shorting)
+    // Long-only: only take LONG permission; FLAT/NO_TRADE/SHORT → cash
     let longOnlyPosition: "LONG" | "CASH" = "CASH";
     if (i > 0) {
-      const prevScore = backtestDays[i - 1].score;
-      if (prevScore > SCORE_THRESHOLD) longOnlyPosition = "LONG";
+      const prev = backtestDays[i - 1];
+      const prevPos = positionFromSignal(prev.signal, prev.score, CRYPTO_STRATEGY_RULES);
+      if (prevPos === "LONG") longOnlyPosition = "LONG";
     }
 
     if (longOnlyPosition !== prevLongOnlyPosition && i > 0) {
@@ -503,6 +594,13 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
 
     prevLongOnlyPosition = longOnlyPosition;
 
+    if (btcEquity > peakBtc) peakBtc = btcEquity;
+    if (longOnlyEquity > peakLongOnly) peakLongOnly = longOnlyEquity;
+    const ddBtc = (btcEquity - peakBtc) / peakBtc;
+    const ddLo = (longOnlyEquity - peakLongOnly) / peakLongOnly;
+    if (ddBtc < maxDdBtc) maxDdBtc = ddBtc;
+    if (ddLo < maxDdLongOnly) maxDdLongOnly = ddLo;
+
     equityCurve.push({
       date: day.tradeDate,
       btc: Number(btcEquity.toFixed(2)),
@@ -510,6 +608,8 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
       longOnly: Number(longOnlyEquity.toFixed(2)),
     });
   }
+
+  const noTradeDays = backtestDays.filter((d) => d.signal.noTrade).length;
 
   const sampledCurve =
     equityCurve.length <= 300
@@ -543,6 +643,10 @@ export const getCryptoBacktestData = cache(async (): Promise<CryptoBacktestSumma
     strategyReturn: stratEquity - 100,
     longOnlyReturn: longOnlyEquity - 100,
     btcReturn: btcEquity - 100,
+    noTradeRate:
+      backtestDays.length > 0 ? (noTradeDays / backtestDays.length) * 100 : null,
+    maxDrawdownLongOnly: maxDdLongOnly * 100,
+    maxDrawdownBtc: maxDdBtc * 100,
   };
 });
 
@@ -576,5 +680,8 @@ function emptyCryptoBacktest(): CryptoBacktestSummary {
     strategyReturn: null,
     longOnlyReturn: null,
     btcReturn: null,
+    noTradeRate: null,
+    maxDrawdownLongOnly: null,
+    maxDrawdownBtc: null,
   };
 }

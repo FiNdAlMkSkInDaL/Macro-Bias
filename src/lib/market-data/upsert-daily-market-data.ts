@@ -1,8 +1,11 @@
 import { calculateDailyBias } from "../macro-bias/calculate-daily-bias";
 import {
   ANALOG_MODEL_SETTINGS,
+  MODEL_VERSION,
+  STOCKS_LEVEL_FEATURES_FOR_PERCENTILE,
   TRACKED_TICKERS,
 } from "../macro-bias/constants";
+import { stationarizeLevelFeatures } from "../signal/rolling-percentile";
 import {
   calculateRelativeStrengthIndex,
   calculateSimpleMovingAverage,
@@ -94,7 +97,6 @@ type MacroBiasAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
 const SUPPLEMENTAL_TICKERS = ["^VIX", "HYG", "CPER", "USO"] as const satisfies readonly SupplementalTicker[];
 const ANALOG_CORE_TICKERS = ["USO"] as const satisfies readonly SupplementalTicker[];
-const MODEL_VERSION = "macro-model-v4-regime-gex";
 const MAX_ANALOG_LOOKBACK_YEARS = 10;
 const DEFAULT_ANALOG_LOOKBACK_DAYS = 3653;
 const MIN_ANALOG_LOOKBACK_DAYS = 45;
@@ -420,6 +422,7 @@ function buildTickerChangeMap(
       close: latestRow.close,
       previousClose: previousRow.close,
       percentChange,
+      open: latestRow.open,
     };
   }
 
@@ -528,7 +531,11 @@ function buildUsoMomentumByTradeDate(
   );
 }
 
-function buildGammaExposureByTradeDate(
+/**
+ * VIX 5-session momentum proxy: −(VIX % change over lookback).
+ * Positive when VIX is falling (vol cooling). This is NOT dealer gamma.
+ */
+function buildVixMomentumByTradeDate(
   vixHistory: HistoricalPriceRow<"^VIX">[],
   sortedCommonTradeDates: string[],
 ) {
@@ -546,6 +553,18 @@ function buildGammaExposureByTradeDate(
   );
 }
 
+type StocksFeaturePoint = {
+  tradeDate: string;
+  vector: HistoricalAnalogVector["vector"];
+  spyForward1DayReturn: number | null;
+  spyForward3DayReturn: number | null;
+};
+
+/**
+ * Build raw feature points for every session with enough lookback, stationarize
+ * level features to walk-forward percentiles, then keep rows with known forward
+ * returns as the analog pool. Also returns today's stationarized levels.
+ */
 function buildHistoricalAnalogVectors(
   rowsByTicker: Record<TrackedTicker, DailyPriceInsert[]>,
   supplementalHistory: {
@@ -556,73 +575,126 @@ function buildHistoricalAnalogVectors(
   },
   spyTechnicalIndicatorsByTradeDate: Record<string, PersistedTechnicalIndicators>,
   sortedCommonTradeDates: string[],
-  gammaExposureByTradeDate: Record<string, number>,
+  vixMomentumByTradeDate: Record<string, number>,
   usoMomentumByTradeDate: Record<string, number>,
-): HistoricalAnalogVector[] {
+  latestTradeDate: string,
+): {
+  historicalAnalogVectors: HistoricalAnalogVector[];
+  todayLevelPercentiles: {
+    hygTltRatioPercentile: number;
+    cperGldRatioPercentile: number;
+    vixLevelPercentile: number;
+  } | null;
+} {
   const spyHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.SPY);
   const tltHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.TLT);
   const gldHistoryByTradeDate = buildTradeDateLookup(rowsByTicker.GLD);
   const hygHistoryByTradeDate = buildTradeDateLookup(supplementalHistory.hyg);
   const cperHistoryByTradeDate = buildTradeDateLookup(supplementalHistory.cper);
   const vixHistoryByTradeDate = buildTradeDateLookup(supplementalHistory.vix);
-  const historicalAnalogVectors: HistoricalAnalogVector[] = [];
+  const rawPoints: StocksFeaturePoint[] = [];
 
   for (
     let index = ANALOG_MODEL_SETTINGS.usoMomentumLookbackSessions;
-    index < sortedCommonTradeDates.length - 3;
+    index < sortedCommonTradeDates.length;
     index += 1
   ) {
     const tradeDate = sortedCommonTradeDates[index];
-    const nextTradeDate = sortedCommonTradeDates[index + 1];
-    const thirdForwardTradeDate = sortedCommonTradeDates[index + 3];
+    const nextTradeDate =
+      index + 1 < sortedCommonTradeDates.length
+        ? sortedCommonTradeDates[index + 1]
+        : null;
+    const thirdForwardTradeDate =
+      index + 3 < sortedCommonTradeDates.length
+        ? sortedCommonTradeDates[index + 3]
+        : null;
     const currentSpyRow = spyHistoryByTradeDate.get(tradeDate);
-    const nextSpyRow = spyHistoryByTradeDate.get(nextTradeDate);
-    const thirdForwardSpyRow = spyHistoryByTradeDate.get(thirdForwardTradeDate);
+    const nextSpyRow = nextTradeDate
+      ? spyHistoryByTradeDate.get(nextTradeDate)
+      : undefined;
+    const thirdForwardSpyRow = thirdForwardTradeDate
+      ? spyHistoryByTradeDate.get(thirdForwardTradeDate)
+      : undefined;
     const hygRow = hygHistoryByTradeDate.get(tradeDate);
     const tltRow = tltHistoryByTradeDate.get(tradeDate);
     const cperRow = cperHistoryByTradeDate.get(tradeDate);
     const gldRow = gldHistoryByTradeDate.get(tradeDate);
     const vixRow = vixHistoryByTradeDate.get(tradeDate);
     const spyIndicators = spyTechnicalIndicatorsByTradeDate[tradeDate] ?? {};
-    const gammaExposure = gammaExposureByTradeDate[tradeDate];
+    const vixMomentum = vixMomentumByTradeDate[tradeDate];
     const spyRsi = getNumericTechnicalIndicator(spyIndicators, "rsi14");
     const uso5DayMomentum = usoMomentumByTradeDate[tradeDate];
 
     if (
       !currentSpyRow ||
-      !nextSpyRow ||
-      !thirdForwardSpyRow ||
       !hygRow ||
       !tltRow ||
       !cperRow ||
       !gldRow ||
       !vixRow ||
-      gammaExposure == null ||
+      vixMomentum == null ||
       spyRsi == null ||
-      uso5DayMomentum == null
+      uso5DayMomentum == null ||
+      tltRow.close <= 0 ||
+      gldRow.close <= 0
     ) {
       continue;
     }
 
-    historicalAnalogVectors.push({
+    rawPoints.push({
       tradeDate,
       vector: {
         spyRsi,
-        gammaExposure,
+        vixMomentum,
         hygTltRatio: hygRow.close / tltRow.close,
         cperGldRatio: cperRow.close / gldRow.close,
         usoMomentum: uso5DayMomentum,
         vixLevel: vixRow.close,
       },
-      spyForward1DayReturn: calculatePercentChange(nextSpyRow.close, currentSpyRow.close),
-      spyForward3DayReturn: calculatePercentChange(
-        thirdForwardSpyRow.close,
-        currentSpyRow.close,
-      ),
+      // Close→close neighbor labels (OTC training measured worse on fair metrics;
+      // product still *evaluates* published scores on open→close via live eval).
+      spyForward1DayReturn:
+        nextSpyRow != null
+          ? calculatePercentChange(nextSpyRow.close, currentSpyRow.close)
+          : null,
+      spyForward3DayReturn:
+        thirdForwardSpyRow != null
+          ? calculatePercentChange(thirdForwardSpyRow.close, currentSpyRow.close)
+          : null,
     });
   }
 
-  return historicalAnalogVectors;
+  const stationarized = stationarizeLevelFeatures(
+    rawPoints,
+    STOCKS_LEVEL_FEATURES_FOR_PERCENTILE,
+    {
+      window: ANALOG_MODEL_SETTINGS.percentileWindowSessions,
+      minHistory: ANALOG_MODEL_SETTINGS.percentileMinHistorySessions,
+    },
+  );
+
+  const historicalAnalogVectors: HistoricalAnalogVector[] = stationarized
+    .filter(
+      (point) =>
+        point.spyForward1DayReturn != null && point.spyForward3DayReturn != null,
+    )
+    .map((point) => ({
+      tradeDate: point.tradeDate,
+      vector: point.vector,
+      spyForward1DayReturn: point.spyForward1DayReturn as number,
+      spyForward3DayReturn: point.spyForward3DayReturn as number,
+    }));
+
+  const todayPoint = stationarized.find((point) => point.tradeDate === latestTradeDate);
+  const todayLevelPercentiles = todayPoint
+    ? {
+        hygTltRatioPercentile: todayPoint.vector.hygTltRatio,
+        cperGldRatioPercentile: todayPoint.vector.cperGldRatio,
+        vixLevelPercentile: todayPoint.vector.vixLevel,
+      }
+    : null;
+
+  return { historicalAnalogVectors, todayLevelPercentiles };
 }
 
 function buildExpandedDailyBiasData(
@@ -633,27 +705,38 @@ function buildExpandedDailyBiasData(
     uso: HistoricalPriceRow<"USO">[];
     vix: HistoricalPriceRow<"^VIX">[];
   },
-  gammaExposureByTradeDate: Record<string, number>,
+  vixMomentumByTradeDate: Record<string, number>,
   historicalAnalogVectors: HistoricalAnalogVector[],
   usoMomentumByTradeDate: Record<string, number>,
   previousTradeDate: string,
   latestTradeDate: string,
+  todayLevelPercentiles: {
+    hygTltRatioPercentile: number;
+    cperGldRatioPercentile: number;
+    vixLevelPercentile: number;
+  } | null,
 ): ExpandedDailyBiasData {
   const latestSpyIndicators = spyTechnicalIndicatorsByTradeDate[latestTradeDate] ?? {};
 
   const spy20DaySma = getNumericTechnicalIndicator(latestSpyIndicators, "sma20");
   const spy14DayRsi = getNumericTechnicalIndicator(latestSpyIndicators, "rsi14");
-  const gammaExposure = gammaExposureByTradeDate[latestTradeDate];
+  const vixMomentum = vixMomentumByTradeDate[latestTradeDate];
   const uso5DayMomentum = usoMomentumByTradeDate[latestTradeDate];
 
   if (
     spy20DaySma == null ||
     spy14DayRsi == null ||
-    gammaExposure == null ||
+    vixMomentum == null ||
     uso5DayMomentum == null
   ) {
     throw new Error(
-      "Not enough history to calculate SPY 20-day SMA, SPY 14-day RSI, synthetic gamma exposure, and USO 5-day momentum.",
+      "Not enough history to calculate SPY 20-day SMA, SPY 14-day RSI, VIX momentum proxy, and USO 5-day momentum.",
+    );
+  }
+
+  if (!todayLevelPercentiles) {
+    throw new Error(
+      "Not enough history to compute walk-forward percentile ranks for HYG/TLT, CPER/GLD, and VIX.",
     );
   }
 
@@ -663,7 +746,9 @@ function buildExpandedDailyBiasData(
       previousTradeDate,
       latestTradeDate,
     ),
-    gammaExposure,
+    vixMomentum,
+    // Legacy alias for older readers of engine_inputs.
+    gammaExposure: vixMomentum,
     hyg: buildSupplementalSnapshot(
       supplementalHistory.hyg,
       previousTradeDate,
@@ -683,6 +768,7 @@ function buildExpandedDailyBiasData(
       previousTradeDate,
       latestTradeDate,
     ),
+    ...todayLevelPercentiles,
   };
 }
 
@@ -778,7 +864,9 @@ function buildEngineInputsPayload(
       rolling_window_years: MAX_ANALOG_LOOKBACK_YEARS,
     },
     marketPlumbing: {
-      gammaExposure: expandedData.gammaExposure ?? 0,
+      vixMomentum: expandedData.vixMomentum ?? 0,
+      // Legacy alias for older briefing/analog code paths.
+      gammaExposure: expandedData.vixMomentum ?? 0,
     },
     tradeWindow: {
       lookbackDays,
@@ -896,9 +984,34 @@ export async function upsertDailyMarketData(
       VIX: vixHistory,
       XLP: rowsByTicker.XLP,
     });
+
+  // Data integrity: refuse to score on incomplete or suspiciously short history.
+  const requiredLatest = [
+    ["SPY", rowsByTicker.SPY],
+    ["TLT", rowsByTicker.TLT],
+    ["GLD", rowsByTicker.GLD],
+    ["HYG", hygHistory],
+    ["VIX", vixHistory],
+    ["CPER", cperHistory],
+    ["USO", usoHistory],
+  ] as const;
+  for (const [ticker, series] of requiredLatest) {
+    const hasLatest = series.some((row) => row.trade_date === latestTradeDate);
+    if (!hasLatest) {
+      throw new Error(
+        `Data integrity hard-fail: missing ${ticker} bar for latest session ${latestTradeDate}. Refusing to publish a score.`,
+      );
+    }
+  }
+  if (sortedCommonTradeDates.length < ANALOG_MODEL_SETTINGS.percentileMinHistorySessions + 20) {
+    throw new Error(
+      `Data integrity hard-fail: only ${sortedCommonTradeDates.length} common sessions; need more history for percentile KNN.`,
+    );
+  }
+
   const tickerChanges = buildTickerChangeMap(rowsByTicker, previousTradeDate, latestTradeDate);
   const spyTechnicalIndicatorsByTradeDate = buildSpyTechnicalIndicatorsByTradeDate(rowsByTicker.SPY);
-  const gammaExposureByTradeDate = buildGammaExposureByTradeDate(vixHistory, sortedCommonTradeDates);
+  const vixMomentumByTradeDate = buildVixMomentumByTradeDate(vixHistory, sortedCommonTradeDates);
   const usoMomentumByTradeDate = buildUsoMomentumByTradeDate(usoHistory, sortedCommonTradeDates);
   const historicalSeriesSummary = buildHistoricalSeriesSummary({
     CPER: cperHistory,
@@ -911,7 +1024,7 @@ export async function upsertDailyMarketData(
     VIX: vixHistory,
     XLP: rowsByTicker.XLP,
   });
-  const historicalAnalogVectors = buildHistoricalAnalogVectors(
+  const { historicalAnalogVectors, todayLevelPercentiles } = buildHistoricalAnalogVectors(
     rowsByTicker,
     {
       cper: cperHistory,
@@ -921,8 +1034,9 @@ export async function upsertDailyMarketData(
     },
     spyTechnicalIndicatorsByTradeDate,
     sortedCommonTradeDates,
-    gammaExposureByTradeDate,
+    vixMomentumByTradeDate,
     usoMomentumByTradeDate,
+    latestTradeDate,
   );
   const historicalArrayPayload = buildHistoricalArrayPayload({
     CPER: cperHistory,
@@ -943,11 +1057,12 @@ export async function upsertDailyMarketData(
       uso: usoHistory,
       vix: vixHistory,
     },
-    gammaExposureByTradeDate,
+    vixMomentumByTradeDate,
     historicalAnalogVectors,
     usoMomentumByTradeDate,
     previousTradeDate,
     latestTradeDate,
+    todayLevelPercentiles,
   );
   const persistedPriceRows = buildPersistedPriceRows(
     historyEntries,
@@ -1040,8 +1155,13 @@ export async function upsertDailyMarketData(
       bias_label: biasResult.label,
       component_scores: biasResult.componentScores,
       ticker_changes: biasResult.tickerChanges,
-      model_version: MODEL_VERSION,
-      engine_inputs: engineInputs,
+      model_version: biasResult.modelVersion ?? MODEL_VERSION,
+      engine_inputs: {
+        ...engineInputs,
+        tradableSignal: biasResult.signal,
+        blendedForwardReturn: biasResult.blendedForwardReturn,
+        modelVersion: biasResult.modelVersion ?? MODEL_VERSION,
+      },
       technical_indicators: technicalIndicators,
     },
   ];

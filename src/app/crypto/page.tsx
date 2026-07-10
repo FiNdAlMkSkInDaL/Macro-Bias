@@ -71,12 +71,12 @@ export default function CryptoLandingPage() {
             [ Crypto Regime Engine ]
           </p>
           <h1 className="mt-6 text-balance font-[family:var(--font-heading)] text-4xl font-bold tracking-tighter text-white sm:text-5xl md:text-6xl">
-            +41,576% long-only vs +941% BTC.
+            Daily crypto regime context. Not a magic equity curve.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-balance text-lg leading-8 text-zinc-300">
             The same regime-scoring discipline that works for stocks, tuned for
-            crypto volatility. One daily read. 90 seconds. Before the US session
-            opens.
+            crypto volatility. One daily read with a tradable permission and size
+            cue. 90 seconds. Before the US session opens.
           </p>
         </section>
 
@@ -148,30 +148,30 @@ export default function CryptoLandingPage() {
           </p>
         </section>
 
-        {/* Track record stats */}
+        {/* What you get */}
         <section className="mx-auto mt-16 grid max-w-3xl gap-6 sm:grid-cols-3">
           <div className="border border-zinc-800 bg-zinc-950/60 p-6 text-center">
             <p className="font-[family:var(--font-data)] text-3xl font-bold text-white">
-              +41,576%
+              LONG / FLAT
             </p>
             <p className="mt-2 text-xs uppercase tracking-widest text-zinc-500">
-              Long-only strategy
+              Daily permission
             </p>
           </div>
           <div className="border border-zinc-800 bg-zinc-950/60 p-6 text-center">
-            <p className="font-[family:var(--font-data)] text-3xl font-bold text-zinc-400">
-              +941%
+            <p className="font-[family:var(--font-data)] text-3xl font-bold text-zinc-300">
+              Size cue
             </p>
             <p className="mt-2 text-xs uppercase tracking-widest text-zinc-500">
-              BTC buy-and-hold
+              Reliability graded
             </p>
           </div>
           <div className="border border-zinc-800 bg-zinc-950/60 p-6 text-center">
             <p className="font-[family:var(--font-data)] text-3xl font-bold text-sky-400">
-              2,297
+              Paper book
             </p>
             <p className="mt-2 text-xs uppercase tracking-widest text-zinc-500">
-              Days backtested
+              Published scores only
             </p>
           </div>
         </section>
@@ -285,9 +285,10 @@ export default function CryptoLandingPage() {
               sessions.
             </p>
             <p>
-              The edge is not better entries. It is knowing which days to show up
-              and which days to sit out. That single decision is the difference
-              between +41,576% and +941%.
+              The product is not a promise of outsized multiples. It is knowing
+              which days history rhymes with risk-on, which days to sit out, and
+              when the model should refuse a call. See the live paper ledger on
+              the track record page for honest accountability.
             </p>
           </div>
         </section>

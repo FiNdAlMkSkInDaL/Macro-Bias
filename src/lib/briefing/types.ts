@@ -1,5 +1,6 @@
 import type { HistoricalAnalogsPayload } from "@/lib/market-data/derive-historical-analogs";
 import type { BiasLabel } from "@/lib/macro-bias/types";
+import type { TradableSignal } from "@/lib/signal";
 
 export type StoredBiasSnapshot = {
   trade_date: string;
@@ -45,6 +46,8 @@ export type DailyBriefingQuantContext = {
   label: BiasLabel;
   score: number;
   tradeDate: string;
+  /** Model v5+ tradable permission layer from engine_inputs. */
+  signal: TradableSignal | null;
 };
 
 export type DailyBriefingConviction = "HIGH" | "MEDIUM" | "LOW";

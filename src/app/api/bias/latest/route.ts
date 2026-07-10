@@ -219,6 +219,9 @@ export async function GET() {
       snapshot.technical_indicators,
     );
 
+    const engineInputs = isRecord(snapshot.engine_inputs) ? snapshot.engine_inputs : null;
+    const tradableSignal = engineInputs?.tradableSignal ?? null;
+
     return NextResponse.json({
       data: {
         tradeDate: snapshot.trade_date,
@@ -228,6 +231,10 @@ export async function GET() {
         componentScores: buildPillarBreakdown(snapshot.component_scores),
         detailedComponentScores: snapshot.component_scores,
         historicalAnalogs,
+        /** Model v5 permission layer: position, size, reliability. */
+        signal: tradableSignal,
+        blendedForwardReturn: engineInputs?.blendedForwardReturn ?? null,
+        modelVersion: engineInputs?.modelVersion ?? null,
         createdAt: snapshot.created_at,
         updatedAt: snapshot.updated_at,
       },

@@ -22,16 +22,16 @@ type Credentials = {
 
 const heroStats = [
   {
-    label: "Stocks backtest",
-    value: "+295% vs +116% S&P 500",
+    label: "What you get",
+    value: "Daily regime + size cue",
   },
   {
-    label: "Crypto backtest",
-    value: "+41,576% vs +941% BTC",
+    label: "Built for",
+    value: "Context, not autopilot",
   },
   {
     label: "Price",
-    value: "$25/mo — covers both",
+    value: "$25/mo — stocks + crypto",
   },
 ] as const;
 
