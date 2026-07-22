@@ -1,484 +1,73 @@
 # Macro Bias
 
-Macro Bias is a Next.js 15 and Supabase SaaS that publishes automated daily regime research for equities and crypto. The platform combines quantitative regime models, live market context, structured LLM synthesis, tiered email distribution, track-record dashboards, referral growth loops, and scheduled social distribution.
+I got tired of vague “market outlook” posts, so I built a small daily research app.
 
-The product goal is simple: every morning, publish a **permission layer** (LONG / SHORT / FLAT / NO_TRADE) for the next session, with reliability grades and risk size — not a vanity backtest, and not a “certainty” claim. Walk-forward measurement against next-session open→close is the gate for shipping model changes.
+Every morning it looks at a few macro features (equities, vol, credit, metals, oil — and a crypto path), finds similar past days, and publishes a simple next-session **permission**: LONG / SHORT / FLAT / NO_TRADE, with a reliability grade and size hint. Not a price target. Not a certainty claim.
+
+Walk-forward checks against next-session open→close are the gate for model changes. If a knob doesn’t help those numbers, it doesn’t ship.
+
+Learning project / personal product. Not financial advice.
 
 ## Stack
 
-- Next.js 15 App Router, React 19, TypeScript, Tailwind CSS
-- Supabase for Postgres, auth helpers, and admin access
-- Anthropic for structured briefing synthesis
-- Finnhub plus internal market-data sync modules for research inputs
-- Resend for email delivery
-- Stripe for checkout, subscriptions, and referral coupons
-- X, Bluesky, Threads, and optional Telegram for outbound distribution
+- Next.js (App Router) + TypeScript + Tailwind  
+- Supabase (Postgres, auth helpers)  
+- Market data sync + KNN-style regime scoring  
+- Optional: Anthropic for briefing text, Resend email, Stripe billing, social posting  
 
-## Product Surface
+Live-ish deploy (when up): see the repo homepage on GitHub / Vercel.
 
-| Surface               | Route(s)                                                                    | Purpose                                                                      |
-| --------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Stocks research       | `/today`, `/dashboard`, `/track-record`, `/briefings`                       | Daily bias snapshot, dashboard, track record, and archive                    |
-| Crypto research       | `/crypto`, `/crypto/dashboard`, `/crypto/track-record`, `/crypto/briefings` | Crypto landing page, live dashboard, track record, and archive               |
-| Conversion and growth | `/emails`, `/pricing`, `/refer`, `/intel/[slug]`, `/feed.json`, `/feed.xml` | Newsletter signup, billing, referrals, marketing posts, and feeds            |
-| Admin                 | `/analytics`                                                                | Server-rendered analytics and paper-trading dashboard restricted to the configured admin email |
-| Auth callback         | `/auth/callback`                                                            | Supabase auth completion flow                                                |
+## What you can open
 
-## Quant Model (Stocks)
+| Area | Routes |
+|------|--------|
+| Stocks | `/today`, `/dashboard`, `/track-record`, `/briefings` |
+| Crypto | `/crypto`, `/crypto/dashboard`, `/crypto/track-record` |
+| Growth | `/emails`, `/pricing`, `/refer` |
+| Admin | `/analytics` (restricted) |
 
-The stocks score is a **walk-forward K-nearest-neighbor regime model**, not a linear factor stack. Honest naming matters: the vol feature is VIX momentum, not “dealer gamma.”
+## Quant idea (stocks)
 
-### Features and distance
+- Features (recent package): SPY RSI, VIX momentum, HYG/TLT, CPER/GLD, USO momentum  
+- Stationarize levels to rolling percentiles  
+- Cosine distance on z-scored features; adaptive K when vol is high  
+- Map neighbor returns → score in [-100, 100]  
+- Reliability grades A–F; **F → NO_TRADE**  
+- Dead zone around zero → FLAT  
 
-- **KNN features** (model v8+): SPY RSI, VIX momentum, HYG/TLT ratio, CPER/GLD ratio, USO momentum  
-- Level features are stationarized to rolling percentiles so drifting raw ratios do not dominate distance  
-- **Cosine distance** on z-scored features (v10) with optional temporal decay  
-- **Adaptive K by VIX** (v18): K = 5 when VIX ≥ 20, else K = 7  
+Shared signal types live under `src/lib/signal/`. Crypto has a parallel path in `src/lib/crypto-bias/`.
 
-### From neighbors to published score
-
-1. Inverse-distance-weighted blend of neighbor forward returns (1d / 3d weights **0.55 / 0.45**)  
-2. Map blended expectancy to a score in **[-100, 100]** via `tanh`  
-3. **Reliability gates**: agreement × distance quality → grades A–F; **F forces NO_TRADE**  
-4. Soft dead zone: **|score| ≤ 22 → FLAT** (v16)  
-5. Selective post-processing (measured, kept only when next-session open→close improved):  
-   - flat when neighbor return dispersion is too tight (low-vol filter)  
-   - fade after large same-day SPY moves  
-   - soft overnight amplify when the open gap agrees; hard veto when it fights the lean  
-   - **Monday publish dampener** (score 0 / FLAT)  
-
-### Tradable permission layer
-
-Shared library: `src/lib/signal/`
-
-| Field        | Meaning                                              |
-| ------------ | ---------------------------------------------------- |
-| `position`   | `LONG` / `SHORT` / `FLAT` / `NO_TRADE`               |
-| `size`       | Suggested risk scale in [0, 1]                       |
-| `reliability`| `A`–`F` analog-quality grade                         |
-| `reason`     | Plain-English explanation for email / UI / social    |
-
-Delivery (email, dashboard, social) is **permission-first**: what you may do next session, not a forecast headline.
-
-### Quality loop
-
-Model knobs ship only if they improve **lagged next-session open→close** walk-forward metrics (hit rate when in, long-minus-short edge, cash rate, year stability). Scripts:
+Check scripts (examples):
 
 ```bash
-npm run verify:signal      # pure signal + paper ledger logic
-npm run verify:model       # signal + percentiles + live eval + trend veto + latest model gate
-npm run verify:v18         # current stocks package gate (adaptive K)
-npm run measure:quality    # walk-forward measure harness
-npm run optimize:quality   # ablation / optimization search
+npm run verify:signal
+npm run verify:model
+npm run measure:quality
 ```
 
-Current locked stocks version string: **`macro-model-v18-adaptive-k`** (see `src/lib/macro-bias/constants.ts`). Crypto has a parallel calibrated path under `src/lib/crypto-bias/`.
-
-## How The System Works
-
-### Stocks daily pipeline
-
-Route: `/api/cron/publish`  
-Schedule: `45 12 * * 1-5` UTC  
-Methods: `GET` and `POST`
-
-1. Validate cron auth using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
-2. Refresh daily market data with `upsertDailyMarketData()` (prices + analog features + daily bias score).
-3. Load recent `macro_bias_scores` history (includes tradable signal in `engine_inputs` when present).
-4. Generate the briefing with `generateDailyBriefing()`, which runs the quant and news branches in parallel.
-5. Persist the result to `daily_market_briefings`.
-6. Deliver tiered emails through Resend (permission line + reliability, not score-only).
-7. Publish social snippets to the configured outbound channels.
-
-Same-day reruns do not generate a second briefing row. They load the already-persisted briefing and attempt a re-publish or re-distribution pass instead.
-
-### Paper trading pipeline
-
-Route: `/api/cron/paper-trade`  
-Schedule: `15 13 * * 1-5` UTC  
-Methods: `GET` and `POST`
-
-1. Validate cron auth using `CRON_SECRET` or `PUBLISH_CRON_SECRET`.
-2. Load the latest persisted `daily_market_briefings` row for the requested `briefing_date`.
-3. Load the linked `macro_bias_scores` row plus the synced `SPY` close from `etf_daily_prices`.
-4. Load the latest `paper_trading_portfolio_snapshots` row to derive current simulated cash, exposure, and equity.
-5. Ask Anthropic for a strict JSON allocation decision using only the saved briefing, quant score, and current portfolio state.
-6. Deterministically fall back to `HOLD` with unchanged weights if the model output is invalid, inconsistent, or unavailable.
-7. Write one `paper_trading_runs` row, any required `paper_trading_executions` row, and one new `paper_trading_portfolio_snapshots` row.
-
-The paper-trade cron is intentionally scheduled after the stocks publish job so it only runs against persisted briefing data. Same-day reruns are idempotent because `paper_trading_runs.briefing_date` is unique.
-
-### Crypto daily pipeline
-
-Route: `/api/cron/crypto-publish`  
-Schedule: `30 12 * * *` UTC  
-Methods: `GET` and `POST`
-
-1. Validate cron auth.
-2. Refresh crypto market data with `upsertCryptoMarketData()`.
-3. Load recent `crypto_bias_scores` history.
-4. Generate the crypto briefing with `generateCryptoDailyBriefing()`.
-5. Persist the result to `crypto_daily_briefings`.
-6. Send tiered crypto emails.
-7. Publish social snippets to the configured outbound channels.
-
-Same-day reruns follow the same re-publish pattern as the stocks pipeline.
-
-### Newsletter and growth flows
-
-- `/api/subscribe` upserts `free_subscribers`, stores `stocks_opted_in` and `crypto_opted_in`, generates a referral code, attributes referrals when `ref` is present, enrolls the subscriber in the welcome drip, logs analytics, and tries an immediate first welcome email.
-- `/api/cron/welcome-drip` advances the 4-step welcome sequence once per day.
-- `/api/referral/status` returns referral progress, masked recent referrals, and reward state for the client.
-- `/api/checkout`, `/api/stripe/portal`, and `/api/webhooks/stripe` handle paid subscriptions and billing state.
-- `/api/analytics/track` and `/api/analytics/dashboard` power first-party marketing analytics.
-- `/api/cron/paper-trade` powers the simulated portfolio agent and writes the paper trading ledger after the stocks briefing completes.
-- Markdown posts in `src/content/marketing/` are published into `published_marketing_posts` and rendered at `/intel/[slug]`.
-
-## Cron Schedule
-
-| Path                              | Schedule (UTC)  | Purpose                                    |
-| --------------------------------- | --------------- | ------------------------------------------ |
-| `/api/cron/welcome-drip`          | `0 10 * * *`    | Daily welcome drip processing              |
-| `/api/cron/publish`               | `45 12 * * 1-5` | Stocks briefing pipeline                   |
-| `/api/cron/crypto-publish`        | `30 12 * * *`   | Crypto briefing pipeline                   |
-| `/api/cron/paper-trade`           | `15 13 * * 1-5` | Paper trading simulation after publish     |
-| `/api/cron/social-dispatch`       | `15 13 * * 1-5` | Weekday queue drain, morning window        |
-| `/api/cron/marketing`             | `30 14 * * 1-5` | Weekday queue drain, midday window         |
-| `/api/cron/social-dispatch-pm`    | `0 15 * * 1-5`  | Weekday queue drain, afternoon window      |
-| `/api/cron/social-dispatch-eod`   | `0 16 * * 1-5`  | Weekday queue drain, end-of-day window     |
-| `/api/cron/post-market-scorecard` | `15 21 * * 1-5` | Publish the daily accountability scorecard |
-| `/api/cron/threads-token-refresh` | `0 9 * * 1`     | Weekly Threads token refresh check         |
-
-The paper-trade cron is intentionally scheduled after the stocks publish job so it can depend on the persisted `daily_market_briefings` and `macro_bias_scores` rows for the same market session.
-
-The four weekday queue-drain routes all call the same `handleSocialDispatch()` function in `src/lib/social/scheduled-post-dispatch.ts`. Each run selects all due rows from `scheduled_posts`, sanitizes the copy for social, canonicalizes email CTA links, posts to X, and optionally cross-posts to Bluesky and Threads.
-
-## Social Publishing
-
-### Scheduled queue
-
-The social queue is built in two steps:
-
-1. `src/scripts/schedule-drafts.ts` turns draft JSON files in `src/content/marketing/` into `x-queue-scheduled.json`.
-2. `src/scripts/arm-scheduled-social-queue.ts` loads that schedule into the `scheduled_posts` table.
-
-The dispatcher is X-first. It always publishes to X when credentials are present, then best-effort cross-posts to Bluesky and Threads when those integrations are configured. Telegram is used by the daily briefing pipelines, not by the scheduled queue dispatcher.
-
-### Post-market scorecard
-
-Route: `/api/cron/post-market-scorecard`  
-Schedule: `15 21 * * 1-5`
-
-This job builds an accountability post from the latest regime call and realized SPY performance, including the current streak and rolling 30-day hit rate. It publishes to X and, when configured, to Bluesky and Threads.
-
-### Threads integration
-
-Threads support was added after the previous README revision and currently includes:
-
-- publish support in `src/lib/social/threads.ts`
-- Meta compliance callbacks at `/api/threads/deauthorize` and `/api/threads/delete`
-- a weekly token refresh cron at `/api/cron/threads-token-refresh`
-- a manual OAuth and token exchange helper at `scripts/threads-auth.ts`
-
-Important: the weekly refresh route can fetch a new long-lived token and email or log it, but it does not update Vercel environment variables automatically. The refreshed token still has to be copied into `THREADS_ACCESS_TOKEN` manually.
-
-## Billing, Referrals, And Analytics
-
-### Billing
-
-- `/api/checkout` supports `GET` redirect mode and `POST` JSON mode.
-- Checkout sessions are created with a 7-day Stripe trial.
-- `/api/stripe/portal` opens the Stripe billing portal for authenticated users.
-- `/api/webhooks/stripe` syncs subscription state into the `users` table and legacy profile flags.
-
-### Free list, paid users, and paywall
-
-- `free_subscribers` stores email list subscribers, newsletter preferences, referral code state, and temporary premium unlock windows.
-- `users` stores authenticated paid-user billing state.
-- `premium_unlock_expires_at` allows a free subscriber to bypass the normal free-tier paywall temporarily.
-
-### Referrals
-
-The referral system is wired through `/today` landing links, `/refer`, `/api/subscribe`, and `/api/referral/status`.
-
-Current reward fulfillment logic in `src/lib/referral/rewards.ts` uses these thresholds:
-
-| Tier | Verified referrals | Reward                                     |
-| ---- | ------------------ | ------------------------------------------ |
-| 1    | 1                  | 7-day premium unlock                       |
-| 2    | 7                  | 1 free month of Premium via Stripe coupon  |
-| 3    | 15                 | Free annual subscription via Stripe coupon |
-
-Note: `src/app/api/referral/status/route.ts` still labels Tier 1 as `3` verified referrals. The fulfillment engine above is the current source of truth at `HEAD`.
-
-### Analytics
-
-The admin analytics page aggregates:
-
-- subscriber and paid-user counts
-- opt-in mix for stocks versus crypto
-- 24-hour, 7-day, and 30-day marketing events
-- top pages, top events, UTM sources, and recent event logs
-- welcome drip, referral, and reward metrics
-- latest stocks and crypto briefing counts and recent bias history
-- paper trading portfolio equity, current cash and SPY weights, and the latest run and execution
-
-Access is currently restricted by a hard-coded admin email check in `src/app/analytics/page.tsx`.
-
-## Key API Routes
-
-| Route                        | Method(s)     | Purpose                                                                                |
-| ---------------------------- | ------------- | -------------------------------------------------------------------------------------- |
-| `/api/subscribe`             | `POST`        | Free newsletter signup, preferences, referral attribution, and welcome drip enrollment |
-| `/api/subscribe/unsubscribe` | `POST`        | Email unsubscribe                                                                      |
-| `/api/referral/status`       | `GET`         | Referral progress for the referral UI                                                  |
-| `/api/bias/latest`           | `GET`         | Latest bias snapshot for the frontend                                                  |
-| `/api/analytics/track`       | `POST`        | First-party analytics ingest                                                           |
-| `/api/analytics/dashboard`   | `GET`         | Analytics data for the admin dashboard                                                 |
-| `/api/cron/paper-trade`      | `GET`, `POST` | Paper trading agent run, simulated execution, and daily portfolio snapshot persistence |
-| `/api/checkout`              | `GET`, `POST` | Stripe checkout session creation                                                       |
-| `/api/stripe/portal`         | `GET`         | Stripe billing portal redirect                                                         |
-| `/api/webhooks/stripe`       | `POST`        | Stripe webhook ingestion and entitlement sync                                          |
-| `/api/threads/deauthorize`   | `POST`        | Meta deauthorization callback                                                          |
-| `/api/threads/delete`        | `POST`        | Meta GDPR delete callback                                                              |
-
-## Data Model
-
-These are the main tables the current system depends on:
-
-| Table                            | Purpose                                                                 |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| `etf_daily_prices`               | Cross-asset historical price store used by the model inputs             |
-| `macro_bias_scores`              | Daily stocks regime scores and model inputs                             |
-| `crypto_bias_scores`             | Daily crypto regime scores and component data                           |
-| `daily_market_briefings`         | Persisted stocks briefing ledger                                        |
-| `crypto_daily_briefings`         | Persisted crypto briefing ledger                                        |
-| `paper_trading_runs`             | One decision ledger row per simulated trading day, including prompt metadata, conviction, and risk flags |
-| `paper_trading_executions`       | Simulated buy and sell executions produced by the paper trading agent using the stored `SPY` close |
-| `paper_trading_portfolio_snapshots` | Daily mark-to-market portfolio state, allocation weights, and equity history |
-| `free_subscribers`               | Free email list, preferences, referral data, and temporary unlock state |
-| `users`                          | Authenticated paid-user billing record                                  |
-| `scheduled_posts`                | Social queue used by the weekday dispatch crons                         |
-| `published_marketing_posts`      | Published blog and intel posts                                          |
-| `marketing_event_log`            | First-party analytics event log                                         |
-| `welcome_email_drip_enrollments` | Welcome sequence enrollment state                                       |
-| `welcome_email_drip_deliveries`  | Welcome sequence delivery log                                           |
-| `referrals`                      | Referral attribution records                                            |
-| `referral_rewards`               | Reward fulfillment ledger                                               |
-
-## Repository Map
-
-```text
-src/
-  app/
-    analytics/                # Admin analytics dashboard
-    briefings/                # Stocks briefing archive
-    crypto/                   # Crypto landing, dashboard, track record, archive
-    dashboard/                # Stocks live dashboard
-    emails/                   # Newsletter signup surface
-    intel/                    # Marketing post pages
-    pricing/                  # Plans and billing surface
-    refer/                    # Referral hub
-    today/                    # SEO/share landing page
-    api/
-      analytics/              # Track + dashboard APIs
-      bias/                   # Latest bias API (score + tradable signal)
-      checkout/               # Stripe checkout
-      cron/                   # Stocks, crypto, drip, social, scorecard, Threads refresh
-      referral/               # Referral status API
-      stripe/                 # Billing portal API
-      subscribe/              # Signup + unsubscribe
-      threads/                # Meta compliance callbacks
-      webhooks/stripe/        # Stripe webhook
-  components/
-    analytics/                # Admin paper trading chart components
-    dashboard/                # Stocks dashboard UI
-    track-record/             # Stocks and crypto performance charts
-  content/
-    marketing/                # Markdown posts and social queue JSON
-  lib/
-    analytics/                # Event logging helpers and shared dashboard loaders
-    billing/                  # Subscription status helpers
-    briefing/                 # Stocks briefing pipeline
-    crypto-bias/              # Crypto scoring logic
-    crypto-briefing/          # Crypto briefing pipeline
-    crypto-market-data/       # Crypto data sync
-    crypto-track-record/      # Crypto backtest + live paper eval
-    macro-bias/               # Stocks KNN regime scoring
-    market-data/              # Stocks data sync, analogs, news fetch
-    marketing/                # Email delivery, welcome drip, markdown parser
-    paper-trading/            # Paper trading agent context and portfolio state
-    referral/                 # Referral attribution, rewards, premium unlock
-    signal/                   # Shared tradable signal, paper ledger, quality metrics
-    social/                   # X, Bluesky, Threads, Telegram, scorecard, shared queue dispatch
-    supabase/                 # Client factories
-    track-record/             # Stocks backtest + published-score live eval
-  scripts/                    # Operational scripts that run against the app data model
-  utils/                      # KNN distance, regime classifier
-
-scripts/                      # Standalone verify / measure / utility scripts
-supabase/migrations/          # Schema history
-vercel.json                   # Cron definitions
-```
-
-## Scripts And Operator Commands
-
-### App scripts from `package.json`
+## Local dev
 
 ```bash
 npm install
+cp .env.example .env.local   # fill secrets you actually need
 npm run dev
-npm run security:audit
-npm run schema:audit
-npm run typecheck
-npm run build
-npm run macro-bias:sync
-npm run social:arm-queue
-npm run referral:report
-npm run referral:simulate
-npm run verify:model          # offline model + signal checks
-npm run verify:v18            # stocks package gate (adaptive K)
-npm run measure:quality       # walk-forward quality measure
-npm run optimize:quality      # ablation / search harness
 ```
 
-### Additional operational scripts
+Cron / publish routes expect secrets like `CRON_SECRET` (and whatever Supabase / data APIs you wire up). See `.env.example`.
 
-```bash
-npx tsx src/scripts/run-daily-crypto-bias-sync.ts
-npx tsx src/scripts/backfill-crypto-prices.ts
-npx tsx src/scripts/publish-marketing-posts.ts
-npx tsx src/scripts/schedule-drafts.ts x-queue-drafts-v4.json
-npx tsx src/scripts/audit-analytics.ts
-npx tsx scripts/audit-backtest.ts
-npx tsx scripts/test-regimes.ts
-npx tsx scripts/test-crypto-regimes.ts
-npx tsx scripts/threads-auth.ts
-```
+## Layout
 
-## Environment Variables
+| Path | What |
+|------|------|
+| `src/app/` | pages + API routes (including crons) |
+| `src/lib/` | bias models, signal, billing, social |
+| `supabase/migrations/` | schema |
+| `scripts/` | one-off verification / ablations |
 
-The table below reflects the current codebase, not just the checked-in `.env.example`. The checked-in example currently covers only part of the env surface, so use this section as the source of truth when wiring a new environment.
+## Honest limits
 
-### Core platform
+- Research tooling + paper paths, not a managed fund.  
+- Model versions move; the README won’t always match every experiment folder.  
+- Marketing posts under `src/content/marketing/` are content for the product, not research claims.
 
-| Variable                        | Required | Purpose                                                      |
-| ------------------------------- | -------- | ------------------------------------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL                                         |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Public Supabase key for browser auth flows                   |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Yes      | Server-side admin access for cron routes and writes          |
-| `NEXT_PUBLIC_APP_URL`           | Yes      | Canonical app URL used in emails, redirects, and share links |
-| `NODE_ENV`                      | No       | Standard Next.js runtime mode                                |
-
-### Cron auth
-
-| Variable              | Required | Purpose                                                           |
-| --------------------- | -------- | ----------------------------------------------------------------- |
-| `CRON_SECRET`         | Yes      | Primary auth secret for cron routes                               |
-| `PUBLISH_CRON_SECRET` | Optional | Backward-compatible fallback secret checked by most cron handlers |
-
-### Research and AI
-
-| Variable            | Required                                      | Purpose                  |
-| ------------------- | --------------------------------------------- | ------------------------ |
-| `FINNHUB_API_KEY`   | Yes for stocks briefing generation            | Pre-market news source   |
-| `ANTHROPIC_API_KEY` | Yes for stocks briefing, crypto briefing, and paper trading | Structured LLM synthesis |
-
-### Email delivery
-
-| Variable              | Required                          | Purpose                                 |
-| --------------------- | --------------------------------- | --------------------------------------- |
-| `RESEND_API_KEY`      | Yes for all email delivery        | Resend transport                        |
-| `RESEND_FROM_ADDRESS` | Recommended                       | Authenticated sender address            |
-| `SHADOW_RUN_EMAIL`    | Recommended for local and staging | Redirects outbound mail to a safe inbox |
-
-### Billing
-
-| Variable                             | Required                  | Purpose                                                             |
-| ------------------------------------ | ------------------------- | ------------------------------------------------------------------- |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes for frontend checkout | Browser Stripe key                                                  |
-| `STRIPE_SECRET_KEY`                  | Yes                       | Server Stripe key                                                   |
-| `STRIPE_MONTHLY_PRICE_ID`            | Recommended               | Monthly subscription price ID                                       |
-| `STRIPE_ANNUAL_PRICE_ID`             | Yes                       | Annual subscription price ID                                        |
-| `STRIPE_PRICE_ID`                    | Fallback                  | Legacy monthly price fallback if `STRIPE_MONTHLY_PRICE_ID` is unset |
-| `STRIPE_WEBHOOK_SECRET`              | Yes                       | Stripe webhook signature verification                               |
-
-### Social distribution
-
-| Variable                      | Required             | Purpose                                                                         |
-| ----------------------------- | -------------------- | ------------------------------------------------------------------------------- |
-| `X_API_KEY`                   | Yes for X publishing | X API app key                                                                   |
-| `X_API_SECRET`                | Yes for X publishing | X API app secret                                                                |
-| `X_ACCESS_TOKEN`              | Yes for X publishing | X access token                                                                  |
-| `X_ACCESS_SECRET`             | Yes for X publishing | X access token secret                                                           |
-| `X_API_KEY_SECRET`            | Legacy fallback      | Older X secret name still supported in the stocks publish route                 |
-| `X_ACCESS_TOKEN_SECRET`       | Legacy fallback      | Older X access-secret name still supported in the stocks publish route          |
-| `BLUESKY_IDENTIFIER`          | Optional             | Bluesky account identifier                                                      |
-| `BLUESKY_APP_PASSWORD`        | Optional             | Bluesky app password                                                            |
-| `THREADS_ACCESS_TOKEN`        | Optional             | Long-lived Threads publishing token                                             |
-| `THREADS_USER_ID`             | Optional             | Threads user ID                                                                 |
-| `THREADS_APP_ID`              | Optional             | Needed by the manual Threads OAuth helper                                       |
-| `THREADS_APP_SECRET`          | Optional             | Needed by the manual Threads OAuth helper and weekly refresh route              |
-| `TELEGRAM_BOT_TOKEN`          | Optional             | Telegram bot token for daily briefing cross-posts                               |
-| `TELEGRAM_CHANNEL_ID`         | Optional             | Telegram channel or chat ID                                                     |
-| `DISCORD_PUBLISH_WEBHOOK_URL` | Currently unused     | Discord webhook env is present, but Discord publishing is hard-disabled in code |
-
-## Local Setup
-
-1. Install dependencies with `npm install`.
-2. Copy `.env.example` to `.env.local`.
-3. Fill in the core env vars above. If you want Bluesky, Threads, or the full email and AI stack, add those manually because they are not all present in `.env.example`.
-4. Apply Supabase migrations from `supabase/migrations/`.
-5. Run `npm run dev`.
-6. Run `npm run security:audit`, `npm run schema:audit`, `npm run typecheck`, and `npm run build` before deploying.
-
-## Supabase Security Guardrails
-
-- Every repo-managed table is expected to have `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY` in migrations.
-- New application code must not reference Supabase tables that are missing from `supabase/migrations/`.
-- `npm run security:audit` enforces those rules and also flags `SECURITY DEFINER` functions that do not lock `search_path`.
-- `npm run schema:audit` checks literal table/column usage in app code against the migrated schema and flags drift.
-- Treat a failing security audit as a deployment blocker, even if the app still builds.
-
-### Local cron testing
-
-```bash
-# Stocks daily pipeline
-curl -X POST http://localhost:3000/api/cron/publish \
-  -H "Authorization: Bearer <CRON_SECRET>"
-
-# Paper trading simulation
-curl -X POST http://localhost:3000/api/cron/paper-trade \
-  -H "Authorization: Bearer <CRON_SECRET>"
-
-# Paper trading backfill for a specific briefing date
-curl -X POST "http://localhost:3000/api/cron/paper-trade?briefingDate=2026-04-22" \
-  -H "Authorization: Bearer <CRON_SECRET>"
-
-# Crypto daily pipeline
-curl -X POST http://localhost:3000/api/cron/crypto-publish \
-  -H "Authorization: Bearer <CRON_SECRET>"
-
-# Shared social queue dispatcher
-curl -X GET http://localhost:3000/api/cron/social-dispatch \
-  -H "Authorization: Bearer <CRON_SECRET>"
-
-# Weekly Threads token refresh
-curl -X GET http://localhost:3000/api/cron/threads-token-refresh \
-  -H "Authorization: Bearer <CRON_SECRET>"
-```
-
-## Deployment
-
-The app is deployed on Vercel with cron jobs defined in `vercel.json`. Supabase provides the database and auth surface, Resend handles email, Stripe handles billing, Anthropic provides synthesis, and social distribution is gated by whichever channel credentials are present.
-
-```bash
-vercel --prod
-```
-
-## Design Notes For Readers
-
-- **Permission over prophecy.** The UI and emails lead with LONG / SHORT / FLAT / NO_TRADE and reliability, not a single “certainty” number.  
-- **Measure before marketing.** Model versions are bumped only after walk-forward next-session open→close metrics improve; failed ideas (e.g. aggressive cash gates, A/B-only directional bans, OTC-trained labels) are left off.  
-- **Honest feature names.** Vol impulse is VIX momentum, not dealer gamma.  
-- **Shared stocks/crypto signal layer.** Gates, paper ledger, and quality reporting live under `src/lib/signal/` so both assets speak the same permission language.
+If a number looks too good or a route is broken, open an issue or yell at me.
