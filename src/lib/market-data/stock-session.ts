@@ -123,7 +123,8 @@ export function selectVisibleRow<T extends { trade_date: string }>(
   const previous = ordered[todayIndex + 1] ?? null;
 
   return {
-    displayTradeDate: paid && todayRow.trade_date !== sessionDate ? sessionDate : null,
+    // The published date is this row's trade_date. Do not relabel it as the session.
+    displayTradeDate: null,
     missingSessionDate: null,
     row: paid ? todayRow : previous,
   };

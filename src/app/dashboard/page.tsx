@@ -280,27 +280,7 @@ function formatTradeDate(tradeDate?: string) {
     weekday: "long",
     month: "long",
     day: "numeric",
-  }).format(new Date(`${tradeDate}T12:00:00Z`));
-}
-
-function formatTargetSessionDate(date = new Date()) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/New_York",
-  }).format(date);
-}
-
-function formatDataAsOfDate(tradeDate?: string) {
-  if (!tradeDate) {
-    return "Pending first sync";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
+    timeZone: "UTC",
   }).format(new Date(`${tradeDate}T12:00:00Z`));
 }
 
@@ -547,8 +527,7 @@ export default async function DashboardPage() {
   const advancingAssets = biasData.assets.filter(
     (asset) => asset.dailyChangePercent > 0,
   ).length;
-  const targetSessionDate = formatTargetSessionDate();
-  const snapshotDateLabel = formatDataAsOfDate(snapshot?.tradeDate);
+  const snapshotDateLabel = formatTradeDate(snapshot?.tradeDate);
   const signalLabel = formatBiasLabel(snapshot?.label);
   const breadthSummary =
     biasData.assets.length > 0
@@ -621,10 +600,7 @@ export default async function DashboardPage() {
                   Date
                 </p>
                 <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {targetSessionDate}
-                </p>
-                <p className="mt-1 font-[family:var(--font-data)] text-[10px] text-zinc-500">
-                  Data as of: {snapshotDateLabel}
+                  {snapshotDateLabel}
                 </p>
               </div>
               <div>
@@ -724,6 +700,7 @@ export default async function DashboardPage() {
             biasScore={biasData.biasScore}
             hasScore={Boolean(snapshot)}
             note={errorMessage}
+            tradeDate={snapshot?.tradeDate ?? null}
           />
 
           {!isProUser ? (

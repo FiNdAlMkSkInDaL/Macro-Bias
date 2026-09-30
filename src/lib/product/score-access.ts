@@ -136,17 +136,13 @@ async function stockSentence(tradeDate: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('daily_market_briefings')
-    .select('brief_content, trade_date, briefing_date')
-    .or(`trade_date.eq.${tradeDate},briefing_date.eq.${tradeDate}`)
+    .select('brief_content, trade_date')
+    .eq('trade_date', tradeDate)
     .order('generated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error || !data || typeof data.brief_content !== 'string') {
-    return null;
-  }
-
-  if (data.trade_date !== tradeDate && data.briefing_date !== tradeDate) {
+  if (error || !data || data.trade_date !== tradeDate || typeof data.brief_content !== 'string') {
     return null;
   }
 
@@ -239,7 +235,7 @@ export async function getViewerScore(asset: ProductAsset): Promise<ProductScore>
       };
     }
 
-    const tradeDate = selected.displayTradeDate ?? selected.row.trade_date;
+    const tradeDate = selected.row.trade_date;
     const signal = paid ? await loadTradableSignal(table, selected.row.trade_date) : null;
     const score = toViewerScore(asset, selected.row, paid, !paid, signal, tradeDate);
 

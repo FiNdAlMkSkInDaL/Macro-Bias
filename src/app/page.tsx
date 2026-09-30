@@ -111,6 +111,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             biasScore={latestScore?.score ?? 0}
             hasScore={Boolean(latestScore)}
             note={regime.error}
+            tradeDate={latestScore?.tradeDate ?? null}
           />
           {briefing.error ? (
             <article className="mt-10 max-w-3xl">
