@@ -5,6 +5,7 @@ const FOOTER_LINKS = [
   { href: "/crypto", label: "Crypto" },
   { href: "/track-record", label: "Track Record" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/refer", label: "Refer" },
 ] as const;
 
 export function SiteFooter() {

@@ -4,20 +4,13 @@ import type { FormEvent } from 'react';
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { continuationFromUrl, isApiContinuation } from '@/lib/auth/continuation';
 import {
   createSupabaseBrowserClient,
   getSupabaseBrowserClientConfigError,
 } from '@/lib/supabase/browser';
 
 type AuthMode = 'signin' | 'signup';
-
-function sanitizeRedirectPath(rawRedirectPath: string | null) {
-  if (!rawRedirectPath || !rawRedirectPath.startsWith('/') || rawRedirectPath.startsWith('//')) {
-    return '/';
-  }
-
-  return rawRedirectPath;
-}
 
 export default function LoginPage() {
   const browserClientConfigError = getSupabaseBrowserClientConfigError();
@@ -32,11 +25,22 @@ export default function LoginPage() {
   const [, startTransition] = useTransition();
   const router = useRouter();
 
+  function continueAfterSignIn(path: string) {
+    if (isApiContinuation(path)) {
+      window.location.assign(path);
+      return;
+    }
+
+    startTransition(() => {
+      router.replace(path);
+      router.refresh();
+    });
+  }
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const nextPath = sanitizeRedirectPath(params.get('redirectTo'));
+    const nextPath = continuationFromUrl(window.location.search);
     setRedirectPath(nextPath);
-    const authError = params.get('authError');
+    const authError = new URLSearchParams(window.location.search).get('authError');
 
     if (authError) {
       setErrorMessage(authError);
@@ -50,10 +54,7 @@ export default function LoginPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        startTransition(() => {
-          router.replace(nextPath);
-          router.refresh();
-        });
+        continueAfterSignIn(nextPath);
       }
     });
 
@@ -82,10 +83,7 @@ export default function LoginPage() {
           throw error;
         }
 
-        startTransition(() => {
-          router.replace(redirectPath);
-          router.refresh();
-        });
+        continueAfterSignIn(redirectPath);
         return;
       }
 
@@ -102,10 +100,7 @@ export default function LoginPage() {
       }
 
       if (data.session?.user) {
-        startTransition(() => {
-          router.replace(redirectPath);
-          router.refresh();
-        });
+        continueAfterSignIn(redirectPath);
         return;
       }
 

@@ -1,73 +1,203 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { ScoreCard } from '@/components/product/ScoreCard';
-import { getViewerScore } from '@/lib/product/score-access';
+import { HeroSignupForm } from '@/components/product/HeroSignupForm';
+import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
+import {
+  formatBiasLabel,
+  formatScore,
+  formatSignedPercent,
+  formatTradeDate,
+  formatUsd,
+  formatWeight,
+} from '@/lib/public-proof/format';
+import {
+  loadBriefingCallForTradeDate,
+  loadPaperSnapshot,
+  loadStoredStockScores,
+} from '@/lib/public-proof/load-public-proof';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type HomePageProps = {
-  searchParams: Promise<{ authError?: string; checkout?: string; redirectTo?: string }>;
+  searchParams: Promise<{
+    authError?: string | string[];
+    checkout?: string | string[];
+    coupon?: string | string[];
+    plan?: string | string[];
+    redirectTo?: string | string[];
+  }>;
 };
+
+function ProofLabel({ children }: { children: string }) {
+  return (
+    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+      {children}
+    </p>
+  );
+}
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
+  const continuation = continuationFromSearchParams(params);
+  const authError = firstSearchParam(params.authError);
+  const checkout = firstSearchParam(params.checkout);
 
-  if (params.redirectTo || params.authError) {
-    const loginParams = new URLSearchParams();
+  if (continuation && !authError) {
+    let signedIn = false;
 
-    if (params.redirectTo) {
-      loginParams.set('redirectTo', params.redirectTo);
+    try {
+      const supabase = await createSupabaseServerClient();
+      const { data } = await supabase.auth.getUser();
+      signedIn = Boolean(data.user);
+    } catch {
+      signedIn = false;
     }
 
-    if (params.authError) {
-      loginParams.set('authError', params.authError);
+    if (signedIn) {
+      redirect(continuation);
+    }
+  }
+
+  if (continuation || authError) {
+    const loginParams = new URLSearchParams();
+
+    if (continuation) {
+      loginParams.set('redirectTo', continuation);
+    }
+
+    if (authError) {
+      loginParams.set('authError', authError);
     }
 
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  const [stocks, crypto] = await Promise.all([getViewerScore('stocks'), getViewerScore('crypto')]);
-  const paid = Boolean(stocks.score?.paid || crypto.score?.paid);
+  const [scores, paper] = await Promise.all([
+    loadStoredStockScores(),
+    loadPaperSnapshot(),
+  ]);
+  const latestScore = scores.value?.[0] ?? null;
+  const briefing = latestScore
+    ? await loadBriefingCallForTradeDate(latestScore.tradeDate)
+    : { value: null, error: null };
+  const matchingCall =
+    briefing.value && latestScore && briefing.value.tradeDate === latestScore.tradeDate
+      ? briefing.value
+      : null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:px-8">
-      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-        Macro Bias
-      </p>
-      <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-        The morning score.
-      </h1>
-      <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
-        A number from -100 to +100, then a permission: LONG, SHORT, FLAT, or NO_TRADE. Grade A–F.
-        F means NO_TRADE. A dead zone around zero means FLAT. Not a price target. Not financial advice.
-      </p>
-      {params.checkout === 'success' && (
-        <p className="mt-6 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+      {checkout === 'success' ? (
+        <p className="mb-8 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
           Stripe accepted the subscription. Today&apos;s score shows once the webhook grants access. Refresh if it is still the previous session.
         </p>
-      )}
-      {params.checkout === 'active' && (
-        <p className="mt-6 border border-white/10 px-4 py-3 text-sm text-zinc-300">
+      ) : null}
+      {checkout === 'active' ? (
+        <p className="mb-8 border border-white/10 px-4 py-3 text-sm text-zinc-300">
           This account already has an active subscription.
         </p>
-      )}
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <ScoreCard title="Stocks" href="/today" score={stocks.score} missingSessionDate={stocks.missingSessionDate} loadError={stocks.loadError} />
-        <ScoreCard title="Crypto" href="/crypto" score={crypto.score} missingSessionDate={crypto.missingSessionDate} loadError={crypto.loadError} />
-      </div>
-      <div className="mt-8 flex flex-wrap gap-4 text-sm">
-        {paid ? (
-          <p className="text-zinc-400">The morning email goes to the address on the subscription.</p>
-        ) : (
-          <Link href="/pricing" className="bg-white px-4 py-2 font-semibold text-black">
-            Pricing
-          </Link>
-        )}
-        <Link href="/login" className="border border-white/15 px-4 py-2 text-zinc-200">
-          Sign in
+      ) : null}
+      <section aria-labelledby="hero-heading">
+        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+          Macro Bias
+        </p>
+        <h1 id="hero-heading" className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+          Trade with the weather. Not against it.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
+          Macro Bias gives you a fast daily market read before the open. Get the score, the day type, and the trust check before you place a trade.
+        </p>
+        <HeroSignupForm />
+        <p className="mt-3 max-w-xl text-xs leading-5 text-zinc-500">
+          Free every morning. Stocks and crypto. Unsubscribe anytime.
+        </p>
+        <div className="mt-16 border-y border-white/10 py-8">
+          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+            Latest stored rows
+          </p>
+          <div className="mt-8 grid gap-10 sm:grid-cols-2">
+            <article>
+              <ProofLabel>Latest score</ProofLabel>
+              {scores.error ? (
+                <p className="mt-3 text-sm leading-6 text-zinc-300">{scores.error}</p>
+              ) : latestScore ? (
+                <>
+                  <p className="mt-3 font-[family:var(--font-data)] text-3xl text-white">
+                    {formatScore(latestScore.score)}
+                  </p>
+                  <p className="mt-2 text-sm text-zinc-300">{formatBiasLabel(latestScore.biasLabel)}</p>
+                  <p className="mt-1 font-[family:var(--font-data)] text-xs text-zinc-500">
+                    Trade date {formatTradeDate(latestScore.tradeDate)}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-zinc-500">No stock score is stored yet.</p>
+              )}
+            </article>
+            <article>
+              <ProofLabel>Paper book</ProofLabel>
+              {paper.error ? (
+                <p className="mt-3 text-sm leading-6 text-zinc-300">{paper.error}</p>
+              ) : paper.value ? (
+                <dl className="mt-3 space-y-2 text-sm text-zinc-300">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-zinc-500">Equity</dt>
+                    <dd className="font-[family:var(--font-data)] text-white">{formatUsd(paper.value.equity)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-zinc-500">Total return</dt>
+                    <dd className="font-[family:var(--font-data)] text-white">
+                      {formatSignedPercent(paper.value.totalReturnPct)}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-zinc-500">Sessions tracked</dt>
+                    <dd className="font-[family:var(--font-data)] text-white">{paper.value.sessionsTracked}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-zinc-500">Cash weight</dt>
+                    <dd className="font-[family:var(--font-data)] text-white">{formatWeight(paper.value.cashWeight)}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="mt-3 text-sm text-zinc-500">No paper snapshot is stored yet.</p>
+              )}
+            </article>
+          </div>
+          {briefing.error ? (
+            <article className="mt-10 max-w-3xl">
+              <ProofLabel>Latest call</ProofLabel>
+              <p className="mt-3 text-sm leading-6 text-zinc-300">{briefing.error}</p>
+            </article>
+          ) : matchingCall ? (
+            <article className="mt-10 max-w-3xl">
+              <ProofLabel>Latest call</ProofLabel>
+              <p className="mt-3 font-[family:var(--font-data)] text-xs text-zinc-500">
+                Trade date {formatTradeDate(matchingCall.tradeDate)}
+              </p>
+              <p className="mt-4 text-sm leading-6 text-zinc-300">
+                <span className="text-zinc-500">Day type. </span>
+                {matchingCall.dayType}
+              </p>
+              <p className="mt-3 text-base leading-7 text-white">
+                <span className="text-zinc-500">Bottom line. </span>
+                {matchingCall.bottomLine}
+              </p>
+            </article>
+          ) : null}
+        </div>
+      </section>
+      <section className="mt-16 border border-white/10 px-5 py-6" aria-label="Referral">
+        <p className="text-sm leading-6 text-zinc-400">
+          Already subscribed? Invite 3 traders and unlock 7 days of Premium.
+        </p>
+        <Link href="/refer" className="mt-3 inline-block text-sm text-sky-400 underline">
+          See referral rewards
         </Link>
-      </div>
+      </section>
     </main>
   );
 }

@@ -22,7 +22,8 @@ function buildRedirectUrl(request: NextRequest) {
   const redirectUrl = request.nextUrl.clone();
   const redirectPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
 
-  redirectUrl.pathname = '/';
+  redirectUrl.pathname = '/login';
+  redirectUrl.search = '';
   redirectUrl.searchParams.set('redirectTo', redirectPath);
 
   return redirectUrl;
