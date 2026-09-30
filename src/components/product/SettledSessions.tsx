@@ -23,10 +23,12 @@ export function SettledSessions({
   asset,
   market,
   rows,
+  loadError = null,
 }: {
   asset: string;
   market: string;
   rows: SettledSession[];
+  loadError?: string | null;
 }) {
   return (
     <main className="min-h-screen font-sans">
@@ -43,13 +45,21 @@ export function SettledSessions({
           This table is the latest 80 stored scores. A row appears after that next session has an
           open and a close. Not financial advice.
         </p>
-        <p className="mt-4 font-[family:var(--font-data)] text-xs uppercase tracking-[0.24em] text-zinc-500">
-          {rows.length} settled session{rows.length === 1 ? '' : 's'}
-        </p>
-        {rows.length === 0 ? (
-          <p className="mt-10 text-sm text-zinc-500">No settled next-session results are stored yet.</p>
+        {loadError ? (
+          <p className="mt-10 text-sm leading-6 text-zinc-300">{loadError}</p>
+        ) : rows.length === 0 ? (
+          <>
+            <p className="mt-4 font-[family:var(--font-data)] text-xs uppercase tracking-[0.24em] text-zinc-500">
+              0 settled sessions
+            </p>
+            <p className="mt-10 text-sm text-zinc-500">No settled next-session results are stored yet.</p>
+          </>
         ) : (
-          <div className="mt-8 overflow-x-auto border border-white/10">
+          <>
+            <p className="mt-4 font-[family:var(--font-data)] text-xs uppercase tracking-[0.24em] text-zinc-500">
+              {rows.length} settled session{rows.length === 1 ? '' : 's'}
+            </p>
+            <div className="mt-8 overflow-x-auto border border-white/10">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-white/10 text-[10px] uppercase tracking-[0.18em] text-zinc-500">
                 <tr>
@@ -70,7 +80,8 @@ export function SettledSessions({
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </main>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { SettledSessions } from '@/components/product/SettledSessions';
-import { getSettledStockSessions } from '@/lib/track-record/settled-sessions';
+import { getSettledStockSessions, settledLoadError } from '@/lib/track-record/settled-sessions';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +12,17 @@ export const metadata: Metadata = {
 };
 
 export default async function TrackRecordPage() {
-  const rows = await getSettledStockSessions();
-  return <SettledSessions asset="Stocks" market="SPY" rows={rows} />;
+  try {
+    const rows = await getSettledStockSessions();
+    return <SettledSessions asset="Stocks" market="SPY" rows={rows} />;
+  } catch (error) {
+    return (
+      <SettledSessions
+        asset="Stocks"
+        market="SPY"
+        rows={[]}
+        loadError={settledLoadError(error, 'macro_bias_scores')}
+      />
+    );
+  }
 }

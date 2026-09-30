@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { SettledSessions } from '@/components/product/SettledSessions';
-import { getSettledCryptoSessions } from '@/lib/track-record/settled-sessions';
+import { getSettledCryptoSessions, settledLoadError } from '@/lib/track-record/settled-sessions';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +12,17 @@ export const metadata: Metadata = {
 };
 
 export default async function CryptoTrackRecordPage() {
-  const rows = await getSettledCryptoSessions();
-  return <SettledSessions asset="Crypto" market="BTC-USD" rows={rows} />;
+  try {
+    const rows = await getSettledCryptoSessions();
+    return <SettledSessions asset="Crypto" market="BTC-USD" rows={rows} />;
+  } catch (error) {
+    return (
+      <SettledSessions
+        asset="Crypto"
+        market="BTC-USD"
+        rows={[]}
+        loadError={settledLoadError(error, 'crypto_bias_scores')}
+      />
+    );
+  }
 }

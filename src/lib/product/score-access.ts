@@ -38,6 +38,7 @@ type ScoreTable = 'macro_bias_scores' | 'crypto_bias_scores';
 export type ProductScore = {
   score: ViewerScore | null;
   missingSessionDate: string | null;
+  loadError: string | null;
 };
 
 export async function viewerIsPaid() {
@@ -59,6 +60,24 @@ async function loadRecentScores(table: ScoreTable) {
   }
 
   return (data as ScoreRow[] | null) ?? [];
+}
+
+function toLoadError(table: ScoreTable, error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (message.startsWith('Failed to load ')) {
+    return message;
+  }
+
+  const detail = /<!DOCTYPE|522|timed out/i.test(message)
+    ? 'the database timed out'
+    : message.slice(0, 300) || 'the database timed out';
+
+  if (message.startsWith('Failed to read ')) {
+    return `${message.split(':')[0]}: ${detail}`;
+  }
+
+  return `Failed to load ${table}: ${detail}`;
 }
 
 function firstParagraph(text: string | null | undefined) {
@@ -195,35 +214,51 @@ function toViewerScore(
 }
 
 export async function getViewerScore(asset: ProductAsset): Promise<ProductScore> {
-  const paid = await viewerIsPaid();
-  const rows = await loadRecentScores(asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores');
-  const selected = selectVisibleRow(rows, paid, asset === 'stocks' ? stockSessionDate() : null);
+  const table: ScoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
+  let paid = false;
 
-  if (!selected.row) {
+  try {
+    paid = await viewerIsPaid();
+  } catch (error) {
     return {
       score: null,
-      missingSessionDate: selected.missingSessionDate,
+      missingSessionDate: null,
+      loadError: toLoadError(table, error),
     };
   }
 
-  const tradeDate = selected.displayTradeDate ?? selected.row.trade_date;
-  const signal =
-    paid
-      ? await loadTradableSignal(
-          asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores',
-          selected.row.trade_date,
-        )
-      : null;
-  const score = toViewerScore(asset, selected.row, paid, !paid, signal, tradeDate);
+  try {
+    const rows = await loadRecentScores(table);
+    const selected = selectVisibleRow(rows, paid, asset === 'stocks' ? stockSessionDate() : null);
 
-  if (paid) {
-    score.sentence = asset === 'stocks' ? await stockSentence(tradeDate) : await cryptoSentence(tradeDate);
+    if (!selected.row) {
+      return {
+        score: null,
+        missingSessionDate: selected.missingSessionDate,
+        loadError: null,
+      };
+    }
+
+    const tradeDate = selected.displayTradeDate ?? selected.row.trade_date;
+    const signal = paid ? await loadTradableSignal(table, selected.row.trade_date) : null;
+    const score = toViewerScore(asset, selected.row, paid, !paid, signal, tradeDate);
+
+    if (paid) {
+      score.sentence = asset === 'stocks' ? await stockSentence(tradeDate) : await cryptoSentence(tradeDate);
+    }
+
+    return {
+      score,
+      missingSessionDate: selected.missingSessionDate,
+      loadError: null,
+    };
+  } catch (error) {
+    return {
+      score: null,
+      missingSessionDate: null,
+      loadError: toLoadError(table, error),
+    };
   }
-
-  return {
-    score,
-    missingSessionDate: selected.missingSessionDate,
-  };
 }
 
 export async function latestStoredTradeDate(asset: ProductAsset) {

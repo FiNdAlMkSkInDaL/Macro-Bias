@@ -47,6 +47,15 @@ function queryError(table: string, message: string) {
   return new Error(`Failed to load ${table}: ${detail}`);
 }
 
+export function settledLoadError(error: unknown, table: string) {
+  if (error instanceof Error && error.message.startsWith('Failed to load ')) {
+    return error.message;
+  }
+
+  const message = error instanceof Error ? error.message : '';
+  return queryError(table, message).message;
+}
+
 async function fetchRecentScores(table: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase

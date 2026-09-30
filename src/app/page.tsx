@@ -53,8 +53,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </p>
       )}
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <ScoreCard title="Stocks" href="/today" score={stocks.score} missingSessionDate={stocks.missingSessionDate} />
-        <ScoreCard title="Crypto" href="/crypto" score={crypto.score} missingSessionDate={crypto.missingSessionDate} />
+        <ScoreCard title="Stocks" href="/today" score={stocks.score} missingSessionDate={stocks.missingSessionDate} loadError={stocks.loadError} />
+        <ScoreCard title="Crypto" href="/crypto" score={crypto.score} missingSessionDate={crypto.missingSessionDate} loadError={crypto.loadError} />
       </div>
       <div className="mt-8 flex flex-wrap gap-4 text-sm">
         {paid ? (

@@ -31,12 +31,26 @@ export function ScoreCard({
   href,
   score,
   missingSessionDate = null,
+  loadError = null,
 }: {
   title: string;
   href: string;
   score: ViewerScore | null;
   missingSessionDate?: string | null;
+  loadError?: string | null;
 }) {
+  if (loadError) {
+    return (
+      <section className="border border-white/10 bg-zinc-950 p-6 sm:p-8">
+        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+          {title}
+        </p>
+        <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">Score unavailable</h2>
+        <p className="mt-3 text-sm leading-6 text-zinc-300">{loadError}</p>
+      </section>
+    );
+  }
+
   if (!score) {
     return (
       <section className="border border-white/10 bg-zinc-950 p-6 sm:p-8">
