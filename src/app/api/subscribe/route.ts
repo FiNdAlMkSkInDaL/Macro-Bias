@@ -6,7 +6,7 @@ import { logMarketingEvent } from '@/lib/analytics/server';
 import { enrollSubscriberInWelcomeDrip, dispatchPendingWelcomeDripEmails } from '@/lib/marketing/welcome-drip';
 import { REFERRAL_CODE_MAX_LENGTH } from '@/lib/referral/constants';
 import { generateReferralCode } from '@/lib/referral/generate-referral-code';
-import { rejectionReason } from '@/lib/marketing/recipient-policy';
+import { customerEmailRejection } from '@/lib/marketing/recipient-policy';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const SUBSCRIBE_SUCCESS_MESSAGE = '[SYSTEM OUTPUT]: EMAIL ADDED TO PROTOCOL.';
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type SubscribeRequestBody = {
   email?: unknown;
@@ -31,10 +30,6 @@ function parseBooleanPreference(value: unknown, defaultValue: boolean): boolean 
 
 function normalizeEmail(value: unknown) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
-
-function isValidEmail(email: string) {
-  return email.length > 3 && email.length <= 320 && EMAIL_PATTERN.test(email);
 }
 
 function normalizePagePath(value: unknown) {
@@ -69,11 +64,10 @@ export async function POST(request: Request) {
   const stocksOptedIn = parseBooleanPreference(payload.stocksOptedIn, true);
   const cryptoOptedIn = parseBooleanPreference(payload.cryptoOptedIn, false);
 
-  if (!isValidEmail(email) || rejectionReason(email)) {
-    return NextResponse.json(
-      { error: `Resend rejects ${email}. Use an address that can receive mail.` },
-      { status: 400 },
-    );
+  const rejection = customerEmailRejection(email);
+
+  if (rejection) {
+    return NextResponse.json({ error: rejection }, { status: 400 });
   }
 
   const supabase = createSupabaseAdminClient();

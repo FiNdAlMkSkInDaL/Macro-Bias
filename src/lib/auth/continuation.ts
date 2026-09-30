@@ -84,7 +84,3 @@ export function continuationFromUrl(search: string): string {
     }) ?? '/'
   );
 }
-
-export function isApiContinuation(path: string) {
-  return path.startsWith('/api/');
-}

@@ -29,7 +29,7 @@ export default async function CryptoPage() {
         The same kind of morning permission as stocks, from the crypto path. Not a price target.
       </p>
       <div className="mt-8">
-        <ScoreCard title="Crypto" href="/today" score={score} missingSessionDate={missingSessionDate} loadError={loadError} />
+        <ScoreCard title="Crypto" href="/crypto" score={score} missingSessionDate={missingSessionDate} loadError={loadError} />
       </div>
       <p className="mt-6 text-xs leading-5 text-zinc-600">
         Not a price target. Not a certainty claim. Not financial advice. Not a managed fund.

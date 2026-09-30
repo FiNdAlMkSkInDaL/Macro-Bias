@@ -1,10 +1,9 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { continuationFromUrl, isApiContinuation } from '@/lib/auth/continuation';
+import { continuationFromUrl } from '@/lib/auth/continuation';
 import {
   createSupabaseBrowserClient,
   getSupabaseBrowserClientConfigError,
@@ -22,19 +21,9 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [, startTransition] = useTransition();
-  const router = useRouter();
 
   function continueAfterSignIn(path: string) {
-    if (isApiContinuation(path)) {
-      window.location.assign(path);
-      return;
-    }
-
-    startTransition(() => {
-      router.replace(path);
-      router.refresh();
-    });
+    window.location.assign(path);
   }
 
   useEffect(() => {
@@ -53,15 +42,15 @@ export default function LoginPage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        continueAfterSignIn(nextPath);
+      if (event === 'INITIAL_SESSION' && session?.user) {
+        window.location.assign(nextPath);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [supabase]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

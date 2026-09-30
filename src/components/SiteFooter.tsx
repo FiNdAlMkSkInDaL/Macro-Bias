@@ -6,6 +6,8 @@ const FOOTER_LINKS = [
   { href: "/track-record", label: "Track Record" },
   { href: "/pricing", label: "Pricing" },
   { href: "/refer", label: "Refer" },
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
 ] as const;
 
 export function SiteFooter() {

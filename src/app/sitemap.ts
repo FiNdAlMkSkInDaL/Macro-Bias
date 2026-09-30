@@ -14,5 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${appUrl}/track-record`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${appUrl}/crypto/track-record`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${appUrl}/login`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${appUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${appUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
 }

@@ -93,6 +93,27 @@ export function rejectionReason(email: string): string | null {
   return null;
 }
 
+/** Customer-facing copy. Never names the email vendor. */
+export function customerEmailRejection(email: string): string | null {
+  const trimmed = email.trim();
+
+  if (!trimmed) {
+    return 'Email is required.';
+  }
+
+  const reason = rejectionReason(trimmed);
+
+  if (!reason) {
+    return null;
+  }
+
+  if (reason.startsWith('Invalid email')) {
+    return 'Enter a valid email address.';
+  }
+
+  return 'Use an email address that can receive mail.';
+}
+
 export function partitionRecipients(emails: readonly string[]): RecipientPartition {
   const deliverable: string[] = [];
   const rejected: RejectedRecipient[] = [];
