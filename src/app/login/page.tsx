@@ -3,7 +3,7 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
-import { continuationFromUrl } from '@/lib/auth/continuation';
+import { continuationFromSearchParams } from '@/lib/auth/continuation';
 import {
   createSupabaseBrowserClient,
   getSupabaseBrowserClientConfigError,
@@ -27,15 +27,22 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    const nextPath = continuationFromUrl(window.location.search);
-    setRedirectPath(nextPath);
-    const authError = new URLSearchParams(window.location.search).get('authError');
+    const params = new URLSearchParams(window.location.search);
+    const explicitContinuation = continuationFromSearchParams({
+      redirectTo: params.get('redirectTo'),
+      plan: params.get('plan'),
+      coupon: params.get('coupon'),
+    });
+    setRedirectPath(explicitContinuation ?? '/');
+    const authError = params.get('authError');
 
     if (authError) {
       setErrorMessage(authError);
     }
 
-    if (!supabase) {
+    // A plain visit from the header has no return path. Keep the form on screen
+    // even when this browser already has a session.
+    if (!supabase || !explicitContinuation) {
       return;
     }
 
@@ -43,7 +50,7 @@ export default function LoginPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION' && session?.user) {
-        window.location.assign(nextPath);
+        window.location.assign(explicitContinuation);
       }
     });
 
