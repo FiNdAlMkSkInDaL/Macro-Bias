@@ -18,6 +18,7 @@ const NAV_LINKS = [
 export function SiteNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const [accountHref, setAccountHref] = useState("/login");
   const [accountLabel, setAccountLabel] = useState("Sign in");
 
@@ -28,11 +29,13 @@ export function SiteNav() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setAccountHref("/dashboard");
-        setAccountLabel("Dashboard");
+        setSignedIn(true);
+        setAccountHref("/account");
+        setAccountLabel("Account");
         return;
       }
 
+      setSignedIn(false);
       setAccountHref("/login");
       setAccountLabel("Sign in");
     });
@@ -70,6 +73,17 @@ export function SiteNav() {
               {label}
             </Link>
           ))}
+          {signedIn && (
+            <Link
+              href="/dashboard"
+              className="hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"
+              data-analytics-event="nav_link_click"
+              data-analytics-label="Dashboard"
+              data-analytics-location="site_nav"
+            >
+              Dashboard
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/analytics"
@@ -125,6 +139,18 @@ export function SiteNav() {
                 {label}
               </Link>
             ))}
+            {signedIn && (
+              <Link
+                href="/dashboard"
+                className="min-h-[44px] flex items-center text-[13px] font-medium text-zinc-400 transition hover:text-white"
+                onClick={() => setMobileMenuOpen(false)}
+                data-analytics-event="nav_link_click"
+                data-analytics-label="Dashboard"
+                data-analytics-location="site_nav_mobile"
+              >
+                Dashboard
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/analytics"

@@ -5,6 +5,8 @@ import { isTestLabAllowedEmail } from './lib/test-lab/constants';
 
 function isProtectedPath(pathname: string) {
   return (
+    pathname === '/account' ||
+    pathname.startsWith('/account/') ||
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
     pathname === '/analytics' ||
