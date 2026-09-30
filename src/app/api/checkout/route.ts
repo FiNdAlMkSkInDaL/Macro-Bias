@@ -29,7 +29,7 @@ function getCheckoutPlan(request: Request): StripeBillingPlan {
 
 function buildCheckoutAuthRedirectUrl(request: Request) {
   const requestUrl = new URL(request.url);
-  const signInUrl = new URL('/', getAppUrl(requestUrl.origin));
+  const signInUrl = new URL('/login', getAppUrl(requestUrl.origin).replace(/\/$/, ''));
 
   signInUrl.searchParams.set('redirectTo', `${requestUrl.pathname}${requestUrl.search}`);
 
@@ -86,8 +86,15 @@ async function buildCheckoutSession(
   }
 
   const { subscriptionStatus } = await getUserSubscriptionStatus();
+  const appUrl = getAppUrl(new URL(request.url).origin).replace(/\/$/, '');
 
   if (isSubscriptionActive(subscriptionStatus)) {
+    if (mode === 'redirect') {
+      return {
+        error: NextResponse.redirect(`${appUrl}/?checkout=active`, { status: 303 }),
+      };
+    }
+
     return {
       error: NextResponse.json(
         { error: 'Subscription is already active for this account.' },
@@ -106,11 +113,9 @@ async function buildCheckoutSession(
     throw new Error(`Failed to load billing profile: ${billingUserError.message}`);
   }
 
-  const appUrl = getAppUrl(new URL(request.url).origin);
   const session = await stripe.checkout.sessions.create({
-    allow_promotion_codes: true,
     billing_address_collection: 'auto',
-    cancel_url: `${appUrl}?checkout=cancelled`,
+    cancel_url: `${appUrl}/pricing`,
     client_reference_id: user.id,
     customer: billingUser?.stripe_customer_id ?? undefined,
     customer_email: billingUser?.stripe_customer_id ? undefined : user.email,
@@ -120,7 +125,7 @@ async function buildCheckoutSession(
         quantity: 1,
       },
     ],
-    ...(coupon ? { discounts: [{ coupon }] } : {}),
+    ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
     metadata: {
       billingPlan: plan,
       supabaseUUID: user.id,
@@ -128,14 +133,13 @@ async function buildCheckoutSession(
     },
     mode: 'subscription',
     subscription_data: {
-      trial_period_days: 7,
       metadata: {
         billingPlan: plan,
         supabaseUUID: user.id,
         supabaseUserId: user.id,
       },
     },
-    success_url: `${appUrl}?checkout=success`,
+    success_url: `${appUrl}/?checkout=success`,
   });
 
   if (!session.url) {

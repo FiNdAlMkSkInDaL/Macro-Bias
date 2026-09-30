@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { continuationFromSearchParams } from '../../../lib/auth/continuation';
 import { getRequiredServerEnv } from '../../../lib/server-env';
 
 type PendingCookie = {
@@ -10,18 +11,10 @@ type PendingCookie = {
   options: CookieOptions;
 };
 
-function sanitizeRedirectPath(rawRedirectPath: string | null): string {
-  if (!rawRedirectPath || !rawRedirectPath.startsWith('/') || rawRedirectPath.startsWith('//')) {
-    return '/dashboard';
-  }
-
-  return rawRedirectPath;
-}
-
 function buildErrorRedirect(request: NextRequest, redirectPath: string, message: string) {
   const errorRedirectUrl = request.nextUrl.clone();
 
-  errorRedirectUrl.pathname = '/';
+  errorRedirectUrl.pathname = '/login';
   errorRedirectUrl.search = '';
   errorRedirectUrl.searchParams.set('redirectTo', redirectPath);
   errorRedirectUrl.searchParams.set('authError', message);
@@ -51,9 +44,12 @@ function applyPendingCookies(
 }
 
 export async function GET(request: NextRequest) {
-  const redirectPath = sanitizeRedirectPath(
-    request.nextUrl.searchParams.get('redirectTo') ?? request.nextUrl.searchParams.get('next'),
-  );
+  const redirectPath =
+    continuationFromSearchParams({
+      redirectTo: request.nextUrl.searchParams.get('redirectTo') ?? request.nextUrl.searchParams.get('next'),
+      plan: request.nextUrl.searchParams.get('plan'),
+      coupon: request.nextUrl.searchParams.get('coupon'),
+    }) ?? '/';
   const code = request.nextUrl.searchParams.get('code');
   const tokenHash = request.nextUrl.searchParams.get('token_hash');
   const flowType = request.nextUrl.searchParams.get('type');

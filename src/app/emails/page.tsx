@@ -188,7 +188,7 @@ export default function EmailsPage() {
             <div className="text-center">
               <p className="text-lg font-semibold text-white">Stocks regime + size cue</p>
               <p className="mt-2 text-xs leading-5 text-zinc-500">
-                Research backtest + live paper ledger from published scores
+                Settled next-session open-to-close from stored scores
               </p>
             </div>
             <div className="mt-4 border-t border-zinc-800 pt-3 text-right">

@@ -7,6 +7,7 @@ import {
   getUserSubscriptionStatus,
   isSubscriptionActive,
 } from "@/lib/billing/subscription";
+import { viewerIsPaid } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { CRYPTO_ANALOG_MODEL_SETTINGS } from "@/lib/crypto-bias/constants";
 import type {
@@ -226,6 +227,7 @@ function subtractDays(date: Date, days: number) {
 
 async function getLatestCryptoSnapshot(): Promise<CryptoBiasScoreRow | null> {
   try {
+    const paid = await viewerIsPaid();
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("crypto_bias_scores")
@@ -233,11 +235,11 @@ async function getLatestCryptoSnapshot(): Promise<CryptoBiasScoreRow | null> {
         "id, trade_date, score, bias_label, component_scores, ticker_changes, engine_inputs, technical_indicators, created_at, updated_at",
       )
       .order("trade_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(2);
 
     if (error) return null;
-    return data as CryptoBiasScoreRow | null;
+    const rows = (data as CryptoBiasScoreRow[] | null) ?? [];
+    return (paid ? rows[0] : rows[1]) ?? null;
   } catch {
     return null;
   }
@@ -805,7 +807,7 @@ export default async function CryptoDashboardPage() {
               </div>
             ) : (
               <PaywallWrapper
-                initialIsPro={false}
+                initialIsPro={isProUser}
                 userId={user?.id ?? null}
               >
                 <div aria-hidden="true" className="space-y-4 md:space-y-6">
@@ -1099,7 +1101,7 @@ export default async function CryptoDashboardPage() {
             </div>
           ) : (
             <PaywallWrapper
-              initialIsPro={false}
+              initialIsPro={isProUser}
               userId={user?.id ?? null}
             >
               <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">

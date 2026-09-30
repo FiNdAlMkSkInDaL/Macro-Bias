@@ -23,7 +23,7 @@ const SITE_URL = "https://macro-bias.com";
 const SITE_NAME = "Macro Bias";
 const SITE_TITLE = "Macro Bias | Macro Regime Signals for Day Traders";
 const SITE_DESCRIPTION =
-  "Macro Bias gives day traders and quant-focused investors a live macro regime dashboard powered by SPY, QQQ, XLP, TLT, GLD, VIX, and HYG signals.";
+  "A daily score from -100 to +100 for stocks and crypto, with a morning permission: LONG, SHORT, FLAT, or NO_TRADE.";
 const SITE_KEYWORDS = [
   "macro bias",
   "day trading signals",

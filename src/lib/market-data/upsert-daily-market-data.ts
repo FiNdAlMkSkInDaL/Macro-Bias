@@ -1,3 +1,4 @@
+import { sessionAboutToOpen } from "./stock-session";
 import { calculateDailyBias } from "../macro-bias/calculate-daily-bias";
 import {
   ANALOG_MODEL_SETTINGS,
@@ -956,17 +957,27 @@ export async function upsertDailyMarketData(
       return { uso, vix, hyg, cper };
     })(),
   ]);
-  const usoHistory = supplementalResults.uso;
-  const vixHistory = supplementalResults.vix;
-  const hygHistory = supplementalResults.hyg;
-  const cperHistory = supplementalResults.cper;
+  const sessionDate = sessionAboutToOpen(asOfDate);
+  const completedBars = <TRow extends { trade_date: string }>(rows: readonly TRow[]) =>
+    rows.filter((row) => row.trade_date < sessionDate);
+  const completedHistoryEntries = historyEntries.map(
+    ([ticker, rows]) => [ticker, completedBars(rows)] as const,
+  );
+  // A Yahoo daily bar is stamped at 13:30 UTC, the cash open. The 12:30 UTC job
+  // runs before that bar exists, and a bar from the session being labelled is not
+  // a finished close. Score the last completed bar and store the session date.
+  logMarketData(`Scoring session ${sessionDate} from bars before that session.`);
+  const usoHistory = completedBars(supplementalResults.uso);
+  const vixHistory = completedBars(supplementalResults.vix);
+  const hygHistory = completedBars(supplementalResults.hyg);
+  const cperHistory = completedBars(supplementalResults.cper);
 
-  const rowsByTicker = Object.fromEntries(historyEntries) as Record<
+  const rowsByTicker = Object.fromEntries(completedHistoryEntries) as Record<
     TrackedTicker,
     DailyPriceInsert[]
   >;
 
-  const allRows = historyEntries.flatMap(([, rows]) => rows);
+  const allRows = completedHistoryEntries.flatMap(([, rows]) => rows);
 
   if (allRows.length === 0) {
     throw new Error("The market data provider returned no daily rows.");
@@ -1065,7 +1076,7 @@ export async function upsertDailyMarketData(
     todayLevelPercentiles,
   );
   const persistedPriceRows = buildPersistedPriceRows(
-    historyEntries,
+    completedHistoryEntries,
     {
       cper: cperHistory,
       hyg: hygHistory,
@@ -1101,7 +1112,7 @@ export async function upsertDailyMarketData(
     tickerChanges,
   });
   logMarketData(
-    `Finished calculateDailyBias() with trade date ${biasResult.tradeDate} and score ${biasResult.score}.`,
+    `Finished calculateDailyBias() for session ${sessionDate} from completed bar ${latestTradeDate} with score ${biasResult.score}.`,
   );
 
   logMarketData(
@@ -1150,7 +1161,7 @@ export async function upsertDailyMarketData(
 
   const scoreRows = [
     {
-      trade_date: biasResult.tradeDate,
+      trade_date: sessionDate,
       score: biasResult.score,
       bias_label: biasResult.label,
       component_scores: biasResult.componentScores,
@@ -1181,5 +1192,8 @@ export async function upsertDailyMarketData(
     throw scoreError;
   }
 
-  return biasResult;
+  return {
+    ...biasResult,
+    tradeDate: sessionDate,
+  };
 }

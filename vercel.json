@@ -5,40 +5,8 @@
       "schedule": "30 12 * * 1-5"
     },
     {
-      "path": "/api/cron/paper-trade",
-      "schedule": "15 13 * * 1-5"
-    },
-    {
-      "path": "/api/cron/welcome-drip",
-      "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/cron/social-dispatch",
-      "schedule": "15 13 * * 1-5"
-    },
-    {
-      "path": "/api/cron/marketing",
-      "schedule": "30 14 * * 1-5"
-    },
-    {
-      "path": "/api/cron/social-dispatch-pm",
-      "schedule": "0 15 * * 1-5"
-    },
-    {
-      "path": "/api/cron/social-dispatch-eod",
-      "schedule": "0 16 * * 1-5"
-    },
-    {
       "path": "/api/cron/crypto-publish",
       "schedule": "30 12 * * *"
-    },
-    {
-      "path": "/api/cron/post-market-scorecard",
-      "schedule": "15 21 * * 1-5"
-    },
-    {
-      "path": "/api/cron/threads-token-refresh",
-      "schedule": "0 9 * * 1"
     }
   ]
 }

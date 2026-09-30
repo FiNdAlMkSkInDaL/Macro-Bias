@@ -1,7 +1,7 @@
 import { ImageResponse } from '@vercel/og';
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { getLatestBiasSnapshot } from '../../../lib/market-data/get-latest-bias-snapshot';
+import { latestStoredTradeDate } from '../../../lib/product/score-access';
 import { createSupabaseAdminClient } from '../../../lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -162,17 +162,53 @@ function getOgFonts(): Promise<OgFont[]> {
   return ogFontsPromise;
 }
 
+function subscriberImage(fonts: OgFont[]) {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: BACKGROUND_COLOR,
+          color: '#fafafa',
+          fontFamily: `${HEADING_FONT_FAMILY}, ui-sans-serif, system-ui, sans-serif`,
+          fontSize: 42,
+          fontWeight: 700,
+          letterSpacing: '-0.05em',
+          padding: '64px',
+          textAlign: 'center',
+        }}
+      >
+        Today&apos;s score is for subscribers.
+      </div>
+    ),
+    {
+      ...IMAGE_SIZE,
+      fonts,
+    },
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const dateParam = request.nextUrl.searchParams.get('date');
-    const snapshotPromise = dateParam
-      ? getSnapshotForDate(dateParam)
-      : getLatestBiasSnapshot();
+    const latestTradeDate = await latestStoredTradeDate('stocks');
+    const fonts = await getOgFonts();
+    const requestedLatest =
+      !dateParam || (latestTradeDate != null && dateParam >= latestTradeDate);
 
-    const [snapshot, fonts] = await Promise.all([
-      snapshotPromise,
-      getOgFonts(),
-    ]);
+    if (requestedLatest) {
+      return subscriberImage(fonts);
+    }
+
+    const snapshot = await getSnapshotForDate(dateParam);
+
+    if (snapshot && latestTradeDate != null && snapshot.trade_date >= latestTradeDate) {
+      return subscriberImage(fonts);
+    }
 
     if (!snapshot) {
       return new ImageResponse(

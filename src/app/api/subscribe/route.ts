@@ -6,6 +6,7 @@ import { logMarketingEvent } from '@/lib/analytics/server';
 import { enrollSubscriberInWelcomeDrip, dispatchPendingWelcomeDripEmails } from '@/lib/marketing/welcome-drip';
 import { REFERRAL_CODE_MAX_LENGTH } from '@/lib/referral/constants';
 import { generateReferralCode } from '@/lib/referral/generate-referral-code';
+import { rejectionReason } from '@/lib/marketing/recipient-policy';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -68,8 +69,11 @@ export async function POST(request: Request) {
   const stocksOptedIn = parseBooleanPreference(payload.stocksOptedIn, true);
   const cryptoOptedIn = parseBooleanPreference(payload.cryptoOptedIn, false);
 
-  if (!isValidEmail(email)) {
-    return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
+  if (!isValidEmail(email) || rejectionReason(email)) {
+    return NextResponse.json(
+      { error: `Resend rejects ${email}. Use an address that can receive mail.` },
+      { status: 400 },
+    );
   }
 
   const supabase = createSupabaseAdminClient();

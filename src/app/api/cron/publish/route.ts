@@ -16,10 +16,12 @@ import type {
 } from '../../../../lib/briefing/types';
 import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch';
 import { filterSubscribedEmailRecipients } from '../../../../lib/marketing/email-preferences';
+import {
+  formatAddressList,
+  partitionRecipients,
+} from '../../../../lib/marketing/recipient-policy';
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
-import { partitionUnlockedSubscribers } from '../../../../lib/referral/premium-unlock';
-import { verifyPendingReferrals } from '../../../../lib/referral/verify-referrals';
 import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
 import { sanitizeForSocial } from '../../../../lib/social/sanitize';
@@ -40,6 +42,7 @@ const STOCK_EMAIL_FAILURE_ALERT_RECIPIENT = 'finphillips21@gmail.com';
 const MAX_RECENT_FULL_SNAPSHOT_ROWS = 10;
 const MACRO_OVERRIDE_X_SNIPPET_LENGTH = 120;
 const DISCORD_PUBLISHING_ENABLED = false;
+const SOCIAL_PUBLISHING_ENABLED = false;
 const MARKET_TIME_ZONE = 'America/New_York';
 
 const WEEKDAY_INDEX_BY_LABEL = {
@@ -80,8 +83,10 @@ type PublishResult = {
 };
 
 type StockEmailFailureAlertInput = {
+  batchSent?: boolean;
   briefingDate: string;
   reason: string;
+  rejectedAddresses?: string[];
   requestUrl: string;
   tradeDate?: string;
 };
@@ -651,12 +656,19 @@ async function sendStockEmailFailureAlert(input: StockEmailFailureAlertInput) {
     const fromAddress =
       getOptionalServerEnv('RESEND_FROM_ADDRESS') ?? 'Macro Bias <briefing@macro-bias.com>';
     const tradeDateText = input.tradeDate ? `Trade date: ${input.tradeDate}\n` : '';
+    const rejectedText =
+      input.rejectedAddresses && input.rejectedAddresses.length > 0
+        ? `Rejected addresses: ${formatAddressList(input.rejectedAddresses)}`
+        : '';
     const text = [
-      'The Macro Bias stock email did not go out.',
+      input.batchSent
+        ? 'The Macro Bias stock email went to the deliverable recipients. Rejected addresses were removed and were not sent.'
+        : 'The Macro Bias stock email did not go out.',
       '',
       `Briefing date: ${input.briefingDate}`,
       tradeDateText.trimEnd(),
       `Reason: ${input.reason}`,
+      rejectedText,
       `Cron URL: ${input.requestUrl}`,
       '',
       'Fix it.',
@@ -667,7 +679,9 @@ async function sendStockEmailFailureAlert(input: StockEmailFailureAlertInput) {
     const response = await resend.emails.send({
       from: fromAddress,
       to: [STOCK_EMAIL_FAILURE_ALERT_RECIPIENT],
-      subject: `Stock email failed for ${input.briefingDate}`,
+      subject: input.batchSent
+        ? `Stock email dropped rejected addresses for ${input.briefingDate}`
+        : `Stock email failed for ${input.briefingDate}`,
       text,
     });
 
@@ -776,11 +790,10 @@ async function handlePublish(request: NextRequest) {
     const resendApiKeyConfigured = Boolean(getOptionalServerEnv('RESEND_API_KEY'));
     const xCredentials = getXCredentials();
 
-    if (!discordWebhookUrl && !resendApiKeyConfigured && !xCredentials && !isBlueskyConfigured()) {
+    if (!skipEmail && !resendApiKeyConfigured) {
       return NextResponse.json(
         {
-          error:
-            'No active publish destinations are configured. Set RESEND_API_KEY, X API credentials, and/or Bluesky credentials to enable cron publishing.',
+          error: 'RESEND_API_KEY is not configured, so the stock email cannot send.',
         },
         { status: 500 },
       );
@@ -915,8 +928,34 @@ async function handlePublish(request: NextRequest) {
         await safePublish('email', async () => {
           const supabase = createSupabaseAdminClient();
           const { freeRecipients, premiumRecipients } = await getTieredQuantBriefingRecipients();
+          const freePartition = partitionRecipients(freeRecipients);
+          const premiumPartition = partitionRecipients(premiumRecipients);
+          const rejectedAddresses = [...freePartition.rejected, ...premiumPartition.rejected].map(
+            (entry) => entry.email,
+          );
 
-          // On Mondays, fetch last week's data to embed in the daily email
+          if (rejectedAddresses.length > 0) {
+            const { error: deactivateError } = await supabase
+              .from('free_subscribers')
+              .update({ status: 'inactive' })
+              .in('email', rejectedAddresses);
+
+            if (deactivateError) {
+              console.warn(
+                `[publish-cron] Failed to deactivate rejected recipients: ${deactivateError.message}`,
+              );
+            }
+          }
+
+          if (premiumPartition.deliverable.length === 0) {
+            const named = formatAddressList(rejectedAddresses);
+            throw new Error(
+              rejectedAddresses.length > 0
+                ? `Stock email was not sent. Resend rejects: ${named}.`
+                : 'Stock email was not sent. No paid recipients are on the list.',
+            );
+          }
+
           const isMonday = marketCalendar.isMonday;
           let weeklyDigest = null;
           if (isMonday) {
@@ -932,72 +971,46 @@ async function handlePublish(request: NextRequest) {
           }
 
           console.log(
-            `[publish-cron] Starting dispatchQuantBriefing() with ${premiumRecipients.length} premium recipients and ${freeRecipients.length} free recipients`,
+            `[publish-cron] Starting dispatchQuantBriefing() for ${premiumPartition.deliverable.length} paid recipients`,
           );
 
-          const { unlockedEmails, regularFreeEmails } = await partitionUnlockedSubscribers(
-            supabase,
-            freeRecipients,
-          );
-
-          const briefingSignal = dailyBriefing.quant.signal;
           const premiumDispatchResult = await dispatchQuantBriefing(
             dailyBriefing.newsletterCopy,
             dailyBriefing.quant.score,
             dailyBriefing.quant.label,
             dailyBriefing.isOverrideActive,
             {
-              recipients: premiumRecipients,
+              recipients: premiumPartition.deliverable,
               tier: 'premium',
               weeklyDigest,
-              signal: briefingSignal,
+              signal: dailyBriefing.quant.signal,
             },
           );
-          const unlockedDispatchResult =
-            unlockedEmails.length > 0
-              ? await dispatchQuantBriefing(
-                  dailyBriefing.newsletterCopy,
-                  dailyBriefing.quant.score,
-                  dailyBriefing.quant.label,
-                  dailyBriefing.isOverrideActive,
-                  {
-                    recipients: unlockedEmails,
-                    tier: 'premium',
-                    weeklyDigest,
-                    signal: briefingSignal,
-                  },
-                )
-              : { batchCount: 0, emailIds: [], recipientCount: 0 };
-          const freeDispatchResult =
-            regularFreeEmails.length > 0
-              ? await dispatchQuantBriefing(
-                  dailyBriefing.newsletterCopy,
-                  dailyBriefing.quant.score,
-                  dailyBriefing.quant.label,
-                  dailyBriefing.isOverrideActive,
-                  {
-                    recipients: regularFreeEmails,
-                    tier: 'free',
-                    signal: briefingSignal,
-                    weeklyDigest,
-                  },
-                )
-              : { batchCount: 0, emailIds: [], recipientCount: 0 };
 
-          await verifyPendingReferrals(supabase);
+          emailRecipientCount = premiumDispatchResult.recipientCount;
 
-          const totalBatchCount =
-            premiumDispatchResult.batchCount +
-            unlockedDispatchResult.batchCount +
-            freeDispatchResult.batchCount;
-          const totalRecipientCount =
-            premiumDispatchResult.recipientCount +
-            unlockedDispatchResult.recipientCount +
-            freeDispatchResult.recipientCount;
-          emailRecipientCount = totalRecipientCount;
+          if (premiumDispatchResult.recipientCount === 0) {
+            throw new Error(
+              `Stock email was not sent. Resend rejects: ${formatAddressList([
+                ...rejectedAddresses,
+                ...premiumDispatchResult.rejected.map((entry) => entry.email),
+              ])}.`,
+            );
+          }
+
+          const dropped = [
+            ...rejectedAddresses,
+            ...premiumDispatchResult.rejected.map((entry) => entry.email),
+          ];
+
+          if (dropped.length > 0) {
+            failures.push(
+              `Removed rejected addresses before send: ${formatAddressList(dropped)}.`,
+            );
+          }
 
           console.log(
-            `[publish-cron] Finished dispatchQuantBriefing() with ${totalRecipientCount} recipients across ${totalBatchCount} batches (${premiumDispatchResult.recipientCount} premium, ${unlockedDispatchResult.recipientCount} unlocked, ${freeDispatchResult.recipientCount} free)`,
+            `[publish-cron] Finished dispatchQuantBriefing() with ${premiumDispatchResult.recipientCount} paid recipients across ${premiumDispatchResult.batchCount} batches`,
           );
         }),
       );
@@ -1019,23 +1032,23 @@ async function handlePublish(request: NextRequest) {
       );
     }
 
-    if (xCredentials) {
+    if (SOCIAL_PUBLISHING_ENABLED && xCredentials) {
       publishResults.push(await safePublish('x', () => publishToX(xCredentials, finalPublishPayload)));
     }
 
-    if (isBlueskyConfigured()) {
+    if (SOCIAL_PUBLISHING_ENABLED && isBlueskyConfigured()) {
       publishResults.push(
         await safePublish('bluesky', () => publishToBluesky(finalPublishPayload.xText).then(() => undefined)),
       );
     }
 
-    if (isTelegramConfigured()) {
+    if (SOCIAL_PUBLISHING_ENABLED && isTelegramConfigured()) {
       publishResults.push(
         await safePublish('telegram', () => publishToTelegram(finalPublishPayload.xText).then(() => undefined)),
       );
     }
 
-    if (isThreadsConfigured()) {
+    if (SOCIAL_PUBLISHING_ENABLED && isThreadsConfigured()) {
       publishResults.push(
         await safePublish('threads', () =>
           publishToThreads(formatForThreads(finalPublishPayload.xText)).then(() => undefined),
@@ -1067,21 +1080,39 @@ async function handlePublish(request: NextRequest) {
         requestUrl: request.nextUrl.toString(),
         tradeDate: dailyBriefing.quant.tradeDate,
       });
+    } else if (!skipEmail) {
+      const dropped = failures.find((failure) => failure.startsWith('Removed rejected addresses'));
+
+      if (dropped) {
+        await sendStockEmailFailureAlert({
+          batchSent: true,
+          briefingDate,
+          reason: dropped,
+          requestUrl: request.nextUrl.toString(),
+          tradeDate: dailyBriefing.quant.tradeDate,
+        });
+      }
     }
 
-    return NextResponse.json({
-      ok: true,
-      publishedTo,
-      failures,
-      analogs: dailyBriefing.quant.analogs,
-      briefingGeneratedBy: dailyBriefing.generatedBy,
-      newsStatus: dailyBriefing.news.status,
-      newsSummary: dailyBriefing.news.summary,
-      playbook: dailyBriefing.quant.historicalAnalogs?.clusterAveragePlaybook ?? null,
-      preview: finalPublishPayload.xText,
-      tradeDate: dailyBriefing.quant.tradeDate,
-      overrideTriggered: dailyBriefing.isOverrideActive,
-    });
+    const emailFailed = Boolean(emailFailureReason);
+
+    return NextResponse.json(
+      {
+        ok: !emailFailed,
+        emailSent: !emailFailed && !skipEmail && resendApiKeyConfigured,
+        publishedTo,
+        failures,
+        analogs: dailyBriefing.quant.analogs,
+        briefingGeneratedBy: dailyBriefing.generatedBy,
+        newsStatus: dailyBriefing.news.status,
+        newsSummary: dailyBriefing.news.summary,
+        playbook: dailyBriefing.quant.historicalAnalogs?.clusterAveragePlaybook ?? null,
+        preview: finalPublishPayload.xText,
+        tradeDate: dailyBriefing.quant.tradeDate,
+        overrideTriggered: dailyBriefing.isOverrideActive,
+      },
+      { status: emailFailed ? 500 : 200 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to publish the daily Macro Bias payload.';
     console.error(`[publish-cron] Fatal error: ${message}`);

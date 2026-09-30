@@ -4,10 +4,14 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { LockedSession } from "@/components/product/LockedSession";
 import { CRYPTO_BRIEFING_SECTION_HEADERS } from "@/lib/crypto-briefing/crypto-briefing-config";
+import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const SITE_URL = "https://macro-bias.com";
+
+export const dynamic = "force-dynamic";
 
 type CryptoBriefingDetail = {
   id: string;
@@ -119,9 +123,14 @@ function getScoreColor(label: string) {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { date } = await params;
+  const paid = await viewerIsPaid();
+  const latest = await latestStoredTradeDate("crypto");
+  const locked = !paid && latest != null && date >= latest;
   return {
-    title: `Crypto Briefing — ${date} | Macro Bias`,
-    description: `Daily crypto regime briefing for ${date} from the Macro Bias crypto model.`,
+    title: locked ? `Crypto briefing ${date} | Macro Bias` : `Crypto Briefing — ${date} | Macro Bias`,
+    description: locked
+      ? "This session's score is on the paid plan."
+      : `Daily crypto regime briefing for ${date} from the Macro Bias crypto model.`,
     alternates: {
       canonical: `${SITE_URL}/crypto/briefings/${date}`,
     },
@@ -139,6 +148,12 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
 
   if (!briefing) {
     notFound();
+  }
+
+  const paid = await viewerIsPaid();
+  const latest = await latestStoredTradeDate("crypto");
+  if (!paid && latest != null && (date >= latest || briefing.trade_date >= latest)) {
+    return <LockedSession assetHref="/crypto" />;
   }
 
   const freeTierContent = getCryptoFreeTierContent(briefing.brief_content);
@@ -220,7 +235,7 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.18em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
-              href="/api/checkout?plan=monthly"
+              href="/pricing"
             >
               Start 7-Day Free Trial
             </Link>

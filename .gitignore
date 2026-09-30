@@ -10,3 +10,7 @@ out
 tsconfig.tsbuildinfo
 .vercel
 .env*.local
+.tmp-*
+*.backup.json
+scripts/.wacky-*.json
+scripts/.quality-optimize-result.json

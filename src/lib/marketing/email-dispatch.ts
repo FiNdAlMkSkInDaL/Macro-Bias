@@ -7,6 +7,14 @@ import type { WeeklyDigestData, WeeklyBriefingRow } from '../briefing/weekly-dig
 import { getAppUrl, getRequiredServerEnv } from '../server-env';
 import type { TradableSignal } from '../signal';
 import { formatPermissionLine, formatSignalSocialLine } from '../signal/format-tradable-signal';
+import {
+  formatAddressList,
+  isResendTestRestrictionMessage,
+  isUnverifiedTestSender,
+  partitionRecipients,
+  ResendBatchError,
+  type RejectedRecipient,
+} from './recipient-policy';
 
 const DEFAULT_FROM_ADDRESS = 'Macro Bias <briefing@macro-bias.com>';
 const EMAIL_BATCH_SIZE = 100;
@@ -21,7 +29,7 @@ const NEWSLETTER_SECTION_ORDER = [
   DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus,
   DAILY_BRIEFING_SECTION_HEADERS.quantCorner,
 ] as const;
-const PREMIUM_UPGRADE_PATH = '/api/checkout?plan=monthly';
+const PREMIUM_UPGRADE_PATH = '/pricing';
 
 export type QuantBriefingTier = 'free' | 'premium';
 
@@ -38,6 +46,7 @@ export type DispatchQuantBriefingResult = {
   batchCount: number;
   emailIds: string[];
   recipientCount: number;
+  rejected: RejectedRecipient[];
 };
 
 export type QuantBriefingEmailContent = {
@@ -1196,13 +1205,43 @@ export async function dispatchQuantBriefing(
 
   console.log(`[email-dispatch] dispatchQuantBriefing() entered for tier=${tier}`);
   const recipients = applyShadowRunRecipientOverride(options.recipients);
+  const { deliverable, rejected } = partitionRecipients(recipients);
 
-  if (recipients.length === 0) {
+  if (rejected.length > 0) {
+    console.warn(
+      `[email-dispatch] Dropped ${rejected.length} recipient(s) Resend will reject: ${formatAddressList(rejected.map((entry) => entry.email))}`,
+    );
+  }
+
+  if (deliverable.length === 0) {
+    if (rejected.length > 0) {
+      throw new ResendBatchError(
+        `Stock email was not sent. Resend rejects: ${formatAddressList(rejected.map((entry) => entry.email))}.`,
+        {
+          rejectedAddresses: rejected.map((entry) => entry.email),
+          testRestricted: false,
+        },
+      );
+    }
+
     return {
       batchCount: 0,
       emailIds: [],
       recipientCount: 0,
+      rejected,
     };
+  }
+
+  const fromAddress = getConfiguredFromAddress();
+
+  if (isUnverifiedTestSender(fromAddress)) {
+    throw new ResendBatchError(
+      `Resend is still on the shared test sender (${fromAddress}). A verified sending domain is required before real customers. The stock batch was not sent. Addresses not sent: ${formatAddressList(deliverable)}.`,
+      {
+        rejectedAddresses: [...deliverable, ...rejected.map((entry) => entry.email)],
+        testRestricted: true,
+      },
+    );
   }
 
   const resend = new Resend(getRequiredServerEnv('RESEND_API_KEY'));
@@ -1216,10 +1255,9 @@ export async function dispatchQuantBriefing(
     options.signal,
   );
   const emailIds: string[] = [];
-  const recipientBatches = chunkValues(recipients, EMAIL_BATCH_SIZE);
-  const fromAddress = getConfiguredFromAddress();
+  const recipientBatches = chunkValues(deliverable, EMAIL_BATCH_SIZE);
 
-  console.log(`[email-dispatch] Attempting to send ${recipients.length} ${tier} emails via Resend...`);
+  console.log(`[email-dispatch] Attempting to send ${deliverable.length} ${tier} emails via Resend...`);
 
   for (const recipientBatch of recipientBatches) {
     const response = await resend.batch.send(
@@ -1241,7 +1279,18 @@ export async function dispatchQuantBriefing(
     );
 
     if (response.error) {
-      throw new Error(`Resend batch send failed: ${response.error.message}`);
+      const testRestricted = isResendTestRestrictionMessage(response.error.message);
+      const addressText = formatAddressList(recipientBatch);
+      const message = testRestricted
+        ? `Resend API key is still on the test restriction (${response.error.message}). The stock batch was not sent. Addresses not sent: ${addressText}.`
+        : `Resend batch send failed: ${response.error.message} Addresses in the failed batch: ${addressText}.`;
+
+      throw new ResendBatchError(message, {
+        rejectedAddresses: testRestricted
+          ? [...recipientBatch, ...rejected.map((entry) => entry.email)]
+          : [...rejected.map((entry) => entry.email), ...recipientBatch],
+        testRestricted,
+      });
     }
 
     emailIds.push(...response.data.data.map((result) => result.id));
@@ -1250,6 +1299,7 @@ export async function dispatchQuantBriefing(
   return {
     batchCount: recipientBatches.length,
     emailIds,
-    recipientCount: recipients.length,
+    recipientCount: deliverable.length,
+    rejected,
   };
 }

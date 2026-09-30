@@ -7,6 +7,7 @@ const SECTIONS: { stocks: string; crypto: string }[] = [
   { stocks: "/dashboard", crypto: "/crypto/dashboard" },
   { stocks: "/track-record", crypto: "/crypto/track-record" },
   { stocks: "/briefings", crypto: "/crypto/briefings" },
+  { stocks: "/today", crypto: "/crypto" },
 ];
 
 export function AssetToggle() {
