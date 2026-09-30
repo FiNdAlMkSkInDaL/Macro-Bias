@@ -7,7 +7,9 @@ import {
 } from "../../components/dashboard/SignalBreakdown";
 import { PaywallWrapper } from "../../components/paywall-wrapper";
 import { AssetToggle } from "../../components/AssetToggle";
-import { getUserSubscriptionStatus, isSubscriptionActive } from "../../lib/billing/subscription";
+import { ManagePlan } from "../../components/billing/ManagePlan";
+import { getStripeCustomerId } from "../../lib/billing/stripe-customer";
+import { getUserSubscriptionStatus } from "../../lib/billing/subscription";
 import type { BiasLabel } from "../../lib/macro-bias/types";
 import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
@@ -532,7 +534,7 @@ async function getDashboardData(baseUrl: string, cookieHeader: string | null): P
 export default async function DashboardPage() {
   noStore();
 
-  const [baseUrl, { isPro, subscriptionStatus, user }, supplementalCrossAssetMapAssets, headerStore] =
+  const [baseUrl, { isPro, user }, supplementalCrossAssetMapAssets, headerStore] =
     await Promise.all([
       getRequestBaseUrl(),
       getUserSubscriptionStatus(),
@@ -540,8 +542,8 @@ export default async function DashboardPage() {
       headers(),
     ]);
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl, headerStore.get("cookie"));
-  const isProUser = isSubscriptionActive(subscriptionStatus);
-  const shouldRenderManageSubscription = isPro;
+  const isProUser = isPro;
+  const stripeCustomerId = user ? await getStripeCustomerId(user.id) : null;
   const advancingAssets = biasData.assets.filter(
     (asset) => asset.dailyChangePercent > 0,
   ).length;
@@ -651,14 +653,7 @@ export default async function DashboardPage() {
                 Refer Friends
               </a>
 
-              {shouldRenderManageSubscription ? (
-                <a
-                  className="text-xs text-zinc-500 hover:text-white underline underline-offset-4"
-                  href="/api/stripe/portal"
-                >
-                  Manage Subscription
-                </a>
-              ) : null}
+              <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
             </div>
           </div>
         </header>

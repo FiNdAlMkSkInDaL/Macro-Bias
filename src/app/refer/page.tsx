@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { getUserSubscriptionStatus } from "@/lib/billing/subscription";
+import { loadReferralHub } from "@/lib/referral/load-referral-hub";
+
 import ReferPageClient from "./refer-page-client";
 
 const SITE_URL = "https://macro-bias.com";
@@ -21,6 +24,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ReferPage() {
-  return <ReferPageClient />;
+export default async function ReferPage() {
+  const { isPro, user } = await getUserSubscriptionStatus();
+  const email = user?.email?.trim().toLowerCase() ?? null;
+  const result = email ? await loadReferralHub(email, { proOverride: isPro }) : null;
+
+  return (
+    <ReferPageClient
+      initialEmail={email}
+      initialError={result && !result.ok ? result.error : null}
+      initialHub={result && result.ok ? result.hub : null}
+    />
+  );
 }

@@ -33,6 +33,12 @@ type ReferralStatus = {
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
+type ReferPageClientProps = {
+  initialEmail?: string | null;
+  initialError?: string | null;
+  initialHub?: ReferralStatus | null;
+};
+
 function buildInviteMessage(referralLink: string) {
   return `I use Macro Bias to check the market regime before the open. Your link lands on the live /today page, and the daily briefing is free: ${referralLink}`;
 }
@@ -63,11 +69,17 @@ function formatEarnedAt(value: string | null) {
   });
 }
 
-export default function ReferPageClient() {
-  const [email, setEmail] = useState("");
-  const [loadState, setLoadState] = useState<LoadState>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [data, setData] = useState<ReferralStatus | null>(null);
+export default function ReferPageClient({
+  initialEmail = null,
+  initialError = null,
+  initialHub = null,
+}: ReferPageClientProps) {
+  const [email, setEmail] = useState(initialEmail ?? "");
+  const [loadState, setLoadState] = useState<LoadState>(
+    initialHub ? "loaded" : initialError ? "error" : "idle",
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
+  const [data, setData] = useState<ReferralStatus | null>(initialHub);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
 
@@ -177,7 +189,7 @@ export default function ReferPageClient() {
 
   return (
     <main className="flex min-h-screen items-start justify-center px-6 py-12 sm:py-20 text-white">
-      <div className="w-full max-w-4xl">
+      <div className="w-full min-w-0 max-w-4xl">
         <header className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.42em] text-sky-400/70">
             [ Referral Program ]
@@ -283,8 +295,8 @@ export default function ReferPageClient() {
                   <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">
                     Your referral link
                   </p>
-                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <code className="min-w-0 flex-1 truncate rounded bg-zinc-950 px-3 py-2 text-sm text-sky-400">
+                  <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+                    <code className="block w-full min-w-0 break-all rounded bg-zinc-950 px-3 py-2 text-sm text-sky-400 sm:flex-1 sm:truncate sm:break-normal">
                       {data.referralLink}
                     </code>
                     <div className="flex gap-2">

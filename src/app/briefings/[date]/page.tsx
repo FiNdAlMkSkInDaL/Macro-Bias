@@ -182,6 +182,8 @@ export default async function BriefingPage({ params }: PageProps) {
     notFound();
   }
 
+  const paid = await viewerIsPaid();
+
   if (await sessionIsLocked(date, briefing.trade_date)) {
     return <LockedSession assetHref="/today" />;
   }
@@ -195,7 +197,7 @@ export default async function BriefingPage({ params }: PageProps) {
   const overlayLabel = briefing.is_override_active ? "HIGH ALERT" : "CONTAINED";
   const overlayColor = briefing.is_override_active ? "text-red-300" : "text-sky-300";
   const description = buildBriefingDescription(briefing);
-  const freeTierContent = getFreeTierContent(briefing.brief_content);
+  const briefingBody = paid ? briefing.brief_content : getFreeTierContent(briefing.brief_content);
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -312,7 +314,7 @@ export default async function BriefingPage({ params }: PageProps) {
         {/* Free-tier briefing preview */}
         <article className="mt-6 border border-white/10 bg-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
           <div className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-600">
-            [ Free Preview ]
+            {paid ? "[ Full Briefing ]" : "[ Free Preview ]"}
           </div>
 
           <div className="mt-6 text-base leading-8 text-zinc-300">
@@ -341,12 +343,12 @@ export default async function BriefingPage({ params }: PageProps) {
                 ),
               }}
             >
-              {freeTierContent}
+              {briefingBody}
             </ReactMarkdown>
           </div>
         </article>
 
-        {/* Paywall / CTA */}
+        {!paid && (
         <section className="mt-6 border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-sky-300">
             Premium Access Required
@@ -372,6 +374,7 @@ export default async function BriefingPage({ params }: PageProps) {
             </Link>
           </div>
         </section>
+        )}
       </div>
     </main>
   );
