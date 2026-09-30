@@ -14,7 +14,12 @@ import {
   type SubscriptionStatus,
 } from "@/lib/billing/subscription";
 import { filterSubscribedEmailRecipients } from '@/lib/marketing/email-preferences';
-import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
+import {
+  formatAddressList,
+  isResendTestRestrictionMessage,
+  isUnverifiedTestSender,
+  partitionRecipients,
+} from '@/lib/marketing/recipient-policy';
 import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
 import { getAppUrl } from "@/lib/server-env";
 import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
@@ -326,7 +331,7 @@ function buildFreeTierCryptoBriefingEmailHtml(
     }
   }
 
-  const upgradeUrl = escapeHtml(new URL("/api/checkout?plan=monthly", getAppUrl()).toString());
+  const upgradeUrl = escapeHtml(new URL("/pricing", getAppUrl()).toString());
 
   const paywallHtml = `
 <div style="margin-top:28px;border:1px solid #38bdf8;border-radius:12px;padding:24px;background:linear-gradient(135deg, rgba(56,189,248,0.12) 0%, rgba(9,9,11,0.96) 60%);">
@@ -407,6 +412,7 @@ function buildFreeTierCryptoBriefingEmailHtml(
 /*  Email dispatch to crypto subscribers (tiered)                      */
 /* ------------------------------------------------------------------ */
 
+const SOCIAL_PUBLISHING_ENABLED = false;
 const CRYPTO_EMAIL_BATCH_SIZE = 100;
 const DEFAULT_CRYPTO_FROM_ADDRESS = "Macro Bias <briefing@macro-bias.com>";
 const CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE = 1000;
@@ -448,8 +454,9 @@ async function dispatchCryptoBriefingEmails(
 ) {
   const resendApiKey = getOptionalServerEnv("RESEND_API_KEY");
   if (!resendApiKey) {
-    console.log("[crypto-publish] No RESEND_API_KEY configured; skipping email.");
-    return { premiumSent: 0, freeSent: 0, skipped: true };
+    const message = "RESEND_API_KEY is not configured, so the crypto email was not sent.";
+    console.log(`[crypto-publish] ${message}`);
+    return { premiumSent: 0, freeSent: 0, skipped: true, failure: message };
   }
 
   const supabase = createSupabaseAdminClient();
@@ -500,7 +507,12 @@ async function dispatchCryptoBriefingEmails(
 
   if (freeError) {
     console.warn(`[crypto-publish] Failed to load crypto subscribers: ${freeError.message}`);
-    return { premiumSent: 0, freeSent: 0, skipped: true };
+    return {
+      premiumSent: 0,
+      freeSent: 0,
+      skipped: true,
+      failure: `Failed to load crypto subscribers: ${freeError.message}`,
+    };
   }
 
   const freeEmails = (subscribers ?? [])
@@ -508,16 +520,23 @@ async function dispatchCryptoBriefingEmails(
     .filter((e): e is string => Boolean(e))
     .filter((e) => !premiumEmails.has(e.toLowerCase()));
 
-  const { unlockedEmails, regularFreeEmails } = await partitionUnlockedSubscribers(
-    supabase,
-    freeEmails,
+  const freePartition = partitionRecipients(freeEmails);
+  const premiumPartition = partitionRecipients(deliverablePremiumEmails);
+  const rejectedAddresses = [...freePartition.rejected, ...premiumPartition.rejected].map(
+    (entry) => entry.email,
   );
 
-  const premiumList = [...deliverablePremiumEmails, ...unlockedEmails];
+  if (rejectedAddresses.length > 0) {
+    console.warn(`[crypto-publish] Resend rejects: ${formatAddressList(rejectedAddresses)}`);
+    await supabase.from("free_subscribers").update({ status: "inactive" }).in("email", rejectedAddresses);
+  }
 
-  if (premiumList.length === 0 && regularFreeEmails.length === 0) {
-    console.log("[crypto-publish] No crypto recipients found.");
-    return { premiumSent: 0, freeSent: 0, skipped: false };
+  if (premiumPartition.deliverable.length === 0) {
+    const message = rejectedAddresses.length
+      ? `Crypto email was not sent. Resend rejects: ${formatAddressList(rejectedAddresses)}.`
+      : "Crypto email was not sent. No paid recipients are on the list.";
+    console.warn(`[crypto-publish] ${message}`);
+    return { premiumSent: 0, freeSent: 0, skipped: false, failure: message };
   }
 
   const { Resend } = await import("resend");
@@ -528,19 +547,20 @@ async function dispatchCryptoBriefingEmails(
     ? `Crypto Bias: ${permissionLine}`
     : `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel})`;
   const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label, permissionLine);
-  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(
-    newsletterCopy,
-    score,
-    label,
-    permissionLine,
-  );
   const fromAddress = getCryptoFromAddress();
+
+  if (isUnverifiedTestSender(fromAddress)) {
+    const message = `Resend is still on the shared test sender (${fromAddress}). A verified sending domain is required before real customers. The crypto batch was not sent. Addresses not sent: ${formatAddressList(premiumPartition.deliverable)}.`;
+    console.warn(`[crypto-publish] ${message}`);
+    return { premiumSent: 0, freeSent: 0, skipped: false, failure: message };
+  }
 
   let premiumSent = 0;
   let freeSent = 0;
+  let failure: string | null = null;
 
   /* --- Dispatch premium emails --- */
-  const premiumRecipients = applyShadowRunOverride(premiumList);
+  const premiumRecipients = applyShadowRunOverride(premiumPartition.deliverable);
   if (premiumRecipients.length > 0) {
     for (let i = 0; i < premiumRecipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
       const batch = premiumRecipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
@@ -561,7 +581,11 @@ async function dispatchCryptoBriefingEmails(
           }),
         );
         if (response.error) {
-          console.warn(`[crypto-publish] Premium batch send failed: ${response.error.message}`);
+          const testRestricted = isResendTestRestrictionMessage(response.error.message);
+          failure = testRestricted
+            ? `Resend API key is still on the test restriction (${response.error.message}). The crypto batch was not sent. Addresses not sent: ${formatAddressList(batch)}.`
+            : `Resend batch send failed: ${response.error.message} Addresses in the failed batch: ${formatAddressList(batch)}.`;
+          console.warn(`[crypto-publish] ${failure}`);
         } else {
           premiumSent += batch.length;
         }
@@ -573,42 +597,8 @@ async function dispatchCryptoBriefingEmails(
     console.log(`[crypto-publish] Sent ${premiumSent} premium crypto emails.`);
   }
 
-  /* --- Dispatch free emails --- */
-  const freeRecipients = applyShadowRunOverride(regularFreeEmails);
-  if (freeRecipients.length > 0) {
-    for (let i = 0; i < freeRecipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
-      const batch = freeRecipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
-      try {
-        const response = await resend.batch.send(
-          batch.map((email) => {
-            const unsubUrl = buildUnsubscribeUrl(email);
-            return {
-              from: fromAddress,
-              to: [email],
-              subject,
-              html: freeHtml.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
-              headers: {
-                "List-Unsubscribe": `<${unsubUrl}>`,
-                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-              },
-            };
-          }),
-        );
-        if (response.error) {
-          console.warn(`[crypto-publish] Free batch send failed: ${response.error.message}`);
-        } else {
-          freeSent += batch.length;
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown";
-        console.warn(`[crypto-publish] Free batch email failed: ${msg}`);
-      }
-    }
-    console.log(`[crypto-publish] Sent ${freeSent} free crypto emails.`);
-  }
-
-  console.log(`[crypto-publish] Emailed ${premiumSent} premium/unlocked + ${freeSent} free crypto subscribers.`);
-  return { premiumSent, freeSent, skipped: false };
+  console.log(`[crypto-publish] Emailed ${premiumSent} paid crypto subscribers.`);
+  return { premiumSent, freeSent, skipped: false, failure };
 }
 
 /* ------------------------------------------------------------------ */
@@ -669,6 +659,10 @@ async function publishCryptoToSocial(
   newsletterCopy: string,
   permissionLine?: string | null,
 ): Promise<{ xPosted: boolean; blueskyPosted: boolean; telegramPosted: boolean; threadsPosted: boolean }> {
+  if (!SOCIAL_PUBLISHING_ENABLED) {
+    return { xPosted: false, blueskyPosted: false, telegramPosted: false, threadsPosted: false };
+  }
+
   const xText = buildCryptoXText(score, label, newsletterCopy, permissionLine);
   let xPosted = false;
   let blueskyPosted = false;
@@ -815,7 +809,12 @@ async function handleCryptoPublish(request: NextRequest) {
     );
 
     /* Step 4: Email dispatch */
-    let emailResult = { premiumSent: 0, freeSent: 0, skipped: true };
+    let emailResult: { premiumSent: number; freeSent: number; skipped: boolean; failure?: string | null } = {
+      premiumSent: 0,
+      freeSent: 0,
+      skipped: true,
+      failure: null,
+    };
     if (!skipEmail) {
       emailResult = await dispatchCryptoBriefingEmails(
         briefingResult.newsletterCopy,
@@ -823,7 +822,10 @@ async function handleCryptoPublish(request: NextRequest) {
         latestSnapshot.bias_label,
         permissionLine,
       );
-      if (!emailResult.skipped) {
+      if (emailResult.failure) {
+        warnings.push(emailResult.failure);
+      }
+      if (!emailResult.skipped && !emailResult.failure) {
         await verifyPendingReferrals(createSupabaseAdminClient());
       }
     } else {
@@ -844,8 +846,11 @@ async function handleCryptoPublish(request: NextRequest) {
       warnings.push(`Social posting failed: ${msg}`);
     }
 
+    const emailFailed = !skipEmail && Boolean(emailResult.failure || emailResult.premiumSent === 0);
+
     return NextResponse.json({
-      ok: true,
+      ok: !emailFailed,
+      emailSent: !skipEmail && emailResult.premiumSent > 0 && !emailResult.failure,
       tradeDate: latestSnapshot.trade_date,
       score: latestSnapshot.score,
       biasLabel: latestSnapshot.bias_label,
@@ -858,7 +863,7 @@ async function handleCryptoPublish(request: NextRequest) {
       telegramPosted: socialResult.telegramPosted,
       threadsPosted: socialResult.threadsPosted,
       warnings: [...warnings, ...briefingResult.warnings],
-    });
+    }, { status: emailFailed ? 500 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to run crypto publish cron.";
     console.error(`[crypto-publish] Fatal: ${message}`);

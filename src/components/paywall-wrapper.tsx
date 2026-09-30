@@ -1,6 +1,5 @@
 "use client";
 
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -48,7 +47,7 @@ function LockIcon() {
 }
 
 export function PaywallWrapper({
-  checkoutHref = '/api/checkout?plan=monthly',
+  checkoutHref = '/pricing',
   children,
   initialIsPro,
   userId,
@@ -199,55 +198,22 @@ export function PaywallWrapper({
   }
 
   return (
-    <div className="relative isolate overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none select-none opacity-70 blur-[10px] saturate-[0.82]"
+    <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6 text-center sm:p-8">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white">
+        <LockIcon />
+      </div>
+      <h2 className="mt-5 text-2xl font-bold tracking-tighter text-white">
+        Today&apos;s score is on the paid plan
+      </h2>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">
+        The previous session stays on the score page. Paid includes today&apos;s score, the grade, the size hint, and the morning email.
+      </p>
+      <a
+        className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
+        href={checkoutHref}
       >
-        {children}
-      </div>
-
-      <div className="absolute inset-0 z-10 flex items-center justify-center p-3 text-center sm:p-4 lg:p-6">
-        <div aria-hidden="true" className="absolute inset-0 bg-black/38 backdrop-blur-[1px]" />
-
-        <div className="relative w-full max-w-[min(22rem,calc(100vw-2rem))] max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.52)] backdrop-blur-xl sm:max-w-sm sm:p-6 lg:max-w-md lg:p-8">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white sm:h-14 sm:w-14">
-            <LockIcon />
-          </div>
-
-          <h2 className="mt-5 text-2xl font-bold tracking-tighter text-white sm:mt-6">
-            Unlock the Historical Playbook
-          </h2>
-
-          <p className="mt-3 text-sm text-zinc-400">
-            Analyze exactly how the S&P 500 reacted the last 5 times this regime appeared.
-          </p>
-
-          <a
-            className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 sm:mt-8"
-            href={checkoutHref}
-          >
-            {isPending ? 'Refreshing access...' : 'Start 7-Day Free Trial'}
-          </a>
-
-          <p className="mt-2 text-center text-xs text-zinc-600">
-            Full access for 7 days. No charge until day 8. Cancel anytime.
-          </p>
-
-          <p className="mt-3 text-center text-xs text-zinc-500">
-            Or invite 3 traders and unlock 7 days of Premium free.
-          </p>
-          <Link
-            href="/refer"
-            className="mt-3 inline-flex items-center justify-center text-xs font-medium text-sky-400 underline underline-offset-4"
-            data-analytics-event="referral_cta_click"
-            data-analytics-label="Paywall Referral Link"
-            data-analytics-location="paywall_wrapper"
-          >
-            See referral rewards
-          </Link>
-        </div>
-      </div>
+        {isPending ? 'Refreshing access...' : 'See pricing'}
+      </a>
     </div>
   );
 }

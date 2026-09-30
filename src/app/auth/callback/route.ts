@@ -12,7 +12,7 @@ type PendingCookie = {
 
 function sanitizeRedirectPath(rawRedirectPath: string | null): string {
   if (!rawRedirectPath || !rawRedirectPath.startsWith('/') || rawRedirectPath.startsWith('//')) {
-    return '/dashboard';
+    return '/';
   }
 
   return rawRedirectPath;
@@ -21,7 +21,7 @@ function sanitizeRedirectPath(rawRedirectPath: string | null): string {
 function buildErrorRedirect(request: NextRequest, redirectPath: string, message: string) {
   const errorRedirectUrl = request.nextUrl.clone();
 
-  errorRedirectUrl.pathname = '/';
+  errorRedirectUrl.pathname = '/login';
   errorRedirectUrl.search = '';
   errorRedirectUrl.searchParams.set('redirectTo', redirectPath);
   errorRedirectUrl.searchParams.set('authError', message);

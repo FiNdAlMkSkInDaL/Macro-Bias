@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { deriveHistoricalAnalogs } from "../../../../lib/market-data/derive-historical-analogs";
-import { getLatestBiasSnapshot } from "../../../../lib/market-data/get-latest-bias-snapshot";
+import { getRecentBiasSnapshots } from "../../../../lib/market-data/get-latest-bias-snapshot";
+import { viewerIsPaid } from "../../../../lib/product/score-access";
 import { BIAS_PILLAR_WEIGHTS } from "../../../../lib/macro-bias/constants";
 import type { BiasComponentResult, BiasPillarKey } from "../../../../lib/macro-bias/types";
 import { CORE_ASSET_TICKERS } from "../../../../types";
@@ -202,12 +203,16 @@ function buildFrontendTickerChanges(tickerChanges: unknown) {
 
 export async function GET() {
   try {
-    const snapshot = await getLatestBiasSnapshot();
+    const paid = await viewerIsPaid();
+    const rows = await getRecentBiasSnapshots(2);
+    const snapshot = paid ? rows[0] : rows[1];
 
     if (!snapshot) {
       return NextResponse.json(
         {
-          error: "No macro bias score has been calculated yet.",
+          error: paid
+            ? "No macro bias score has been calculated yet."
+            : "No delayed score is published yet.",
         },
         { status: 404 },
       );

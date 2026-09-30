@@ -1,3 +1,4 @@
+import { latestStoredTradeDate } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl } from "@/lib/server-env";
 
@@ -53,6 +54,7 @@ export async function GET() {
   }
 
   const rows = (data as BriefingFeedRow[] | null) ?? [];
+  const latestTradeDate = await latestStoredTradeDate("stocks");
 
   const seen = new Set<string>();
   const briefings = rows.filter((r) => {
@@ -62,15 +64,20 @@ export async function GET() {
   });
 
   const items = briefings.map((b) => {
+    const locked = latestTradeDate != null && b.briefing_date >= latestTradeDate;
     const label = formatLabel(b.bias_label);
     const score = formatScore(b.quant_score);
-    const snippet = getFreeTierSnippet(b.brief_content);
-    const override = b.is_override_active ? " [MACRO OVERRIDE ACTIVE]" : "";
+    const snippet = locked
+      ? "This session's score is on the paid plan."
+      : getFreeTierSnippet(b.brief_content);
+    const override = !locked && b.is_override_active ? " [MACRO OVERRIDE ACTIVE]" : "";
 
     return {
       id: `${appUrl}/briefings/${b.briefing_date}`,
       url: `${appUrl}/briefings/${b.briefing_date}`,
-      title: `${label} (${score}) — ${b.briefing_date}`,
+      title: locked
+        ? `Session ${b.briefing_date} — paid plan`
+        : `${label} (${score}) — ${b.briefing_date}`,
       content_text: `${snippet}${override}`,
       date_published: new Date(b.generated_at).toISOString(),
       tags: ["Macro Regime", label],

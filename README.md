@@ -1,73 +1,33 @@
 # Macro Bias
 
-I got tired of vague “market outlook” posts, so I built a small daily research app.
+I wanted one number before the open, so I publish a daily score.
 
-Every morning it looks at a few macro features (equities, vol, credit, metals, oil — and a crypto path), finds similar past days, and publishes a simple next-session **permission**: LONG / SHORT / FLAT / NO_TRADE, with a reliability grade and size hint. Not a price target. Not a certainty claim.
+**What it is**
 
-Walk-forward checks against next-session open→close are the gate for model changes. If a knob doesn’t help those numbers, it doesn’t ship.
+A score from -100 to +100 for stocks, and the same idea for crypto. Each score comes with a permission: LONG, SHORT, FLAT, or NO_TRADE. Reliability is a grade from A to F. F means NO_TRADE. A dead zone around zero means FLAT. It is not a price target and it is not a certainty claim.
 
-Learning project / personal product. Not financial advice.
+**Who it is for**
 
-## Stack
+People who want that permission on the site and in their inbox before the session, and who will stand aside when the grade says not to trade.
 
-- Next.js (App Router) + TypeScript + Tailwind  
-- Supabase (Postgres, auth helpers)  
-- Market data sync + KNN-style regime scoring  
-- Optional: Anthropic for briefing text, Resend email, Stripe billing, social posting  
+**How the score is made**
 
-Live-ish deploy (when up): see the repo homepage on GitHub / Vercel.
+Stocks use the current feature package: SPY RSI, VIX momentum, HYG/TLT, CPER/GLD, and USO momentum. Levels become rolling percentiles. Similar past days are the nearest neighbors by cosine distance on z-scored features. K adapts when volatility is high. Neighbor returns map onto the score. Crypto uses the parallel path in `src/lib/crypto-bias/`. A sentence under the score can be written copy. The score itself is the KNN output.
 
-## What you can open
+**What paid unlocks**
 
-| Area | Routes |
-|------|--------|
-| Stocks | `/today`, `/dashboard`, `/track-record`, `/briefings` |
-| Crypto | `/crypto`, `/crypto/dashboard`, `/crypto/track-record` |
-| Growth | `/emails`, `/pricing`, `/refer` |
-| Admin | `/analytics` (restricted) |
+Free shows the previous session's score on the site. Paid shows today's stock and crypto score, the grade, the size hint, and the morning email. Checkout is a Stripe subscription, monthly or annual, with a 7-day trial. A failed payment removes access.
 
-## Quant idea (stocks)
+**Honest limits**
 
-- Features (recent package): SPY RSI, VIX momentum, HYG/TLT, CPER/GLD, USO momentum  
-- Stationarize levels to rolling percentiles  
-- Cosine distance on z-scored features; adaptive K when vol is high  
-- Map neighbor returns → score in [-100, 100]  
-- Reliability grades A–F; **F → NO_TRADE**  
-- Dead zone around zero → FLAT  
+Not financial advice. Not a managed fund. `/track-record` lists settled next-session open-to-close results already stored with the scores. A session that has not settled is not on that page.
 
-Shared signal types live under `src/lib/signal/`. Crypto has a parallel path in `src/lib/crypto-bias/`.
-
-Check scripts (examples):
-
-```bash
-npm run verify:signal
-npm run verify:model
-npm run measure:quality
-```
-
-## Local dev
+## Run
 
 ```bash
 npm install
-cp .env.example .env.local   # fill secrets you actually need
+cp .env.example .env.local
 npm run dev
 ```
 
-Cron / publish routes expect secrets like `CRON_SECRET` (and whatever Supabase / data APIs you wire up). See `.env.example`.
-
-## Layout
-
-| Path | What |
-|------|------|
-| `src/app/` | pages + API routes (including crons) |
-| `src/lib/` | bias models, signal, billing, social |
-| `supabase/migrations/` | schema |
-| `scripts/` | one-off verification / ablations |
-
-## Honest limits
-
-- Research tooling + paper paths, not a managed fund.  
-- Model versions move; the README won’t always match every experiment folder.  
-- Marketing posts under `src/content/marketing/` are content for the product, not research claims.
-
-If a number looks too good or a route is broken, open an issue or yell at me.
+Fill the secrets in `.env.example` that you actually use: Supabase, the Stripe price ids, Resend, and `CRON_SECRET`.

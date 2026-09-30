@@ -9,12 +9,10 @@ import { getSupabaseBrowserClientConfigError } from "../lib/supabase/browser";
 const ADMIN_EMAIL = "finphillips21@gmail.com";
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/today", label: "Stocks" },
+  { href: "/crypto", label: "Crypto" },
   { href: "/track-record", label: "Track Record" },
-  { href: "/briefings", label: "Briefings" },
-  { href: "/regime", label: "Regime" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/refer", label: "Refer & Earn" },
 ] as const;
 
 export function SiteNav() {
@@ -47,9 +45,9 @@ export function SiteNav() {
               key={href}
               href={href}
               className="hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"
-              data-analytics-event={href === "/refer" ? "referral_cta_click" : "nav_link_click"}
+              data-analytics-event="nav_link_click"
               data-analytics-label={label}
-              data-analytics-location={href === "/refer" ? "site_nav" : "site_nav"}
+              data-analytics-location="site_nav"
             >
               {label}
             </Link>
@@ -66,13 +64,13 @@ export function SiteNav() {
             </Link>
           )}
           <Link
-            href="/emails"
+            href="/login"
             className="inline-flex items-center rounded-md bg-white/[0.04] px-3.5 py-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
             data-analytics-event="nav_cta_click"
-            data-analytics-label="Get Signals"
+            data-analytics-label="Sign in"
             data-analytics-location="site_nav"
           >
-            Get Signals
+            Sign in
           </Link>
           <button
             type="button"
@@ -102,7 +100,7 @@ export function SiteNav() {
                 href={href}
                 className="min-h-[44px] flex items-center text-[13px] font-medium text-zinc-400 transition hover:text-white"
                 onClick={() => setMobileMenuOpen(false)}
-                data-analytics-event={href === "/refer" ? "referral_cta_click" : "nav_link_click"}
+                data-analytics-event="nav_link_click"
                 data-analytics-label={label}
                 data-analytics-location="site_nav_mobile"
               >
@@ -122,14 +120,14 @@ export function SiteNav() {
               </Link>
             )}
             <Link
-              href="/emails"
+              href="/login"
               className="mt-2 mb-1 inline-flex min-h-[44px] items-center justify-center rounded-md bg-white/[0.04] px-3.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
               onClick={() => setMobileMenuOpen(false)}
               data-analytics-event="nav_cta_click"
-              data-analytics-label="Get Signals"
+              data-analytics-label="Sign in"
               data-analytics-location="site_nav_mobile"
             >
-              Get Signals
+              Sign in
             </Link>
           </div>
         </nav>

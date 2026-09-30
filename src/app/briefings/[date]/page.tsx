@@ -5,20 +5,20 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import {
-  getAllBriefingDates,
   getBriefingByDate,
   type PublicBriefingRow,
 } from "@/lib/briefing/get-public-briefing";
 import { DAILY_BRIEFING_SECTION_HEADERS } from "@/lib/briefing/daily-briefing-config";
+import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { getAppUrl } from "@/lib/server-env";
+import { LockedSession } from "@/components/product/LockedSession";
 
 
 
 const SITE_NAME = "Macro Bias";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export const dynamicParams = true;
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ date: string }>;
@@ -109,12 +109,20 @@ function getFreeTierContent(briefContent: string): string {
 function buildBriefingDescription(briefing: PublicBriefingRow) {
   const label = formatDisplayLabel(briefing.bias_label);
   const score = formatSignedScore(briefing.quant_score);
-  return `Macro Bias algo scored ${label} (${score}) on ${formatDisplayDate(briefing.briefing_date)}. Free daily regime briefing for day traders.`;
+  return `Macro Bias scored ${label} (${score}) on ${formatDisplayDate(briefing.briefing_date)}.`;
 }
 
-export async function generateStaticParams(): Promise<Array<{ date: string }>> {
-  const briefings = await getAllBriefingDates();
-  return briefings.map((b) => ({ date: b.briefing_date }));
+async function sessionIsLocked(date: string, tradeDate?: string | null) {
+  if (await viewerIsPaid()) {
+    return false;
+  }
+
+  const latest = await latestStoredTradeDate("stocks");
+  if (!latest) {
+    return false;
+  }
+
+  return date >= latest || (tradeDate != null && tradeDate >= latest);
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -131,8 +139,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const appUrl = getAppUrl().replace(/\/$/, "");
   const canonicalUrl = `${appUrl}/briefings/${date}`;
-  const title = `${formatDisplayLabel(briefing.bias_label)} (${formatSignedScore(briefing.quant_score)}) — ${formatDisplayDate(briefing.briefing_date)}`;
-  const description = buildBriefingDescription(briefing);
+  const locked = await sessionIsLocked(date, briefing.trade_date);
+  const title = locked
+    ? `Briefing ${formatDisplayDate(briefing.briefing_date)} | ${SITE_NAME}`
+    : `${formatDisplayLabel(briefing.bias_label)} (${formatSignedScore(briefing.quant_score)}) — ${formatDisplayDate(briefing.briefing_date)}`;
+  const description = locked
+    ? "This session's score is on the paid plan."
+    : buildBriefingDescription(briefing);
   const ogImageUrl = `${appUrl}/api/og?date=${date}`;
 
   return {
@@ -167,6 +180,10 @@ export default async function BriefingPage({ params }: PageProps) {
   const briefing = await getBriefingByDate(date);
   if (!briefing) {
     notFound();
+  }
+
+  if (await sessionIsLocked(date, briefing.trade_date)) {
+    return <LockedSession assetHref="/today" />;
   }
 
   const appUrl = getAppUrl().replace(/\/$/, "");
@@ -343,7 +360,7 @@ export default async function BriefingPage({ params }: PageProps) {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.18em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
-              href="/api/checkout?plan=monthly"
+              href="/pricing"
             >
               Start 7-Day Free Trial
             </Link>

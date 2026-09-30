@@ -2,18 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getAllBriefingDates } from "@/lib/briefing/get-public-briefing";
+import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { getAppUrl } from "@/lib/server-env";
 import { AssetToggle } from "@/components/AssetToggle";
-import { ReferralPromoCard } from "@/components/ReferralPromoCard";
 
 const SITE_URL = "https://macro-bias.com";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Daily Briefing Archive | Macro Bias",
   description:
-    "Browse the complete archive of daily macro regime briefings from the Macro Bias algo. Free previews of every session's score, overlay status, and sector playbook.",
+    "Archive of daily macro briefings. The latest session's score stays on the paid plan.",
   keywords: [
     "daily market briefing archive",
     "macro regime briefing",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Daily Briefing Archive | Macro Bias",
     description:
-      "Every daily macro regime briefing. Free previews of score, overlay status, and sector playbook.",
+      "Archive of daily macro briefings. The latest session's score stays on the paid plan.",
   },
 };
 
@@ -71,7 +71,11 @@ function getScoreColor(label: string) {
 }
 
 export default async function BriefingsArchivePage() {
-  const briefings = await getAllBriefingDates();
+  const [briefings, paid, latestTradeDate] = await Promise.all([
+    getAllBriefingDates(),
+    viewerIsPaid(),
+    latestStoredTradeDate("stocks"),
+  ]);
   const appUrl = getAppUrl().replace(/\/$/, "");
 
   const faqStructuredData = {
@@ -170,7 +174,10 @@ export default async function BriefingsArchivePage() {
             </div>
           )}
 
-          {briefings.map((b) => (
+          {briefings.map((b) => {
+            const hideScore = !paid && latestTradeDate != null && b.briefing_date >= latestTradeDate;
+
+            return (
             <Link
               key={b.briefing_date}
               href={`/briefings/${b.briefing_date}`}
@@ -181,24 +188,18 @@ export default async function BriefingsArchivePage() {
                   {formatShortDate(b.briefing_date)}
                 </span>
                 <span className="text-sm font-medium text-white">
-                  {formatDisplayLabel(b.bias_label)}
+                  {hideScore ? "Paid plan" : formatDisplayLabel(b.bias_label)}
                 </span>
               </div>
               <span
-                className={`font-[family:var(--font-data)] text-sm font-bold ${getScoreColor(b.bias_label)}`}
+                className={`font-[family:var(--font-data)] text-sm font-bold ${hideScore ? "text-zinc-500" : getScoreColor(b.bias_label)}`}
               >
-                {formatSignedScore(b.quant_score)}
+                {hideScore ? "Locked" : formatSignedScore(b.quant_score)}
               </span>
             </Link>
-          ))}
+            );
+          })}
         </div>
-
-        <ReferralPromoCard
-          className="mt-8"
-          ctaLabel="Get your referral link"
-          location="briefings_archive"
-          title="Use the archive? Invite other traders and earn Premium."
-        />
       </div>
     </main>
   );

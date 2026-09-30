@@ -293,7 +293,7 @@ export default async function RegimeIndexPage() {
             </Link>
             <Link
               className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
-              href="/api/checkout?plan=monthly"
+              href="/pricing"
             >
               Start 7-Day Free Trial
             </Link>

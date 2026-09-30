@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 const SITE_URL = "https://macro-bias.com";
 
 export const metadata: Metadata = {
-  title: "Pricing — Macro Bias | Daily Regime Signals for Traders",
+  title: "Pricing — Macro Bias",
   description:
-    "Start with a 7-day free trial. Get the daily macro regime score, full sector breakdown, historical pattern analysis, and crypto regime signals. $25/month or $190/year.",
+    "Free sees the previous session. Paid sees today's stock and crypto score, the grade, the size hint, and the morning email. Not financial advice.",
   keywords: [
     "macro bias pricing",
     "trading signal subscription",
@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     siteName: "Macro Bias",
     title: "Pricing — Macro Bias",
     description:
-      "7-day free trial. Daily macro regime score, sector breakdown, pattern analysis, and crypto signals. From $25/month.",
+      "Free sees the previous session. Paid sees today's score, grade, size hint, and morning email.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Pricing — Macro Bias",
     description:
-      "7-day free trial. Daily macro + crypto regime signals from $25/month.",
+      "Today's stock and crypto score for subscribers. Not financial advice.",
   },
 };
 

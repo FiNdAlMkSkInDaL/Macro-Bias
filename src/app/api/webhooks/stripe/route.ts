@@ -217,6 +217,10 @@ async function buildCheckoutSessionSyncInput(session: Stripe.Checkout.Session): 
     ? await stripe.subscriptions.retrieve(subscriptionId)
     : null;
 
+  if (!subscription) {
+    throw new Error('Checkout session completed without a subscription. Access was not granted.');
+  }
+
   return {
     customerId,
     email:
@@ -224,7 +228,7 @@ async function buildCheckoutSessionSyncInput(session: Stripe.Checkout.Session): 
       session.customer_email ??
       (await getStripeCustomerEmail(customerId)),
     subscriptionId,
-    subscriptionStatus: subscription?.status ?? 'active',
+    subscriptionStatus: subscription.status,
     userId:
       getMetadataUserId(session.metadata) ??
       getMetadataUserId(subscription?.metadata) ??
@@ -240,11 +244,35 @@ async function buildInvoiceSyncInput(invoice: Stripe.Invoice): Promise<BillingSy
     ? await stripe.subscriptions.retrieve(subscriptionId)
     : null;
 
+  if (!subscription) {
+    throw new Error('Invoice has no subscription. Access was not changed.');
+  }
+
   return {
     customerId,
     email: invoice.customer_email ?? (await getStripeCustomerEmail(customerId)),
     subscriptionId,
-    subscriptionStatus: 'active',
+    subscriptionStatus: subscription.status,
+    userId: getInvoiceMetadataUserId(invoice) ?? getMetadataUserId(subscription.metadata),
+  };
+}
+
+async function buildFailedPaymentSyncInput(invoice: Stripe.Invoice): Promise<BillingSyncInput> {
+  const subscriptionId = getInvoiceSubscriptionId(invoice);
+  const customerId = getCustomerId(invoice.customer);
+  const stripe = getStripeClient();
+  const subscription = subscriptionId
+    ? await stripe.subscriptions.retrieve(subscriptionId)
+    : null;
+  const retrievedStatus = subscription?.status;
+  const subscriptionStatus: Stripe.Subscription.Status =
+    retrievedStatus && !isEntitledStatus(retrievedStatus) ? retrievedStatus : 'past_due';
+
+  return {
+    customerId,
+    email: invoice.customer_email ?? (await getStripeCustomerEmail(customerId)),
+    subscriptionId,
+    subscriptionStatus,
     userId: getInvoiceMetadataUserId(invoice) ?? getMetadataUserId(subscription?.metadata),
   };
 }
@@ -292,6 +320,11 @@ export async function POST(request: Request) {
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
         await syncBillingAccess(await buildInvoiceSyncInput(invoice));
+        break;
+      }
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        await syncBillingAccess(await buildFailedPaymentSyncInput(invoice));
         break;
       }
       case 'customer.subscription.created':

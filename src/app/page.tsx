@@ -1,628 +1,73 @@
-"use client";
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
-import type { FormEvent } from "react";
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { ScoreCard } from '@/components/product/ScoreCard';
+import { getViewerScore } from '@/lib/product/score-access';
 
-import { trackClientEvent } from "../lib/analytics/client";
-import { useReferralCode } from "../lib/referral/client";
-import {
-  createSupabaseBrowserClient,
-  getMissingSupabasePublicEnvVars,
-  getSupabaseBrowserClientConfigError,
-} from "../lib/supabase/browser";
+export const dynamic = 'force-dynamic';
 
-type AuthMode = "signin" | "signup";
-type EmailSignupState = "idle" | "loading" | "success" | "error";
-
-type Credentials = {
-  email: string;
-  password: string;
+type HomePageProps = {
+  searchParams: Promise<{ authError?: string; checkout?: string; redirectTo?: string }>;
 };
 
-const heroStats = [
-  {
-    label: "What you get",
-    value: "Daily regime + size cue",
-  },
-  {
-    label: "Built for",
-    value: "Context, not autopilot",
-  },
-  {
-    label: "Price",
-    value: "$25/mo — stocks + crypto",
-  },
-] as const;
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = await searchParams;
 
-const quantPillars = [
-  {
-    symbol: "^VIX",
-    title: "Volatility",
-    details: [
-      "Measures market stress vs. stability.",
-      "Identifies when to press momentum and when to reduce position sizing.",
-    ],
-  },
-  {
-    symbol: "HYG vs TLT",
-    title: "Credit Spreads",
-    details: [
-      "Tracks smart-money rotation.",
-      "Detects defensive bond demand before equity markets price in the risk-off shift.",
-    ],
-  },
-  {
-    symbol: "SPY RSI / SMA",
-    title: "Trend",
-    details: [
-      "Quantifies structural momentum.",
-      "Prevents you from forcing directional conviction into a broken or mixed tape.",
-    ],
-  },
-] as const;
+  if (params.redirectTo || params.authError) {
+    const loginParams = new URLSearchParams();
 
-function sanitizeRedirectPath(rawRedirectPath: string | null): string {
-  if (
-    !rawRedirectPath ||
-    !rawRedirectPath.startsWith("/") ||
-    rawRedirectPath.startsWith("//")
-  ) {
-    return "/dashboard";
-  }
-
-  return rawRedirectPath;
-}
-
-function getSubmitLabel(
-  mode: AuthMode,
-  isSubmitting: boolean,
-  isRedirecting: boolean,
-) {
-  if (isRedirecting) {
-    return "Routing you in";
-  }
-
-  if (isSubmitting) {
-    return mode === "signin" ? "Signing in" : "Creating account";
-  }
-
-  return mode === "signin" ? "Sign in to Dashboard" : "Create your account";
-}
-
-export default function HomePage() {
-  const browserClientConfigError = getSupabaseBrowserClientConfigError();
-  const missingPublicEnvVars = getMissingSupabasePublicEnvVars();
-  const [supabase] = useState(() =>
-    browserClientConfigError ? null : createSupabaseBrowserClient(),
-  );
-  const [authMode, setAuthMode] = useState<AuthMode>("signin");
-  const [credentials, setCredentials] = useState<Credentials>({
-    email: "",
-    password: "",
-  });
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [redirectPath, setRedirectPath] = useState("/dashboard");
-  const [isRedirecting, startTransition] = useTransition();
-  const router = useRouter();
-
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [newsletterState, setNewsletterState] = useState<EmailSignupState>("idle");
-  const [newsletterMessage, setNewsletterMessage] = useState<string | null>(null);
-  const refCode = useReferralCode();
-
-  async function handleNewsletterSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (newsletterState === "loading") return;
-
-    setNewsletterState("loading");
-    setNewsletterMessage(null);
-
-    try {
-      const response = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: newsletterEmail,
-          pagePath: window.location.pathname,
-          stocksOptedIn: true,
-          cryptoOptedIn: true,
-          ref: refCode,
-        }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null;
-
-      if (!response.ok) {
-        throw new Error(payload?.error ?? "Unable to subscribe.");
-      }
-
-      setNewsletterState("success");
-      setNewsletterMessage("You're in. First briefing arrives before the next open.");
-      trackClientEvent({
-        eventName: "email_signup_success",
-        metadata: {
-          location: "landing_hero",
-        },
-      });
-      setNewsletterEmail("");
-    } catch (error) {
-      setNewsletterState("error");
-      setNewsletterMessage(
-        error instanceof Error ? error.message : "Unable to subscribe.",
-      );
-      trackClientEvent({
-        eventName: "email_signup_failure",
-        metadata: {
-          location: "landing_hero",
-          message: error instanceof Error ? error.message : "Unable to subscribe.",
-        },
-      });
-    }
-  }
-
-  useEffect(() => {
-    if (!supabase) {
-      return;
+    if (params.redirectTo) {
+      loginParams.set('redirectTo', params.redirectTo);
     }
 
-    const urlSearchParams = new URLSearchParams(window.location.search);
-    const resolvedRedirectPath = sanitizeRedirectPath(
-      urlSearchParams.get("redirectTo"),
-    );
-    const callbackError = urlSearchParams.get("authError");
-
-    setRedirectPath(resolvedRedirectPath);
-
-    if (callbackError) {
-      setErrorMessage(callbackError);
+    if (params.authError) {
+      loginParams.set('authError', params.authError);
     }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session?.user) {
-        startTransition(() => {
-          router.replace(resolvedRedirectPath);
-          router.refresh();
-        });
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
-
-  function updateField(field: keyof Credentials, value: string) {
-    setCredentials((currentCredentials) => ({
-      ...currentCredentials,
-      [field]: value,
-    }));
+    redirect(`/login?${loginParams.toString()}`);
   }
 
-  function switchAuthMode(mode: AuthMode) {
-    setAuthMode(mode);
-    setErrorMessage(null);
-    setStatusMessage(null);
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!supabase) {
-      setErrorMessage(
-        browserClientConfigError ??
-          "Supabase browser authentication is not configured for this deployment.",
-      );
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setStatusMessage(null);
-    trackClientEvent({
-      eventName: authMode === "signin" ? "auth_signin_started" : "auth_signup_started",
-      metadata: {
-        redirectPath,
-      },
-    });
-
-    try {
-      if (authMode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword(credentials);
-
-        if (error) {
-          throw error;
-        }
-
-        setStatusMessage("Authentication complete. Routing you to your dashboard.");
-        trackClientEvent({
-          eventName: "auth_signin_success",
-          metadata: {
-            redirectPath,
-          },
-        });
-        startTransition(() => {
-          router.replace(redirectPath);
-          router.refresh();
-        });
-        return;
-      }
-
-      const emailRedirectUrl = new URL("/auth/callback", window.location.origin);
-      emailRedirectUrl.searchParams.set("redirectTo", redirectPath);
-
-      const { data, error } = await supabase.auth.signUp({
-        email: credentials.email,
-        password: credentials.password,
-        options: {
-          emailRedirectTo: emailRedirectUrl.toString(),
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.session?.user) {
-        setStatusMessage("Account created. Routing you to your dashboard.");
-        trackClientEvent({
-          eventName: "auth_signup_success",
-          metadata: {
-            redirectPath,
-          },
-        });
-        startTransition(() => {
-          router.replace(redirectPath);
-          router.refresh();
-        });
-        return;
-      }
-
-      setStatusMessage(
-        "Account created. Check your email to verify your account, and the confirmation link will sign you in and send you straight to the dashboard.",
-      );
-      trackClientEvent({
-        eventName: "auth_signup_verification_pending",
-        metadata: {
-          redirectPath,
-        },
-      });
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Authentication failed. Please try again.",
-      );
-      trackClientEvent({
-        eventName: authMode === "signin" ? "auth_signin_failure" : "auth_signup_failure",
-        metadata: {
-          message: error instanceof Error ? error.message : "Authentication failed. Please try again.",
-          redirectPath,
-        },
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  const [stocks, crypto] = await Promise.all([getViewerScore('stocks'), getViewerScore('crypto')]);
+  const paid = Boolean(stocks?.paid || crypto?.paid);
 
   return (
-    <main className="min-h-screen font-sans">
-      <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-10">
-
-        <section
-          id="top"
-          className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-16 sm:py-24 text-center"
-        >
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            [ Live Macro Regime Engine ]
-          </p>
-          <h1 className="mt-8 max-w-5xl text-balance font-[family:var(--font-heading)] text-5xl font-bold tracking-tighter text-white md:text-7xl xl:text-[5.75rem]">
-            Trade with the weather. Not against it.
-          </h1>
-          <p className="mt-6 max-w-3xl text-balance text-lg leading-8 text-zinc-300 md:text-xl">
-            Macro Bias gives you a fast daily market read before the open. Get the
-            score, the day type, and the trust check before you place a trade.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a
-              className="inline-flex w-full sm:w-auto sm:min-w-[220px] items-center justify-center rounded-md bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
-              href="#free-briefing"
-              data-analytics-event="landing_cta_click"
-              data-analytics-label="Get Free Daily Briefing"
-              data-analytics-location="landing_hero"
-            >
-              Get the Free Daily Briefing
-            </a>
-            <a
-              className="inline-flex w-full sm:w-auto sm:min-w-[220px] items-center justify-center rounded-md bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06] hover:text-white"
-              href="/today"
-              data-analytics-event="landing_cta_click"
-              data-analytics-label="See Today's Read"
-              data-analytics-location="landing_hero"
-            >
-              See Today's Read
-            </a>
-          </div>
-
-          <div id="free-briefing" className="mt-10 w-full max-w-xl">
-            <p className="mb-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Free Daily Briefing - No Account Required ]
-            </p>
-            <form
-              className="flex flex-col gap-3 sm:flex-row"
-              onSubmit={handleNewsletterSubmit}
-            >
-              <label className="sr-only" htmlFor="newsletter-email">
-                Email address
-              </label>
-              <input
-                id="newsletter-email"
-                type="email"
-                required
-                autoComplete="email"
-                inputMode="email"
-                placeholder="you@example.com"
-                value={newsletterEmail}
-                onChange={(event) => setNewsletterEmail(event.target.value)}
-                className="h-12 flex-1 border border-zinc-800 bg-zinc-950 px-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-              />
-              <button
-                type="submit"
-                disabled={newsletterState === "loading"}
-                className="h-12 border border-white/20 bg-white/5 px-5 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {newsletterState === "loading" ? "Adding..." : "Get Free Alerts"}
-              </button>
-            </form>
-            <p
-              className={`mt-2 text-center text-xs ${
-                newsletterState === "error"
-                  ? "text-red-400"
-                  : newsletterState === "success"
-                    ? "text-emerald-400"
-                    : "text-zinc-600"
-              }`}
-              aria-live="polite"
-            >
-              {newsletterMessage ?? "Free every morning: the score, the day type, and whether to trust it. Stocks and crypto. Unsubscribe anytime."}
-            </p>
-            <p className="mt-2 text-center text-xs text-zinc-500">
-              Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
-              <a
-                href="/refer"
-                className="text-sky-400 underline"
-                data-analytics-event="referral_cta_click"
-                data-analytics-label="Landing Hero Referral Teaser"
-                data-analytics-location="landing_hero"
-              >
-                See referral rewards
-              </a>
-            </p>
-            {newsletterState === "success" && (
-              <p className="mt-2 text-center text-xs text-zinc-500">
-                Invite 3 traders, unlock 7 days of Premium {"->"}{" "}
-                <a
-                  href="/refer"
-                  className="text-sky-400 underline"
-                  data-analytics-event="referral_cta_click"
-                  data-analytics-label="Landing Signup Success"
-                  data-analytics-location="landing_hero"
-                >
-                  See referral program
-                </a>
-              </p>
-            )}
-          </div>
-
-          <div className="mt-16 grid w-full max-w-5xl gap-8 border-y border-white/10 py-6 sm:grid-cols-3">
-            {heroStats.map((stat) => (
-              <div key={stat.label} className="text-left sm:text-center">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  {stat.label}
-                </p>
-                <p className="mt-3 text-base font-medium text-white md:text-lg">
-                  {stat.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="the-edge" className="py-16 sm:py-24">
-          <div className="max-w-3xl">
-            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              The Edge
-            </p>
-            <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-              Three inputs that tell you what kind of day you are in.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              We turn cross-asset data into one simple morning read, so you can size up on the right days and stay out of trouble on the wrong ones.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-14 md:grid-cols-3 lg:gap-10">
-            {quantPillars.map((pillar) => (
-              <article key={pillar.title} className="border-t border-white/10 pt-6">
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-300/70">
-                  {pillar.symbol}
-                </p>
-                <h3 className="mt-5 font-[family:var(--font-heading)] text-2xl font-semibold tracking-tight text-white">
-                  {pillar.title}
-                </h3>
-                <ul className="mt-6 space-y-3">
-                  {pillar.details.map((detail) => (
-                    <li
-                      key={detail}
-                      className="flex gap-3 text-sm leading-7 text-zinc-300"
-                    >
-                      <span className="mt-[0.72rem] block h-px w-3 flex-none bg-zinc-600" />
-                      <span>{detail}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="auth-console" className="border-t border-white/10 py-16 sm:py-24">
-          <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-            <div className="max-w-3xl">
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                Already using Macro Bias?
-              </p>
-              <h2 className="mt-5 max-w-4xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-tighter text-white md:text-5xl">
-                Sign in to the dashboard.
-              </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-                The free email is the first step. If you already have an account, the dashboard gives you the fuller session context, historical analogs, and the live terminal view.
-              </p>
-            </div>
-
-            <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 sm:p-10">
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                    Sign In / Create Account
-                  </p>
-                  <h3 className="mt-4 font-[family:var(--font-heading)] text-2xl font-semibold tracking-tight text-white">
-                    Secure access
-                  </h3>
-                </div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-300/70">
-                  Live auth
-                </p>
-              </div>
-
-              <div className="mt-8 flex gap-6 border-b border-white/10">
-                <button
-                  className={`relative pb-4 text-sm font-medium transition ${
-                    authMode === "signin"
-                      ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-white"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                  onClick={() => switchAuthMode("signin")}
-                  type="button"
-                >
-                  Sign in
-                </button>
-                <button
-                  className={`relative pb-4 text-sm font-medium transition ${
-                    authMode === "signup"
-                      ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-white"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                  onClick={() => switchAuthMode("signup")}
-                  type="button"
-                >
-                  Create account
-                </button>
-              </div>
-
-              <p className="mt-6 text-sm leading-7 text-zinc-400">
-                {authMode === "signin"
-                  ? "View the dashboard, historical analogs, and the fuller session context."
-                  : "Create access to the dashboard and daily regime data feed."}
-              </p>
-
-              {browserClientConfigError ? (
-                <div className="mt-8 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-sm leading-6 text-amber-100">
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-amber-200/80">
-                    Deployment configuration error
-                  </p>
-                  <p className="mt-3">{browserClientConfigError}</p>
-                  <div className="mt-4 space-y-1 font-[family:var(--font-data)] text-[11px] text-amber-100/90">
-                    {missingPublicEnvVars.map((name) => (
-                      <p key={name}>{name}</p>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              <form className="mt-8 space-y-7" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <label
-                    className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500"
-                    htmlFor="email"
-                  >
-                    Email
-                  </label>
-                  <div className="border-b border-white/10 transition-colors focus-within:border-white/40">
-                    <input
-                      autoComplete="email"
-                      className="w-full bg-transparent px-0 py-3 text-base text-white outline-none placeholder:text-zinc-600"
-                      id="email"
-                      onChange={(event) => updateField("email", event.target.value)}
-                      placeholder="you@macro-bias.com"
-                      required
-                      type="email"
-                      value={credentials.email}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500"
-                    htmlFor="password"
-                  >
-                    Password
-                  </label>
-                  <div className="border-b border-white/10 transition-colors focus-within:border-white/40">
-                    <input
-                      autoComplete={
-                        authMode === "signin" ? "current-password" : "new-password"
-                      }
-                      className="w-full bg-transparent px-0 py-3 text-base text-white outline-none placeholder:text-zinc-600"
-                      id="password"
-                      minLength={8}
-                      onChange={(event) => updateField("password", event.target.value)}
-                      placeholder="Minimum 8 characters"
-                      required
-                      type="password"
-                      value={credentials.password}
-                    />
-                  </div>
-                </div>
-
-                {statusMessage ? (
-                  <div
-                    className="rounded-xl bg-emerald-500/[0.08] px-4 py-3 text-sm leading-6 text-emerald-50"
-                    role="status"
-                  >
-                    {statusMessage}
-                  </div>
-                ) : null}
-
-                {errorMessage ? (
-                  <div
-                    className="rounded-xl bg-rose-500/[0.08] px-4 py-3 text-sm leading-6 text-rose-100"
-                    role="alert"
-                  >
-                    {errorMessage}
-                  </div>
-                ) : null}
-
-                <button
-                  className="inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-500"
-                  disabled={isSubmitting || isRedirecting || !supabase}
-                  type="submit"
-                >
-                  {getSubmitLabel(authMode, isSubmitting, isRedirecting)}
-                </button>
-              </form>
-            </section>
-          </div>
-        </section>
+    <main className="mx-auto max-w-5xl px-6 py-12 sm:px-8">
+      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+        Macro Bias
+      </p>
+      <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+        The morning score.
+      </h1>
+      <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
+        A number from -100 to +100, then a permission: LONG, SHORT, FLAT, or NO_TRADE. Grade A–F.
+        F means NO_TRADE. A dead zone around zero means FLAT. Not a price target. Not financial advice.
+      </p>
+      {params.checkout === 'success' && (
+        <p className="mt-6 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          Stripe accepted the subscription. Today&apos;s score shows once the webhook grants access. Refresh if it is still the previous session.
+        </p>
+      )}
+      {params.checkout === 'active' && (
+        <p className="mt-6 border border-white/10 px-4 py-3 text-sm text-zinc-300">
+          This account already has an active subscription.
+        </p>
+      )}
+      <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <ScoreCard title="Stocks" href="/today" score={stocks} />
+        <ScoreCard title="Crypto" href="/crypto" score={crypto} />
+      </div>
+      <div className="mt-8 flex flex-wrap gap-4 text-sm">
+        {paid ? (
+          <p className="text-zinc-400">The morning email goes to the address on the subscription.</p>
+        ) : (
+          <Link href="/pricing" className="bg-white px-4 py-2 font-semibold text-black">
+            Pricing
+          </Link>
+        )}
+        <Link href="/login" className="border border-white/15 px-4 py-2 text-zinc-200">
+          Sign in
+        </Link>
       </div>
     </main>
   );
 }
-

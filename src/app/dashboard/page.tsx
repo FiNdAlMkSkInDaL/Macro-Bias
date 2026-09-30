@@ -10,7 +10,6 @@ import { AssetToggle } from "../../components/AssetToggle";
 import { getUserSubscriptionStatus, isSubscriptionActive } from "../../lib/billing/subscription";
 import type { BiasLabel } from "../../lib/macro-bias/types";
 import { getAppUrl } from "../../lib/server-env";
-import { getStocksPublishedLiveEval } from "../../lib/track-record/published-score-live-eval";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
 
 export const dynamic = "force-dynamic";
@@ -506,7 +505,7 @@ async function getRequestBaseUrl() {
   return getAppUrl();
 }
 
-async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
+async function getDashboardData(baseUrl: string, cookieHeader: string | null): Promise<DashboardDataResult> {
   const emptyBiasData: BiasData = {
     biasScore: 0,
     assets: [],
@@ -517,6 +516,7 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
       cache: "no-store",
       headers: {
         Accept: "application/json",
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
       },
     });
     const payload = (await response.json().catch(() => null)) as LatestBiasResponse | null;
@@ -579,14 +579,14 @@ async function getDashboardData(baseUrl: string): Promise<DashboardDataResult> {
 export default async function DashboardPage() {
   noStore();
 
-  const [baseUrl, { isPro, subscriptionStatus, user }, supplementalCrossAssetMapAssets, liveEval] =
+  const [baseUrl, { isPro, subscriptionStatus, user }, supplementalCrossAssetMapAssets, headerStore] =
     await Promise.all([
       getRequestBaseUrl(),
       getUserSubscriptionStatus(),
       getSupplementalCrossAssetMapAssets(),
-      getStocksPublishedLiveEval().catch(() => null),
+      headers(),
     ]);
-  const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl);
+  const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl, headerStore.get("cookie"));
   const isProUser = isSubscriptionActive(subscriptionStatus);
   const shouldRenderManageSubscription = isPro;
   const regime = getBiasRegime(biasData.biasScore);
@@ -780,68 +780,6 @@ export default async function DashboardPage() {
             <p className="col-span-2 text-sm leading-6 text-zinc-400 sm:col-span-4">
               {tradableSignal.reason}
             </p>
-          </section>
-        ) : null}
-
-        {liveEval && liveEval.totalGraded > 0 ? (
-          <section className="border-b border-white/5 py-4">
-            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-emerald-400/80">
-              Live accuracy · published scores only
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Next-session hit
-                </p>
-                <p className="mt-1 text-base font-semibold text-white">
-                  {liveEval.forwardHitRate !== null
-                    ? `${liveEval.forwardHitRate.toFixed(1)}%`
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Graded sessions
-                </p>
-                <p className="mt-1 text-base font-semibold text-white">
-                  {liveEval.totalGraded}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Avg when LONG
-                </p>
-                <p className="mt-1 text-base font-semibold text-emerald-400">
-                  {liveEval.avgReturnLong !== null
-                    ? `${liveEval.avgReturnLong > 0 ? "+" : ""}${liveEval.avgReturnLong.toFixed(3)}%`
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Avg when SHORT
-                </p>
-                <p className="mt-1 text-base font-semibold text-rose-400">
-                  {liveEval.avgReturnShort !== null
-                    ? `${liveEval.avgReturnShort > 0 ? "+" : ""}${liveEval.avgReturnShort.toFixed(3)}%`
-                    : "—"}
-                </p>
-              </div>
-            </div>
-            {liveEval.reliabilityBuckets.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {liveEval.reliabilityBuckets.map((bucket) => (
-                  <span
-                    key={bucket.reliability}
-                    className="rounded border border-white/10 px-2 py-1 font-[family:var(--font-data)] text-[10px] text-zinc-400"
-                  >
-                    Rel {bucket.reliability}:{" "}
-                    {bucket.hitRate !== null ? `${bucket.hitRate.toFixed(0)}%` : "—"} hit ·{" "}
-                    {bucket.sessions}n
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </section>
         ) : null}
 
@@ -1104,7 +1042,7 @@ export default async function DashboardPage() {
                 </section>
               </div>
             ) : (
-              <PaywallWrapper initialIsPro={false} userId={user?.id ?? null}>
+              <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
                 <div aria-hidden="true" className="space-y-4 md:space-y-6">
                   <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
                     <section className={`${moduleClassName} h-full`}>
@@ -1346,7 +1284,7 @@ export default async function DashboardPage() {
             </section>
           </div>
           ) : (
-          <PaywallWrapper initialIsPro={false} userId={user?.id ?? null}>
+          <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
           <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
             <section className={footerModuleClassName}>
               <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">

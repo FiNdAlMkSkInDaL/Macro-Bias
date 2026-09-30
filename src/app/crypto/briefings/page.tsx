@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AssetToggle } from "@/components/AssetToggle";
 
 const SITE_URL = "https://macro-bias.com";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Crypto Briefing Archive | Macro Bias",
@@ -77,7 +78,11 @@ async function getAllCryptoBriefingDates(): Promise<CryptoBriefingRow[]> {
 }
 
 export default async function CryptoBriefingsPage() {
-  const briefings = await getAllCryptoBriefingDates();
+  const [briefings, paid, latestTradeDate] = await Promise.all([
+    getAllCryptoBriefingDates(),
+    viewerIsPaid(),
+    latestStoredTradeDate("crypto"),
+  ]);
 
   return (
     <main className="min-h-screen font-[family:var(--font-heading)]">
@@ -101,7 +106,10 @@ export default async function CryptoBriefingsPage() {
         {briefings.length > 0 ? (
           <section className="mt-6 border border-white/10 bg-zinc-950">
             <div className="divide-y divide-white/5">
-              {briefings.map((b) => (
+              {briefings.map((b) => {
+                const hideScore = !paid && latestTradeDate != null && b.trade_date >= latestTradeDate;
+
+                return (
                 <Link
                   key={b.trade_date}
                   href={`/crypto/briefings/${b.trade_date}`}
@@ -111,7 +119,7 @@ export default async function CryptoBriefingsPage() {
                     <span className="font-[family:var(--font-data)] text-xs text-zinc-400">
                       {formatShortDate(b.trade_date)}
                     </span>
-                    {b.is_override_active && (
+                    {!hideScore && b.is_override_active && (
                       <span className="rounded bg-orange-500/20 px-1.5 py-0.5 font-[family:var(--font-data)] text-[9px] uppercase tracking-wider text-orange-400">
                         Override
                       </span>
@@ -119,16 +127,17 @@ export default async function CryptoBriefingsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-[family:var(--font-data)] text-[10px] uppercase tracking-widest text-zinc-600">
-                      {b.bias_label.replace(/_/g, " ")}
+                      {hideScore ? "Paid plan" : b.bias_label.replace(/_/g, " ")}
                     </span>
                     <span
-                      className={`font-[family:var(--font-data)] text-sm font-bold ${getScoreColor(b.bias_label)}`}
+                      className={`font-[family:var(--font-data)] text-sm font-bold ${hideScore ? "text-zinc-500" : getScoreColor(b.bias_label)}`}
                     >
-                      {formatSignedScore(b.score)}
+                      {hideScore ? "Locked" : formatSignedScore(b.score)}
                     </span>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </section>
         ) : (
