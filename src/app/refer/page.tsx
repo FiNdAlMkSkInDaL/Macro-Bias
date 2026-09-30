@@ -28,12 +28,14 @@ export default async function ReferPage() {
   const { isPro, user } = await getUserSubscriptionStatus();
   const email = user?.email?.trim().toLowerCase() ?? null;
   const result = email ? await loadReferralHub(email, { proOverride: isPro }) : null;
+  const signedInFreeWithoutHub = Boolean(email && !isPro && result && !result.ok);
 
   return (
     <ReferPageClient
       initialEmail={email}
-      initialError={result && !result.ok ? result.error : null}
+      initialError={result && !result.ok && !signedInFreeWithoutHub ? result.error : null}
       initialHub={result && result.ok ? result.hub : null}
+      initialUpsell={signedInFreeWithoutHub}
     />
   );
 }

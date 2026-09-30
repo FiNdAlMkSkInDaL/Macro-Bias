@@ -37,6 +37,7 @@ type ReferPageClientProps = {
   initialEmail?: string | null;
   initialError?: string | null;
   initialHub?: ReferralStatus | null;
+  initialUpsell?: boolean;
 };
 
 function buildInviteMessage(referralLink: string) {
@@ -73,12 +74,14 @@ export default function ReferPageClient({
   initialEmail = null,
   initialError = null,
   initialHub = null,
+  initialUpsell = false,
 }: ReferPageClientProps) {
   const [email, setEmail] = useState(initialEmail ?? "");
   const [loadState, setLoadState] = useState<LoadState>(
     initialHub ? "loaded" : initialError ? "error" : "idle",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
+  const [upsell, setUpsell] = useState(initialUpsell);
   const [data, setData] = useState<ReferralStatus | null>(initialHub);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
@@ -103,10 +106,19 @@ export default function ReferPageClient({
       );
       const payload = await response.json();
 
+      if (payload?.upsell) {
+        setData(null);
+        setUpsell(true);
+        setErrorMessage(null);
+        setLoadState("idle");
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(payload?.error ?? "Unable to load referral status.");
       }
 
+      setUpsell(false);
       setData(payload as ReferralStatus);
       setLoadState("loaded");
       trackClientEvent({
@@ -246,6 +258,29 @@ export default function ReferPageClient({
         <p className="mt-3 text-center text-xs text-zinc-600">
           Use the same email address you subscribed with.
         </p>
+
+        {upsell && (
+          <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 text-center">
+            <p className="text-sm leading-6 text-zinc-300">
+              This account does not have a referral link yet. A link is created for a free-alert subscriber.
+              Alerts for this login are on the account page. Paid plans are on the pricing page.
+            </p>
+            <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/account"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-md bg-white px-5 text-sm font-semibold text-black"
+              >
+                Account alerts
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-white/15 px-5 text-sm font-semibold text-white"
+              >
+                See plans
+              </Link>
+            </div>
+          </div>
+        )}
 
         {errorMessage && (
           <p className="mt-3 text-center text-sm text-red-400">{errorMessage}</p>
