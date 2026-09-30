@@ -48,6 +48,22 @@ export function SiteNav() {
     };
   }, []);
 
+  async function handleSignOut() {
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      document.cookie.split(";").forEach((cookie) => {
+        const name = cookie.split("=")[0]?.trim();
+        if (name?.startsWith("sb-") && name.includes("-auth-token")) {
+          document.cookie = `${name}=; Max-Age=0; path=/`;
+        }
+      });
+    }
+
+    window.location.assign("/");
+  }
+
   return (
     <header className="border-b border-white/10">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10">
@@ -60,7 +76,7 @@ export function SiteNav() {
         >
           Macro Bias
         </Link>
-        <nav className="flex items-center gap-5 sm:gap-6">
+        <nav className="flex items-center gap-2 sm:gap-6">
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}
@@ -97,13 +113,24 @@ export function SiteNav() {
           )}
           <Link
             href={accountHref}
-            className="inline-flex items-center rounded-md bg-white/[0.04] px-3.5 py-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-white/[0.04] px-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white sm:px-3.5"
             data-analytics-event="nav_cta_click"
             data-analytics-label={accountLabel}
             data-analytics-location="site_nav"
           >
             {accountLabel}
           </Link>
+          {signedIn ? (
+            <button
+              type="button"
+              onClick={() => {
+                void handleSignOut();
+              }}
+              className="inline-flex min-h-[44px] items-center px-1 text-[13px] font-medium text-zinc-300 transition hover:text-white sm:px-2"
+            >
+              Sign out
+            </button>
+          ) : null}
           <button
             type="button"
             className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white sm:hidden"

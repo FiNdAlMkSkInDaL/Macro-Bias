@@ -53,6 +53,19 @@ function getForecastCopy(biasLabel: BiasLabel | null | undefined, regime: Regime
   }
 }
 
+function formatStoredTradeDate(tradeDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tradeDate)) {
+    return tradeDate;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${tradeDate}T00:00:00Z`));
+}
+
 function formatMove(value: number | null): string {
   if (value === null) {
     return "Pending";
@@ -69,12 +82,14 @@ export function DashboardTop({
   biasScore,
   hasScore,
   note,
+  tradeDate,
 }: {
   assets: DashboardTapeAsset[];
   biasLabel?: BiasLabel | null;
   biasScore: number;
   hasScore: boolean;
   note?: string | null;
+  tradeDate?: string | null;
 }) {
   const regime = getBiasRegime(biasScore);
   const sortedAssets = [...assets].sort(
@@ -92,6 +107,11 @@ export function DashboardTop({
     <div className="grid min-w-0 grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
       <section className={`${moduleClassName} overflow-hidden`}>
         <div className="mx-auto w-full max-w-[17rem] min-[360px]:max-w-full md:mx-0 md:max-w-none">
+          {tradeDate ? (
+            <p className="mb-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+              Trade date {formatStoredTradeDate(tradeDate)}
+            </p>
+          ) : null}
           {hasScore ? (
             <BiasGauge biasScore={biasScore} />
           ) : (
