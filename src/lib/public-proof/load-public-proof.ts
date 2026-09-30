@@ -1,6 +1,9 @@
 import 'server-only';
 
+import { getLatestBiasSnapshot } from '../market-data/get-latest-bias-snapshot';
+import type { BiasLabel } from '../macro-bias/types';
 import { createSupabaseAdminClient } from '../supabase/admin';
+import { CORE_ASSET_TICKERS, type AssetTicker } from '../../types';
 import { asFiniteNumber, extractBottomLine, extractDayType } from './format';
 
 export type StoredStockScore = {
@@ -27,10 +30,70 @@ export type BriefingCall = {
   bottomLine: string;
 };
 
+export type RegimeAsset = {
+  ticker: AssetTicker;
+  dailyChangePercent: number;
+};
+
+export type LatestRegimeRead = {
+  tradeDate: string;
+  score: number;
+  biasLabel: BiasLabel;
+  assets: RegimeAsset[];
+};
+
 export type Loaded<T> = {
   value: T | null;
   error: string | null;
 };
+
+const BIAS_LABELS = new Set<BiasLabel>([
+  'EXTREME_RISK_OFF',
+  'RISK_OFF',
+  'NEUTRAL',
+  'RISK_ON',
+  'EXTREME_RISK_ON',
+]);
+
+function isBiasLabel(value: unknown): value is BiasLabel {
+  return typeof value === 'string' && BIAS_LABELS.has(value as BiasLabel);
+}
+
+function readCoreAssets(tickerChanges: unknown): RegimeAsset[] {
+  if (!tickerChanges || typeof tickerChanges !== 'object') {
+    return [];
+  }
+
+  const changes = tickerChanges as Record<string, unknown>;
+
+  return CORE_ASSET_TICKERS.flatMap((ticker) => {
+    const change = changes[ticker];
+
+    if (!change || typeof change !== 'object') {
+      return [];
+    }
+
+    const dailyChangePercent = asFiniteNumber((change as { percentChange?: unknown }).percentChange);
+
+    if (dailyChangePercent == null) {
+      return [];
+    }
+
+    return [{ ticker, dailyChangePercent }];
+  });
+}
+
+function thrownMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return '';
+}
 
 const SCORE_LIMIT = 80;
 
@@ -81,6 +144,34 @@ export async function loadStoredStockScores(): Promise<Loaded<StoredStockScore[]
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     return { value: null, error: loadError('macro_bias_scores', message) };
+  }
+}
+
+export async function loadLatestRegimeRead(): Promise<Loaded<LatestRegimeRead>> {
+  try {
+    const snapshot = await getLatestBiasSnapshot();
+
+    if (!snapshot) {
+      return { value: null, error: null };
+    }
+
+    const score = asFiniteNumber(snapshot.score);
+
+    if (score == null || typeof snapshot.trade_date !== 'string' || !isBiasLabel(snapshot.bias_label)) {
+      return { value: null, error: loadError('macro_bias_scores', 'latest score was incomplete') };
+    }
+
+    return {
+      value: {
+        tradeDate: snapshot.trade_date,
+        score,
+        biasLabel: snapshot.bias_label,
+        assets: readCoreAssets(snapshot.ticker_changes),
+      },
+      error: null,
+    };
+  } catch (error) {
+    return { value: null, error: loadError('macro_bias_scores', thrownMessage(error)) };
   }
 }
 

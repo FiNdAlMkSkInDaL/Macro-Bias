@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { DashboardTop } from '@/components/dashboard/DashboardTop';
 import { HeroSignupForm } from '@/components/product/HeroSignupForm';
 import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
 import {
-  formatBiasLabel,
-  formatScore,
   formatSignedPercent,
   formatTradeDate,
   formatUsd,
@@ -13,8 +12,8 @@ import {
 } from '@/lib/public-proof/format';
 import {
   loadBriefingCallForTradeDate,
+  loadLatestRegimeRead,
   loadPaperSnapshot,
-  loadStoredStockScores,
 } from '@/lib/public-proof/load-public-proof';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -75,11 +74,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  const [scores, paper] = await Promise.all([
-    loadStoredStockScores(),
+  const [regime, paper] = await Promise.all([
+    loadLatestRegimeRead(),
     loadPaperSnapshot(),
   ]);
-  const latestScore = scores.value?.[0] ?? null;
+  const latestScore = regime.value;
   const briefing = latestScore
     ? await loadBriefingCallForTradeDate(latestScore.tradeDate)
     : { value: null, error: null };
@@ -114,59 +113,43 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <p className="mt-3 max-w-xl text-xs leading-5 text-zinc-500">
           Free every morning. Stocks and crypto. Unsubscribe anytime.
         </p>
-        <div className="mt-16 border-y border-white/10 py-8">
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-            Latest stored rows
-          </p>
-          <div className="mt-8 grid gap-10 sm:grid-cols-2">
-            <article>
-              <ProofLabel>Latest score</ProofLabel>
-              {scores.error ? (
-                <p className="mt-3 text-sm leading-6 text-zinc-300">{scores.error}</p>
-              ) : latestScore ? (
-                <>
-                  <p className="mt-3 font-[family:var(--font-data)] text-3xl text-white">
-                    {formatScore(latestScore.score)}
-                  </p>
-                  <p className="mt-2 text-sm text-zinc-300">{formatBiasLabel(latestScore.biasLabel)}</p>
-                  <p className="mt-1 font-[family:var(--font-data)] text-xs text-zinc-500">
-                    Trade date {formatTradeDate(latestScore.tradeDate)}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-3 text-sm text-zinc-500">No stock score is stored yet.</p>
-              )}
-            </article>
-            <article>
-              <ProofLabel>Paper book</ProofLabel>
-              {paper.error ? (
-                <p className="mt-3 text-sm leading-6 text-zinc-300">{paper.error}</p>
-              ) : paper.value ? (
-                <dl className="mt-3 space-y-2 text-sm text-zinc-300">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-zinc-500">Equity</dt>
-                    <dd className="font-[family:var(--font-data)] text-white">{formatUsd(paper.value.equity)}</dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-zinc-500">Total return</dt>
-                    <dd className="font-[family:var(--font-data)] text-white">
-                      {formatSignedPercent(paper.value.totalReturnPct)}
-                    </dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-zinc-500">Sessions tracked</dt>
-                    <dd className="font-[family:var(--font-data)] text-white">{paper.value.sessionsTracked}</dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-zinc-500">Cash weight</dt>
-                    <dd className="font-[family:var(--font-data)] text-white">{formatWeight(paper.value.cashWeight)}</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="mt-3 text-sm text-zinc-500">No paper snapshot is stored yet.</p>
-              )}
-            </article>
-          </div>
+        <div className="mt-16">
+          <DashboardTop
+            assets={latestScore?.assets ?? []}
+            biasLabel={latestScore?.biasLabel}
+            biasScore={latestScore?.score ?? 0}
+            hasScore={Boolean(latestScore)}
+            note={regime.error}
+          />
+          <article className="mt-8 border border-white/5 p-4 sm:p-5 md:p-6">
+            <ProofLabel>Paper book</ProofLabel>
+            {paper.error ? (
+              <p className="mt-3 text-sm leading-6 text-zinc-300">{paper.error}</p>
+            ) : paper.value ? (
+              <dl className="mt-3 space-y-2 text-sm text-zinc-300">
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-zinc-500">Equity</dt>
+                  <dd className="font-[family:var(--font-data)] text-white">{formatUsd(paper.value.equity)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-zinc-500">Total return</dt>
+                  <dd className="font-[family:var(--font-data)] text-white">
+                    {formatSignedPercent(paper.value.totalReturnPct)}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-zinc-500">Sessions tracked</dt>
+                  <dd className="font-[family:var(--font-data)] text-white">{paper.value.sessionsTracked}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-zinc-500">Cash weight</dt>
+                  <dd className="font-[family:var(--font-data)] text-white">{formatWeight(paper.value.cashWeight)}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="mt-3 text-sm text-zinc-500">No paper snapshot is stored yet.</p>
+            )}
+          </article>
           {briefing.error ? (
             <article className="mt-10 max-w-3xl">
               <ProofLabel>Latest call</ProofLabel>

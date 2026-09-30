@@ -1,7 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
 
-import { BiasGauge } from "../../components/dashboard/BiasGauge";
+import { DashboardTop } from "../../components/dashboard/DashboardTop";
 import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
@@ -245,59 +245,12 @@ function formatWeight(value: number | undefined) {
   return value.toFixed(0);
 }
 
-function getBiasRegime(biasScore: number): "Risk-On" | "Neutral" | "Risk-Off" {
-  if (biasScore > 30) {
-    return "Risk-On";
-  }
-
-  if (biasScore < -30) {
-    return "Risk-Off";
-  }
-
-  return "Neutral";
-}
-
 function formatBiasLabel(label: string | undefined): string {
   if (!label) {
     return "Awaiting First Sync";
   }
 
   return label.toLowerCase().split("_").map((word) => word[0]?.toUpperCase() + word.slice(1)).join(" ");
-}
-
-const STORM_FRONTS_COPY = {
-  neutral:
-    "Capital is rotating without committing. Breakouts are statistically likely to fail in this environment. Keep size small, tighten stops, and play the ranges.",
-  riskOff:
-    "Capital is actively seeking shelter. Structural distribution is driving the tape. Prioritize capital preservation, size down, and look to fade intraday bounces.",
-  riskOn:
-    "Risk assets are catching structural bids. The underlying tape is heavily accumulated. Look for relative strength, buy the dips, and extend your profit targets.",
-} as const;
-
-function getForecastCopy(
-  biasLabel: BiasLabel | undefined,
-  regime: "Risk-On" | "Neutral" | "Risk-Off",
-): string {
-  switch (biasLabel) {
-    case "RISK_ON":
-    case "EXTREME_RISK_ON":
-      return STORM_FRONTS_COPY.riskOn;
-    case "RISK_OFF":
-    case "EXTREME_RISK_OFF":
-      return STORM_FRONTS_COPY.riskOff;
-    case "NEUTRAL":
-      return STORM_FRONTS_COPY.neutral;
-    default:
-      if (regime === "Risk-On") {
-        return STORM_FRONTS_COPY.riskOn;
-      }
-
-      if (regime === "Risk-Off") {
-        return STORM_FRONTS_COPY.riskOff;
-      }
-
-      return STORM_FRONTS_COPY.neutral;
-  }
 }
 
 function formatMove(value: number | null): string {
@@ -589,12 +542,6 @@ export default async function DashboardPage() {
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl, headerStore.get("cookie"));
   const isProUser = isSubscriptionActive(subscriptionStatus);
   const shouldRenderManageSubscription = isPro;
-  const regime = getBiasRegime(biasData.biasScore);
-  const sortedAssets = [...biasData.assets].sort(
-    (leftAsset, rightAsset) => leftAsset.dailyChangePercent - rightAsset.dailyChangePercent,
-  );
-  const weakestAsset = sortedAssets[0] ?? null;
-  const strongestAsset = sortedAssets[sortedAssets.length - 1] ?? null;
   const advancingAssets = biasData.assets.filter(
     (asset) => asset.dailyChangePercent > 0,
   ).length;
@@ -605,14 +552,6 @@ export default async function DashboardPage() {
     biasData.assets.length > 0
       ? `${advancingAssets}/${biasData.assets.length} advancing`
       : "Waiting for market data";
-  const strongestMoveTone =
-    strongestAsset && strongestAsset.dailyChangePercent > 0
-      ? "text-emerald-400"
-      : "text-zinc-300";
-  const weakestMoveTone =
-    weakestAsset && weakestAsset.dailyChangePercent < 0
-      ? "text-rose-400"
-      : "text-zinc-300";
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
   const tradableSignal = snapshot?.signal ?? null;
   const componentScores = snapshot?.componentScores ?? [];
@@ -784,67 +723,13 @@ export default async function DashboardPage() {
         ) : null}
 
         <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
-          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
-            <section className={`${moduleClassName} overflow-hidden`}>
-              <div className="mx-auto w-full max-w-[17rem] min-[360px]:max-w-full md:mx-0 md:max-w-none">
-                {snapshot ? (
-                  <BiasGauge biasScore={biasData.biasScore} />
-                ) : (
-                  <p className="text-sm leading-6 text-zinc-400">No score is stored for this session.</p>
-                )}
-              </div>
-            </section>
-
-            <section className={moduleClassName}>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                  Storm Fronts
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                  {snapshot ? `${regime} backdrop` : 'Session not stored'}
-                </h2>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  {errorMessage ?? getForecastCopy(snapshot?.label, regime)}
-                </p>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Strongest
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">
-                    {strongestAsset?.ticker ?? "--"}
-                  </p>
-                  <p className={`mt-1 font-[family:var(--font-data)] text-sm ${strongestMoveTone}`}>
-                    {formatMove(strongestAsset?.dailyChangePercent ?? null)}
-                  </p>
-                </div>
-
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Weakest
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">
-                    {weakestAsset?.ticker ?? "--"}
-                  </p>
-                  <p className={`mt-1 font-[family:var(--font-data)] text-sm ${weakestMoveTone}`}>
-                    {formatMove(weakestAsset?.dailyChangePercent ?? null)}
-                  </p>
-                </div>
-
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Breadth
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">{breadthSummary}</p>
-                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
-                    {biasData.assets.length} core ETFs
-                  </p>
-                </div>
-              </div>
-            </section>
-          </div>
+          <DashboardTop
+            assets={biasData.assets}
+            biasLabel={snapshot?.label}
+            biasScore={biasData.biasScore}
+            hasScore={Boolean(snapshot)}
+            note={errorMessage}
+          />
 
           {!isProUser ? (
             <section className={`${moduleClassName} lg:col-span-2`}>
