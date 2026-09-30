@@ -4,16 +4,10 @@ import { redirect } from 'next/navigation';
 import { DashboardTop } from '@/components/dashboard/DashboardTop';
 import { HeroSignupForm } from '@/components/product/HeroSignupForm';
 import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
-import {
-  formatSignedPercent,
-  formatTradeDate,
-  formatUsd,
-  formatWeight,
-} from '@/lib/public-proof/format';
+import { formatTradeDate } from '@/lib/public-proof/format';
 import {
   loadBriefingCallForTradeDate,
   loadLatestRegimeRead,
-  loadPaperSnapshot,
 } from '@/lib/public-proof/load-public-proof';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -74,10 +68,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  const [regime, paper] = await Promise.all([
-    loadLatestRegimeRead(),
-    loadPaperSnapshot(),
-  ]);
+  const regime = await loadLatestRegimeRead();
   const latestScore = regime.value;
   const briefing = latestScore
     ? await loadBriefingCallForTradeDate(latestScore.tradeDate)
@@ -121,35 +112,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             hasScore={Boolean(latestScore)}
             note={regime.error}
           />
-          <article className="mt-8 border border-white/5 p-4 sm:p-5 md:p-6">
-            <ProofLabel>Paper book</ProofLabel>
-            {paper.error ? (
-              <p className="mt-3 text-sm leading-6 text-zinc-300">{paper.error}</p>
-            ) : paper.value ? (
-              <dl className="mt-3 space-y-2 text-sm text-zinc-300">
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-zinc-500">Equity</dt>
-                  <dd className="font-[family:var(--font-data)] text-white">{formatUsd(paper.value.equity)}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-zinc-500">Total return</dt>
-                  <dd className="font-[family:var(--font-data)] text-white">
-                    {formatSignedPercent(paper.value.totalReturnPct)}
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-zinc-500">Sessions tracked</dt>
-                  <dd className="font-[family:var(--font-data)] text-white">{paper.value.sessionsTracked}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-zinc-500">Cash weight</dt>
-                  <dd className="font-[family:var(--font-data)] text-white">{formatWeight(paper.value.cashWeight)}</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="mt-3 text-sm text-zinc-500">No paper snapshot is stored yet.</p>
-            )}
-          </article>
           {briefing.error ? (
             <article className="mt-10 max-w-3xl">
               <ProofLabel>Latest call</ProofLabel>
