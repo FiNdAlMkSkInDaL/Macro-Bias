@@ -3,10 +3,9 @@ import { unstable_noStore as noStore } from "next/cache";
 import { BiasGauge } from "@/components/dashboard/BiasGauge";
 import { PaywallWrapper } from "@/components/paywall-wrapper";
 import { AssetToggle } from "@/components/AssetToggle";
-import {
-  getUserSubscriptionStatus,
-  isSubscriptionActive,
-} from "@/lib/billing/subscription";
+import { ManagePlan } from "@/components/billing/ManagePlan";
+import { getStripeCustomerId } from "@/lib/billing/stripe-customer";
+import { getUserSubscriptionStatus } from "@/lib/billing/subscription";
 import { viewerIsPaid } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { CRYPTO_ANALOG_MODEL_SETTINGS } from "@/lib/crypto-bias/constants";
@@ -345,7 +344,7 @@ function extractAnalogData(componentScores: CryptoBiasComponentResult[]) {
 export default async function CryptoDashboardPage() {
   noStore();
 
-  const [snapshot, { isPro, subscriptionStatus, user }, supplementalAssets] =
+  const [snapshot, { isPro, user }, supplementalAssets] =
     await Promise.all([
       getLatestCryptoSnapshot(),
       getUserSubscriptionStatus(),
@@ -368,8 +367,8 @@ export default async function CryptoDashboardPage() {
     );
   }
 
-  const isProUser = isSubscriptionActive(subscriptionStatus);
-  const shouldRenderManageSubscription = isPro;
+  const isProUser = isPro;
+  const stripeCustomerId = user ? await getStripeCustomerId(user.id) : null;
   const componentScores = snapshot.component_scores ?? [];
   const tickerChanges = snapshot.ticker_changes;
   const regime = getBiasRegime(snapshot.score);
@@ -514,14 +513,7 @@ export default async function CryptoDashboardPage() {
               >
                 Refer Friends
               </a>
-              {shouldRenderManageSubscription ? (
-                <a
-                  className="text-xs text-zinc-500 underline underline-offset-4 hover:text-white"
-                  href="/api/stripe/portal"
-                >
-                  Manage Subscription
-                </a>
-              ) : null}
+              <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
             </div>
           </div>
         </header>

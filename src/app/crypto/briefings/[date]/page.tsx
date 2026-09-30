@@ -156,7 +156,7 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
     return <LockedSession assetHref="/crypto" />;
   }
 
-  const freeTierContent = getCryptoFreeTierContent(briefing.brief_content);
+  const briefingBody = paid ? briefing.brief_content : getCryptoFreeTierContent(briefing.brief_content);
 
   return (
     <main className="min-h-screen font-[family:var(--font-heading)]">
@@ -188,7 +188,7 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
         {/* Free-tier briefing preview */}
         <article className="mt-6 border border-white/10 bg-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
           <div className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-600">
-            [ Free Preview ]
+            {paid ? "[ Full Briefing ]" : "[ Free Preview ]"}
           </div>
           <div className="mt-6 text-base leading-8 text-zinc-300">
             <ReactMarkdown
@@ -216,12 +216,12 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
                 ),
               }}
             >
-              {freeTierContent}
+              {briefingBody}
             </ReactMarkdown>
           </div>
         </article>
 
-        {/* Paywall / CTA */}
+        {!paid && (
         <section className="mt-6 border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-sky-300">
             Premium Access Required
@@ -247,6 +247,7 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
             </Link>
           </div>
         </section>
+        )}
       </div>
     </main>
   );

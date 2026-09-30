@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-config';
-import { isSubscriptionActive, getUserSubscriptionStatus } from '../billing/subscription';
+import { getUserSubscriptionStatus } from '../billing/subscription';
 import { selectVisibleRow, stockSessionDate } from '../market-data/stock-session';
 import { extractTradableSignal } from '../signal/format-tradable-signal';
 import type { PositionPermission, TradableSignal } from '../signal/types';
@@ -42,8 +42,8 @@ export type ProductScore = {
 };
 
 export async function viewerIsPaid() {
-  const { subscriptionStatus } = await getUserSubscriptionStatus();
-  return isSubscriptionActive(subscriptionStatus);
+  const { isPro } = await getUserSubscriptionStatus();
+  return isPro;
 }
 
 async function loadRecentScores(table: ScoreTable) {
