@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { deriveHistoricalAnalogs } from "../../../../lib/market-data/derive-historical-analogs";
 import { getRecentBiasSnapshots } from "../../../../lib/market-data/get-latest-bias-snapshot";
-import { viewerIsPaid } from "../../../../lib/product/score-access";
+import { selectVisibleRow, stockSessionDate, viewerIsPaid } from "../../../../lib/product/score-access";
 import { BIAS_PILLAR_WEIGHTS } from "../../../../lib/macro-bias/constants";
 import type { BiasComponentResult, BiasPillarKey } from "../../../../lib/macro-bias/types";
 import { CORE_ASSET_TICKERS } from "../../../../types";
@@ -205,14 +205,17 @@ export async function GET() {
   try {
     const paid = await viewerIsPaid();
     const rows = await getRecentBiasSnapshots(2);
-    const snapshot = paid ? rows[0] : rows[1];
+    const selected = selectVisibleRow(rows, paid, stockSessionDate());
+    const snapshot = selected.row;
 
     if (!snapshot) {
       return NextResponse.json(
         {
-          error: paid
-            ? "No macro bias score has been calculated yet."
-            : "No delayed score is published yet.",
+          error: selected.missingSessionDate
+            ? `No score is stored for ${selected.missingSessionDate}.`
+            : paid
+              ? "No macro bias score has been calculated yet."
+              : "No delayed score is published yet.",
         },
         { status: 404 },
       );

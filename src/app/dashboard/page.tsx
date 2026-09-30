@@ -787,7 +787,11 @@ export default async function DashboardPage() {
           <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
             <section className={`${moduleClassName} overflow-hidden`}>
               <div className="mx-auto w-full max-w-[17rem] min-[360px]:max-w-full md:mx-0 md:max-w-none">
-                <BiasGauge biasScore={biasData.biasScore} />
+                {snapshot ? (
+                  <BiasGauge biasScore={biasData.biasScore} />
+                ) : (
+                  <p className="text-sm leading-6 text-zinc-400">No score is stored for this session.</p>
+                )}
               </div>
             </section>
 
@@ -797,7 +801,7 @@ export default async function DashboardPage() {
                   Storm Fronts
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                  {regime} backdrop
+                  {snapshot ? `${regime} backdrop` : 'Session not stored'}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
                   {errorMessage ?? getForecastCopy(snapshot?.label, regime)}

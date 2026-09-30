@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TodayPage() {
-  const score = await getViewerScore('stocks');
+  const { score, missingSessionDate } = await getViewerScore('stocks');
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
@@ -30,7 +30,7 @@ export default async function TodayPage() {
         rolling percentiles, cosine distance, adaptive K when vol is high. The score is that output.
       </p>
       <div className="mt-8">
-        <ScoreCard title="Stocks" href="/crypto" score={score} />
+        <ScoreCard title="Stocks" href="/crypto" score={score} missingSessionDate={missingSessionDate} />
       </div>
       <p className="mt-6 text-xs leading-5 text-zinc-600">
         Not a price target. Not a certainty claim. Not financial advice. Not a managed fund.

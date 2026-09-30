@@ -30,10 +30,12 @@ export function ScoreCard({
   title,
   href,
   score,
+  missingSessionDate = null,
 }: {
   title: string;
   href: string;
   score: ViewerScore | null;
+  missingSessionDate?: string | null;
 }) {
   if (!score) {
     return (
@@ -41,9 +43,11 @@ export function ScoreCard({
         <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
           {title}
         </p>
-        <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">No stored score yet</h2>
+        <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+          {missingSessionDate ? `No score stored for ${formatTradeDate(missingSessionDate)}` : 'No stored score yet'}
+        </h2>
         <p className="mt-3 text-sm leading-6 text-zinc-400">
-          The morning job has not written a score for this book. Nothing here is estimated.
+          The morning job has not written that session. Nothing here is estimated.
         </p>
       </section>
     );
@@ -64,7 +68,12 @@ export function ScoreCard({
         {formatScore(score.score)}
       </p>
       <p className="mt-2 text-sm uppercase tracking-[0.28em] text-zinc-400">{formatLabel(score.label)}</p>
-      {score.delayed && (
+      {score.delayed && missingSessionDate && (
+        <p className="mt-4 text-sm leading-6 text-zinc-400">
+          {formatTradeDate(missingSessionDate)} has no stored score. This is the previous stored session.
+        </p>
+      )}
+      {score.delayed && !missingSessionDate && (
         <p className="mt-4 text-sm leading-6 text-zinc-400">
           Previous session. Today&apos;s score, grade, and size hint are on the paid plan.
         </p>
@@ -94,7 +103,7 @@ export function ScoreCard({
       {score.paid && score.sentence && (
         <p className="mt-5 text-sm leading-6 text-zinc-300">{score.sentence}</p>
       )}
-      {score.delayed && (
+      {score.delayed && !missingSessionDate && (
         <Link href="/pricing" className="mt-6 inline-flex text-sm font-medium text-white underline underline-offset-4">
           Unlock today on /pricing
         </Link>

@@ -16,7 +16,7 @@ Stocks use the current feature package: SPY RSI, VIX momentum, HYG/TLT, CPER/GLD
 
 **What paid unlocks**
 
-Free shows the previous session's score on the site. Paid shows today's stock and crypto score, the grade, the size hint, and the morning email. Checkout is a Stripe subscription, monthly or annual, with a 7-day trial. A failed payment removes access.
+Free shows the previous session's score on the site. Paid shows today's stock and crypto score, the grade, the size hint, and the morning email. Checkout is a Stripe subscription, monthly or annual. A failed payment removes access.
 
 **Honest limits**
 

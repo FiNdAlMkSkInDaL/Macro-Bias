@@ -133,7 +133,6 @@ async function buildCheckoutSession(
     },
     mode: 'subscription',
     subscription_data: {
-      trial_period_days: 7,
       metadata: {
         billingPlan: plan,
         supabaseUUID: user.id,

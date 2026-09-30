@@ -83,7 +83,7 @@ export function PricingCards() {
             Subscribe
           </a>
           <p className="mt-3 text-xs leading-5 text-zinc-500">
-            Stripe subscription with a 7-day trial, then the card is billed. A failed payment removes access.
+            Stripe subscription. The card is billed for the monthly or annual price. A failed payment removes access.
           </p>
           <ul className="mt-6 space-y-3 text-sm text-zinc-300">
             {paidFeatures.map((feature) => (

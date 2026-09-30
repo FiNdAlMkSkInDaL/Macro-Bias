@@ -28,7 +28,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   const [stocks, crypto] = await Promise.all([getViewerScore('stocks'), getViewerScore('crypto')]);
-  const paid = Boolean(stocks?.paid || crypto?.paid);
+  const paid = Boolean(stocks.score?.paid || crypto.score?.paid);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:px-8">
@@ -53,8 +53,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </p>
       )}
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <ScoreCard title="Stocks" href="/today" score={stocks} />
-        <ScoreCard title="Crypto" href="/crypto" score={crypto} />
+        <ScoreCard title="Stocks" href="/today" score={stocks.score} missingSessionDate={stocks.missingSessionDate} />
+        <ScoreCard title="Crypto" href="/crypto" score={crypto.score} missingSessionDate={crypto.missingSessionDate} />
       </div>
       <div className="mt-8 flex flex-wrap gap-4 text-sm">
         {paid ? (
