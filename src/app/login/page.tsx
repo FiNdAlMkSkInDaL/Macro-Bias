@@ -11,13 +11,15 @@ import {
 
 type AuthMode = 'signin' | 'signup';
 
+const DEFAULT_SIGNED_IN_PATH = '/dashboard';
+
 export default function LoginPage() {
   const browserClientConfigError = getSupabaseBrowserClientConfigError();
   const [supabase] = useState(() => (browserClientConfigError ? null : createSupabaseBrowserClient()));
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [redirectPath, setRedirectPath] = useState('/');
+  const [redirectPath, setRedirectPath] = useState(DEFAULT_SIGNED_IN_PATH);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +35,7 @@ export default function LoginPage() {
       plan: params.get('plan'),
       coupon: params.get('coupon'),
     });
-    setRedirectPath(explicitContinuation ?? '/');
+    setRedirectPath(explicitContinuation ?? DEFAULT_SIGNED_IN_PATH);
     const authError = params.get('authError');
 
     if (authError) {
