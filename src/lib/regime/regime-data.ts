@@ -195,7 +195,8 @@ export const getRegimeStats = cache(
       .order("briefing_date", { ascending: false });
 
     if (error) {
-      throw new Error(`Failed to load regime data: ${error.message}`);
+      console.error(`Failed to load regime data: ${error.message.slice(0, 180)}`);
+      return null;
     }
 
     const allRows = deduplicateByDate((data as RawBriefingRow[] | null) ?? []);

@@ -232,7 +232,7 @@ export async function GET() {
 
     return NextResponse.json({
       data: {
-        tradeDate: snapshot.trade_date,
+        tradeDate: selected.displayTradeDate ?? snapshot.trade_date,
         score: snapshot.score,
         label: snapshot.bias_label,
         tickerChanges: buildFrontendTickerChanges(snapshot.ticker_changes),

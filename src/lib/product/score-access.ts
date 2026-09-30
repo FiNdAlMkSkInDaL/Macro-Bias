@@ -2,9 +2,12 @@ import 'server-only';
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-config';
 import { isSubscriptionActive, getUserSubscriptionStatus } from '../billing/subscription';
+import { selectVisibleRow, stockSessionDate } from '../market-data/stock-session';
 import { extractTradableSignal } from '../signal/format-tradable-signal';
-import type { PositionPermission } from '../signal/types';
+import type { PositionPermission, TradableSignal } from '../signal/types';
 import { createSupabaseAdminClient } from '../supabase/admin';
+
+export { selectVisibleRow, stockSessionDate };
 
 export type ProductAsset = 'stocks' | 'crypto';
 
@@ -26,95 +29,29 @@ type ScoreRow = {
   trade_date: string;
   score: number;
   bias_label: string;
-  engine_inputs: unknown;
   updated_at: string | null;
 };
 
-const SCORE_COLUMNS = 'trade_date, score, bias_label, engine_inputs, updated_at';
-const STOCK_MARKET_TIME_ZONE = 'America/New_York';
-const WEEKDAY_INDEX_BY_LABEL: Record<string, number> = {
-  Sun: 0,
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-};
+const SCORE_COLUMNS = 'trade_date, score, bias_label, updated_at';
+type ScoreTable = 'macro_bias_scores' | 'crypto_bias_scores';
 
 export type ProductScore = {
   score: ViewerScore | null;
   missingSessionDate: string | null;
 };
 
-export function stockSessionDate(now = new Date()) {
-  const parts = new Map(
-    new Intl.DateTimeFormat('en-US', {
-      day: '2-digit',
-      month: '2-digit',
-      timeZone: STOCK_MARKET_TIME_ZONE,
-      weekday: 'short',
-      year: 'numeric',
-    })
-      .formatToParts(now)
-      .filter((part) => part.type !== 'literal')
-      .map((part) => [part.type, part.value] as const),
-  );
-  const weekday = parts.get('weekday');
-  const year = parts.get('year');
-  const month = parts.get('month');
-  const day = parts.get('day');
-
-  if (!weekday || !year || !month || !day) {
-    throw new Error('Failed to derive the stock session date.');
-  }
-
-  const dayOfWeek = WEEKDAY_INDEX_BY_LABEL[weekday];
-
-  if (dayOfWeek == null) {
-    throw new Error(`Unsupported market weekday label: ${weekday}`);
-  }
-
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    return null;
-  }
-
-  return `${year}-${month}-${day}`;
-}
-
-export function selectVisibleRow<T extends { trade_date: string }>(
-  rows: T[],
-  paid: boolean,
-  sessionDate: string | null,
-) {
-  const latest = rows[0] ?? null;
-  const sessionMissing = sessionDate != null && latest?.trade_date !== sessionDate;
-
-  if (sessionMissing) {
-    return {
-      row: paid ? null : latest,
-      missingSessionDate: sessionDate,
-    };
-  }
-
-  return {
-    row: paid ? latest : (rows[1] ?? null),
-    missingSessionDate: null,
-  };
-}
-
 export async function viewerIsPaid() {
   const { subscriptionStatus } = await getUserSubscriptionStatus();
   return isSubscriptionActive(subscriptionStatus);
 }
 
-async function loadRecentScores(table: 'macro_bias_scores' | 'crypto_bias_scores') {
+async function loadRecentScores(table: ScoreTable) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from(table)
     .select(SCORE_COLUMNS)
     .order('trade_date', { ascending: false })
-    .limit(2);
+    .limit(5);
 
   if (error) {
     const detail = /<!DOCTYPE|522|timed out/i.test(error.message) ? 'the database timed out' : error.message.slice(0, 300);
@@ -214,14 +151,39 @@ async function cryptoSentence(tradeDate: string) {
   return firstParagraph(data.brief_content);
 }
 
-function toViewerScore(asset: ProductAsset, row: ScoreRow, paid: boolean, delayed: boolean): ViewerScore {
-  const signal = paid ? extractTradableSignal(row.engine_inputs) : null;
+async function loadTradableSignal(table: ScoreTable, tradeDate: string): Promise<TradableSignal | null> {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from(table)
+      .select('tradableSignal:engine_inputs->tradableSignal')
+      .eq('trade_date', tradeDate)
+      .maybeSingle();
 
+    if (error || !data || typeof data !== 'object') {
+      return null;
+    }
+
+    const tradableSignal = 'tradableSignal' in data ? data.tradableSignal : null;
+    return extractTradableSignal({ tradableSignal });
+  } catch {
+    return null;
+  }
+}
+
+function toViewerScore(
+  asset: ProductAsset,
+  row: ScoreRow,
+  paid: boolean,
+  delayed: boolean,
+  signal: TradableSignal | null,
+  tradeDate: string,
+): ViewerScore {
   return {
     asset,
     paid,
     delayed,
-    tradeDate: row.trade_date,
+    tradeDate,
     score: row.score,
     label: row.bias_label,
     updatedAt: row.updated_at,
@@ -244,13 +206,18 @@ export async function getViewerScore(asset: ProductAsset): Promise<ProductScore>
     };
   }
 
-  const score = toViewerScore(asset, selected.row, paid, !paid);
+  const tradeDate = selected.displayTradeDate ?? selected.row.trade_date;
+  const signal =
+    paid
+      ? await loadTradableSignal(
+          asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores',
+          selected.row.trade_date,
+        )
+      : null;
+  const score = toViewerScore(asset, selected.row, paid, !paid, signal, tradeDate);
 
   if (paid) {
-    score.sentence =
-      asset === 'stocks'
-        ? await stockSentence(selected.row.trade_date)
-        : await cryptoSentence(selected.row.trade_date);
+    score.sentence = asset === 'stocks' ? await stockSentence(tradeDate) : await cryptoSentence(tradeDate);
   }
 
   return {

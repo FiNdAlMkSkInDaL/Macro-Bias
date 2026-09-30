@@ -22,8 +22,8 @@ import { RegimeSignupForm } from "./signup-form";
 
 const SITE_NAME = "Macro Bias";
 
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
-export const revalidate = 3600;
 
 type PageProps = {
   params: Promise<{ slug: string }>;

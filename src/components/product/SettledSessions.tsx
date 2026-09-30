@@ -41,7 +41,7 @@ export function SettledSessions({
         <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
           Settled next-session open-to-close for {market}, from scores and prices already stored.
           This table is the latest 80 stored scores. A row appears after that next session has an
-          open and a close. Permission and grade are the values stored with the score. Not financial advice.
+          open and a close. Not financial advice.
         </p>
         <p className="mt-4 font-[family:var(--font-data)] text-xs uppercase tracking-[0.24em] text-zinc-500">
           {rows.length} settled session{rows.length === 1 ? '' : 's'}
@@ -50,15 +50,12 @@ export function SettledSessions({
           <p className="mt-10 text-sm text-zinc-500">No settled next-session results are stored yet.</p>
         ) : (
           <div className="mt-8 overflow-x-auto border border-white/10">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-white/10 text-[10px] uppercase tracking-[0.18em] text-zinc-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Score date</th>
                   <th className="px-4 py-3 font-medium">Session</th>
                   <th className="px-4 py-3 font-medium">Score</th>
-                  <th className="px-4 py-3 font-medium">Permission</th>
-                  <th className="px-4 py-3 font-medium">Grade</th>
-                  <th className="px-4 py-3 font-medium">Size</th>
                   <th className="px-4 py-3 font-medium">Open to close</th>
                 </tr>
               </thead>
@@ -68,9 +65,6 @@ export function SettledSessions({
                     <td className="px-4 py-3 font-[family:var(--font-data)] text-xs">{formatDate(row.scoreDate)}</td>
                     <td className="px-4 py-3 font-[family:var(--font-data)] text-xs">{formatDate(row.sessionDate)}</td>
                     <td className="px-4 py-3 font-[family:var(--font-data)]">{formatScore(row.score)}</td>
-                    <td className="px-4 py-3">{row.permission ?? '—'}</td>
-                    <td className="px-4 py-3">{row.grade ?? '—'}</td>
-                    <td className="px-4 py-3">{row.sizePct == null ? '—' : `${row.sizePct}%`}</td>
                     <td className="px-4 py-3 font-[family:var(--font-data)]">{formatPct(row.openToClosePct)}</td>
                   </tr>
                 ))}

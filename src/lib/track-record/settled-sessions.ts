@@ -1,22 +1,19 @@
 import 'server-only';
 
-import { extractTradableSignal } from '../signal/format-tradable-signal';
+import { sessionAboutToOpen } from '../market-data/stock-session';
 import { createSupabaseAdminClient } from '../supabase/admin';
 
 export type SettledSession = {
   scoreDate: string;
   sessionDate: string;
   score: number;
-  permission: string | null;
-  grade: string | null;
-  sizePct: number | null;
   openToClosePct: number;
 };
 
 type ScoreRow = {
   trade_date: string;
   score: number;
-  tradableSignal: unknown;
+  created_at: string | null;
 };
 
 type PriceRow = {
@@ -25,7 +22,25 @@ type PriceRow = {
   close: number;
 };
 
-const SCORE_COLUMNS = 'trade_date, score, tradableSignal:engine_inputs->tradableSignal';
+const SCORE_COLUMNS = 'trade_date, score, created_at';
+// Stock rows through 2026-09-29 are stamped with the completed bar, so the
+// settled session is the next price date. A later row is the session label only
+// when that row was written on the session it names.
+const STOCK_SESSION_LABEL_AFTER = '2026-09-29';
+
+function isSessionLabel(score: ScoreRow, sessionLabelledAfter: string | null) {
+  if (sessionLabelledAfter == null || score.trade_date <= sessionLabelledAfter || !score.created_at) {
+    return false;
+  }
+
+  const created = new Date(score.created_at);
+
+  if (Number.isNaN(created.getTime())) {
+    return false;
+  }
+
+  return sessionAboutToOpen(created) === score.trade_date;
+}
 
 function queryError(table: string, message: string) {
   const detail = /<!DOCTYPE|522|timed out/i.test(message) ? 'the database timed out' : message.slice(0, 300);
@@ -64,20 +79,26 @@ async function fetchPrices(ticker: string, fromDate: string) {
   return (data as PriceRow[] | null) ?? [];
 }
 
-function settle(scores: ScoreRow[], prices: PriceRow[]): SettledSession[] {
+function settle(
+  scores: ScoreRow[],
+  prices: PriceRow[],
+  sessionLabelledAfter: string | null,
+): SettledSession[] {
   const orderedPrices = [...prices]
     .filter((row) => Number(row.open) > 0 && Number.isFinite(Number(row.close)))
     .sort((a, b) => a.trade_date.localeCompare(b.trade_date));
   const sessions: SettledSession[] = [];
 
   for (const score of scores) {
-    const next = orderedPrices.find((price) => price.trade_date > score.trade_date);
+    const sameSession = isSessionLabel(score, sessionLabelledAfter);
+    const next = sameSession
+      ? orderedPrices.find((price) => price.trade_date === score.trade_date)
+      : orderedPrices.find((price) => price.trade_date > score.trade_date);
 
     if (!next) {
       continue;
     }
 
-    const signal = extractTradableSignal({ tradableSignal: score.tradableSignal });
     const open = Number(next.open);
     const close = Number(next.close);
 
@@ -85,9 +106,6 @@ function settle(scores: ScoreRow[], prices: PriceRow[]): SettledSession[] {
       scoreDate: score.trade_date,
       sessionDate: next.trade_date,
       score: score.score,
-      permission: signal?.position ?? null,
-      grade: signal?.reliability ?? null,
-      sizePct: signal ? Math.round(signal.size * 100) : null,
       openToClosePct: ((close - open) / open) * 100,
     });
   }
@@ -98,7 +116,7 @@ function settle(scores: ScoreRow[], prices: PriceRow[]): SettledSession[] {
 const CACHE_MS = 15 * 60 * 1000;
 const settledCache = new Map<string, { at: number; rows: SettledSession[] }>();
 
-async function loadSettled(scoreTable: string, ticker: string) {
+async function loadSettled(scoreTable: string, ticker: string, sessionLabelledAfter: string | null) {
   const scores = await fetchRecentScores(scoreTable);
   const firstDate = scores.reduce<string | null>(
     (oldest, row) => (oldest == null || row.trade_date < oldest ? row.trade_date : oldest),
@@ -106,7 +124,7 @@ async function loadSettled(scoreTable: string, ticker: string) {
   );
   const prices = firstDate ? await fetchPrices(ticker, firstDate) : [];
 
-  return settle(scores, prices);
+  return settle(scores, prices, sessionLabelledAfter);
 }
 
 async function cachedSettled(key: string, load: () => Promise<SettledSession[]>) {
@@ -121,9 +139,9 @@ async function cachedSettled(key: string, load: () => Promise<SettledSession[]>)
 }
 
 export async function getSettledStockSessions() {
-  return cachedSettled('stocks', () => loadSettled('macro_bias_scores', 'SPY'));
+  return cachedSettled('stocks', () => loadSettled('macro_bias_scores', 'SPY', STOCK_SESSION_LABEL_AFTER));
 }
 
 export async function getSettledCryptoSessions() {
-  return cachedSettled('crypto', () => loadSettled('crypto_bias_scores', 'BTC-USD'));
+  return cachedSettled('crypto', () => loadSettled('crypto_bias_scores', 'BTC-USD', null));
 }

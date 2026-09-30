@@ -16,7 +16,7 @@ import { getAppUrl } from "@/lib/server-env";
 
 const SITE_URL = "https://macro-bias.com";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Macro Regime Guide — Risk On, Risk Off, Neutral | Macro Bias",
