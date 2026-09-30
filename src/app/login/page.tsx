@@ -74,11 +74,22 @@ export default function LoginPage() {
     setStatusMessage(null);
 
     try {
+      // signInWithPassword does not wait for initialize(). A refresh of a stale
+      // cookie can still be in flight, fail, and delete the session just saved.
+      // /dashboard then redirects back here with no error on the form.
+      await supabase.auth.initialize();
+
       if (authMode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
           throw error;
+        }
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !sessionData.session) {
+          throw new Error('Sign-in did not keep a session. Submit again.');
         }
 
         continueAfterSignIn(redirectPath);

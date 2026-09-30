@@ -46,6 +46,10 @@ export async function GET(request: Request) {
   });
 
   if (!result.ok) {
+    if (result.status === 404 && sessionEmail && sessionEmail === email && !isPro) {
+      return NextResponse.json({ upsell: true });
+    }
+
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
