@@ -1,0 +1,22 @@
+.reading{display:grid;grid-template-columns:1fr 1.25fr;gap:40px;padding:28px;border:1px solid #2a342c;border-radius:4px;background:#111512}
+.score{position:relative;border-right:1px solid #2a342c;padding-right:40px}
+.score>p{margin:0 0 8px;font-size:13px;color:#acb6ad}
+.score>strong{font-family:var(--font-data),monospace;font-size:62px;line-height:1.15;letter-spacing:-.055em;font-weight:500}
+.score>span{display:block;margin:8px 0 18px;font-size:18px;font-weight:500;color:#acb6ad}
+.score>span[data-tone=positive]{color:#c9f58a}.score>span[data-tone=negative]{color:#f4a5a5}
+.gauge{position:relative;height:5px;margin:22px 4px 0;background:#465148;border-radius:3px}
+.gauge i{position:absolute;top:-5px;width:3px;height:15px;background:#acb6ad;transform:translateX(-50%)}
+.gauge i[data-tone=positive]{background:#c9f58a}.gauge i[data-tone=negative]{background:#f4a5a5}
+.scale{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--font-data),monospace;font-size:11px;color:#939f94}
+.interpretation{display:flex;flex-direction:column;justify-content:center}
+.interpretation h2,.lower h2{margin:0 0 12px;font-size:23px;line-height:1.25;font-weight:600;letter-spacing:-.02em}
+.interpretation p,.lower p{margin:0;max-width:600px;font-size:15px;line-height:1.7;color:#acb6ad}
+.chart{margin-top:28px}
+.chart>section{border-radius:4px}
+.lower{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px;padding:28px 0;border-top:1px solid #2a342c}
+.guide{display:flex;justify-content:space-between;gap:12px;margin:22px 0;font-family:var(--font-data),monospace;font-size:12px}
+.guide span:last-child{text-align:right}.guide span:nth-child(2){text-align:center}
+.guide small{display:block;margin-top:8px;color:#939f94;font-family:var(--font-heading),sans-serif;font-size:12px}
+.explore{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:70px;padding:12px 0;border-bottom:1px solid #2a342c;font-size:15px;color:#c9f58a}
+.explore small{display:block;margin-top:6px;font-size:13px;line-height:1.5;color:#acb6ad}.explore svg{flex-shrink:0}
+@media(max-width:700px){.reading{grid-template-columns:1fr;gap:24px;padding:22px 20px}.score{padding:0 0 24px;border-right:0;border-bottom:1px solid #2a342c}.score>strong{font-size:54px}.interpretation h2,.lower h2{font-size:22px}.lower{grid-template-columns:1fr;gap:30px;margin-top:28px;padding:24px 0}.chart{margin-top:24px}}

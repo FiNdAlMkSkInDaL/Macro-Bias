@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-config';
-import { getUserSubscriptionStatus } from '../billing/subscription';
+import { getUserSubscriptionStatus, type SubscriptionStatusResult } from '../billing/subscription';
 import { selectVisibleRow, stockSessionDate } from '../market-data/stock-session';
 import { extractTradableSignal } from '../signal/format-tradable-signal';
 import type { PositionPermission, TradableSignal } from '../signal/types';
@@ -211,13 +211,13 @@ function toViewerScore(
   };
 }
 
-export async function getViewerScore(asset: ProductAsset): Promise<ProductScore> {
+export async function getViewerScore(asset: ProductAsset, subscriptionStatus?: SubscriptionStatusResult): Promise<ProductScore> {
   const table: ScoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
   let paid = false;
   let signedIn = false;
 
   try {
-    const status = await getUserSubscriptionStatus();
+    const status = subscriptionStatus ?? await getUserSubscriptionStatus();
     paid = status.isPro;
     signedIn = Boolean(status.user);
   } catch (error) {

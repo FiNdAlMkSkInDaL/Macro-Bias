@@ -2,6 +2,9 @@
 
 import { type FormEvent, useState } from 'react';
 
+import memberStyles from '@/components/product/MemberUI.module.css';
+import styles from './account.module.css';
+
 type AlertFormProps = {
   cryptoOptedIn: boolean;
   stocksOptedIn: boolean;
@@ -10,6 +13,7 @@ type AlertFormProps = {
 export function AlertForm({ cryptoOptedIn, stocksOptedIn }: AlertFormProps) {
   const [stocks, setStocks] = useState(stocksOptedIn);
   const [crypto, setCrypto] = useState(cryptoOptedIn);
+  const [savedPreferences, setSavedPreferences] = useState({ stocks: stocksOptedIn, crypto: cryptoOptedIn });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -40,7 +44,8 @@ export function AlertForm({ cryptoOptedIn, stocksOptedIn }: AlertFormProps) {
         throw new Error(payload?.error ?? 'Unable to save email alerts.');
       }
 
-      setMessage(stocks || crypto ? 'Email alerts saved.' : 'Email alerts are off.');
+      setSavedPreferences({ stocks, crypto });
+      setMessage('Preferences saved.');
     } catch (error) {
       setIsError(true);
       setMessage(error instanceof Error ? error.message : 'Unable to save email alerts.');
@@ -50,39 +55,35 @@ export function AlertForm({ cryptoOptedIn, stocksOptedIn }: AlertFormProps) {
   }
 
   return (
-    <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-      <label className="flex min-h-11 items-center gap-3 text-sm text-zinc-200">
-        <input
-          type="checkbox"
-          name="stocks"
-          checked={stocks}
-          onChange={(event) => setStocks(event.target.checked)}
-          className="h-4 w-4 accent-white"
-        />
-        Stocks
-      </label>
-      <label className="flex min-h-11 items-center gap-3 text-sm text-zinc-200">
-        <input
-          type="checkbox"
-          name="crypto"
-          checked={crypto}
-          onChange={(event) => setCrypto(event.target.checked)}
-          className="h-4 w-4 accent-white"
-        />
-        Crypto
-      </label>
-      <button
-        type="submit"
-        disabled={saving}
-        className="inline-flex h-12 w-full items-center justify-center bg-white px-5 text-sm font-semibold text-black disabled:opacity-60 sm:w-auto"
-      >
-        {saving ? 'Saving' : 'Save alerts'}
-      </button>
-      {message ? (
-        <p className={`text-sm ${isError ? 'text-rose-300' : 'text-emerald-300'}`} aria-live="polite">
+    <form className={styles.form} onSubmit={handleSubmit} aria-labelledby="account-emails-heading" aria-busy={saving}>
+      <p className={styles.currentPreferences} aria-live="polite">
+        {savedPreferences.stocks && savedPreferences.crypto
+          ? 'Stocks and crypto are on.'
+          : savedPreferences.stocks
+            ? 'Stocks are on.'
+            : savedPreferences.crypto
+              ? 'Crypto is on.'
+              : 'Email updates are off.'}
+      </p>
+      <fieldset className={styles.choices} disabled={saving}>
+        <legend className={styles.screenReaderOnly}>Markets for email updates</legend>
+        <label className={styles.choice}>
+          <input type="checkbox" name="stocks" aria-labelledby="stocks-email-label" aria-describedby="stocks-email-description" checked={stocks} onChange={(event) => { setStocks(event.target.checked); setMessage(null); }} />
+          <span><strong id="stocks-email-label">Stocks</strong><span id="stocks-email-description">The stock-market score and regime</span></span>
+        </label>
+        <label className={styles.choice}>
+          <input type="checkbox" name="crypto" aria-labelledby="crypto-email-label" aria-describedby="crypto-email-description" checked={crypto} onChange={(event) => { setCrypto(event.target.checked); setMessage(null); }} />
+          <span><strong id="crypto-email-label">Crypto</strong><span id="crypto-email-description">The crypto-market score and regime</span></span>
+        </label>
+      </fieldset>
+      <div className={styles.formActions}>
+        <button type="submit" disabled={saving} className={memberStyles.button}>
+          {saving ? 'Saving…' : 'Save preferences'}
+        </button>
+        <p className={`${styles.message} ${isError ? styles.error : ''}`} role={isError ? 'alert' : 'status'}>
           {message}
         </p>
-      ) : null}
+      </div>
     </form>
   );
 }

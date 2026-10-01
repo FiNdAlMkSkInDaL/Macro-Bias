@@ -5,8 +5,12 @@ import { DashboardTop } from "../../components/dashboard/DashboardTop";
 import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
-import { PaywallWrapper } from "../../components/paywall-wrapper";
-import { AssetToggle } from "../../components/AssetToggle";
+import { FreeWorkspace } from "@/components/product/FreeWorkspace";
+import { MacroMarketChart } from "@/components/product/MacroMarketChart";
+import { MarketTabs, MemberShell } from "@/components/product/MemberShell";
+import workspaceStyles from "@/components/product/FreeWorkspace.module.css";
+import memberStyles from "@/components/product/MemberUI.module.css";
+import { loadWorkspaceData } from "@/lib/product/workspace-data";
 import { ManagePlan } from "../../components/billing/ManagePlan";
 import { getStripeCustomerId } from "../../lib/billing/stripe-customer";
 import { getUserSubscriptionStatus } from "../../lib/billing/subscription";
@@ -207,27 +211,27 @@ function getSignalDisposition(signal: number | undefined) {
   if (signal == null || Number.isNaN(signal)) {
     return {
       label: "Pending",
-      tone: "text-zinc-500",
+      tone: "text-[#acb6ad]",
     };
   }
 
   if (signal > 0.15) {
     return {
       label: "Bullish",
-      tone: "text-emerald-400",
+      tone: "text-[#c9f58a]",
     };
   }
 
   if (signal < -0.15) {
     return {
       label: "Bearish",
-      tone: "text-rose-400",
+      tone: "text-[#ef9d9d]",
     };
   }
 
   return {
     label: "Neutral",
-    tone: "text-zinc-300",
+    tone: "text-[#d1d9cf]",
   };
 }
 
@@ -298,39 +302,39 @@ function formatAnalogDate(tradeDate?: string) {
 
 function getMoveTone(value: number | null): string {
   if (value === null) {
-    return "text-zinc-500";
+    return "text-[#acb6ad]";
   }
 
   if (value > 0) {
-    return "text-emerald-400";
+    return "text-[#c9f58a]";
   }
 
   if (value < 0) {
-    return "text-rose-400";
+    return "text-[#ef9d9d]";
   }
 
-  return "text-zinc-300";
+  return "text-[#d1d9cf]";
 }
 
 function getDeltaTone(value: number | null): string {
   if (value === null) {
-    return "text-zinc-500";
+    return "text-[#acb6ad]";
   }
 
   if (value > 0) {
-    return "text-green-500";
+    return "text-[#c9f58a]";
   }
 
   if (value < 0) {
-    return "text-red-500";
+    return "text-[#ef9d9d]";
   }
 
-  return "text-zinc-400";
+  return "text-[#acb6ad]";
 }
 
 function getRangeTone(value: number | null): string {
   if (value === null) {
-    return "text-zinc-500";
+    return "text-[#acb6ad]";
   }
 
   return "text-sky-300";
@@ -514,25 +518,23 @@ async function getDashboardData(baseUrl: string, cookieHeader: string | null): P
 export default async function DashboardPage() {
   noStore();
 
-  const [baseUrl, { isPro, user }, supplementalCrossAssetMapAssets, headerStore] =
+  const status = await getUserSubscriptionStatus();
+  if (!status.isPro) {
+    const data = await loadWorkspaceData('stocks', status);
+    return <FreeWorkspace data={data} audience={status.user ? 'member' : 'public'} userId={status.user?.id ?? null} />;
+  }
+
+  const { isPro, user } = status;
+  const [baseUrl, supplementalCrossAssetMapAssets, headerStore, workspaceData] =
     await Promise.all([
       getRequestBaseUrl(),
-      getUserSubscriptionStatus(),
       getSupplementalCrossAssetMapAssets(),
       headers(),
+      loadWorkspaceData('stocks', status),
     ]);
   const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl, headerStore.get("cookie"));
   const isProUser = isPro;
   const stripeCustomerId = user ? await getStripeCustomerId(user.id) : null;
-  const advancingAssets = biasData.assets.filter(
-    (asset) => asset.dailyChangePercent > 0,
-  ).length;
-  const snapshotDateLabel = formatTradeDate(snapshot?.tradeDate);
-  const signalLabel = formatBiasLabel(snapshot?.label);
-  const breadthSummary =
-    biasData.assets.length > 0
-      ? `${advancingAssets}/${biasData.assets.length} advancing`
-      : "Waiting for market data";
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
   const tradableSignal = snapshot?.signal ?? null;
   const componentScores = snapshot?.componentScores ?? [];
@@ -546,12 +548,12 @@ export default async function DashboardPage() {
   const analogSummaryCopy = historicalAnalogs
     ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
     : "historical analog engine warming up";
-  const terminalBorderClassName = "border border-white/5";
-  const terminalDividerClassName = "border-t border-white/5";
-  const terminalTableDividerClassName = "border-b border-white/5";
-  const moduleClassName = `${terminalBorderClassName} min-w-0 p-4 sm:p-5 md:p-6`;
+  const terminalBorderClassName = "border border-[#2a342c]";
+  const terminalDividerClassName = "border-t border-[#2a342c]";
+  const terminalTableDividerClassName = "border-b border-[#2a342c]";
+  const moduleClassName = `${terminalBorderClassName} rounded-[4px] bg-[#111512] min-w-0 p-4 sm:p-5 md:p-6`;
   const footerModuleClassName =
-    `${terminalBorderClassName} min-w-0 p-4 text-sm leading-6 text-zinc-500 sm:p-5 md:p-6`;
+    `${terminalBorderClassName} rounded-[4px] bg-[#111512] min-w-0 p-4 text-sm leading-6 text-[#acb6ad] sm:p-5 md:p-6`;
   const crossAssetMapAssets = CROSS_ASSET_MAP_TICKERS.map((ticker) => {
     const coreAsset = biasData.assets.find((asset) => asset.ticker === ticker);
 
@@ -573,70 +575,21 @@ export default async function DashboardPage() {
   });
 
   return (
-    <main
-      className="min-h-screen font-sans font-[family:var(--font-heading)]"
+    <MemberShell
+      title="Your stock workspace"
+      plan="Pro plan"
+      description={<>Published session · {snapshot?.tradeDate ? <time dateTime={snapshot?.tradeDate}>{formatTradeDate(snapshot?.tradeDate)}</time> : 'Not available'}</>}
     >
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center justify-between">
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                [ Regime Data Terminal ]
-              </p>
-              <AssetToggle />
-            </div>
-            <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
-              Daily Macro Bias
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              Institutional-grade macro risk scoring. Updated daily at 08:30 EST.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-4 md:min-w-0 md:flex-shrink-0 md:items-end">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-6">
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Date
-                </p>
-                <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {snapshotDateLabel}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Snapshot
-                </p>
-                <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {signalLabel}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Breadth
-                </p>
-                <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {breadthSummary}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 md:items-end">
-              <a
-                href="/refer"
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-full border-[0.5px] border-sky-400/30 bg-sky-500/[0.06] px-5 py-3 text-[13px] font-medium text-sky-300 transition hover:border-sky-400/50 hover:bg-sky-500/[0.12] sm:w-auto sm:px-4 sm:py-2.5 sm:text-sm md:border"
-              >
-                Refer Friends
-              </a>
-
-              <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
-            </div>
-          </div>
-        </header>
+      <div className={workspaceStyles.proWorkspace} data-pro-workspace="stocks">
+        <MarketTabs asset="stocks" view="dashboard" />
+        <div className={workspaceStyles.proUtility}>
+          <a href="/refer" className={memberStyles.textLink}>Refer friends</a>
+          <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
+        </div>
 
         {errorMessage ? (
           <section className="border-b border-amber-400/15 py-3">
-            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-amber-200/80">
+            <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-amber-200/80">
               Latest sync issue
             </p>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-100">{errorMessage}</p>
@@ -644,50 +597,50 @@ export default async function DashboardPage() {
         ) : null}
 
         {tradableSignal ? (
-          <section className="grid grid-cols-2 gap-3 border-b border-white/5 py-4 sm:grid-cols-4 md:gap-6">
+          <section className={workspaceStyles.proPermission}>
             <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                 Permission
               </p>
               <p
                 className={`mt-2 text-base font-semibold tracking-tight ${
                   tradableSignal.position === "LONG"
-                    ? "text-emerald-400"
+                    ? "text-[#c9f58a]"
                     : tradableSignal.position === "SHORT"
-                      ? "text-rose-400"
+                      ? "text-[#ef9d9d]"
                       : tradableSignal.position === "NO_TRADE"
                         ? "text-amber-300"
-                        : "text-zinc-300"
+                        : "text-[#d1d9cf]"
                 }`}
               >
                 {tradableSignal.position}
               </p>
             </div>
             <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                 Size
               </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+              <p className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                 {Math.round(tradableSignal.size * 100)}%
               </p>
             </div>
             <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                 Reliability
               </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+              <p className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                 {tradableSignal.reliability}
               </p>
             </div>
             <div>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                 Agreement
               </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-white">
+              <p className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                 {Math.round(tradableSignal.neighborAgreement * 100)}%
               </p>
             </div>
-            <p className="col-span-2 text-sm leading-6 text-zinc-400 sm:col-span-4">
+            <p className="col-span-2 text-sm leading-6 text-[#acb6ad] sm:col-span-4">
               {tradableSignal.reason}
             </p>
           </section>
@@ -695,7 +648,7 @@ export default async function DashboardPage() {
 
         <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
           <DashboardTop
-            assets={biasData.assets}
+            assets={biasData.assets.map((asset) => ({ ...asset, tradeDate: snapshot?.tickerChanges[asset.ticker]?.tradeDate }))}
             biasLabel={snapshot?.label}
             biasScore={biasData.biasScore}
             hasScore={Boolean(snapshot)}
@@ -703,35 +656,30 @@ export default async function DashboardPage() {
             tradeDate={snapshot?.tradeDate ?? null}
           />
 
-          {!isProUser ? (
-            <section className={`${moduleClassName} lg:col-span-2`}>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                Locked Workspace
-              </p>
-              <h2 className="mt-3 text-xl font-semibold tracking-tight text-white">
-                Historical Playbook + Setup Map
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                Signal drivers, cross-asset confirmation, and the intraday playbook are arranged below in the Pro grid.
-              </p>
-            </section>
-          ) : null}
+          <div className={`${workspaceStyles.proChart} min-w-0 lg:col-span-2`}>
+            <MacroMarketChart
+              variant="history" instrument="SPY" title="SPY price & daily bias" defaultRangeMonths={3}
+              candles={workspaceData.active.candles} marks={workspaceData.active.history}
+              latest={workspaceData.active.score ? { tradeDate: workspaceData.active.score.tradeDate, score: workspaceData.active.score.score, biasLabel: workspaceData.active.score.label } : null}
+              notice={workspaceData.active.historyNotice ?? workspaceData.active.priceNotice ?? workspaceData.active.loadError}
+            />
+          </div>
 
           <div className="min-w-0 lg:col-span-2">
-            {isProUser ? (
+
               <div className="space-y-4 md:space-y-6">
                 <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
                   <section className={`${moduleClassName} h-full`}>
                     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                       <div>
-                        <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.32em] text-zinc-500 sm:text-[10px] sm:tracking-[0.36em]">
+                        <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
                           Signal Breakdown
                         </p>
-                        <h3 className="mt-2 text-[clamp(1.05rem,4vw,1.125rem)] font-semibold tracking-tight text-white">
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#f1f5ef]">
                           Context Engine
                         </h3>
                       </div>
-                      <p className="max-w-md text-[clamp(0.8125rem,2.8vw,0.875rem)] leading-[1.75] text-zinc-500">
+                      <p className="max-w-md text-base leading-[1.75] text-[#acb6ad]">
                         Weighted pillar contribution to the composite score.
                       </p>
                     </div>
@@ -749,28 +697,28 @@ export default async function DashboardPage() {
                           >
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
-                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.28em] text-zinc-500 sm:text-[10px] sm:tracking-[0.32em]">
+                                <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
                                   {pillar.label}
                                 </p>
-                                <p className="mt-1 text-[15px] font-medium text-white sm:text-sm">{pillar.symbol}</p>
+                                <p className="mt-1 text-[15px] font-medium text-[#f1f5ef] sm:text-sm">{pillar.symbol}</p>
                               </div>
 
                               <div className="sm:text-right">
                                 <p
-                                  className={`font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] sm:text-[10px] sm:tracking-[0.28em] ${disposition.tone}`}
+                                  className={`font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] sm:text-[12px] sm:tracking-[0.06em] ${disposition.tone}`}
                                 >
                                   {disposition.label}
                                 </p>
-                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-white sm:text-base">
+                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-[#f1f5ef] sm:text-base">
                                   {formatContribution(score?.contribution)}
                                 </p>
-                                <p className="mt-1 font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] text-zinc-500 sm:text-[10px] sm:tracking-[0.28em]">
+                                <p className="mt-1 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
                                   of {formatWeight(score?.weight)} pts
                                 </p>
                               </div>
                             </div>
 
-                            <p className="mt-3 max-w-[65ch] text-[clamp(0.8125rem,2.9vw,0.875rem)] leading-[1.75] text-zinc-400">
+                            <p className="mt-3 max-w-[65ch] text-base leading-[1.75] text-[#acb6ad]">
                               {detailedScore?.summary ?? "Waiting for the next model sync to publish this pillar's narrative read."}
                             </p>
                           </article>
@@ -782,14 +730,14 @@ export default async function DashboardPage() {
                   <section className={`${moduleClassName} h-full`}>
                     <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                       <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                           Cross-Asset Regime
                         </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#f1f5ef]">
                           Market Internals
                         </h3>
                       </div>
-                      <p className="max-w-md text-sm leading-6 text-zinc-500">
+                      <p className="max-w-md text-sm leading-6 text-[#acb6ad]">
                         Macro scope across equities, credit, volatility, dollar, and energy leadership.
                       </p>
                     </div>
@@ -798,14 +746,14 @@ export default async function DashboardPage() {
                       {crossAssetMapAssets.map((asset) => (
                         <article className={`${terminalBorderClassName} overflow-hidden bg-white/[0.01] p-2.5 xl:p-3`} key={asset.ticker}>
                           <div className="flex items-center justify-between gap-1">
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                            <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               {asset.ticker}
                             </p>
-                            <p className={`shrink-0 font-[family:var(--font-data)] text-[11px] ${getMoveTone(asset.dailyChangePercent)}`}>
+                            <p className={`shrink-0 font-[family:var(--font-data)] text-[13px] ${getMoveTone(asset.dailyChangePercent)}`}>
                               {formatMove(asset.dailyChangePercent)}
                             </p>
                           </div>
-                          <p className="mt-1.5 text-sm font-medium text-white">
+                          <p className="mt-1.5 text-sm font-medium text-[#f1f5ef]">
                             {formatPrice(asset.currentPrice)}
                           </p>
                         </article>
@@ -817,15 +765,15 @@ export default async function DashboardPage() {
                 <section className={moduleClassName}>
                   <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                         Historical Analogs
                       </p>
-                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#f1f5ef]">
                         Intraday Playbook
                       </h3>
                     </div>
                     {historicalAnalogs ? (
-                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
+                      <p className="max-w-lg text-sm leading-6 text-[#acb6ad]">
                         Ranked against {historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions across {historicalAnalogs.featureTickers.join(", ")}.
                       </p>
                     ) : null}
@@ -833,24 +781,24 @@ export default async function DashboardPage() {
 
                   {historicalAnalogs ? (
                     <div className="w-full">
-                      <p className="text-[10px] text-zinc-500 sm:hidden">&larr; scroll to see all columns &rarr;</p>
+                      <p className="text-[12px] text-[#acb6ad] sm:hidden">&larr; scroll to see all columns &rarr;</p>
                       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                       <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
                         <thead>
                           <tr className={terminalTableDividerClassName}>
-                            <th className="w-[34%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[34%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               Matched date
                             </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               Match confidence
                             </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               SPY Gap
                             </th>
-                            <th className="w-[18%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[18%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               SPY Intraday (O-C)
                             </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                            <th className="w-[16%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               SPY Range
                             </th>
                           </tr>
@@ -862,15 +810,15 @@ export default async function DashboardPage() {
                               key={match.tradeDate}
                             >
                               <td className="py-5 pr-6 align-middle">
-                                <p className="text-base font-medium text-white">
+                                <p className="text-base font-medium text-[#f1f5ef]">
                                   {formatAnalogDate(match.tradeDate)}
                                 </p>
-                                <p className="mt-1 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                                <p className="mt-1 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                                   Next {formatAnalogDate(match.nextSessionDate)}
                                 </p>
                               </td>
                               <td className="py-5 pr-6 align-middle">
-                                <p className="font-[family:var(--font-data)] text-sm text-zinc-400">
+                                <p className="font-[family:var(--font-data)] text-sm text-[#acb6ad]">
                                   {match.matchConfidence}%
                                 </p>
                               </td>
@@ -895,181 +843,31 @@ export default async function DashboardPage() {
                     </div>
                   ) : (
                     <div className={`${terminalBorderClassName} bg-white/[0.01] p-4`}>
-                      <p className="max-w-2xl text-sm leading-6 text-zinc-500">
+                      <p className="max-w-2xl text-sm leading-6 text-[#acb6ad]">
                         The analog engine has not yet produced a complete intraday playbook for this snapshot. Additional aligned price history is required before the next-session gap, intraday drift, and range profile can be computed.
                       </p>
                     </div>
                   )}
                 </section>
               </div>
-            ) : (
-              <PaywallWrapper initialIsPro={isProUser} userId={user?.id ?? null}>
-                <div aria-hidden="true" className="space-y-4 md:space-y-6">
-                  <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-                    <section className={`${moduleClassName} h-full`}>
-                      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                        <div>
-                          <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.32em] text-zinc-500 sm:text-[10px] sm:tracking-[0.36em]">
-                            Signal Breakdown
-                          </p>
-                          <h3 className="mt-2 text-[clamp(1.05rem,4vw,1.125rem)] font-semibold tracking-tight text-white">
-                            Context Engine
-                          </h3>
-                        </div>
-                        <p className="max-w-md text-[clamp(0.8125rem,2.8vw,0.875rem)] leading-[1.75] text-zinc-500">
-                          Weighted pillar contribution and regime notes unlock with Pro.
-                        </p>
-                      </div>
 
-                      <div className="mt-4 space-y-0">
-                        {proSignalPillars.map((pillar) => (
-                          <article
-                            className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
-                            key={pillar.key}
-                          >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div>
-                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.28em] text-zinc-500 sm:text-[10px] sm:tracking-[0.32em]">
-                                  {pillar.label}
-                                </p>
-                                <p className="mt-1 text-[15px] font-medium text-white sm:text-sm">{pillar.symbol}</p>
-                              </div>
-
-                              <div className="sm:text-right">
-                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] text-zinc-500 sm:text-[10px] sm:tracking-[0.28em]">
-                                  Locked
-                                </p>
-                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-white sm:text-base">--</p>
-                              </div>
-                            </div>
-
-                            <p className="mt-3 max-w-[65ch] text-[clamp(0.8125rem,2.9vw,0.875rem)] leading-[1.75] text-zinc-500">
-                              Premium narrative commentary is hidden until the workspace is unlocked.
-                            </p>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className={`${moduleClassName} h-full`}>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                        <div>
-                          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                            Cross-Asset Regime
-                          </p>
-                          <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                            Market Internals
-                          </h3>
-                        </div>
-                        <p className="max-w-md text-sm leading-6 text-zinc-500">
-                          Cross-asset internals and rotation cards unlock below the fold with Pro access.
-                        </p>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-                        {CROSS_ASSET_MAP_TICKERS.map((ticker) => (
-                          <article className={`${terminalBorderClassName} bg-white/[0.01] p-4`} key={ticker}>
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                                  {ticker}
-                                </p>
-                                <p className="mt-2 text-base font-medium text-white">Restricted</p>
-                              </div>
-                              <p className="font-[family:var(--font-data)] text-sm text-zinc-500">--</p>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-
-                  <section className={moduleClassName}>
-                    <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                      <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                          Historical Analogs
-                        </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                          Intraday Playbook
-                        </h3>
-                      </div>
-                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
-                        Premium access unlocks the exact analog table, next-session gap profile, and execution context.
-                      </p>
-                    </div>
-
-                    <div className="w-full">
-                      <p className="text-[10px] text-zinc-500 sm:hidden">&larr; scroll to see all columns &rarr;</p>
-                      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                      <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
-                        <thead>
-                          <tr className={terminalTableDividerClassName}>
-                            <th className="w-[34%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                              Matched date
-                            </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                              Match confidence
-                            </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                              SPY Gap
-                            </th>
-                            <th className="w-[18%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                              SPY Intraday (O-C)
-                            </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                              SPY Range
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Array.from({ length: 3 }, (_, index) => (
-                            <tr
-                              className={`${terminalTableDividerClassName} even:bg-white/[0.02] last:border-b-0`}
-                              key={`locked-playbook-row-${index}`}
-                            >
-                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                Restricted
-                              </td>
-                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                --
-                              </td>
-                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                --
-                              </td>
-                              <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                --
-                              </td>
-                              <td className="py-5 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                --
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    </div>
-                  </section>
-                </div>
-              </PaywallWrapper>
-            )}
           </div>
 
           {isProUser ? (
           <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
             <section className={footerModuleClassName}>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                 Macro Summary
               </p>
-              <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                 Cluster Averages
               </h3>
 
               {isProUser ? (
-                <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[11px]">
+                <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[13px]">
                   <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">Aligned Sessions</p>
-                    <p className="text-sm text-white">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Aligned Sessions</p>
+                    <p className="text-sm text-[#f1f5ef]">
                       {historicalAnalogs
                         ? historicalAnalogs.alignedSessionCount.toLocaleString()
                         : "--"}
@@ -1077,8 +875,8 @@ export default async function DashboardPage() {
                   </div>
 
                   <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">Usable Matches</p>
-                    <p className="text-sm text-white">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Usable Matches</p>
+                    <p className="text-sm text-[#f1f5ef]">
                       {historicalAnalogs
                         ? historicalAnalogs.candidateCount.toLocaleString()
                         : "--"}
@@ -1086,60 +884,60 @@ export default async function DashboardPage() {
                   </div>
 
                   <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Overnight Gap</p>
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Avg Overnight Gap</p>
                     <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}>
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}
                     </p>
                   </div>
 
                   <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Intraday Net</p>
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Avg Intraday Net</p>
                     <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}>
                       {formatMove(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}
                     </p>
                   </div>
 
                   <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">Avg Session Range</p>
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Avg Session Range</p>
                     <p className={getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}>
                       {formatUnsignedPercent(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500">
+                <p className="mt-3 max-w-xl text-sm leading-6 text-[#acb6ad]">
                   Upgrade to expose the exact analog cluster averages behind the current regime classification.
                 </p>
               )}
             </section>
 
             <section className={footerModuleClassName}>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                 Model Integrity
               </p>
-              <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                 Microstructure Upgrade
               </h3>
               <p className="mt-3">
                 This score is generated from a K-Nearest Neighbors engine over aligned intermarket history. The dashboard, playbook table, and publication pipeline now reference the same decay-adjusted analog set.
               </p>
 
-              <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[11px] text-zinc-500">
+              <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[13px] text-[#acb6ad]">
                 <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
-                  <p className="uppercase tracking-[0.28em]">Temporal Decay</p>
-                  <p className="text-sm text-white">λ = 0.001</p>
+                  <p className="uppercase tracking-[0.06em]">Temporal Decay</p>
+                  <p className="text-sm text-[#f1f5ef]">λ = 0.001</p>
                 </div>
                 <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
-                  <p className="uppercase tracking-[0.28em]">Regime Filter</p>
-                  <p className="text-right text-sm text-zinc-400">ACTIVE (HMM Proxy)</p>
+                  <p className="uppercase tracking-[0.06em]">Regime Filter</p>
+                  <p className="text-right text-sm text-[#acb6ad]">ACTIVE (HMM Proxy)</p>
                 </div>
                 <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
-                  <p className="uppercase tracking-[0.28em]">Selection Logic</p>
-                  <p className="text-right text-sm text-zinc-400">Exact decayed KNN top 5</p>
+                  <p className="uppercase tracking-[0.06em]">Selection Logic</p>
+                  <p className="text-right text-sm text-[#acb6ad]">Exact decayed KNN top 5</p>
                 </div>
               </div>
 
-              <p className="mt-4 max-w-xl text-xs leading-5 text-zinc-600">
+              <p className="mt-4 max-w-xl text-xs leading-5 text-[#829287]">
                 Dataset is hard-capped to a 10-year rolling window to prevent Z-score distortion, and pre-filtered by structural regime.
               </p>
             </section>
@@ -1147,6 +945,6 @@ export default async function DashboardPage() {
           ) : null}
         </section>
       </div>
-    </main>
+    </MemberShell>
   );
 }

@@ -1,16 +1,18 @@
 import { unstable_noStore as noStore } from "next/cache";
 
-import { BiasGauge } from "@/components/dashboard/BiasGauge";
-import { PaywallWrapper } from "@/components/paywall-wrapper";
-import { AssetToggle } from "@/components/AssetToggle";
+import { DashboardTop } from "@/components/dashboard/DashboardTop";
+import { FreeWorkspace } from "@/components/product/FreeWorkspace";
+import { MacroMarketChart } from "@/components/product/MacroMarketChart";
+import { MarketTabs, MemberShell } from "@/components/product/MemberShell";
+import workspaceStyles from "@/components/product/FreeWorkspace.module.css";
+import memberStyles from "@/components/product/MemberUI.module.css";
+import { loadWorkspaceData } from "@/lib/product/workspace-data";
 import { ManagePlan } from "@/components/billing/ManagePlan";
 import { getStripeCustomerId } from "@/lib/billing/stripe-customer";
 import { getUserSubscriptionStatus } from "@/lib/billing/subscription";
-import { viewerIsPaid } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { CRYPTO_ANALOG_MODEL_SETTINGS } from "@/lib/crypto-bias/constants";
 import type {
-  BiasLabel,
   CryptoBiasScoreRow,
   CryptoBiasComponentResult,
   CryptoHistoricalAnalogMatch,
@@ -99,24 +101,6 @@ function formatMove(value: number | null): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
-function formatTargetSessionDate(date = new Date()) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/New_York",
-  }).format(date);
-}
-
-function formatDataAsOfDate(tradeDate?: string) {
-  if (!tradeDate) return "Pending first sync";
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(`${tradeDate}T12:00:00Z`));
-}
-
 function formatAnalogDate(tradeDate?: string) {
   if (!tradeDate) return "Pending";
   return new Intl.DateTimeFormat("en-US", {
@@ -147,61 +131,24 @@ function formatWeight(value: number | undefined) {
 
 function getSignalDisposition(signal: number | undefined) {
   if (signal == null || Number.isNaN(signal))
-    return { label: "Pending", tone: "text-zinc-500" };
-  if (signal > 0.15) return { label: "Bullish", tone: "text-emerald-400" };
-  if (signal < -0.15) return { label: "Bearish", tone: "text-rose-400" };
-  return { label: "Neutral", tone: "text-zinc-300" };
-}
-
-function getBiasRegime(
-  biasScore: number,
-): "Risk-On" | "Neutral" | "Risk-Off" {
-  if (biasScore > 30) return "Risk-On";
-  if (biasScore < -30) return "Risk-Off";
-  return "Neutral";
-}
-
-const STORM_FRONTS_COPY = {
-  neutral:
-    "Capital is cycling between risk and safety without conviction. Crypto-specific setups are unreliable in this environment. Keep position sizes small and avoid chasing breakouts.",
-  riskOff:
-    "Macro headwinds are compressing crypto valuations. BTC dominance typically rises as altcoins bleed faster. Prioritise capital preservation and look for relative strength only in majors.",
-  riskOn:
-    "Macro tailwinds are feeding risk appetite into digital assets. BTC is catching structural bids from cross-asset flows. Lean into relative strength, buy the dips, and extend your profit targets.",
-} as const;
-
-function getCryptoForecastCopy(
-  biasLabel: BiasLabel | undefined,
-  regime: "Risk-On" | "Neutral" | "Risk-Off",
-): string {
-  switch (biasLabel) {
-    case "RISK_ON":
-    case "EXTREME_RISK_ON":
-      return STORM_FRONTS_COPY.riskOn;
-    case "RISK_OFF":
-    case "EXTREME_RISK_OFF":
-      return STORM_FRONTS_COPY.riskOff;
-    case "NEUTRAL":
-      return STORM_FRONTS_COPY.neutral;
-    default:
-      if (regime === "Risk-On") return STORM_FRONTS_COPY.riskOn;
-      if (regime === "Risk-Off") return STORM_FRONTS_COPY.riskOff;
-      return STORM_FRONTS_COPY.neutral;
-  }
+    return { label: "Pending", tone: "text-[#acb6ad]" };
+  if (signal > 0.15) return { label: "Bullish", tone: "text-[#c9f58a]" };
+  if (signal < -0.15) return { label: "Bearish", tone: "text-[#ef9d9d]" };
+  return { label: "Neutral", tone: "text-[#d1d9cf]" };
 }
 
 function getMoveTone(value: number | null): string {
-  if (value === null) return "text-zinc-500";
-  if (value > 0) return "text-emerald-400";
-  if (value < 0) return "text-rose-400";
-  return "text-zinc-300";
+  if (value === null) return "text-[#acb6ad]";
+  if (value > 0) return "text-[#c9f58a]";
+  if (value < 0) return "text-[#ef9d9d]";
+  return "text-[#d1d9cf]";
 }
 
 function getDeltaTone(value: number | null): string {
-  if (value === null) return "text-zinc-500";
-  if (value > 0) return "text-green-500";
-  if (value < 0) return "text-red-500";
-  return "text-zinc-400";
+  if (value === null) return "text-[#acb6ad]";
+  if (value > 0) return "text-[#c9f58a]";
+  if (value < 0) return "text-[#ef9d9d]";
+  return "text-[#acb6ad]";
 }
 
 function distanceToConfidence(distance: number): number {
@@ -224,9 +171,8 @@ function subtractDays(date: Date, days: number) {
 /*  Data fetching                                                      */
 /* ------------------------------------------------------------------ */
 
-async function getLatestCryptoSnapshot(): Promise<CryptoBiasScoreRow | null> {
+async function getLatestCryptoSnapshot(paid: boolean): Promise<CryptoBiasScoreRow | null> {
   try {
-    const paid = await viewerIsPaid();
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("crypto_bias_scores")
@@ -344,26 +290,26 @@ function extractAnalogData(componentScores: CryptoBiasComponentResult[]) {
 export default async function CryptoDashboardPage() {
   noStore();
 
-  const [snapshot, { isPro, user }, supplementalAssets] =
+  const status = await getUserSubscriptionStatus();
+  if (!status.isPro) {
+    const data = await loadWorkspaceData('crypto', status);
+    return <FreeWorkspace data={data} audience={status.user ? 'member' : 'public'} userId={status.user?.id ?? null} />;
+  }
+
+  const { isPro, user } = status;
+  const [snapshot, supplementalAssets, workspaceData] =
     await Promise.all([
-      getLatestCryptoSnapshot(),
-      getUserSubscriptionStatus(),
+      getLatestCryptoSnapshot(isPro),
       getSupplementalAssets(),
+      loadWorkspaceData('crypto', status),
     ]);
 
   if (!snapshot) {
     return (
-      <main className="min-h-screen font-[family:var(--font-heading)]">
-        <div className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 text-center">
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            [ Crypto Dashboard ]
-          </p>
-          <h1 className="mt-6 text-3xl font-bold text-white">No Data Yet</h1>
-          <p className="mt-3 text-sm text-zinc-400">
-            Crypto scores will appear after the first daily sync.
-          </p>
-        </div>
-      </main>
+      <MemberShell title="Your crypto workspace" plan="Pro plan" description="The published crypto reading is not available yet.">
+        <MarketTabs asset="crypto" view="dashboard" />
+        <section className={memberStyles.panel}><h2>Reading unavailable</h2><p>Crypto scores will appear after a daily session has been stored.</p></section>
+      </MemberShell>
     );
   }
 
@@ -371,11 +317,6 @@ export default async function CryptoDashboardPage() {
   const stripeCustomerId = user ? await getStripeCustomerId(user.id) : null;
   const componentScores = snapshot.component_scores ?? [];
   const tickerChanges = snapshot.ticker_changes;
-  const regime = getBiasRegime(snapshot.score);
-  const signalLabel = formatBiasLabel(snapshot.bias_label);
-  const targetSessionDate = formatTargetSessionDate();
-  const snapshotDateLabel = formatDataAsOfDate(snapshot.trade_date);
-
   /* Ticker-level derived data */
   const tickerEntries = tickerChanges
     ? Object.entries(tickerChanges).map(([ticker, snap]) => ({
@@ -384,27 +325,6 @@ export default async function CryptoDashboardPage() {
         percentChange: (snap as CryptoTickerChangeSnapshot).percentChange,
       }))
     : [];
-  const sortedTickers = [...tickerEntries].sort(
-    (a, b) => a.percentChange - b.percentChange,
-  );
-  const weakestTicker = sortedTickers[0] ?? null;
-  const strongestTicker = sortedTickers.at(-1) ?? null;
-  const advancingCount = tickerEntries.filter(
-    (t) => t.percentChange > 0,
-  ).length;
-  const breadthSummary =
-    tickerEntries.length > 0
-      ? `${advancingCount}/${tickerEntries.length} advancing`
-      : "Waiting for market data";
-  const strongestMoveTone =
-    strongestTicker && strongestTicker.percentChange > 0
-      ? "text-emerald-400"
-      : "text-zinc-300";
-  const weakestMoveTone =
-    weakestTicker && weakestTicker.percentChange < 0
-      ? "text-rose-400"
-      : "text-zinc-300";
-
   /* Signal pillar lookup */
   const signalScoreByKey = new Map<string, CryptoBiasComponentResult>(
     componentScores.map((s) => [s.pillar ?? s.key, s]),
@@ -449,175 +369,57 @@ export default async function CryptoDashboardPage() {
   );
 
   /* Layout tokens (match stocks dashboard) */
-  const terminalBorderClassName = "border border-white/5";
-  const terminalDividerClassName = "border-t border-white/5";
-  const terminalTableDividerClassName = "border-b border-white/5";
-  const moduleClassName = `${terminalBorderClassName} min-w-0 p-4 sm:p-5 md:p-6`;
-  const footerModuleClassName = `${terminalBorderClassName} min-w-0 p-4 text-sm leading-6 text-zinc-500 sm:p-5 md:p-6`;
+  const terminalBorderClassName = "border border-[#2a342c]";
+  const terminalDividerClassName = "border-t border-[#2a342c]";
+  const terminalTableDividerClassName = "border-b border-[#2a342c]";
+  const moduleClassName = `${terminalBorderClassName} rounded-[4px] bg-[#111512] min-w-0 p-4 sm:p-5 md:p-6`;
+  const footerModuleClassName = `${terminalBorderClassName} rounded-[4px] bg-[#111512] min-w-0 p-4 text-sm leading-6 text-[#acb6ad] sm:p-5 md:p-6`;
 
   return (
-    <main className="min-h-screen font-sans font-[family:var(--font-heading)]">
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
-        {/* ── Header ───────────────────────────────────────────── */}
-        <header className="flex flex-col gap-4 border-b border-white/5 py-4 md:flex-row md:items-end md:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center justify-between">
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                [ Crypto Data Terminal ]
-              </p>
-              <AssetToggle />
-            </div>
-            <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tighter text-white md:text-4xl">
-              Daily Crypto Bias
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              Institutional-grade crypto risk scoring. Updated daily.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-4 md:min-w-0 md:flex-shrink-0 md:items-end">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-6">
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Date
-                </p>
-                <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {targetSessionDate}
-                </p>
-                <p className="mt-1 font-[family:var(--font-data)] text-[10px] text-zinc-500">
-                  Data as of: {snapshotDateLabel}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Snapshot
-                </p>
-                <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {signalLabel}
-                </p>
-              </div>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                  Breadth
-                </p>
-                <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                  {breadthSummary}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 md:items-end">
-              <a
-                href="/refer"
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-full border-[0.5px] border-sky-400/30 bg-sky-500/[0.06] px-5 py-3 text-[13px] font-medium text-sky-300 transition hover:border-sky-400/50 hover:bg-sky-500/[0.12] sm:w-auto sm:px-4 sm:py-2.5 sm:text-sm md:border"
-              >
-                Refer Friends
-              </a>
-              <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
-            </div>
-          </div>
-        </header>
+    <MemberShell
+      title="Your crypto workspace"
+      plan="Pro plan"
+      description={<>Published session · {snapshot.trade_date ? <time dateTime={snapshot.trade_date}>{formatAnalogDate(snapshot.trade_date)}</time> : 'Not available'}</>}
+    >
+      <div className={workspaceStyles.proWorkspace} data-pro-workspace="crypto">
+        <MarketTabs asset="crypto" view="dashboard" />
+        <div className={workspaceStyles.proUtility}>
+          <a href="/refer" className={memberStyles.textLink}>Refer friends</a>
+          <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
+        </div>
 
         {/* ── Main grid ────────────────────────────────────────── */}
         <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
-          {/* BiasGauge + Storm Fronts */}
-          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
-            <section className={`${moduleClassName} overflow-hidden`}>
-              <div className="mx-auto w-full max-w-[17rem] min-[360px]:max-w-full md:mx-0 md:max-w-none">
-                <BiasGauge biasScore={snapshot.score} />
-              </div>
-            </section>
-
-            <section className={moduleClassName}>
-              <div>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                  Storm Fronts
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                  {regime} backdrop
-                </h2>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  {getCryptoForecastCopy(snapshot.bias_label, regime)}
-                </p>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Strongest
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">
-                    {strongestTicker?.ticker ?? "--"}
-                  </p>
-                  <p
-                    className={`mt-1 font-[family:var(--font-data)] text-sm ${strongestMoveTone}`}
-                  >
-                    {formatMove(strongestTicker?.percentChange ?? null)}
-                  </p>
-                </div>
-
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Weakest
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">
-                    {weakestTicker?.ticker ?? "--"}
-                  </p>
-                  <p
-                    className={`mt-1 font-[family:var(--font-data)] text-sm ${weakestMoveTone}`}
-                  >
-                    {formatMove(weakestTicker?.percentChange ?? null)}
-                  </p>
-                </div>
-
-                <div className={`${terminalDividerClassName} pt-3`}>
-                  <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    Breadth
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">
-                    {breadthSummary}
-                  </p>
-                  <p className="mt-1 font-[family:var(--font-data)] text-sm text-zinc-400">
-                    3 core tokens
-                  </p>
-                </div>
-              </div>
-            </section>
+          <DashboardTop
+            assets={tickerEntries.map((entry) => ({ ticker: entry.ticker, dailyChangePercent: entry.percentChange, ...workspaceData.tape.entries.find((stored) => stored.ticker === entry.ticker) }))}
+            biasLabel={snapshot.bias_label} biasScore={snapshot.score} hasScore
+            tradeDate={snapshot.trade_date} marketName="Crypto"
+          />
+          <div className={`${workspaceStyles.proChart} min-w-0 lg:col-span-2`}>
+            <MacroMarketChart
+              variant="history" instrument="BTC" title="BTC price & daily bias" defaultRangeMonths={3}
+              candles={workspaceData.active.candles} marks={workspaceData.active.history}
+              latest={workspaceData.active.score ? { tradeDate: workspaceData.active.score.tradeDate, score: workspaceData.active.score.score, biasLabel: workspaceData.active.score.label } : null}
+              notice={workspaceData.active.historyNotice ?? workspaceData.active.priceNotice ?? workspaceData.active.loadError}
+            />
           </div>
 
-          {/* Locked workspace teaser (free users) */}
-          {!isProUser ? (
-            <section className={`${moduleClassName} lg:col-span-2`}>
-              <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-                Locked Workspace
-              </p>
-              <h2 className="mt-3 text-xl font-semibold tracking-tight text-white">
-                Historical Playbook + Setup Map
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                Signal drivers, cross-asset confirmation, and the BTC
-                forward-return playbook are arranged below in the Pro grid.
-              </p>
-            </section>
-          ) : null}
-
-          {/* ── Pro / Paywall content ──────────────────────────── */}
           <div className="min-w-0 lg:col-span-2">
-            {isProUser ? (
+
               <div className="space-y-4 md:space-y-6">
                 <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
                   {/* Signal Breakdown */}
                   <section className={`${moduleClassName} h-full`}>
                     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                       <div>
-                        <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.32em] text-zinc-500 sm:text-[10px] sm:tracking-[0.36em]">
+                        <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
                           Signal Breakdown
                         </p>
-                        <h3 className="mt-2 text-[clamp(1.05rem,4vw,1.125rem)] font-semibold tracking-tight text-white">
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#f1f5ef]">
                           Context Engine
                         </h3>
                       </div>
-                      <p className="max-w-md text-[clamp(0.8125rem,2.8vw,0.875rem)] leading-[1.75] text-zinc-500">
+                      <p className="max-w-md text-base leading-[1.75] text-[#acb6ad]">
                         Weighted pillar contribution to the composite score.
                       </p>
                     </div>
@@ -634,28 +436,28 @@ export default async function CryptoDashboardPage() {
                           >
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
-                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.28em] text-zinc-500 sm:text-[10px] sm:tracking-[0.32em]">
+                                <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
                                   {pillar.label}
                                 </p>
-                                <p className="mt-1 text-[15px] font-medium text-white sm:text-sm">
+                                <p className="mt-1 text-[15px] font-medium text-[#f1f5ef] sm:text-sm">
                                   {pillar.symbol}
                                 </p>
                               </div>
                               <div className="sm:text-right">
                                 <p
-                                  className={`font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] sm:text-[10px] sm:tracking-[0.28em] ${disposition.tone}`}
+                                  className={`font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] sm:text-[12px] sm:tracking-[0.06em] ${disposition.tone}`}
                                 >
                                   {disposition.label}
                                 </p>
-                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-white sm:text-base">
+                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-[#f1f5ef] sm:text-base">
                                   {formatContribution(score?.contribution)}
                                 </p>
-                                <p className="mt-1 font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] text-zinc-500 sm:text-[10px] sm:tracking-[0.28em]">
+                                <p className="mt-1 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
                                   of {formatWeight(score?.weight)} pts
                                 </p>
                               </div>
                             </div>
-                            <p className="mt-3 max-w-[65ch] text-[clamp(0.8125rem,2.9vw,0.875rem)] leading-[1.75] text-zinc-400">
+                            <p className="mt-3 max-w-[65ch] text-base leading-[1.75] text-[#acb6ad]">
                               {score?.summary ??
                                 "Waiting for the next model sync to publish this pillar\u2019s narrative read."}
                             </p>
@@ -669,14 +471,14 @@ export default async function CryptoDashboardPage() {
                   <section className={`${moduleClassName} h-full`}>
                     <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                       <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                        <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                           Cross-Asset Regime
                         </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#f1f5ef]">
                           Market Internals
                         </h3>
                       </div>
-                      <p className="max-w-md text-sm leading-6 text-zinc-500">
+                      <p className="max-w-md text-sm leading-6 text-[#acb6ad]">
                         Crypto majors alongside the macro anchors that drive the
                         correlation model.
                       </p>
@@ -689,16 +491,16 @@ export default async function CryptoDashboardPage() {
                           key={asset.ticker}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                            <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                               {asset.ticker}
                             </p>
                             <p
-                              className={`shrink-0 font-[family:var(--font-data)] text-[11px] ${getMoveTone(asset.dailyChangePercent)}`}
+                              className={`shrink-0 font-[family:var(--font-data)] text-[13px] ${getMoveTone(asset.dailyChangePercent)}`}
                             >
                               {formatMove(asset.dailyChangePercent)}
                             </p>
                           </div>
-                          <p className="mt-1.5 text-sm font-medium text-white">
+                          <p className="mt-1.5 text-sm font-medium text-[#f1f5ef]">
                             {formatPrice(asset.currentPrice)}
                           </p>
                         </article>
@@ -711,15 +513,15 @@ export default async function CryptoDashboardPage() {
                 <section className={moduleClassName}>
                   <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
-                      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                      <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                         Historical Analogs
                       </p>
-                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#f1f5ef]">
                         BTC Forward-Return Playbook
                       </h3>
                     </div>
                     {analogData ? (
-                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
+                      <p className="max-w-lg text-sm leading-6 text-[#acb6ad]">
                         Top {analogData.matchCount} nearest neighbors from the
                         crypto analog engine.
                       </p>
@@ -728,23 +530,23 @@ export default async function CryptoDashboardPage() {
 
                   {analogData ? (
                     <div className="w-full">
-                      <p className="text-[10px] text-zinc-500 sm:hidden">
+                      <p className="text-[12px] text-[#acb6ad] sm:hidden">
                         &larr; scroll to see all columns &rarr;
                       </p>
                       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                         <table className="min-w-[36rem] border-collapse text-left md:min-w-full">
                           <thead>
                             <tr className={terminalTableDividerClassName}>
-                              <th className="w-[30%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              <th className="w-[30%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                                 Matched Date
                               </th>
-                              <th className="w-[20%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              <th className="w-[20%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                                 Similarity
                               </th>
-                              <th className="w-[25%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              <th className="w-[25%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                                 BTC 1-Day Return
                               </th>
-                              <th className="w-[25%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                              <th className="w-[25%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                                 BTC 3-Day Return
                               </th>
                             </tr>
@@ -757,12 +559,12 @@ export default async function CryptoDashboardPage() {
                                   key={match.tradeDate}
                                 >
                                   <td className="py-5 pr-6 align-middle">
-                                    <p className="text-base font-medium text-white">
+                                    <p className="text-base font-medium text-[#f1f5ef]">
                                       {formatAnalogDate(match.tradeDate)}
                                     </p>
                                   </td>
                                   <td className="py-5 pr-6 align-middle">
-                                    <p className="font-[family:var(--font-data)] text-sm text-zinc-400">
+                                    <p className="font-[family:var(--font-data)] text-sm text-[#acb6ad]">
                                       {distanceToConfidence(match.distance)}%
                                     </p>
                                   </td>
@@ -787,7 +589,7 @@ export default async function CryptoDashboardPage() {
                     <div
                       className={`${terminalBorderClassName} bg-white/[0.01] p-4`}
                     >
-                      <p className="max-w-2xl text-sm leading-6 text-zinc-500">
+                      <p className="max-w-2xl text-sm leading-6 text-[#acb6ad]">
                         The analog engine has not yet produced a complete
                         playbook for this snapshot. Additional aligned price
                         history is required before the forward-return profile
@@ -797,193 +599,28 @@ export default async function CryptoDashboardPage() {
                   )}
                 </section>
               </div>
-            ) : (
-              <PaywallWrapper
-                initialIsPro={isProUser}
-                userId={user?.id ?? null}
-              >
-                <div aria-hidden="true" className="space-y-4 md:space-y-6">
-                  <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-                    {/* Locked Signal Breakdown */}
-                    <section className={`${moduleClassName} h-full`}>
-                      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                        <div>
-                          <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.32em] text-zinc-500 sm:text-[10px] sm:tracking-[0.36em]">
-                            Signal Breakdown
-                          </p>
-                          <h3 className="mt-2 text-[clamp(1.05rem,4vw,1.125rem)] font-semibold tracking-tight text-white">
-                            Context Engine
-                          </h3>
-                        </div>
-                        <p className="max-w-md text-[clamp(0.8125rem,2.8vw,0.875rem)] leading-[1.75] text-zinc-500">
-                          Weighted pillar contribution and regime notes unlock
-                          with Pro.
-                        </p>
-                      </div>
 
-                      <div className="mt-4 space-y-0">
-                        {cryptoSignalPillars.map((pillar) => (
-                          <article
-                            className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
-                            key={pillar.key}
-                          >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div>
-                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.28em] text-zinc-500 sm:text-[10px] sm:tracking-[0.32em]">
-                                  {pillar.label}
-                                </p>
-                                <p className="mt-1 text-[15px] font-medium text-white sm:text-sm">
-                                  {pillar.symbol}
-                                </p>
-                              </div>
-                              <div className="sm:text-right">
-                                <p className="font-[family:var(--font-data)] text-[9px] uppercase tracking-[0.22em] text-zinc-500 sm:text-[10px] sm:tracking-[0.28em]">
-                                  Locked
-                                </p>
-                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-white sm:text-base">
-                                  --
-                                </p>
-                              </div>
-                            </div>
-                            <p className="mt-3 max-w-[65ch] text-[clamp(0.8125rem,2.9vw,0.875rem)] leading-[1.75] text-zinc-500">
-                              Premium narrative commentary is hidden until the
-                              workspace is unlocked.
-                            </p>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    {/* Locked Cross-Asset Map */}
-                    <section className={`${moduleClassName} h-full`}>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                        <div>
-                          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                            Cross-Asset Regime
-                          </p>
-                          <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                            Market Internals
-                          </h3>
-                        </div>
-                        <p className="max-w-md text-sm leading-6 text-zinc-500">
-                          Cross-asset internals and macro anchor cards unlock
-                          with Pro access.
-                        </p>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {CROSS_ASSET_TICKERS.map((ticker) => (
-                          <article
-                            className={`${terminalBorderClassName} bg-white/[0.01] p-4`}
-                            key={ticker}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                                  {ticker}
-                                </p>
-                                <p className="mt-2 text-base font-medium text-white">
-                                  Restricted
-                                </p>
-                              </div>
-                              <p className="font-[family:var(--font-data)] text-sm text-zinc-500">
-                                --
-                              </p>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-
-                  {/* Locked Playbook */}
-                  <section className={moduleClassName}>
-                    <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                      <div>
-                        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-                          Historical Analogs
-                        </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                          BTC Forward-Return Playbook
-                        </h3>
-                      </div>
-                      <p className="max-w-lg text-sm leading-6 text-zinc-500">
-                        Premium access unlocks the exact analog table and BTC
-                        forward-return execution context.
-                      </p>
-                    </div>
-
-                    <div className="w-full">
-                      <p className="text-[10px] text-zinc-500 sm:hidden">
-                        &larr; scroll to see all columns &rarr;
-                      </p>
-                      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                        <table className="min-w-[36rem] border-collapse text-left md:min-w-full">
-                          <thead>
-                            <tr className={terminalTableDividerClassName}>
-                              <th className="w-[30%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                Matched Date
-                              </th>
-                              <th className="w-[20%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                Similarity
-                              </th>
-                              <th className="w-[25%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                BTC 1-Day Return
-                              </th>
-                              <th className="w-[25%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                BTC 3-Day Return
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Array.from({ length: 3 }, (_, index) => (
-                              <tr
-                                className={`${terminalTableDividerClassName} even:bg-white/[0.02] last:border-b-0`}
-                                key={`locked-row-${index}`}
-                              >
-                                <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                  Restricted
-                                </td>
-                                <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                  --
-                                </td>
-                                <td className="py-5 pr-6 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                  --
-                                </td>
-                                <td className="py-5 align-middle font-[family:var(--font-data)] text-sm text-zinc-500">
-                                  --
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </section>
-                </div>
-              </PaywallWrapper>
-            )}
           </div>
 
           {/* ── Footer: Cluster Averages + Model Integrity ─────── */}
           {isProUser ? (
             <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
               <section className={footerModuleClassName}>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                   Crypto Summary
                 </p>
-                <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+                <h3 className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                   Cluster Averages
                 </h3>
 
-                <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[11px]">
+                <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[13px]">
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">
                       Analog Matches
                     </p>
-                    <p className="text-sm text-white">
+                    <p className="text-sm text-[#f1f5ef]">
                       {analogData ? analogData.matchCount : "--"}
                     </p>
                   </div>
@@ -991,7 +628,7 @@ export default async function CryptoDashboardPage() {
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">
                       Avg BTC 1D Return
                     </p>
                     <p className={getMoveTone(analogData?.avg1d ?? null)}>
@@ -1002,7 +639,7 @@ export default async function CryptoDashboardPage() {
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">
                       Avg BTC 3D Return
                     </p>
                     <p className={getMoveTone(analogData?.avg3d ?? null)}>
@@ -1013,10 +650,10 @@ export default async function CryptoDashboardPage() {
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">
                       Bearish Hit Rate (1D)
                     </p>
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-[#acb6ad]">
                       {analogData?.bearish1d != null
                         ? `${(analogData.bearish1d * 100).toFixed(0)}%`
                         : "--"}
@@ -1026,10 +663,10 @@ export default async function CryptoDashboardPage() {
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em] text-zinc-500">
+                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">
                       Bearish Hit Rate (3D)
                     </p>
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-[#acb6ad]">
                       {analogData?.bearish3d != null
                         ? `${(analogData.bearish3d * 100).toFixed(0)}%`
                         : "--"}
@@ -1039,10 +676,10 @@ export default async function CryptoDashboardPage() {
               </section>
 
               <section className={footerModuleClassName}>
-                <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
+                <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
                   Model Integrity
                 </p>
-                <h3 className="mt-2 text-base font-semibold tracking-tight text-white">
+                <h3 className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
                   Crypto KNN Engine
                 </h3>
                 <p className="mt-3">
@@ -1052,14 +689,14 @@ export default async function CryptoDashboardPage() {
                   decay-adjusted analog set.
                 </p>
 
-                <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[11px] text-zinc-500">
+                <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[13px] text-[#acb6ad]">
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em]">
+                    <p className="uppercase tracking-[0.06em]">
                       Temporal Decay
                     </p>
-                    <p className="text-sm text-white">
+                    <p className="text-sm text-[#f1f5ef]">
                       &lambda; ={" "}
                       {CRYPTO_ANALOG_MODEL_SETTINGS.temporalDecayLambda}
                     </p>
@@ -1067,10 +704,10 @@ export default async function CryptoDashboardPage() {
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em]">
+                    <p className="uppercase tracking-[0.06em]">
                       Nearest Neighbors
                     </p>
-                    <p className="text-right text-sm text-zinc-400">
+                    <p className="text-right text-sm text-[#acb6ad]">
                       K ={" "}
                       {CRYPTO_ANALOG_MODEL_SETTINGS.nearestNeighborCount}
                     </p>
@@ -1078,14 +715,14 @@ export default async function CryptoDashboardPage() {
                   <div
                     className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}
                   >
-                    <p className="uppercase tracking-[0.28em]">Feature Set</p>
-                    <p className="text-right text-sm text-zinc-400">
+                    <p className="uppercase tracking-[0.06em]">Feature Set</p>
+                    <p className="text-right text-sm text-[#acb6ad]">
                       BTC RSI · ETH/BTC · BTC/GLD · DXY · Vol · TLT
                     </p>
                   </div>
                 </div>
 
-                <p className="mt-4 max-w-xl text-xs leading-5 text-zinc-600">
+                <p className="mt-4 max-w-xl text-xs leading-5 text-[#829287]">
                   The analog engine blends 1-day (40%) and 3-day (60%) forward
                   BTC returns through a tanh mapping scaled to &plusmn;100.
                 </p>
@@ -1094,6 +731,6 @@ export default async function CryptoDashboardPage() {
           ) : null}
         </section>
       </div>
-    </main>
+    </MemberShell>
   );
 }

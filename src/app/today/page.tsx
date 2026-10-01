@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { AssetToggle } from '@/components/AssetToggle';
 import { ScoreCard } from '@/components/product/ScoreCard';
 import { PublicDailyPage } from '@/components/product/PublicDailyPage';
+import { MemberDailyPage } from '@/components/product/MemberDailyPage';
 import { loadPublicDailyData } from '@/lib/product/public-daily-data';
 import { getViewerScore } from '@/lib/product/score-access';
 
@@ -21,6 +22,10 @@ export default async function TodayPage() {
 
   if (!viewer.signedIn && !viewer.paid) {
     return <PublicDailyPage data={await loadPublicDailyData('stocks', viewer)} />;
+  }
+
+  if (!viewer.paid) {
+    return <MemberDailyPage data={await loadPublicDailyData('stocks', viewer)} />;
   }
 
   return (

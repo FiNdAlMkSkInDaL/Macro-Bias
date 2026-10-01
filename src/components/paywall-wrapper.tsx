@@ -9,6 +9,7 @@ import { createSupabaseBrowserClient } from '../lib/supabase/browser';
 type PaywallWrapperProps = {
   checkoutHref?: string;
   children: ReactNode;
+  lockedContent?: ReactNode;
   initialIsPro: boolean;
   userId: string | null;
 };
@@ -49,6 +50,7 @@ function LockIcon() {
 export function PaywallWrapper({
   checkoutHref = '/pricing',
   children,
+  lockedContent,
   initialIsPro,
   userId,
 }: PaywallWrapperProps) {
@@ -195,6 +197,10 @@ export function PaywallWrapper({
 
   if (isUnlocked) {
     return <>{children}</>;
+  }
+
+  if (lockedContent !== undefined) {
+    return <>{lockedContent}</>;
   }
 
   return (
