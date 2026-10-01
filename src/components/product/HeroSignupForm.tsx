@@ -83,7 +83,7 @@ export function HeroSignupForm() {
           required
           autoComplete="email"
           inputMode="email"
-          placeholder="you@example.com"
+          placeholder="name@domain.com"
           value={email}
           aria-invalid={state === 'error'}
           onChange={(event) => setEmail(event.target.value)}
@@ -92,9 +92,9 @@ export function HeroSignupForm() {
         <button
           type="submit"
           disabled={state === 'loading'}
-          className="inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap bg-white px-5 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-12 w-max max-w-full shrink-0 items-center justify-center whitespace-nowrap bg-white px-4 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
         >
-          {state === 'loading' ? 'Adding...' : 'Get Free Alerts'}
+          {state === 'loading' ? 'Adding...' : 'Email me the morning score.'}
         </button>
       </div>
       {message ? (
