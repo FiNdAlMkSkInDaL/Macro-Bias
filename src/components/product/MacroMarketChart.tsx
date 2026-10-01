@@ -211,7 +211,18 @@ export function MacroMarketChart({
         </div>
         <div id={readoutId} className={styles['macro-detail-content']} aria-live="polite" aria-atomic="true">
           <div className={styles['macro-bias-detail']}><p>Macro Bias</p><div><strong className={labelTone(selectedSession?.mark?.biasLabel)} data-empty={!selectedSession?.mark}>{selectedSession?.mark ? formatScore(selectedSession.mark.score) : 'Not available'}</strong><span className={labelTone(selectedSession?.mark?.biasLabel)}>{selectedSession?.mark ? formatBiasLabel(selectedSession.mark.biasLabel) : 'Regime not available'}</span></div></div>
-          <dl className={styles['macro-price-detail']}><div><dt>{instrument} close</dt><dd>{selectedSession?.candle ? formatUsd(selectedSession.candle.close) : 'Not available'}</dd></div><div><dt>Open</dt><dd>{selectedSession?.candle ? formatUsd(selectedSession.candle.open) : 'Not available'}</dd></div><div className={styles['macro-range-detail']}><dt>Low — high</dt><dd>{selectedSession?.candle ? `${formatUsd(selectedSession.candle.low)} — ${formatUsd(selectedSession.candle.high)}` : 'Not available'}</dd></div></dl>
+          {selectedSession?.candle ? (
+            <dl className={styles['macro-price-detail']}>
+              <div><dt>{instrument} close</dt><dd>{formatUsd(selectedSession.candle.close)}</dd></div>
+              <div><dt>Open</dt><dd>{formatUsd(selectedSession.candle.open)}</dd></div>
+              <div className={styles['macro-range-detail']}><dt>Low — high</dt><dd>{`${formatUsd(selectedSession.candle.low)} — ${formatUsd(selectedSession.candle.high)}`}</dd></div>
+            </dl>
+          ) : (
+            <div className={styles['macro-missing-price']} data-price-unavailable>
+              <p>{instrument} price</p>
+              <p>{selectedSession ? 'Price data isn’t available for this session.' : 'Price data isn’t available.'}</p>
+            </div>
+          )}
         </div>
       </div>
       {notice ? <p className={styles['macro-notice']}>{sessions.length ? 'Some market data is unavailable. Available sessions are shown above.' : 'Market data is temporarily unavailable. Please check back shortly.'}</p> : null}

@@ -68,6 +68,11 @@
 .macro-price-detail { display: grid; grid-template-columns: minmax(0, 0.6fr) minmax(0, 0.6fr) minmax(0, 1.4fr); align-items: start; gap: 8px; min-width: 0; }
 .macro-price-detail dd { margin-top: 3px; color: #f0f4ed; font-size: 10px; font-variant-numeric: tabular-nums; }
 .macro-range-detail dd { white-space: nowrap; }
+.macro-missing-price { display: flex; flex-direction: column; justify-content: center; align-self: stretch; min-width: 0; }
+.macro-missing-price p:first-child { color: #829287; font-size: 9px; }
+.macro-missing-price p + p { margin-top: 4px; color: #9eada3; font-size: 11px; line-height: 1.6; }
+.macro-history .macro-missing-price p:first-child { font-size: 10px; }
+.macro-history .macro-missing-price p + p { font-size: 12px; }
 .macro-history .macro-price-detail dd, .macro-history .macro-session-nav strong, .macro-history .macro-bias-detail span { font-size: 12px; }
 .macro-history .macro-price-detail dt, .macro-history .macro-bias-detail > p, .macro-history .macro-session-nav p { font-size: 10px; }
 .macro-notice { margin: 0 -24px; padding: 12px 24px; border-top: 1px solid #2a342c; border-radius: 0 0 12px 12px; color: #9eada3; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }

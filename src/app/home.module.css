@@ -3,7 +3,7 @@
 :global(body):has(.landing) :global(footer) { border-color: #2a342c; }
 :global(body):has(.landing) :global(footer a), :global(body):has(.landing) :global(footer p) { color: #939f94; }
 :global(body):has(.landing) :global(footer > div) { max-width: 1480px; }
-.hero { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: center; gap: 64px; padding: 0 0 64px; }
+.hero { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: start; gap: 64px; padding: 0 0 64px; }
 .heroCopy { min-width: 0; padding: 14px 0; }
 .headline { margin: 0; font-size: clamp(46px, 4.45vw, 68px); font-weight: 600; line-height: 1.02; letter-spacing: -.055em; }
 .headline span { display: block; color: var(--landing-accent); }
