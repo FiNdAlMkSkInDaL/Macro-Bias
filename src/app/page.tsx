@@ -5,9 +5,10 @@ import { tapeLineForScore } from '@/components/dashboard/gauge-copy';
 import { StormFrontsCard } from '@/components/dashboard/StormFrontsCard';
 import { HeroSignupForm } from '@/components/product/HeroSignupForm';
 import { LockedBriefing } from '@/components/product/LockedBriefing';
-import { ScoreStrip, scoreMoveLine } from '@/components/product/ScoreStrip';
+import { ScoreStrip } from '@/components/product/ScoreStrip';
+import { StockScoreChart } from '@/components/product/StockScoreChart';
 import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
-import { formatBiasLabel, formatScore, formatTradeDate } from '@/lib/public-proof/format';
+import { formatBiasLabel, formatScore } from '@/lib/public-proof/format';
 import { loadLatestRegimeRead, loadStoredStockScores } from '@/lib/public-proof/load-public-proof';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -63,11 +64,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const [regime, history] = await Promise.all([loadLatestRegimeRead(), loadStoredStockScores()]);
   const latestScore = regime.value;
   const storedScores = history.value ?? [];
-  const todayRow = latestScore
-    ? storedScores.find((row) => row.tradeDate === latestScore.tradeDate) ?? null
-    : null;
-  const todayIndex = todayRow ? storedScores.findIndex((row) => row.tradeDate === todayRow.tradeDate) : -1;
-  const priorRow = todayIndex >= 0 ? storedScores[todayIndex + 1] ?? null : null;
   const stripMarks = storedScores.slice(0, 20).slice().reverse();
 
   return (
@@ -95,15 +91,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </span>
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-300">{tapeLineForScore(latestScore.score)}</p>
-            <div className="mt-8 max-w-3xl">
+            <div className="mt-8 grid items-end gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(14rem,0.7fr)]">
               <BiasGauge animate biasScore={latestScore.score} showRead={false} />
-              <ScoreStrip marks={stripMarks} today={latestScore.tradeDate} />
-              {priorRow && todayRow ? (
-                <p className="mt-3 text-sm text-zinc-300" title={`${formatTradeDate(priorRow.tradeDate)} to ${formatTradeDate(todayRow.tradeDate)}`}>
-                  {scoreMoveLine(priorRow, todayRow)}
-                </p>
-              ) : null}
+              <StockScoreChart marks={stripMarks} />
             </div>
+            <ScoreStrip marks={stripMarks} today={latestScore.tradeDate} />
           </>
         ) : (
           <h1 id="hero-heading" className="mt-4 text-2xl font-semibold tracking-tight text-white">
