@@ -97,14 +97,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <h1 id="hero-heading" className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
           Trade with the weather. Not against it.
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
-          Macro Bias gives you a fast daily market read before the open. Get the score, the day type, and the trust check before you place a trade.
-        </p>
-        <HeroSignupForm />
-        <p className="mt-3 max-w-xl text-xs leading-5 text-zinc-500">
-          Free every morning. Stocks and crypto. Unsubscribe anytime.
-        </p>
-        <div className="mt-16">
+        <div className="mt-10">
           <DashboardTop
             assets={latestScore?.assets ?? []}
             biasLabel={latestScore?.biasLabel}
@@ -113,28 +106,35 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             note={regime.error}
             tradeDate={latestScore?.tradeDate ?? null}
           />
-          {briefing.error ? (
-            <article className="mt-10 max-w-3xl">
-              <ProofLabel>Latest call</ProofLabel>
-              <p className="mt-3 text-sm leading-6 text-zinc-300">{briefing.error}</p>
-            </article>
-          ) : matchingCall ? (
-            <article className="mt-10 max-w-3xl">
-              <ProofLabel>Latest call</ProofLabel>
-              <p className="mt-3 font-[family:var(--font-data)] text-xs text-zinc-500">
-                Trade date {formatTradeDate(matchingCall.tradeDate)}
-              </p>
-              <p className="mt-4 text-sm leading-6 text-zinc-300">
-                <span className="text-zinc-500">Day type. </span>
-                {matchingCall.dayType}
-              </p>
-              <p className="mt-3 text-base leading-7 text-white">
-                <span className="text-zinc-500">Bottom line. </span>
-                {matchingCall.bottomLine}
-              </p>
-            </article>
-          ) : null}
         </div>
+        <HeroSignupForm />
+        <p className="mt-3 max-w-xl text-xs leading-5 text-zinc-500">
+          Tomorrow&apos;s score, tape, and storm fronts. Stocks and crypto. Before the open.
+        </p>
+        <Link href="/pricing" className="mt-4 inline-block text-sm text-zinc-300 underline decoration-zinc-600 underline-offset-4">
+          Full briefing is $25/mo.
+        </Link>
+        {briefing.error ? (
+          <article className="mt-10 max-w-3xl">
+            <ProofLabel>Latest call</ProofLabel>
+            <p className="mt-3 text-sm leading-6 text-zinc-300">{briefing.error}</p>
+          </article>
+        ) : matchingCall ? (
+          <article className="mt-10 max-w-3xl">
+            <ProofLabel>Latest call</ProofLabel>
+            <p className="mt-3 font-[family:var(--font-data)] text-xs text-zinc-500">
+              Trade date {formatTradeDate(matchingCall.tradeDate)}
+            </p>
+            <p className="mt-4 text-sm leading-6 text-zinc-300">
+              <span className="text-zinc-500">Day type. </span>
+              {matchingCall.dayType}
+            </p>
+            <p className="mt-3 text-base leading-7 text-white">
+              <span className="text-zinc-500">Bottom line. </span>
+              {matchingCall.bottomLine}
+            </p>
+          </article>
+        ) : null}
       </section>
       <section className="mt-16 border border-white/10 px-5 py-6" aria-label="Referral">
         <p className="text-sm leading-6 text-zinc-400">
