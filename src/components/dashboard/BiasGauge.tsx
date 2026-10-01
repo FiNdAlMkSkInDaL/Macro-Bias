@@ -1,5 +1,13 @@
+'use client';
+
+import { useEffect, useState } from "react";
+
+import { regimeForScore, tapeLineForScore } from "./gauge-copy";
+
 interface BiasGaugeProps {
+  animate?: boolean;
   biasScore: number;
+  showRead?: boolean;
 }
 
 const MIN_SCORE = -100;
@@ -9,25 +17,11 @@ function clampBiasScore(biasScore: number): number {
   return Math.max(MIN_SCORE, Math.min(MAX_SCORE, biasScore));
 }
 
-function getBiasRegime(biasScore: number): "Risk-On" | "Neutral" | "Risk-Off" {
-  if (biasScore > 30) {
-    return "Risk-On";
-  }
-
-  if (biasScore < -30) {
-    return "Risk-Off";
-  }
-
-  return "Neutral";
-}
-
 function getGaugeTone(biasScore: number) {
   if (biasScore > 30) {
     return {
       label: "text-emerald-400",
       score: "text-emerald-400",
-      summary:
-        "Cross-asset participation is favoring growth and broad risk appetite.",
     };
   }
 
@@ -35,16 +29,12 @@ function getGaugeTone(biasScore: number) {
     return {
       label: "text-rose-400",
       score: "text-rose-400",
-      summary:
-        "Defensive leadership is taking over as traders rotate away from cyclicals.",
     };
   }
 
   return {
     label: "text-zinc-300",
     score: "text-white",
-    summary:
-      "The tape is mixed, with no clean macro confirmation from the core rotation basket.",
   };
 }
 
@@ -58,31 +48,67 @@ function formatScore(biasScore: number): string {
   return `${roundedScore > 0 ? "+" : ""}${roundedScore}`;
 }
 
-export function BiasGauge({ biasScore }: BiasGaugeProps) {
+export function BiasGauge({ animate = false, biasScore, showRead = true }: BiasGaugeProps) {
   const normalizedScore = clampBiasScore(biasScore);
-  const regime = getBiasRegime(normalizedScore);
-  const tone = getGaugeTone(normalizedScore);
-  const indicatorPosition = getScalePosition(normalizedScore);
+  const [displayScore, setDisplayScore] = useState(animate ? 0 : normalizedScore);
+  const regime = regimeForScore(showRead ? normalizedScore : displayScore);
+  const tone = getGaugeTone(showRead ? normalizedScore : displayScore);
+  const indicatorPosition = getScalePosition(animate ? displayScore : normalizedScore);
+
+  useEffect(() => {
+    if (!animate) {
+      setDisplayScore(normalizedScore);
+      return;
+    }
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reduceMotion) {
+      setDisplayScore(normalizedScore);
+      return;
+    }
+
+    let frame = 0;
+    const start = performance.now();
+    const duration = 900;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      setDisplayScore(normalizedScore * eased);
+
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+
+    setDisplayScore(0);
+    frame = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frame);
+  }, [animate, normalizedScore]);
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            Bias Gauge
-          </p>
-          <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
-            <p className={`font-[family:var(--font-data)] text-5xl font-semibold leading-none sm:text-6xl ${tone.score}`}>
-              {formatScore(normalizedScore)}
+      {showRead ? (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
+              Bias Gauge
             </p>
-            <span className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.label}`}>
-              {regime}
-            </span>
+            <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+              <p className={`font-[family:var(--font-data)] text-5xl font-semibold leading-none sm:text-6xl ${tone.score}`}>
+                {formatScore(normalizedScore)}
+              </p>
+              <span className={`font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] ${tone.label}`}>
+                {regime}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <p className="max-w-md text-sm leading-6 text-zinc-400">{tone.summary}</p>
-      </div>
+          <p className="max-w-md text-sm leading-6 text-zinc-400">{tapeLineForScore(normalizedScore)}</p>
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <div className="relative w-full pt-3">
