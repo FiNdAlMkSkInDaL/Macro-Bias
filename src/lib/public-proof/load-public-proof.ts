@@ -147,6 +147,73 @@ export async function loadStoredStockScores(): Promise<Loaded<StoredStockScore[]
   }
 }
 
+export type StoredCandle = {
+  tradeDate: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+function candleRow(row: {
+  trade_date?: unknown;
+  open?: unknown;
+  high?: unknown;
+  low?: unknown;
+  close?: unknown;
+}): StoredCandle | null {
+  if (typeof row.trade_date !== 'string') {
+    return null;
+  }
+
+  const open = asFiniteNumber(row.open);
+  const high = asFiniteNumber(row.high);
+  const low = asFiniteNumber(row.low);
+  const close = asFiniteNumber(row.close);
+
+  if (open == null || high == null || low == null || close == null) {
+    return null;
+  }
+
+  if (high < low || high < Math.max(open, close) || low > Math.min(open, close)) {
+    return null;
+  }
+
+  return { tradeDate: row.trade_date, open, high, low, close };
+}
+
+/** Latest stored SPY daily bars. Empty when that equity series has no usable OHLC. */
+export async function loadStoredSpyCandles(limit = 20): Promise<Loaded<StoredCandle[]>> {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('etf_daily_prices')
+      .select('trade_date, open, high, low, close')
+      .eq('ticker', 'SPY')
+      .order('trade_date', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      return { value: null, error: loadError('etf_daily_prices', error.message) };
+    }
+
+    const candles = ((data as Array<{
+      trade_date?: unknown;
+      open?: unknown;
+      high?: unknown;
+      low?: unknown;
+      close?: unknown;
+    }> | null) ?? [])
+      .map(candleRow)
+      .filter((row): row is StoredCandle => row != null)
+      .reverse();
+
+    return { value: candles, error: null };
+  } catch (error) {
+    return { value: null, error: loadError('etf_daily_prices', thrownMessage(error)) };
+  }
+}
+
 export async function loadLatestRegimeRead(): Promise<Loaded<LatestRegimeRead>> {
   try {
     const snapshot = await getLatestBiasSnapshot();

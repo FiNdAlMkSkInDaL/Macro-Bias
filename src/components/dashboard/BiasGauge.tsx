@@ -8,6 +8,7 @@ interface BiasGaugeProps {
   animate?: boolean;
   biasScore: number;
   showRead?: boolean;
+  stackRead?: boolean;
 }
 
 const MIN_SCORE = -100;
@@ -48,7 +49,7 @@ function formatScore(biasScore: number): string {
   return `${roundedScore > 0 ? "+" : ""}${roundedScore}`;
 }
 
-export function BiasGauge({ animate = false, biasScore, showRead = true }: BiasGaugeProps) {
+export function BiasGauge({ animate = false, biasScore, showRead = true, stackRead = false }: BiasGaugeProps) {
   const normalizedScore = clampBiasScore(biasScore);
   const [displayScore, setDisplayScore] = useState(animate ? 0 : normalizedScore);
   const regime = regimeForScore(showRead ? normalizedScore : displayScore);
@@ -91,7 +92,7 @@ export function BiasGauge({ animate = false, biasScore, showRead = true }: BiasG
   return (
     <section className="space-y-4">
       {showRead ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className={`flex flex-col gap-4 ${stackRead ? "" : "sm:flex-row sm:items-end sm:justify-between"}`}>
           <div>
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
               Bias Gauge
