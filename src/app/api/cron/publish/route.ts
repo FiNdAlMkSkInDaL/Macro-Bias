@@ -22,6 +22,8 @@ import {
 } from '../../../../lib/marketing/recipient-policy';
 import type { BiasLabel } from '../../../../lib/macro-bias/types';
 import { upsertDailyMarketData } from '../../../../lib/market-data/upsert-daily-market-data';
+import { partitionUnlockedSubscribers } from '../../../../lib/referral/premium-unlock';
+import { verifyPendingReferrals } from '../../../../lib/referral/verify-referrals';
 import { getAppUrl } from '../../../../lib/server-env';
 import { isBlueskyConfigured, publishToBluesky } from '../../../../lib/social/bluesky';
 import { sanitizeForSocial } from '../../../../lib/social/sanitize';
@@ -947,12 +949,19 @@ async function handlePublish(request: NextRequest) {
             }
           }
 
-          if (premiumPartition.deliverable.length === 0) {
+          const { unlockedEmails, regularFreeEmails } = await partitionUnlockedSubscribers(
+            supabase,
+            freePartition.deliverable,
+          );
+          const premiumList = [...premiumPartition.deliverable, ...unlockedEmails];
+          const freeList = regularFreeEmails;
+
+          if (premiumList.length === 0 && freeList.length === 0) {
             const named = formatAddressList(rejectedAddresses);
             throw new Error(
               rejectedAddresses.length > 0
                 ? `Stock email was not sent. Resend rejects: ${named}.`
-                : 'Stock email was not sent. No paid recipients are on the list.',
+                : 'Stock email was not sent. No recipients are on the list.',
             );
           }
 
@@ -971,46 +980,75 @@ async function handlePublish(request: NextRequest) {
           }
 
           console.log(
-            `[publish-cron] Starting dispatchQuantBriefing() for ${premiumPartition.deliverable.length} paid recipients`,
+            `[publish-cron] Starting dispatchQuantBriefing() for ${premiumList.length} premium recipients and ${freeList.length} free recipients`,
           );
 
-          const premiumDispatchResult = await dispatchQuantBriefing(
-            dailyBriefing.newsletterCopy,
-            dailyBriefing.quant.score,
-            dailyBriefing.quant.label,
-            dailyBriefing.isOverrideActive,
-            {
-              recipients: premiumPartition.deliverable,
-              tier: 'premium',
-              weeklyDigest,
-              signal: dailyBriefing.quant.signal,
-            },
-          );
+          const briefingSignal = dailyBriefing.quant.signal;
+          let totalRecipientCount = 0;
 
-          emailRecipientCount = premiumDispatchResult.recipientCount;
-
-          if (premiumDispatchResult.recipientCount === 0) {
-            throw new Error(
-              `Stock email was not sent. Resend rejects: ${formatAddressList([
-                ...rejectedAddresses,
-                ...premiumDispatchResult.rejected.map((entry) => entry.email),
-              ])}.`,
+          if (premiumList.length > 0) {
+            const premiumDispatchResult = await dispatchQuantBriefing(
+              dailyBriefing.newsletterCopy,
+              dailyBriefing.quant.score,
+              dailyBriefing.quant.label,
+              dailyBriefing.isOverrideActive,
+              {
+                recipients: premiumList,
+                tier: 'premium',
+                weeklyDigest,
+                signal: briefingSignal,
+              },
             );
+
+            if (premiumDispatchResult.recipientCount === 0) {
+              throw new Error(
+                `Stock email was not sent. Resend rejects: ${formatAddressList([
+                  ...rejectedAddresses,
+                  ...premiumDispatchResult.rejected.map((entry) => entry.email),
+                ])}.`,
+              );
+            }
+
+            totalRecipientCount += premiumDispatchResult.recipientCount;
           }
 
-          const dropped = [
-            ...rejectedAddresses,
-            ...premiumDispatchResult.rejected.map((entry) => entry.email),
-          ];
+          if (freeList.length > 0) {
+            const freeDispatchResult = await dispatchQuantBriefing(
+              dailyBriefing.newsletterCopy,
+              dailyBriefing.quant.score,
+              dailyBriefing.quant.label,
+              dailyBriefing.isOverrideActive,
+              {
+                recipients: freeList,
+                tier: 'free',
+                weeklyDigest,
+                signal: briefingSignal,
+              },
+            );
 
-          if (dropped.length > 0) {
+            if (freeDispatchResult.recipientCount === 0) {
+              throw new Error(
+                `Stock email was not sent. Resend rejects: ${formatAddressList([
+                  ...rejectedAddresses,
+                  ...freeDispatchResult.rejected.map((entry) => entry.email),
+                ])}.`,
+              );
+            }
+
+            totalRecipientCount += freeDispatchResult.recipientCount;
+          }
+
+          emailRecipientCount = totalRecipientCount;
+          await verifyPendingReferrals(supabase);
+
+          if (rejectedAddresses.length > 0) {
             failures.push(
-              `Removed rejected addresses before send: ${formatAddressList(dropped)}.`,
+              `Removed rejected addresses before send: ${formatAddressList(rejectedAddresses)}.`,
             );
           }
 
           console.log(
-            `[publish-cron] Finished dispatchQuantBriefing() with ${premiumDispatchResult.recipientCount} paid recipients across ${premiumDispatchResult.batchCount} batches`,
+            `[publish-cron] Finished dispatchQuantBriefing() with ${totalRecipientCount} recipients (${premiumList.length} premium, ${freeList.length} free)`,
           );
         }),
       );

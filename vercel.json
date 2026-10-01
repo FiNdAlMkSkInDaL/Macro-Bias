@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/crypto-publish",
-      "schedule": "30 12 * * *"
+      "schedule": "30 12 * * 1-5"
     }
   ]
 }
