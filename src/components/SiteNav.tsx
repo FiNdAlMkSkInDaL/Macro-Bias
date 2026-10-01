@@ -71,7 +71,7 @@ export function SiteNav() {
       <div className={isLanding ? "mx-auto flex h-[70px] max-w-[1480px] items-center justify-between px-5 md:px-6 lg:px-10" : "mx-auto flex h-14 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10"}>
         <Link
           href="/"
-          className={isLanding ? "py-2 font-[family:var(--font-heading)] text-base font-semibold tracking-[0.18em] text-[#f1f5ef] uppercase sm:text-lg" : "py-2 font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"}
+          className={isLanding ? "whitespace-nowrap py-2 font-[family:var(--font-heading)] text-base font-semibold tracking-[0.18em] text-[#f1f5ef] uppercase sm:text-lg" : "py-2 font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"}
           data-analytics-event="nav_logo_click"
           data-analytics-label="Macro Bias"
           data-analytics-location="site_nav"
@@ -128,7 +128,7 @@ export function SiteNav() {
               onClick={() => {
                 void handleSignOut();
               }}
-              className="inline-flex min-h-[44px] items-center px-1 text-[13px] font-medium text-zinc-300 transition hover:text-white sm:px-2"
+              className={isLanding ? "hidden min-h-[44px] items-center whitespace-nowrap px-2 text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline-flex" : "inline-flex min-h-[44px] items-center px-1 text-[13px] font-medium text-zinc-300 transition hover:text-white sm:px-2"}
             >
               Sign out
             </button>
@@ -204,6 +204,15 @@ export function SiteNav() {
             >
               {accountLabel}
             </Link>
+            {isLanding && signedIn ? (
+              <button
+                type="button"
+                onClick={() => { void handleSignOut(); }}
+                className="flex min-h-[44px] items-center text-[13px] font-medium text-zinc-400 transition hover:text-white"
+              >
+                Sign out
+              </button>
+            ) : null}
           </div>
         </nav>
       )}
