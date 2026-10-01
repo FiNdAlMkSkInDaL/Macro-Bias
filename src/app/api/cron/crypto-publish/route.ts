@@ -332,7 +332,7 @@ function buildFreeTierCryptoBriefingEmailHtml(
     }
   }
 
-  const upgradeUrl = escapeHtml(new URL("/pricing", getAppUrl()).toString());
+  const upgradeUrl = escapeHtml(new URL("/api/checkout?plan=monthly", getAppUrl()).toString());
 
   const paywallHtml = `
 <div style="margin-top:28px;border:1px solid #38bdf8;border-radius:12px;padding:24px;background:linear-gradient(135deg, rgba(56,189,248,0.12) 0%, rgba(9,9,11,0.96) 60%);">
