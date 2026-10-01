@@ -1,14 +1,14 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { DashboardTop } from '@/components/dashboard/DashboardTop';
+import { BiasGauge } from '@/components/dashboard/BiasGauge';
+import { tapeLineForScore } from '@/components/dashboard/gauge-copy';
+import { StormFrontsCard } from '@/components/dashboard/StormFrontsCard';
 import { HeroSignupForm } from '@/components/product/HeroSignupForm';
+import { LockedBriefing } from '@/components/product/LockedBriefing';
+import { ScoreStrip, scoreMoveLine } from '@/components/product/ScoreStrip';
 import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
-import { formatTradeDate } from '@/lib/public-proof/format';
-import {
-  loadBriefingCallForTradeDate,
-  loadLatestRegimeRead,
-} from '@/lib/public-proof/load-public-proof';
+import { formatBiasLabel, formatScore, formatTradeDate } from '@/lib/public-proof/format';
+import { loadLatestRegimeRead, loadStoredStockScores } from '@/lib/public-proof/load-public-proof';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -23,14 +23,6 @@ type HomePageProps = {
     redirectTo?: string | string[];
   }>;
 };
-
-function ProofLabel({ children }: { children: string }) {
-  return (
-    <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.36em] text-zinc-500">
-      {children}
-    </p>
-  );
-}
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
@@ -68,15 +60,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  const regime = await loadLatestRegimeRead();
+  const [regime, history] = await Promise.all([loadLatestRegimeRead(), loadStoredStockScores()]);
   const latestScore = regime.value;
-  const briefing = latestScore
-    ? await loadBriefingCallForTradeDate(latestScore.tradeDate)
-    : { value: null, error: null };
-  const matchingCall =
-    briefing.value && latestScore && briefing.value.tradeDate === latestScore.tradeDate
-      ? briefing.value
-      : null;
+  const storedScores = history.value ?? [];
+  const todayRow = latestScore
+    ? storedScores.find((row) => row.tradeDate === latestScore.tradeDate) ?? null
+    : null;
+  const todayIndex = todayRow ? storedScores.findIndex((row) => row.tradeDate === todayRow.tradeDate) : -1;
+  const priorRow = todayIndex >= 0 ? storedScores[todayIndex + 1] ?? null : null;
+  const stripMarks = storedScores.slice(0, 20).slice().reverse();
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:px-8">
@@ -91,58 +83,47 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </p>
       ) : null}
       <section aria-labelledby="hero-heading">
-        <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-          Macro Bias
-        </p>
-        <h1 id="hero-heading" className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-          Trade with the weather. Not against it.
-        </h1>
-        <div className="mt-10">
-          <DashboardTop
+        <p className="text-sm text-zinc-500">Trade with the weather. Not against it.</p>
+        {latestScore ? (
+          <>
+            <h1 id="hero-heading" className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+              <span className="font-[family:var(--font-data)] text-6xl font-semibold leading-none tracking-tight text-white sm:text-7xl">
+                {formatScore(Math.round(latestScore.score))}
+              </span>
+              <span className="font-[family:var(--font-data)] text-sm uppercase tracking-[0.32em] text-zinc-300">
+                {formatBiasLabel(latestScore.biasLabel)}
+              </span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-300">{tapeLineForScore(latestScore.score)}</p>
+            <div className="mt-8 max-w-3xl">
+              <BiasGauge animate biasScore={latestScore.score} showRead={false} />
+              <ScoreStrip marks={stripMarks} today={latestScore.tradeDate} />
+              {priorRow && todayRow ? (
+                <p className="mt-3 text-sm text-zinc-300" title={`${formatTradeDate(priorRow.tradeDate)} to ${formatTradeDate(todayRow.tradeDate)}`}>
+                  {scoreMoveLine(priorRow, todayRow)}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <h1 id="hero-heading" className="mt-4 text-2xl font-semibold tracking-tight text-white">
+            No score is stored for this session.
+          </h1>
+        )}
+        {history.error && stripMarks.length === 0 ? (
+          <p className="mt-6 text-sm text-zinc-400">{history.error}</p>
+        ) : null}
+        <div className="mt-8">
+          <StormFrontsCard
             assets={latestScore?.assets ?? []}
             biasLabel={latestScore?.biasLabel}
             biasScore={latestScore?.score ?? 0}
             hasScore={Boolean(latestScore)}
             note={regime.error}
-            tradeDate={latestScore?.tradeDate ?? null}
           />
+          <LockedBriefing />
         </div>
         <HeroSignupForm />
-        <p className="mt-3 max-w-xl text-xs leading-5 text-zinc-500">
-          Tomorrow&apos;s score, tape, and storm fronts. Stocks and crypto. Before the open.
-        </p>
-        <Link href="/pricing" className="mt-4 inline-block text-sm text-zinc-300 underline decoration-zinc-600 underline-offset-4">
-          Full briefing is $25/mo.
-        </Link>
-        {briefing.error ? (
-          <article className="mt-10 max-w-3xl">
-            <ProofLabel>Latest call</ProofLabel>
-            <p className="mt-3 text-sm leading-6 text-zinc-300">{briefing.error}</p>
-          </article>
-        ) : matchingCall ? (
-          <article className="mt-10 max-w-3xl">
-            <ProofLabel>Latest call</ProofLabel>
-            <p className="mt-3 font-[family:var(--font-data)] text-xs text-zinc-500">
-              Trade date {formatTradeDate(matchingCall.tradeDate)}
-            </p>
-            <p className="mt-4 text-sm leading-6 text-zinc-300">
-              <span className="text-zinc-500">Day type. </span>
-              {matchingCall.dayType}
-            </p>
-            <p className="mt-3 text-base leading-7 text-white">
-              <span className="text-zinc-500">Bottom line. </span>
-              {matchingCall.bottomLine}
-            </p>
-          </article>
-        ) : null}
-      </section>
-      <section className="mt-16 border border-white/10 px-5 py-6" aria-label="Referral">
-        <p className="text-sm leading-6 text-zinc-400">
-          Already subscribed? Invite 3 traders and unlock 7 days of Premium.
-        </p>
-        <Link href="/refer" className="mt-3 inline-block text-sm text-sky-400 underline">
-          See referral rewards
-        </Link>
       </section>
     </main>
   );
