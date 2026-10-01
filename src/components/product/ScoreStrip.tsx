@@ -5,12 +5,22 @@ export type ScoreMark = {
   score: number;
 };
 
-export function scoreMoveLine(prior: ScoreMark, today: ScoreMark) {
-  const priorScore = Math.round(prior.score);
-  const todayScore = Math.round(today.score);
-  const direction = todayScore > priorScore ? "Heated" : todayScore < priorScore ? "Cooled" : "Unchanged";
+const NEUTRAL_BAND = 10;
 
-  return `Yesterday ${formatScore(priorScore)}. Today ${formatScore(todayScore)}. ${direction}.`;
+function barColor(score: number, todayIsExtreme: boolean) {
+  if (todayIsExtreme) {
+    return "bg-white";
+  }
+
+  if (score >= NEUTRAL_BAND) {
+    return "bg-green-500";
+  }
+
+  if (score <= -NEUTRAL_BAND) {
+    return "bg-rose-500";
+  }
+
+  return "bg-zinc-500";
 }
 
 export function ScoreStrip({ marks, today }: { marks: ScoreMark[]; today: string }) {
@@ -18,37 +28,39 @@ export function ScoreStrip({ marks, today }: { marks: ScoreMark[]; today: string
     return null;
   }
 
+  const extremeMagnitude = marks.reduce((extreme, mark) => Math.max(extreme, Math.abs(Math.round(mark.score))), 0);
+
   return (
     <div
-      className="relative mt-6 flex h-14 items-center gap-1"
+      className="relative mt-6 h-32"
       role="img"
-      aria-label="Stored stock scores, one mark per trade date. Today is highlighted."
+      aria-label="Stored stock scores, one bar per trade date, drawn from zero on a -100 to +100 scale."
     >
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-white/10" />
-      {marks.map((mark) => {
-        const rounded = Math.round(mark.score);
-        const magnitude = Math.min(1, Math.abs(rounded) / 100);
-        const isToday = mark.tradeDate === today;
-        const height = Math.max(isToday ? 12 : 4, Math.round(magnitude * 24));
+      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-white/20" />
+      <div className="absolute inset-0 flex items-stretch gap-1">
+        {marks.map((mark) => {
+          const rounded = Math.round(mark.score);
+          const isToday = mark.tradeDate === today;
+          const todayIsExtreme = isToday && extremeMagnitude > 0 && Math.abs(rounded) === extremeMagnitude;
+          const height = (Math.abs(rounded) / 100) * 50;
 
-        return (
-          <span key={mark.tradeDate} className="relative flex h-full min-w-0 flex-1 items-center justify-center">
-            <span
-              className={`block w-full max-w-2 ${isToday ? "bg-white" : "bg-zinc-600"}`}
-              style={{
-                height,
-                transform: rounded >= 0 ? `translateY(-${height / 2}px)` : `translateY(${height / 2}px)`,
-              }}
-              title={`${formatTradeDate(mark.tradeDate)} ${formatScore(rounded)}`}
-            >
+          return (
+            <div key={mark.tradeDate} className="relative min-w-0 flex-1" title={`${formatTradeDate(mark.tradeDate)} ${formatScore(rounded)}`}>
+              <div
+                className={`absolute inset-x-0 ${barColor(rounded, todayIsExtreme)} ${isToday && !todayIsExtreme ? "shadow-[0_0_0_1px_#fff]" : ""}`}
+                style={{
+                  height: `${height}%`,
+                  ...(rounded >= 0 ? { bottom: "50%" } : { top: "50%" }),
+                }}
+              />
               <span className="sr-only">
                 {formatTradeDate(mark.tradeDate)} {formatScore(rounded)}
                 {isToday ? ", today" : ""}
               </span>
-            </span>
-          </span>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
