@@ -1,15 +1,13 @@
 import { redirect } from 'next/navigation';
 
 import { BiasGauge } from '@/components/dashboard/BiasGauge';
-import { tapeLineForScore } from '@/components/dashboard/gauge-copy';
 import { StormFrontsCard } from '@/components/dashboard/StormFrontsCard';
 import { HeroSignupForm } from '@/components/product/HeroSignupForm';
 import { LockedBriefing } from '@/components/product/LockedBriefing';
 import { ScoreStrip } from '@/components/product/ScoreStrip';
-import { StockScoreChart } from '@/components/product/StockScoreChart';
+import { StockCandles } from '@/components/product/StockCandles';
 import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
-import { formatBiasLabel, formatScore } from '@/lib/public-proof/format';
-import { loadLatestRegimeRead, loadStoredStockScores } from '@/lib/public-proof/load-public-proof';
+import { loadLatestRegimeRead, loadStoredSpyCandles, loadStoredStockScores } from '@/lib/public-proof/load-public-proof';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -61,10 +59,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  const [regime, history] = await Promise.all([loadLatestRegimeRead(), loadStoredStockScores()]);
+  const [regime, history, spyBars] = await Promise.all([
+    loadLatestRegimeRead(),
+    loadStoredStockScores(),
+    loadStoredSpyCandles(),
+  ]);
   const latestScore = regime.value;
   const storedScores = history.value ?? [];
   const stripMarks = storedScores.slice(0, 20).slice().reverse();
+  const candles = spyBars.value ?? [];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:px-8">
@@ -79,29 +82,24 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </p>
       ) : null}
       <section aria-labelledby="hero-heading">
-        <p className="text-sm text-zinc-500">Trade with the weather. Not against it.</p>
-        {latestScore ? (
-          <>
-            <h1 id="hero-heading" className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
-              <span className="font-[family:var(--font-data)] text-6xl font-semibold leading-none tracking-tight text-white sm:text-7xl">
-                {formatScore(Math.round(latestScore.score))}
-              </span>
-              <span className="font-[family:var(--font-data)] text-sm uppercase tracking-[0.32em] text-zinc-300">
-                {formatBiasLabel(latestScore.biasLabel)}
-              </span>
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-300">{tapeLineForScore(latestScore.score)}</p>
-            <div className="mt-8 grid items-end gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(14rem,0.7fr)]">
-              <BiasGauge animate biasScore={latestScore.score} showRead={false} />
-              <StockScoreChart marks={stripMarks} />
-            </div>
-            <ScoreStrip marks={stripMarks} today={latestScore.tradeDate} />
-          </>
-        ) : (
-          <h1 id="hero-heading" className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            No score is stored for this session.
-          </h1>
-        )}
+        <h1 id="hero-heading" className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+          Trade with the weather. Not against it.
+        </h1>
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <section className="min-w-0 border border-white/5 p-4 sm:p-5">
+            {latestScore ? (
+              <BiasGauge animate stackRead biasScore={latestScore.score} />
+            ) : (
+              <p className="text-sm leading-6 text-zinc-400">
+                {regime.error ?? 'No score is stored for this session.'}
+              </p>
+            )}
+          </section>
+          <section className="min-w-0 border border-white/5 p-4 sm:p-5">
+            <StockCandles candles={candles} notice={spyBars.error} />
+          </section>
+        </div>
+        <ScoreStrip marks={stripMarks} today={latestScore?.tradeDate ?? ''} />
         {history.error && stripMarks.length === 0 ? (
           <p className="mt-6 text-sm text-zinc-400">{history.error}</p>
         ) : null}
