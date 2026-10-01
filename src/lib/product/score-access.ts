@@ -23,6 +23,8 @@ export type ViewerScore = {
   grade: string | null;
   sizePct: number | null;
   sentence: string | null;
+  /** Saved decision is exposed only after the existing paid entitlement check. */
+  modelDecision?: TradableSignal | null;
 };
 
 type ScoreRow = {
@@ -208,6 +210,7 @@ function toViewerScore(
     grade: signal?.reliability ?? null,
     sizePct: signal ? Math.round(signal.size * 100) : null,
     sentence: null,
+    ...(paid ? { modelDecision: signal } : {}),
   };
 }
 
@@ -245,11 +248,18 @@ export async function getViewerScore(asset: ProductAsset, subscriptionStatus?: S
     }
 
     const tradeDate = selected.row.trade_date;
-    const signal = paid ? await loadTradableSignal(table, selected.row.trade_date) : null;
+    let signal: TradableSignal | null = null;
+    let sentence: string | null = null;
+    if (paid) {
+      [signal, sentence] = await Promise.all([
+        loadTradableSignal(table, tradeDate),
+        asset === 'stocks' ? stockSentence(tradeDate) : cryptoSentence(tradeDate),
+      ]);
+    }
     const score = toViewerScore(asset, selected.row, paid, !paid, signal, tradeDate);
 
     if (paid) {
-      score.sentence = asset === 'stocks' ? await stockSentence(tradeDate) : await cryptoSentence(tradeDate);
+      score.sentence = sentence;
     }
 
     return {

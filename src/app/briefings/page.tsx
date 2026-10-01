@@ -5,6 +5,8 @@ import { getAllBriefingDates } from "@/lib/briefing/get-public-briefing";
 import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { getAppUrl } from "@/lib/server-env";
 import { AssetToggle } from "@/components/AssetToggle";
+import { PaidBriefingArchive } from "@/components/product/PaidBriefingArchive";
+import { loadPaidBriefingArchive } from "@/lib/product/paid-briefing-data";
 
 const SITE_URL = "https://macro-bias.com";
 
@@ -71,9 +73,14 @@ function getScoreColor(label: string) {
 }
 
 export default async function BriefingsArchivePage() {
-  const [briefings, paid, latestTradeDate] = await Promise.all([
+  const paid = await viewerIsPaid();
+  if (paid) {
+    const data = await loadPaidBriefingArchive("stocks");
+    return <PaidBriefingArchive asset="stocks" data={data} />;
+  }
+
+  const [briefings, latestTradeDate] = await Promise.all([
     getAllBriefingDates(),
-    viewerIsPaid(),
     latestStoredTradeDate("stocks"),
   ]);
   const appUrl = getAppUrl().replace(/\/$/, "");

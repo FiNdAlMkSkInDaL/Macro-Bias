@@ -18,6 +18,8 @@ const PUBLIC_LINKS = [
 function isCurrent(pathname: string, href: string) {
   if (href.endsWith('/dashboard')) return pathname === '/dashboard' || pathname === '/crypto/dashboard';
   if (href.endsWith('/track-record')) return pathname === '/track-record' || pathname === '/crypto/track-record';
+  if (href === '/today') return pathname === '/today' || pathname === '/briefings' || pathname.startsWith('/briefings/');
+  if (href === '/crypto') return pathname === '/crypto' || pathname === '/crypto/briefings' || pathname.startsWith('/crypto/briefings/');
   return pathname === href;
 }
 

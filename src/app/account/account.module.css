@@ -58,6 +58,34 @@
   line-height: 1.65;
 }
 
+.planStatus {
+  margin: 8px 0 0;
+  color: var(--member-accent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.emailHelp {
+  margin: 8px 0 0;
+  color: var(--member-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.billingStatus {
+  margin: 6px 0 0;
+  color: var(--member-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.deliveryStatus {
+  margin: 0 0 10px;
+  color: var(--member-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .form {
   margin-top: 18px;
 }

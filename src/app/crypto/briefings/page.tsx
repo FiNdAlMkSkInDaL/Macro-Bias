@@ -4,6 +4,8 @@ import Link from "next/link";
 import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AssetToggle } from "@/components/AssetToggle";
+import { PaidBriefingArchive } from "@/components/product/PaidBriefingArchive";
+import { loadPaidBriefingArchive } from "@/lib/product/paid-briefing-data";
 
 const SITE_URL = "https://macro-bias.com";
 
@@ -78,9 +80,14 @@ async function getAllCryptoBriefingDates(): Promise<CryptoBriefingRow[]> {
 }
 
 export default async function CryptoBriefingsPage() {
-  const [briefings, paid, latestTradeDate] = await Promise.all([
+  const paid = await viewerIsPaid();
+  if (paid) {
+    const data = await loadPaidBriefingArchive("crypto");
+    return <PaidBriefingArchive asset="crypto" data={data} />;
+  }
+
+  const [briefings, latestTradeDate] = await Promise.all([
     getAllCryptoBriefingDates(),
-    viewerIsPaid(),
     latestStoredTradeDate("crypto"),
   ]);
 

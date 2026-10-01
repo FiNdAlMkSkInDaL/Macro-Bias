@@ -1,16 +1,15 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
 
-import { DashboardTop } from "../../components/dashboard/DashboardTop";
 import {
   type SignalBreakdownScore,
 } from "../../components/dashboard/SignalBreakdown";
 import { FreeWorkspace } from "@/components/product/FreeWorkspace";
-import { MacroMarketChart } from "@/components/product/MacroMarketChart";
-import { MarketTabs, MemberShell } from "@/components/product/MemberShell";
-import workspaceStyles from "@/components/product/FreeWorkspace.module.css";
-import memberStyles from "@/components/product/MemberUI.module.css";
+import { MemberShell } from "@/components/product/MemberShell";
+import { ProBriefingActions, ProWorkspace, type ProAssetQuote } from "@/components/product/ProWorkspace";
+import { STOCK_MODEL_SETTINGS } from "@/components/product/pro-model-settings";
 import { loadWorkspaceData } from "@/lib/product/workspace-data";
+import { loadPaidBriefingLink } from "@/lib/product/paid-briefing-link";
 import { ManagePlan } from "../../components/billing/ManagePlan";
 import { getStripeCustomerId } from "../../lib/billing/stripe-customer";
 import { getUserSubscriptionStatus } from "../../lib/billing/subscription";
@@ -40,7 +39,7 @@ type ApiTradableSignal = {
 };
 
 type ApiBiasSnapshot = {
-  componentScores: SignalBreakdownScore[];
+  componentScores: (SignalBreakdownScore & { analogDates?: string[] })[];
   createdAt: string;
   detailedComponentScores?: Array<{
     contribution: number;
@@ -100,6 +99,8 @@ type CrossAssetMapAsset = {
   currentPrice: number | null;
   dailyChangePercent: number | null;
   ticker: CrossAssetMapTicker;
+  tradeDate: string | null;
+  dateSource: ProAssetQuote['dateSource'];
 };
 
 type YahooChartQuote = {
@@ -140,38 +141,36 @@ const SUPPLEMENTAL_CROSS_ASSET_MAP_TICKERS = [
   ["USO", "USO"],
 ] as const satisfies readonly (readonly [string, CrossAssetMapTicker])[];
 
-const priceFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 const proSignalPillars = [
   {
     key: "volatility" as const,
-    label: "Volatility Regime",
-    symbol: "^VIX",
+    label: "Volatility",
+    symbol: "VIX level & momentum",
+    description: "VIX momentum and its historical level provide saved volatility context.",
   },
   {
     key: "creditAndRiskSpreads" as const,
-    label: "Credit Stress",
-    symbol: "HYG vs TLT",
+    label: "Credit & commodities",
+    symbol: "HYG/TLT · CPER/GLD · USO",
+    description: "Compares credit, metals, gold and oil context with historical conditions.",
   },
   {
     key: "trendAndMomentum" as const,
-    label: "Trend Exhaustion",
+    label: "Momentum",
     symbol: "SPY RSI",
+    description: "SPY’s 14-period RSI describes recent price momentum.",
   },
   {
     key: "positioning" as const,
-    label: "Market Plumbing",
-    symbol: "GEX Proxy",
+    label: "Saved positioning context",
+    symbol: "VIX momentum proxy",
+    description: "The saved narrative uses volatility momentum rather than measured dealer gamma.",
   },
 ] satisfies Array<{
   key: SignalBreakdownScore["key"];
   label: string;
   symbol: string;
+  description: string;
 }>;
 
 function getSignalPillarLookupKeys(key: SignalBreakdownScore["key"]): readonly string[] {
@@ -199,95 +198,6 @@ function getSignalPillarValue<T>(scoreByKey: Map<string, T>, key: SignalBreakdow
   return undefined;
 }
 
-function formatPrice(value: number | null) {
-  if (value === null) {
-    return "Pending";
-  }
-
-  return priceFormatter.format(value);
-}
-
-function getSignalDisposition(signal: number | undefined) {
-  if (signal == null || Number.isNaN(signal)) {
-    return {
-      label: "Pending",
-      tone: "text-[#acb6ad]",
-    };
-  }
-
-  if (signal > 0.15) {
-    return {
-      label: "Bullish",
-      tone: "text-[#c9f58a]",
-    };
-  }
-
-  if (signal < -0.15) {
-    return {
-      label: "Bearish",
-      tone: "text-[#ef9d9d]",
-    };
-  }
-
-  return {
-    label: "Neutral",
-    tone: "text-[#d1d9cf]",
-  };
-}
-
-function formatContribution(value: number | undefined) {
-  if (value == null || Number.isNaN(value)) {
-    return "--";
-  }
-
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
-}
-
-function formatWeight(value: number | undefined) {
-  if (value == null || Number.isNaN(value)) {
-    return "--";
-  }
-
-  return value.toFixed(0);
-}
-
-function formatBiasLabel(label: string | undefined): string {
-  if (!label) {
-    return "Awaiting First Sync";
-  }
-
-  return label.toLowerCase().split("_").map((word) => word[0]?.toUpperCase() + word.slice(1)).join(" ");
-}
-
-function formatMove(value: number | null): string {
-  if (value === null) {
-    return "Pending";
-  }
-
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
-}
-
-function formatUnsignedPercent(value: number | null): string {
-  if (value === null) {
-    return "Pending";
-  }
-
-  return `${value.toFixed(2)}%`;
-}
-
-function formatTradeDate(tradeDate?: string) {
-  if (!tradeDate) {
-    return "Pending first sync";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${tradeDate}T12:00:00Z`));
-}
-
 function formatAnalogDate(tradeDate?: string) {
   if (!tradeDate) {
     return "Pending";
@@ -297,47 +207,8 @@ function formatAnalogDate(tradeDate?: string) {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   }).format(new Date(`${tradeDate}T12:00:00Z`));
-}
-
-function getMoveTone(value: number | null): string {
-  if (value === null) {
-    return "text-[#acb6ad]";
-  }
-
-  if (value > 0) {
-    return "text-[#c9f58a]";
-  }
-
-  if (value < 0) {
-    return "text-[#ef9d9d]";
-  }
-
-  return "text-[#d1d9cf]";
-}
-
-function getDeltaTone(value: number | null): string {
-  if (value === null) {
-    return "text-[#acb6ad]";
-  }
-
-  if (value > 0) {
-    return "text-[#c9f58a]";
-  }
-
-  if (value < 0) {
-    return "text-[#ef9d9d]";
-  }
-
-  return "text-[#acb6ad]";
-}
-
-function getRangeTone(value: number | null): string {
-  if (value === null) {
-    return "text-[#acb6ad]";
-  }
-
-  return "text-sky-300";
 }
 
 function roundTo(value: number, decimals = 2) {
@@ -414,6 +285,8 @@ async function fetchSupplementalCrossAsset(
         ((latestPoint.close - previousPoint.close) / previousPoint.close) * 100,
       ),
       ticker: displayTicker,
+      tradeDate: new Date(latestPoint.timestamp * 1000).toISOString().slice(0, 10),
+      dateSource: 'supplemental',
     };
   } catch {
     return null;
@@ -532,11 +405,12 @@ export default async function DashboardPage() {
       headers(),
       loadWorkspaceData('stocks', status),
     ]);
-  const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl, headerStore.get("cookie"));
-  const isProUser = isPro;
-  const stripeCustomerId = user ? await getStripeCustomerId(user.id) : null;
+  const { biasData, errorMessage, snapshot } = await getDashboardData(baseUrl, headerStore.get('cookie'));
+  const [stripeCustomerId, briefing] = await Promise.all([
+    user ? getStripeCustomerId(user.id).catch(() => null) : Promise.resolve(null),
+    loadPaidBriefingLink('stocks', snapshot?.tradeDate ?? null, isPro),
+  ]);
   const historicalAnalogs = snapshot?.historicalAnalogs ?? null;
-  const tradableSignal = snapshot?.signal ?? null;
   const componentScores = snapshot?.componentScores ?? [];
   const signalScoreByKey = new Map<string, SignalBreakdownScore>(
     componentScores.map((score) => [score.key, score]),
@@ -544,407 +418,76 @@ export default async function DashboardPage() {
   const detailedSignalScoreByKey = new Map<string, ApiDetailedComponentScore>(
     (snapshot?.detailedComponentScores ?? []).map((score) => [score.pillar ?? score.key, score]),
   );
-  const topAnalogMatches = historicalAnalogs?.topMatches ?? [];
-  const analogSummaryCopy = historicalAnalogs
-    ? `${historicalAnalogs.alignedSessionCount.toLocaleString()} aligned historical sessions in the analog engine`
-    : "historical analog engine warming up";
-  const terminalBorderClassName = "border border-[#2a342c]";
-  const terminalDividerClassName = "border-t border-[#2a342c]";
-  const terminalTableDividerClassName = "border-b border-[#2a342c]";
-  const moduleClassName = `${terminalBorderClassName} rounded-[4px] bg-[#111512] min-w-0 p-4 sm:p-5 md:p-6`;
-  const footerModuleClassName =
-    `${terminalBorderClassName} rounded-[4px] bg-[#111512] min-w-0 p-4 text-sm leading-6 text-[#acb6ad] sm:p-5 md:p-6`;
+  const scoringMatchCount = componentScores.find((score) => Array.isArray(score.analogDates))?.analogDates?.length ?? null;
   const crossAssetMapAssets = CROSS_ASSET_MAP_TICKERS.map((ticker) => {
     const coreAsset = biasData.assets.find((asset) => asset.ticker === ticker);
-
+    const storedQuote = snapshot?.tickerChanges[ticker as BiasAsset['ticker']];
     if (coreAsset) {
       return {
         currentPrice: coreAsset.currentPrice,
         dailyChangePercent: coreAsset.dailyChangePercent,
         ticker,
+        tradeDate: storedQuote?.tradeDate ?? snapshot?.tradeDate ?? null,
+        dateSource: storedQuote?.tradeDate ? 'ticker' : snapshot ? 'snapshot' : null,
       } satisfies CrossAssetMapAsset;
     }
-
-    return (
-      supplementalCrossAssetMapAssets.find((asset) => asset.ticker === ticker) ?? {
-        currentPrice: null,
-        dailyChangePercent: null,
-        ticker,
-      }
-    );
+    return supplementalCrossAssetMapAssets.find((asset) => asset.ticker === ticker) ?? {
+      currentPrice: null,
+      dailyChangePercent: null,
+      ticker,
+      tradeDate: null,
+      dateSource: null,
+    } satisfies CrossAssetMapAsset;
   });
 
   return (
     <MemberShell
       title="Your stock workspace"
       plan="Pro plan"
-      description={<>Published session · {snapshot?.tradeDate ? <time dateTime={snapshot?.tradeDate}>{formatTradeDate(snapshot?.tradeDate)}</time> : 'Not available'}</>}
+      headerActions={<ProBriefingActions asset="stocks" briefing={briefing} />}
+      description={<>Published session · {snapshot?.tradeDate ? <time dateTime={snapshot.tradeDate}>{formatAnalogDate(snapshot.tradeDate)}</time> : 'Not available'}</>}
     >
-      <div className={workspaceStyles.proWorkspace} data-pro-workspace="stocks">
-        <MarketTabs asset="stocks" view="dashboard" />
-        <div className={workspaceStyles.proUtility}>
-          <a href="/refer" className={memberStyles.textLink}>Refer friends</a>
-          <ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} />
-        </div>
-
-        {errorMessage ? (
-          <section className="border-b border-amber-400/15 py-3">
-            <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-amber-200/80">
-              Latest sync issue
-            </p>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-100">{errorMessage}</p>
-          </section>
-        ) : null}
-
-        {tradableSignal ? (
-          <section className={workspaceStyles.proPermission}>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                Permission
-              </p>
-              <p
-                className={`mt-2 text-base font-semibold tracking-tight ${
-                  tradableSignal.position === "LONG"
-                    ? "text-[#c9f58a]"
-                    : tradableSignal.position === "SHORT"
-                      ? "text-[#ef9d9d]"
-                      : tradableSignal.position === "NO_TRADE"
-                        ? "text-amber-300"
-                        : "text-[#d1d9cf]"
-                }`}
-              >
-                {tradableSignal.position}
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                Size
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
-                {Math.round(tradableSignal.size * 100)}%
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                Reliability
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
-                {tradableSignal.reliability}
-              </p>
-            </div>
-            <div>
-              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                Agreement
-              </p>
-              <p className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
-                {Math.round(tradableSignal.neighborAgreement * 100)}%
-              </p>
-            </div>
-            <p className="col-span-2 text-sm leading-6 text-[#acb6ad] sm:col-span-4">
-              {tradableSignal.reason}
-            </p>
-          </section>
-        ) : null}
-
-        <section className="grid grid-cols-1 gap-4 py-4 md:gap-6 md:py-6 lg:grid-cols-2">
-          <DashboardTop
-            assets={biasData.assets.map((asset) => ({ ...asset, tradeDate: snapshot?.tickerChanges[asset.ticker]?.tradeDate }))}
-            biasLabel={snapshot?.label}
-            biasScore={biasData.biasScore}
-            hasScore={Boolean(snapshot)}
-            note={errorMessage}
-            tradeDate={snapshot?.tradeDate ?? null}
-          />
-
-          <div className={`${workspaceStyles.proChart} min-w-0 lg:col-span-2`}>
-            <MacroMarketChart
-              variant="history" instrument="SPY" title="SPY price & daily bias" defaultRangeMonths={3}
-              candles={workspaceData.active.candles} marks={workspaceData.active.history}
-              latest={workspaceData.active.score ? { tradeDate: workspaceData.active.score.tradeDate, score: workspaceData.active.score.score, biasLabel: workspaceData.active.score.label } : null}
-              notice={workspaceData.active.historyNotice ?? workspaceData.active.priceNotice ?? workspaceData.active.loadError}
-            />
-          </div>
-
-          <div className="min-w-0 lg:col-span-2">
-
-              <div className="space-y-4 md:space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-                  <section className={`${moduleClassName} h-full`}>
-                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                      <div>
-                        <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
-                          Signal Breakdown
-                        </p>
-                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#f1f5ef]">
-                          Context Engine
-                        </h3>
-                      </div>
-                      <p className="max-w-md text-base leading-[1.75] text-[#acb6ad]">
-                        Weighted pillar contribution to the composite score.
-                      </p>
-                    </div>
-
-                    <div className="mt-4 space-y-0">
-                      {proSignalPillars.map((pillar) => {
-                        const score = getSignalPillarValue(signalScoreByKey, pillar.key);
-                        const detailedScore = getSignalPillarValue(detailedSignalScoreByKey, pillar.key);
-                        const disposition = getSignalDisposition(score?.signal);
-
-                        return (
-                          <article
-                            className={`${terminalDividerClassName} py-4 first:border-t-0 first:pt-0 last:pb-0`}
-                            key={pillar.key}
-                          >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div>
-                                <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
-                                  {pillar.label}
-                                </p>
-                                <p className="mt-1 text-[15px] font-medium text-[#f1f5ef] sm:text-sm">{pillar.symbol}</p>
-                              </div>
-
-                              <div className="sm:text-right">
-                                <p
-                                  className={`font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] sm:text-[12px] sm:tracking-[0.06em] ${disposition.tone}`}
-                                >
-                                  {disposition.label}
-                                </p>
-                                <p className="mt-2 font-[family:var(--font-data)] text-[15px] text-[#f1f5ef] sm:text-base">
-                                  {formatContribution(score?.contribution)}
-                                </p>
-                                <p className="mt-1 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad] sm:text-[12px] sm:tracking-[0.06em]">
-                                  of {formatWeight(score?.weight)} pts
-                                </p>
-                              </div>
-                            </div>
-
-                            <p className="mt-3 max-w-[65ch] text-base leading-[1.75] text-[#acb6ad]">
-                              {detailedScore?.summary ?? "Waiting for the next model sync to publish this pillar's narrative read."}
-                            </p>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </section>
-
-                  <section className={`${moduleClassName} h-full`}>
-                    <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                      <div>
-                        <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                          Cross-Asset Regime
-                        </p>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#f1f5ef]">
-                          Market Internals
-                        </h3>
-                      </div>
-                      <p className="max-w-md text-sm leading-6 text-[#acb6ad]">
-                        Macro scope across equities, credit, volatility, dollar, and energy leadership.
-                      </p>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 xl:gap-3">
-                      {crossAssetMapAssets.map((asset) => (
-                        <article className={`${terminalBorderClassName} overflow-hidden bg-white/[0.01] p-2.5 xl:p-3`} key={asset.ticker}>
-                          <div className="flex items-center justify-between gap-1">
-                            <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                              {asset.ticker}
-                            </p>
-                            <p className={`shrink-0 font-[family:var(--font-data)] text-[13px] ${getMoveTone(asset.dailyChangePercent)}`}>
-                              {formatMove(asset.dailyChangePercent)}
-                            </p>
-                          </div>
-                          <p className="mt-1.5 text-sm font-medium text-[#f1f5ef]">
-                            {formatPrice(asset.currentPrice)}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                </div>
-
-                <section className={moduleClassName}>
-                  <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                    <div>
-                      <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                        Historical Analogs
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#f1f5ef]">
-                        Intraday Playbook
-                      </h3>
-                    </div>
-                    {historicalAnalogs ? (
-                      <p className="max-w-lg text-sm leading-6 text-[#acb6ad]">
-                        Ranked against {historicalAnalogs.alignedSessionCount.toLocaleString()} aligned sessions across {historicalAnalogs.featureTickers.join(", ")}.
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {historicalAnalogs ? (
-                    <div className="w-full">
-                      <p className="text-[12px] text-[#acb6ad] sm:hidden">&larr; scroll to see all columns &rarr;</p>
-                      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                      <table className="min-w-[44rem] border-collapse text-left md:min-w-full">
-                        <thead>
-                          <tr className={terminalTableDividerClassName}>
-                            <th className="w-[34%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                              Matched date
-                            </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                              Match confidence
-                            </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                              SPY Gap
-                            </th>
-                            <th className="w-[18%] whitespace-nowrap py-4 pr-6 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                              SPY Intraday (O-C)
-                            </th>
-                            <th className="w-[16%] whitespace-nowrap py-4 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                              SPY Range
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {topAnalogMatches.map((match) => (
-                            <tr
-                              className={`${terminalTableDividerClassName} even:bg-white/[0.02] last:border-b-0`}
-                              key={match.tradeDate}
-                            >
-                              <td className="py-5 pr-6 align-middle">
-                                <p className="text-base font-medium text-[#f1f5ef]">
-                                  {formatAnalogDate(match.tradeDate)}
-                                </p>
-                                <p className="mt-1 font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                                  Next {formatAnalogDate(match.nextSessionDate)}
-                                </p>
-                              </td>
-                              <td className="py-5 pr-6 align-middle">
-                                <p className="font-[family:var(--font-data)] text-sm text-[#acb6ad]">
-                                  {match.matchConfidence}%
-                                </p>
-                              </td>
-                              <td
-                                className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.overnightGap)}`}
-                              >
-                                {formatMove(match.overnightGap)}
-                              </td>
-                              <td
-                                className={`py-5 pr-6 align-middle font-[family:var(--font-data)] text-base ${getDeltaTone(match.intradayNet)}`}
-                              >
-                                {formatMove(match.intradayNet)}
-                              </td>
-                              <td className={`py-5 align-middle font-[family:var(--font-data)] text-base ${getRangeTone(match.sessionRange)}`}>
-                                {formatUnsignedPercent(match.sessionRange)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    </div>
-                  ) : (
-                    <div className={`${terminalBorderClassName} bg-white/[0.01] p-4`}>
-                      <p className="max-w-2xl text-sm leading-6 text-[#acb6ad]">
-                        The analog engine has not yet produced a complete intraday playbook for this snapshot. Additional aligned price history is required before the next-session gap, intraday drift, and range profile can be computed.
-                      </p>
-                    </div>
-                  )}
-                </section>
-              </div>
-
-          </div>
-
-          {isProUser ? (
-          <div className="min-w-0 grid grid-cols-1 gap-4 md:gap-6 lg:col-span-2 lg:grid-cols-2">
-            <section className={footerModuleClassName}>
-              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                Macro Summary
-              </p>
-              <h3 className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
-                Cluster Averages
-              </h3>
-
-              {isProUser ? (
-                <div className="mt-4 space-y-0 font-[family:var(--font-data)] text-[13px]">
-                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
-                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Aligned Sessions</p>
-                    <p className="text-sm text-[#f1f5ef]">
-                      {historicalAnalogs
-                        ? historicalAnalogs.alignedSessionCount.toLocaleString()
-                        : "--"}
-                    </p>
-                  </div>
-
-                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Usable Matches</p>
-                    <p className="text-sm text-[#f1f5ef]">
-                      {historicalAnalogs
-                        ? historicalAnalogs.candidateCount.toLocaleString()
-                        : "--"}
-                    </p>
-                  </div>
-
-                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Avg Overnight Gap</p>
-                    <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}>
-                      {formatMove(historicalAnalogs?.clusterAveragePlaybook.overnightGap ?? null)}
-                    </p>
-                  </div>
-
-                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Avg Intraday Net</p>
-                    <p className={getMoveTone(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}>
-                      {formatMove(historicalAnalogs?.clusterAveragePlaybook.intradayNet ?? null)}
-                    </p>
-                  </div>
-
-                  <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
-                    <p className="uppercase tracking-[0.06em] text-[#acb6ad]">Avg Session Range</p>
-                    <p className={getRangeTone(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}>
-                      {formatUnsignedPercent(historicalAnalogs?.clusterAveragePlaybook.sessionRange ?? null)}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 max-w-xl text-sm leading-6 text-[#acb6ad]">
-                  Upgrade to expose the exact analog cluster averages behind the current regime classification.
-                </p>
-              )}
-            </section>
-
-            <section className={footerModuleClassName}>
-              <p className="font-[family:var(--font-data)] text-[12px] uppercase tracking-[0.06em] text-[#acb6ad]">
-                Model Integrity
-              </p>
-              <h3 className="mt-2 text-base font-semibold tracking-tight text-[#f1f5ef]">
-                Microstructure Upgrade
-              </h3>
-              <p className="mt-3">
-                This score is generated from a K-Nearest Neighbors engine over aligned intermarket history. The dashboard, playbook table, and publication pipeline now reference the same decay-adjusted analog set.
-              </p>
-
-              <div className="mt-4 space-y-3 font-[family:var(--font-data)] text-[13px] text-[#acb6ad]">
-                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} py-3 first:border-t-0 first:pt-0 sm:items-end`}>
-                  <p className="uppercase tracking-[0.06em]">Temporal Decay</p>
-                  <p className="text-sm text-[#f1f5ef]">λ = 0.001</p>
-                </div>
-                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
-                  <p className="uppercase tracking-[0.06em]">Regime Filter</p>
-                  <p className="text-right text-sm text-[#acb6ad]">ACTIVE (HMM Proxy)</p>
-                </div>
-                <div className={`flex items-start justify-between gap-4 ${terminalDividerClassName} pt-3 sm:items-end`}>
-                  <p className="uppercase tracking-[0.06em]">Selection Logic</p>
-                  <p className="text-right text-sm text-[#acb6ad]">Exact decayed KNN top 5</p>
-                </div>
-              </div>
-
-              <p className="mt-4 max-w-xl text-xs leading-5 text-[#829287]">
-                Dataset is hard-capped to a 10-year rolling window to prevent Z-score distortion, and pre-filtered by structural regime.
-              </p>
-            </section>
-          </div>
-          ) : null}
-        </section>
-      </div>
+      <ProWorkspace
+        asset="stocks"
+        published={snapshot ? { tradeDate: snapshot.tradeDate, score: snapshot.score, label: snapshot.label } : null}
+        signal={snapshot?.signal ?? null}
+        chart={workspaceData.active}
+        briefing={briefing}
+        notice={errorMessage ? errorMessage.startsWith('No score is stored for ') ? errorMessage : 'The published stock reading is temporarily unavailable. Please try again.' : null}
+        pillars={proSignalPillars.map((pillar) => {
+          const score = getSignalPillarValue(signalScoreByKey, pillar.key);
+          const detail = getSignalPillarValue(detailedSignalScoreByKey, pillar.key);
+          return {
+            key: pillar.key,
+            label: pillar.label,
+            source: pillar.symbol,
+            description: pillar.description,
+            contribution: score?.contribution ?? null,
+            weight: score?.weight ?? null,
+            signal: score?.signal ?? null,
+            summary: detail?.summary ?? null,
+          };
+        })}
+        assets={crossAssetMapAssets}
+        participation={workspaceData.tape}
+        historical={historicalAnalogs ? {
+          kind: 'stocks',
+          alignedSessionCount: historicalAnalogs.alignedSessionCount,
+          candidateCount: historicalAnalogs.candidateCount,
+          featureTickers: historicalAnalogs.featureTickers,
+          clusterAveragePlaybook: historicalAnalogs.clusterAveragePlaybook,
+          matches: historicalAnalogs.topMatches,
+        } : null}
+        diagnostics={{
+          modelVersion: snapshot?.modelVersion ?? null,
+          createdAt: snapshot?.createdAt ?? null,
+          updatedAt: snapshot?.updatedAt ?? null,
+          blendedForwardReturn: snapshot?.blendedForwardReturn ?? null,
+          scoringMatchCount,
+          settings: STOCK_MODEL_SETTINGS,
+        }}
+        actions={<><a href="/refer">Refer friends</a><ManagePlan hasStripeCustomer={Boolean(stripeCustomerId)} isPro={isPro} /></>}
+      />
     </MemberShell>
   );
 }

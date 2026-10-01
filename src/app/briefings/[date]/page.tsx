@@ -12,6 +12,8 @@ import { DAILY_BRIEFING_SECTION_HEADERS } from "@/lib/briefing/daily-briefing-co
 import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { getAppUrl } from "@/lib/server-env";
 import { LockedSession } from "@/components/product/LockedSession";
+import { PaidBriefingDetail } from "@/components/product/PaidBriefingDetail";
+import { isPaidBriefingDate, loadPaidBriefingDetail } from "@/lib/product/paid-briefing-data";
 
 
 
@@ -177,12 +179,18 @@ export default async function BriefingPage({ params }: PageProps) {
     notFound();
   }
 
+  const paid = await viewerIsPaid();
+  if (paid) {
+    if (!isPaidBriefingDate(date)) notFound();
+    const data = await loadPaidBriefingDetail("stocks", date);
+    return <PaidBriefingDetail asset="stocks" date={date} data={data} />;
+  }
+
   const briefing = await getBriefingByDate(date);
   if (!briefing) {
     notFound();
   }
 
-  const paid = await viewerIsPaid();
 
   if (await sessionIsLocked(date, briefing.trade_date)) {
     return <LockedSession assetHref="/today" />;

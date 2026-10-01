@@ -8,12 +8,17 @@ import styles from './account.module.css';
 type AlertFormProps = {
   cryptoOptedIn: boolean;
   stocksOptedIn: boolean;
+  paid?: boolean;
+  subscriberStatus?: 'active' | 'inactive' | 'none';
+  subscriptionEmails?: boolean;
 };
 
-export function AlertForm({ cryptoOptedIn, stocksOptedIn }: AlertFormProps) {
+export function AlertForm({ cryptoOptedIn, stocksOptedIn, paid = false, subscriberStatus = 'active', subscriptionEmails = false }: AlertFormProps) {
   const [stocks, setStocks] = useState(stocksOptedIn);
   const [crypto, setCrypto] = useState(cryptoOptedIn);
   const [savedPreferences, setSavedPreferences] = useState({ stocks: stocksOptedIn, crypto: cryptoOptedIn });
+  const [hasPreferenceRecord, setHasPreferenceRecord] = useState(subscriberStatus !== 'none');
+  const [savedEmailStatus, setSavedEmailStatus] = useState(subscriberStatus);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -45,7 +50,9 @@ export function AlertForm({ cryptoOptedIn, stocksOptedIn }: AlertFormProps) {
       }
 
       setSavedPreferences({ stocks, crypto });
-      setMessage('Preferences saved.');
+      setSavedEmailStatus(stocks || crypto ? 'active' : hasPreferenceRecord ? 'inactive' : 'none');
+      if (stocks || crypto) setHasPreferenceRecord(true);
+      setMessage(paid && !hasPreferenceRecord && !stocks && !crypto ? 'Choices confirmed.' : 'Preferences saved.');
     } catch (error) {
       setIsError(true);
       setMessage(error instanceof Error ? error.message : 'Unable to save email alerts.');
@@ -55,9 +62,13 @@ export function AlertForm({ cryptoOptedIn, stocksOptedIn }: AlertFormProps) {
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit} aria-labelledby="account-emails-heading" aria-busy={saving}>
+    <form className={styles.form} onSubmit={handleSubmit} aria-labelledby="account-emails-heading" aria-busy={saving} data-preference-record={hasPreferenceRecord ? 'existing' : 'missing'}>
+      {subscriptionEmails ? <p className={styles.deliveryStatus} data-pro-email-delivery={savedEmailStatus === 'inactive' ? 'paused' : 'enabled'} aria-live="polite">{savedEmailStatus === 'inactive' ? 'Pro briefing emails are paused.' : 'Pro briefing emails are enabled for both markets.'}</p> : null}
       <p className={styles.currentPreferences} aria-live="polite">
-        {savedPreferences.stocks && savedPreferences.crypto
+        {paid ? (
+          !hasPreferenceRecord ? 'No free daily update preferences saved.'
+            : `Saved free-update choices: ${savedPreferences.stocks && savedPreferences.crypto ? 'stocks and crypto' : savedPreferences.stocks ? 'stocks' : savedPreferences.crypto ? 'crypto' : 'off'}.`
+        ) : savedPreferences.stocks && savedPreferences.crypto
           ? 'Stocks and crypto are on.'
           : savedPreferences.stocks
             ? 'Stocks are on.'

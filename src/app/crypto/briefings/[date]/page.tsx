@@ -5,6 +5,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { LockedSession } from "@/components/product/LockedSession";
+import { PaidBriefingDetail } from "@/components/product/PaidBriefingDetail";
+import { isPaidBriefingDate, loadPaidBriefingDetail } from "@/lib/product/paid-briefing-data";
 import { CRYPTO_BRIEFING_SECTION_HEADERS } from "@/lib/crypto-briefing/crypto-briefing-config";
 import { latestStoredTradeDate, viewerIsPaid } from "@/lib/product/score-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -144,13 +146,19 @@ export default async function CryptoBriefingDatePage({ params }: PageProps) {
     notFound();
   }
 
+  const paid = await viewerIsPaid();
+  if (paid) {
+    if (!isPaidBriefingDate(date)) notFound();
+    const data = await loadPaidBriefingDetail("crypto", date);
+    return <PaidBriefingDetail asset="crypto" date={date} data={data} />;
+  }
+
   const briefing = await getCryptoBriefing(date);
 
   if (!briefing) {
     notFound();
   }
 
-  const paid = await viewerIsPaid();
   const latest = await latestStoredTradeDate("crypto");
   if (!paid && latest != null && (date >= latest || briefing.trade_date >= latest)) {
     return <LockedSession assetHref="/crypto" />;
