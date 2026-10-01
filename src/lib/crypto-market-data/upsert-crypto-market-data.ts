@@ -790,7 +790,6 @@ export async function upsertCryptoMarketData(
       bias_label: biasResult.label,
       component_scores: biasResult.componentScores,
       ticker_changes: biasResult.tickerChanges,
-      model_version: biasResult.modelVersion ?? CRYPTO_MODEL_VERSION,
       engine_inputs: {
         ...expandedData,
         tradableSignal: biasResult.signal,
