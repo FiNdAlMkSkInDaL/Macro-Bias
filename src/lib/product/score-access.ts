@@ -36,6 +36,8 @@ const SCORE_COLUMNS = 'trade_date, score, bias_label, updated_at';
 type ScoreTable = 'macro_bias_scores' | 'crypto_bias_scores';
 
 export type ProductScore = {
+  paid: boolean;
+  signedIn: boolean;
   score: ViewerScore | null;
   missingSessionDate: string | null;
   loadError: string | null;
@@ -212,11 +214,16 @@ function toViewerScore(
 export async function getViewerScore(asset: ProductAsset): Promise<ProductScore> {
   const table: ScoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
   let paid = false;
+  let signedIn = false;
 
   try {
-    paid = await viewerIsPaid();
+    const status = await getUserSubscriptionStatus();
+    paid = status.isPro;
+    signedIn = Boolean(status.user);
   } catch (error) {
     return {
+      paid,
+      signedIn,
       score: null,
       missingSessionDate: null,
       loadError: toLoadError(table, error),
@@ -229,6 +236,8 @@ export async function getViewerScore(asset: ProductAsset): Promise<ProductScore>
 
     if (!selected.row) {
       return {
+        paid,
+        signedIn,
         score: null,
         missingSessionDate: selected.missingSessionDate,
         loadError: null,
@@ -244,12 +253,16 @@ export async function getViewerScore(asset: ProductAsset): Promise<ProductScore>
     }
 
     return {
+      paid,
+      signedIn,
       score,
       missingSessionDate: selected.missingSessionDate,
       loadError: null,
     };
   } catch (error) {
     return {
+      paid,
+      signedIn,
       score: null,
       missingSessionDate: null,
       loadError: toLoadError(table, error),

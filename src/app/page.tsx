@@ -60,7 +60,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const [regime, history, spyBars] = await Promise.all([
     loadLatestRegimeRead(),
-    loadStoredStockScores(),
+    loadStoredStockScores(120),
     loadStoredSpyCandles(),
   ]);
   const latestScore = regime.value;
@@ -93,7 +93,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <HeroSignupForm />
           </div>
           <Link href="/today" className={styles.textLink} data-analytics-event="landing_today_click" data-analytics-location="landing_hero">
-            Explore today&apos;s bias <ArrowIcon diagonal />
+            Explore the stock bias <ArrowIcon diagonal />
           </Link>
         </div>
         <MacroMarketChart

@@ -3,6 +3,8 @@ import Link from 'next/link';
 
 import { AssetToggle } from '@/components/AssetToggle';
 import { ScoreCard } from '@/components/product/ScoreCard';
+import { PublicDailyPage } from '@/components/product/PublicDailyPage';
+import { loadPublicDailyData } from '@/lib/product/public-daily-data';
 import { getViewerScore } from '@/lib/product/score-access';
 
 export const dynamic = 'force-dynamic';
@@ -10,11 +12,16 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Crypto score — Macro Bias',
   description:
-    'Daily crypto score from -100 to +100, with the same permission, grade, and size hint as stocks. Not financial advice.',
+    'Explore the previous published crypto score, Bitcoin price history and the wider market backdrop. Get free daily stock and crypto updates by email.',
 };
 
 export default async function CryptoPage() {
-  const { score, missingSessionDate, loadError } = await getViewerScore('crypto');
+  const viewer = await getViewerScore('crypto');
+  const { score, missingSessionDate, loadError } = viewer;
+
+  if (!viewer.signedIn && !viewer.paid) {
+    return <PublicDailyPage data={await loadPublicDailyData('crypto', viewer)} />;
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">

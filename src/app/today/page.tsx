@@ -3,6 +3,8 @@ import Link from 'next/link';
 
 import { AssetToggle } from '@/components/AssetToggle';
 import { ScoreCard } from '@/components/product/ScoreCard';
+import { PublicDailyPage } from '@/components/product/PublicDailyPage';
+import { loadPublicDailyData } from '@/lib/product/public-daily-data';
 import { getViewerScore } from '@/lib/product/score-access';
 
 export const dynamic = 'force-dynamic';
@@ -10,11 +12,16 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Stock score — Macro Bias',
   description:
-    'Daily stock score from -100 to +100, with a LONG / SHORT / FLAT / NO_TRADE permission for subscribers. Not financial advice.',
+    'Explore the previous published stock score, SPY price history and the market signals behind Macro Bias. Get free daily stock and crypto updates by email.',
 };
 
 export default async function TodayPage() {
-  const { score, missingSessionDate, loadError } = await getViewerScore('stocks');
+  const viewer = await getViewerScore('stocks');
+  const { score, missingSessionDate, loadError } = viewer;
+
+  if (!viewer.signedIn && !viewer.paid) {
+    return <PublicDailyPage data={await loadPublicDailyData('stocks', viewer)} />;
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">

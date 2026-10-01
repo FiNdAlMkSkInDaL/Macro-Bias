@@ -17,7 +17,9 @@ const NAV_LINKS = [
 ] as const;
 
 export function SiteNav() {
-  const isLanding = usePathname() === "/";
+  const pathname = usePathname();
+  const usesPublicStyle = pathname === "/" || pathname === "/today" || pathname === "/crypto";
+  const isDailyPage = pathname === "/today" || pathname === "/crypto";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -67,11 +69,11 @@ export function SiteNav() {
   }
 
   return (
-    <header className={isLanding ? "border-b border-[#2a342c] bg-[#090b0a]" : "border-b border-white/10"}>
-      <div className={isLanding ? "mx-auto flex h-[70px] max-w-[1480px] items-center justify-between px-5 md:px-6 lg:px-10" : "mx-auto flex h-14 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10"}>
+    <header className={usesPublicStyle ? "border-b border-[#2a342c] bg-[#090b0a]" : "border-b border-white/10"}>
+      <div className={usesPublicStyle ? `mx-auto flex h-[70px] ${isDailyPage ? 'max-w-[1320px]' : 'max-w-[1480px]'} items-center justify-between px-5 md:px-6 lg:px-10` : "mx-auto flex h-14 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10"}>
         <Link
           href="/"
-          className={isLanding ? "whitespace-nowrap py-2 font-[family:var(--font-heading)] text-base font-semibold tracking-[0.18em] text-[#f1f5ef] uppercase sm:text-lg" : "py-2 font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"}
+          className={usesPublicStyle ? "whitespace-nowrap py-2 font-[family:var(--font-heading)] text-base font-semibold tracking-[0.18em] text-[#f1f5ef] uppercase sm:text-lg" : "py-2 font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"}
           data-analytics-event="nav_logo_click"
           data-analytics-label="Macro Bias"
           data-analytics-location="site_nav"
@@ -83,7 +85,8 @@ export function SiteNav() {
             <Link
               key={href}
               href={href}
-              className={isLanding ? "hidden text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline" : "hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"}
+              aria-current={pathname === href ? 'page' : undefined}
+              className={usesPublicStyle ? "hidden min-h-[44px] items-center border-b-2 border-transparent text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] aria-[current=page]:border-[#c9f58a] aria-[current=page]:text-[#c9f58a] lg:inline-flex" : "hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"}
               data-analytics-event="nav_link_click"
               data-analytics-label={label}
               data-analytics-location="site_nav"
@@ -94,7 +97,7 @@ export function SiteNav() {
           {signedIn && (
             <Link
               href="/dashboard"
-              className={isLanding ? "hidden text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline" : "hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"}
+              className={usesPublicStyle ? "hidden text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline" : "hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"}
               data-analytics-event="nav_link_click"
               data-analytics-label="Dashboard"
               data-analytics-location="site_nav"
@@ -105,7 +108,7 @@ export function SiteNav() {
           {isAdmin && (
             <Link
               href="/analytics"
-              className={isLanding ? "hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 lg:inline" : "hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 sm:inline"}
+              className={usesPublicStyle ? "hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 lg:inline" : "hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 sm:inline"}
               data-analytics-event="nav_link_click"
               data-analytics-label="Analytics"
               data-analytics-location="site_nav"
@@ -115,7 +118,7 @@ export function SiteNav() {
           )}
           <Link
             href={accountHref}
-            className={isLanding ? "inline-flex min-h-[44px] items-center px-2.5 text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] sm:ml-4 sm:px-3.5" : "inline-flex min-h-[44px] items-center rounded-md bg-white/[0.04] px-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white sm:px-3.5"}
+            className={usesPublicStyle ? "inline-flex min-h-[44px] items-center px-2.5 text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] sm:ml-4 sm:px-3.5" : "inline-flex min-h-[44px] items-center rounded-md bg-white/[0.04] px-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white sm:px-3.5"}
             data-analytics-event="nav_cta_click"
             data-analytics-label={accountLabel}
             data-analytics-location="site_nav"
@@ -128,14 +131,14 @@ export function SiteNav() {
               onClick={() => {
                 void handleSignOut();
               }}
-              className={isLanding ? "hidden min-h-[44px] items-center whitespace-nowrap px-2 text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline-flex" : "inline-flex min-h-[44px] items-center px-1 text-[13px] font-medium text-zinc-300 transition hover:text-white sm:px-2"}
+              className={usesPublicStyle ? "hidden min-h-[44px] items-center whitespace-nowrap px-2 text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline-flex" : "inline-flex min-h-[44px] items-center px-1 text-[13px] font-medium text-zinc-300 transition hover:text-white sm:px-2"}
             >
               Sign out
             </button>
           ) : null}
           <button
             type="button"
-            className={isLanding ? "inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white lg:hidden" : "inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white sm:hidden"}
+            className={usesPublicStyle ? "inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white lg:hidden" : "inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white sm:hidden"}
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileMenuOpen}
@@ -155,13 +158,14 @@ export function SiteNav() {
       </div>
 
       {mobileMenuOpen && (
-        <nav id="mobile-site-navigation" className={isLanding ? "z-50 border-t border-[#2a342c] bg-[#090b0a] lg:hidden" : "z-50 border-t border-white/10 bg-zinc-950 sm:hidden"}>
+        <nav id="mobile-site-navigation" className={usesPublicStyle ? "z-50 border-t border-[#2a342c] bg-[#090b0a] lg:hidden" : "z-50 border-t border-white/10 bg-zinc-950 sm:hidden"}>
           <div className="mx-auto flex max-w-7xl flex-col px-6 py-3">
             {NAV_LINKS.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
-                className="min-h-[44px] flex items-center text-[13px] font-medium text-zinc-400 transition hover:text-white"
+                aria-current={pathname === href ? 'page' : undefined}
+                className="min-h-[44px] flex items-center text-[13px] font-medium text-zinc-400 transition hover:text-white aria-[current=page]:text-[#c9f58a]"
                 onClick={() => setMobileMenuOpen(false)}
                 data-analytics-event="nav_link_click"
                 data-analytics-label={label}
@@ -204,7 +208,7 @@ export function SiteNav() {
             >
               {accountLabel}
             </Link>
-            {isLanding && signedIn ? (
+            {usesPublicStyle && signedIn ? (
               <button
                 type="button"
                 onClick={() => { void handleSignOut(); }}

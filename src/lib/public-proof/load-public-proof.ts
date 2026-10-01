@@ -123,14 +123,14 @@ function scoreRow(row: { trade_date?: unknown; score?: unknown; bias_label?: unk
   };
 }
 
-export async function loadStoredStockScores(): Promise<Loaded<StoredStockScore[]>> {
+export async function loadStoredStockScores(limit = SCORE_LIMIT): Promise<Loaded<StoredStockScore[]>> {
   try {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('macro_bias_scores')
       .select('trade_date, score, bias_label')
       .order('trade_date', { ascending: false })
-      .limit(SCORE_LIMIT);
+      .limit(limit);
 
     if (error) {
       return { value: null, error: loadError('macro_bias_scores', error.message) };
@@ -183,7 +183,7 @@ function candleRow(row: {
 }
 
 /** Latest stored SPY daily bars. Empty when that equity series has no usable OHLC. */
-export async function loadStoredSpyCandles(limit = 20): Promise<Loaded<StoredCandle[]>> {
+export async function loadStoredSpyCandles(limit = 120): Promise<Loaded<StoredCandle[]>> {
   try {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase

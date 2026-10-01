@@ -8,7 +8,9 @@ import { customerEmailRejection } from '@/lib/marketing/recipient-policy';
 import { ArrowIcon } from './ArrowIcon';
 import styles from './HeroSignupForm.module.css';
 
-export function HeroSignupForm({ location = 'landing_hero' }: { location?: 'landing_hero' | 'landing_footer' }) {
+type SignupLocation = 'landing_hero' | 'landing_footer' | 'stock_daily_hero' | 'stock_daily_footer' | 'crypto_daily_hero' | 'crypto_daily_footer';
+
+export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { location?: SignupLocation; pagePath?: '/' | '/today' | '/crypto' }) {
   const inputId = useId();
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -38,7 +40,7 @@ export function HeroSignupForm({ location = 'landing_hero' }: { location?: 'land
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          pagePath: '/',
+          pagePath,
           stocksOptedIn: true,
           cryptoOptedIn: true,
         }),
@@ -99,7 +101,7 @@ export function HeroSignupForm({ location = 'landing_hero' }: { location?: 'land
         </>
       )}
       <p id={`${inputId}-helper`} className={styles.helper}>
-        {location === 'landing_footer' ? 'Free stock and crypto updates. Unsubscribe anytime.' : 'Free by email. Unsubscribe anytime.'}
+        Free weekday emails. Unsubscribe anytime.
       </p>
     </form>
   );
