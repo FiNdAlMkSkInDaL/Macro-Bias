@@ -20,6 +20,7 @@ import {
   isUnverifiedTestSender,
   partitionRecipients,
 } from '@/lib/marketing/recipient-policy';
+import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
 import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
 import { getAppUrl } from "@/lib/server-env";
 import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
@@ -531,10 +532,17 @@ async function dispatchCryptoBriefingEmails(
     await supabase.from("free_subscribers").update({ status: "inactive" }).in("email", rejectedAddresses);
   }
 
-  if (premiumPartition.deliverable.length === 0) {
+  const { unlockedEmails, regularFreeEmails } = await partitionUnlockedSubscribers(
+    supabase,
+    freePartition.deliverable,
+  );
+  const premiumList = [...premiumPartition.deliverable, ...unlockedEmails];
+  const freeList = regularFreeEmails;
+
+  if (premiumList.length === 0 && freeList.length === 0) {
     const message = rejectedAddresses.length
       ? `Crypto email was not sent. Resend rejects: ${formatAddressList(rejectedAddresses)}.`
-      : "Crypto email was not sent. No paid recipients are on the list.";
+      : "Crypto email was not sent. No recipients are on the list.";
     console.warn(`[crypto-publish] ${message}`);
     return { premiumSent: 0, freeSent: 0, skipped: false, failure: message };
   }
@@ -547,23 +555,21 @@ async function dispatchCryptoBriefingEmails(
     ? `Crypto Bias: ${permissionLine}`
     : `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel})`;
   const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label, permissionLine);
+  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label, permissionLine);
   const fromAddress = getCryptoFromAddress();
+  const deliverableAddresses = [...premiumList, ...freeList];
 
   if (isUnverifiedTestSender(fromAddress)) {
-    const message = `Resend is still on the shared test sender (${fromAddress}). A verified sending domain is required before real customers. The crypto batch was not sent. Addresses not sent: ${formatAddressList(premiumPartition.deliverable)}.`;
+    const message = `Resend is still on the shared test sender (${fromAddress}). A verified sending domain is required before real customers. The crypto batch was not sent. Addresses not sent: ${formatAddressList(deliverableAddresses)}.`;
     console.warn(`[crypto-publish] ${message}`);
     return { premiumSent: 0, freeSent: 0, skipped: false, failure: message };
   }
 
-  let premiumSent = 0;
-  let freeSent = 0;
-  let failure: string | null = null;
+  async function sendCryptoBatches(recipients: string[], html: string) {
+    let sent = 0;
 
-  /* --- Dispatch premium emails --- */
-  const premiumRecipients = applyShadowRunOverride(premiumPartition.deliverable);
-  if (premiumRecipients.length > 0) {
-    for (let i = 0; i < premiumRecipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
-      const batch = premiumRecipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
+    for (let i = 0; i < recipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
+      const batch = recipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
       try {
         const response = await resend.batch.send(
           batch.map((email) => {
@@ -572,7 +578,7 @@ async function dispatchCryptoBriefingEmails(
               from: fromAddress,
               to: [email],
               subject,
-              html: premiumHtml.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
+              html: html.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
               headers: {
                 "List-Unsubscribe": `<${unsubUrl}>`,
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -582,23 +588,49 @@ async function dispatchCryptoBriefingEmails(
         );
         if (response.error) {
           const testRestricted = isResendTestRestrictionMessage(response.error.message);
-          failure = testRestricted
+          const failure = testRestricted
             ? `Resend API key is still on the test restriction (${response.error.message}). The crypto batch was not sent. Addresses not sent: ${formatAddressList(batch)}.`
             : `Resend batch send failed: ${response.error.message} Addresses in the failed batch: ${formatAddressList(batch)}.`;
           console.warn(`[crypto-publish] ${failure}`);
-        } else {
-          premiumSent += batch.length;
+          return { sent, failure };
         }
+        sent += batch.length;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown";
-        console.warn(`[crypto-publish] Premium batch email failed: ${msg}`);
+        const failure = `Resend batch send failed: ${msg} Addresses in the failed batch: ${formatAddressList(batch)}.`;
+        console.warn(`[crypto-publish] ${failure}`);
+        return { sent, failure };
       }
     }
-    console.log(`[crypto-publish] Sent ${premiumSent} premium crypto emails.`);
+
+    return { sent, failure: null };
   }
 
-  console.log(`[crypto-publish] Emailed ${premiumSent} paid crypto subscribers.`);
-  return { premiumSent, freeSent, skipped: false, failure };
+  const premiumRecipients = applyShadowRunOverride(premiumList);
+  const premiumDispatch = premiumRecipients.length
+    ? await sendCryptoBatches(premiumRecipients, premiumHtml)
+    : { sent: 0, failure: null };
+  if (premiumDispatch.failure) {
+    return { premiumSent: premiumDispatch.sent, freeSent: 0, skipped: false, failure: premiumDispatch.failure };
+  }
+
+  const freeRecipients = applyShadowRunOverride(freeList);
+  const freeDispatch = freeRecipients.length
+    ? await sendCryptoBatches(freeRecipients, freeHtml)
+    : { sent: 0, failure: null };
+
+  if (!freeDispatch.failure) {
+    console.log(
+      `[crypto-publish] Emailed ${premiumDispatch.sent} premium and ${freeDispatch.sent} free crypto subscribers.`,
+    );
+  }
+
+  return {
+    premiumSent: premiumDispatch.sent,
+    freeSent: freeDispatch.sent,
+    skipped: false,
+    failure: freeDispatch.failure,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -808,14 +840,36 @@ async function handleCryptoPublish(request: NextRequest) {
       latestSnapshot.score,
     );
 
-    /* Step 4: Email dispatch */
+    /* Step 4: Email dispatch, only after a stored score exists for the latest session. */
     let emailResult: { premiumSent: number; freeSent: number; skipped: boolean; failure?: string | null } = {
       premiumSent: 0,
       freeSent: 0,
       skipped: true,
       failure: null,
     };
+    let emailBlockedReason: string | null = null;
     if (!skipEmail) {
+      const scoreCheck = createSupabaseAdminClient();
+      const { data: latestPrice, error: priceError } = await scoreCheck
+        .from("etf_daily_prices")
+        .select("trade_date")
+        .eq("ticker", "BTC-USD")
+        .order("trade_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (priceError) {
+        emailBlockedReason = `Email skipped: could not read the latest BTC session (${priceError.message}).`;
+      } else if (!latestPrice?.trade_date || latestSnapshot.trade_date !== latestPrice.trade_date) {
+        emailBlockedReason = `Email skipped: no stored crypto score for ${latestPrice?.trade_date ?? "the latest trade date"}.`;
+      }
+    }
+
+    if (skipEmail) {
+      warnings.push("Email skipped: skipEmail param set.");
+    } else if (emailBlockedReason) {
+      warnings.push(emailBlockedReason);
+    } else {
       emailResult = await dispatchCryptoBriefingEmails(
         briefingResult.newsletterCopy,
         latestSnapshot.score,
@@ -828,8 +882,6 @@ async function handleCryptoPublish(request: NextRequest) {
       if (!emailResult.skipped && !emailResult.failure) {
         await verifyPendingReferrals(createSupabaseAdminClient());
       }
-    } else {
-      warnings.push("Email skipped: skipEmail param set.");
     }
 
     /* Step 5: Social posting (X + Bluesky + Telegram) */
@@ -846,11 +898,15 @@ async function handleCryptoPublish(request: NextRequest) {
       warnings.push(`Social posting failed: ${msg}`);
     }
 
-    const emailFailed = !skipEmail && Boolean(emailResult.failure || emailResult.premiumSent === 0);
+    const cryptoEmailsSent = emailResult.premiumSent + emailResult.freeSent;
+    const emailFailed =
+      !skipEmail &&
+      !emailBlockedReason &&
+      Boolean(emailResult.failure || cryptoEmailsSent === 0);
 
     return NextResponse.json({
       ok: !emailFailed,
-      emailSent: !skipEmail && emailResult.premiumSent > 0 && !emailResult.failure,
+      emailSent: !skipEmail && !emailBlockedReason && cryptoEmailsSent > 0 && !emailResult.failure,
       tradeDate: latestSnapshot.trade_date,
       score: latestSnapshot.score,
       biasLabel: latestSnapshot.bias_label,
