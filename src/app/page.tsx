@@ -1,14 +1,13 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
-import { BiasGauge } from '@/components/dashboard/BiasGauge';
-import { StormFrontsCard } from '@/components/dashboard/StormFrontsCard';
+import { ArrowIcon } from '@/components/product/ArrowIcon';
 import { HeroSignupForm } from '@/components/product/HeroSignupForm';
-import { LockedBriefing } from '@/components/product/LockedBriefing';
-import { ScoreStrip } from '@/components/product/ScoreStrip';
-import { StockCandles } from '@/components/product/StockCandles';
+import { MacroMarketChart } from '@/components/product/MacroMarketChart';
 import { continuationFromSearchParams, firstSearchParam } from '@/lib/auth/continuation';
 import { loadLatestRegimeRead, loadStoredSpyCandles, loadStoredStockScores } from '@/lib/public-proof/load-public-proof';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import styles from './home.module.css';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -66,11 +65,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   ]);
   const latestScore = regime.value;
   const storedScores = history.value ?? [];
-  const stripMarks = storedScores.slice(0, 20).slice().reverse();
   const candles = spyBars.value ?? [];
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12 sm:px-8">
+    <main className={styles.landing} data-macro-landing>
       {checkout === 'success' ? (
         <p className="mb-8 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
           Stripe accepted the subscription. Today&apos;s score shows once the webhook grants access. Refresh if it is still the previous session.
@@ -81,39 +79,76 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           This account already has an active subscription.
         </p>
       ) : null}
-      <section aria-labelledby="hero-heading">
-        <h1 id="hero-heading" className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-          Trade with the weather. Not against it.
-        </h1>
-        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <section className="min-w-0 border border-white/5 p-4 sm:p-5">
-            {latestScore ? (
-              <BiasGauge animate stackRead biasScore={latestScore.score} />
-            ) : (
-              <p className="text-sm leading-6 text-zinc-400">
-                {regime.error ?? 'No score is stored for this session.'}
-              </p>
-            )}
-          </section>
-          <section className="min-w-0 border border-white/5 p-4 sm:p-5">
-            <StockCandles candles={candles} notice={spyBars.error} />
-          </section>
+      <section className={styles.hero} aria-labelledby="hero-heading">
+        <div className={styles.heroCopy}>
+          <h1 id="hero-heading" className={styles.headline}>
+            Your chart tells<br />half the story.
+            <span>Read the market<br className={styles.desktopBreak} /> behind it.</span>
+          </h1>
+          <p className={styles.description}>
+            Macro Bias turns cross-market signals into one daily score. See the backdrop behind your next stock or crypto trade.
+          </p>
+          <div className={styles.heroSignup}>
+            <p className={styles.signupLabel}>Free daily stock + crypto scores and market updates.</p>
+            <HeroSignupForm />
+          </div>
+          <Link href="/today" className={styles.textLink} data-analytics-event="landing_today_click" data-analytics-location="landing_hero">
+            Explore today&apos;s bias <ArrowIcon diagonal />
+          </Link>
         </div>
-        <ScoreStrip marks={stripMarks} today={latestScore?.tradeDate ?? ''} />
-        {history.error && stripMarks.length === 0 ? (
-          <p className="mt-6 text-sm text-zinc-400">{history.error}</p>
-        ) : null}
-        <div className="mt-8">
-          <StormFrontsCard
-            assets={latestScore?.assets ?? []}
-            biasLabel={latestScore?.biasLabel}
-            biasScore={latestScore?.score ?? 0}
-            hasScore={Boolean(latestScore)}
-            note={regime.error}
-          />
-          <LockedBriefing />
+        <MacroMarketChart
+          candles={candles}
+          marks={storedScores}
+          latest={latestScore}
+          notice={regime.error ?? spyBars.error ?? history.error}
+        />
+      </section>
+
+      <section className={styles.context} aria-labelledby="context-heading">
+        <h2 id="context-heading" className={styles.sectionHeading}>
+          The market moves together.<span>Your analysis should too.</span>
+        </h2>
+        <ol className={styles.steps}>
+          <li>
+            <div className={styles.stepNumber}><span>01</span></div>
+            <h3>Follow the rotation</h3>
+            <p>Stocks, bonds, gold and risk signals feed a daily view of market conditions.</p>
+          </li>
+          <li>
+            <div className={styles.stepNumber}><span>02</span></div>
+            <h3>Read one daily score</h3>
+            <p>A scale from -100 to +100 brings the cross-market picture into focus.</p>
+          </li>
+          <li>
+            <div className={styles.stepNumber}><span>03</span></div>
+            <h3>Put price in context</h3>
+            <p>Explore each session on the chart, then open the dashboard for the full view.</p>
+          </li>
+        </ol>
+        <Link href="/about" className={`${styles.textLink} ${styles.aboutLink}`}>
+          See how Macro Bias works <ArrowIcon />
+        </Link>
+      </section>
+
+      <section className={styles.pro} aria-labelledby="pro-heading">
+        <div>
+          <h2 id="pro-heading">Go deeper with Pro.</h2>
+          <p>The full briefing. A clear trading permission,<br className={styles.desktopBreak} /> reliability grade and size hint. Today&apos;s scores in your dashboard.</p>
         </div>
-        <HeroSignupForm />
+        <div className={styles.proActions}>
+          <Link href="/pricing" className={styles.primaryLink} data-analytics-event="landing_pro_click" data-analytics-location="landing_pro">
+            Explore Pro <ArrowIcon />
+          </Link>
+          <Link href="/track-record" className={styles.textLink}>View the track record</Link>
+        </div>
+      </section>
+
+      <section className={styles.closing} aria-labelledby="closing-heading">
+        <h2 id="closing-heading">Make the market part<br className={styles.desktopBreak} /> of your morning.</h2>
+        <div>
+          <p>Your daily Macro Bias score and a short market update, delivered by email.</p>
+          <HeroSignupForm location="landing_footer" />
+        </div>
       </section>
     </main>
   );

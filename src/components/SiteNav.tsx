@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createSupabaseBrowserClient } from "../lib/supabase/browser";
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 ] as const;
 
 export function SiteNav() {
+  const isLanding = usePathname() === "/";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -65,11 +67,11 @@ export function SiteNav() {
   }
 
   return (
-    <header className="border-b border-white/10">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10">
+    <header className={isLanding ? "border-b border-[#2a342c] bg-[#090b0a]" : "border-b border-white/10"}>
+      <div className={isLanding ? "mx-auto flex h-[70px] max-w-[1480px] items-center justify-between px-5 md:px-6 lg:px-10" : "mx-auto flex h-14 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10"}>
         <Link
           href="/"
-          className="py-2 font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"
+          className={isLanding ? "py-2 font-[family:var(--font-heading)] text-base font-semibold tracking-[0.18em] text-[#f1f5ef] uppercase sm:text-lg" : "py-2 font-[family:var(--font-heading)] text-sm font-semibold tracking-[0.18em] text-white uppercase"}
           data-analytics-event="nav_logo_click"
           data-analytics-label="Macro Bias"
           data-analytics-location="site_nav"
@@ -81,7 +83,7 @@ export function SiteNav() {
             <Link
               key={href}
               href={href}
-              className="hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"
+              className={isLanding ? "hidden text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline" : "hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"}
               data-analytics-event="nav_link_click"
               data-analytics-label={label}
               data-analytics-location="site_nav"
@@ -92,7 +94,7 @@ export function SiteNav() {
           {signedIn && (
             <Link
               href="/dashboard"
-              className="hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"
+              className={isLanding ? "hidden text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] lg:inline" : "hidden text-[13px] font-medium text-zinc-500 transition hover:text-white sm:inline"}
               data-analytics-event="nav_link_click"
               data-analytics-label="Dashboard"
               data-analytics-location="site_nav"
@@ -103,7 +105,7 @@ export function SiteNav() {
           {isAdmin && (
             <Link
               href="/analytics"
-              className="hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 sm:inline"
+              className={isLanding ? "hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 lg:inline" : "hidden text-[13px] font-medium text-emerald-500 transition hover:text-emerald-300 sm:inline"}
               data-analytics-event="nav_link_click"
               data-analytics-label="Analytics"
               data-analytics-location="site_nav"
@@ -113,7 +115,7 @@ export function SiteNav() {
           )}
           <Link
             href={accountHref}
-            className="inline-flex min-h-[44px] items-center rounded-md bg-white/[0.04] px-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white sm:px-3.5"
+            className={isLanding ? "inline-flex min-h-[44px] items-center px-2.5 text-[13px] font-medium text-[#acb6ad] transition hover:text-[#c9f58a] sm:ml-4 sm:px-3.5" : "inline-flex min-h-[44px] items-center rounded-md bg-white/[0.04] px-2.5 text-[13px] font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white sm:px-3.5"}
             data-analytics-event="nav_cta_click"
             data-analytics-label={accountLabel}
             data-analytics-location="site_nav"
@@ -133,9 +135,11 @@ export function SiteNav() {
           ) : null}
           <button
             type="button"
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white sm:hidden"
+            className={isLanding ? "inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white lg:hidden" : "inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 transition hover:text-white sm:hidden"}
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-site-navigation"
           >
             {mobileMenuOpen ? (
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -151,7 +155,7 @@ export function SiteNav() {
       </div>
 
       {mobileMenuOpen && (
-        <nav className="z-50 border-t border-white/10 bg-zinc-950 sm:hidden">
+        <nav id="mobile-site-navigation" className={isLanding ? "z-50 border-t border-[#2a342c] bg-[#090b0a] lg:hidden" : "z-50 border-t border-white/10 bg-zinc-950 sm:hidden"}>
           <div className="mx-auto flex max-w-7xl flex-col px-6 py-3">
             {NAV_LINKS.map(({ href, label }) => (
               <Link
