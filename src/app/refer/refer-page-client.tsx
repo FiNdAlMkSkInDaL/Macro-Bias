@@ -127,8 +127,8 @@ export default function ReferPageClient({ signedIn = false, initialEmail = null,
                 <a href={shareLinks.email} className={member.secondaryButton} data-analytics-event="referral_share_clicked" data-analytics-label="Share by email" data-analytics-location="referral_hub" data-analytics-method="email">Email</a>
                 <a href={shareLinks.sms} className={member.secondaryButton} data-analytics-event="referral_share_clicked" data-analytics-label="Share by SMS" data-analytics-location="referral_hub" data-analytics-method="sms">SMS</a>
               </div> : null}
-              <p>Friends can review the published reading and sign up for free market emails at {data.landingPath}.</p>
-              <Link href={data.referralLink} target="_blank" rel="noreferrer" className={member.textLink} data-analytics-event="referral_share_clicked" data-analytics-label="Open referral landing" data-analytics-location="referral_hub" data-analytics-method="open_landing">Open referral landing</Link>
+              <p>Friends can review the published reading and sign up for free market emails on the daily reading page.</p>
+              <Link href={data.referralLink} target="_blank" rel="noreferrer" className={member.textLink} data-analytics-event="referral_share_clicked" data-analytics-label="Open referral landing" data-analytics-location="referral_hub" data-analytics-method="open_landing">Preview your referral link</Link>
               <span className="sr-only" role="status">{copiedLink ? 'Referral link copied.' : copiedInvite ? 'Invitation copied.' : ''}</span>
             </section>
           ) : (
