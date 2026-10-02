@@ -19,6 +19,9 @@ export type ViewerScore = {
   score: number;
   label: string;
   updatedAt: string | null;
+  /** First stored score publication and the actual source-price date, when saved. */
+  publishedAt?: string | null;
+  sourceTradeDate?: string | null;
   permission: PositionPermission | null;
   grade: string | null;
   sizePct: number | null;
@@ -32,9 +35,15 @@ type ScoreRow = {
   score: number;
   bias_label: string;
   updated_at: string | null;
+  created_at?: string | null;
+  source_date?: string | null;
 };
 
-const SCORE_COLUMNS = 'trade_date, score, bias_label, updated_at';
+const SCORE_COLUMNS = 'trade_date, score, bias_label, updated_at, created_at';
+const SCORE_COLUMNS_BY_TABLE = {
+  macro_bias_scores: `${SCORE_COLUMNS}, source_date:ticker_changes->SPY->>tradeDate`,
+  crypto_bias_scores: `${SCORE_COLUMNS}, source_date:ticker_changes->"BTC-USD"->>tradeDate`,
+} as const;
 type ScoreTable = 'macro_bias_scores' | 'crypto_bias_scores';
 
 export type ProductScore = {
@@ -54,7 +63,7 @@ async function loadRecentScores(table: ScoreTable) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from(table)
-    .select(SCORE_COLUMNS)
+    .select(SCORE_COLUMNS_BY_TABLE[table])
     .order('trade_date', { ascending: false })
     .limit(5);
 
@@ -206,6 +215,8 @@ function toViewerScore(
     score: row.score,
     label: row.bias_label,
     updatedAt: row.updated_at,
+    publishedAt: row.created_at ?? null,
+    sourceTradeDate: row.source_date ?? null,
     permission: signal?.position ?? null,
     grade: signal?.reliability ?? null,
     sizePct: signal ? Math.round(signal.size * 100) : null,
@@ -214,7 +225,11 @@ function toViewerScore(
   };
 }
 
-export async function getViewerScore(asset: ProductAsset, subscriptionStatus?: SubscriptionStatusResult): Promise<ProductScore> {
+export async function getViewerScore(
+  asset: ProductAsset,
+  subscriptionStatus?: SubscriptionStatusResult,
+  selection: 'entitled-session' | 'latest-publication' = 'entitled-session',
+): Promise<ProductScore> {
   const table: ScoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
   let paid = false;
   let signedIn = false;
@@ -235,7 +250,11 @@ export async function getViewerScore(asset: ProductAsset, subscriptionStatus?: S
 
   try {
     const rows = await loadRecentScores(table);
-    const selected = selectVisibleRow(rows, paid, asset === 'stocks' ? stockSessionDate() : null);
+    // Daily numeric readings are public, including the newest stored publication.
+    // Keep the existing current-decision selector for Pro and other product routes.
+    const selected = !paid && selection === 'latest-publication'
+      ? { row: rows[0] ?? null, missingSessionDate: null }
+      : selectVisibleRow(rows, paid, asset === 'stocks' ? stockSessionDate() : null);
 
     if (!selected.row) {
       return {
@@ -256,7 +275,7 @@ export async function getViewerScore(asset: ProductAsset, subscriptionStatus?: S
         asset === 'stocks' ? stockSentence(tradeDate) : cryptoSentence(tradeDate),
       ]);
     }
-    const score = toViewerScore(asset, selected.row, paid, !paid, signal, tradeDate);
+    const score = toViewerScore(asset, selected.row, paid, !paid && selection !== 'latest-publication', signal, tradeDate);
 
     if (paid) {
       score.sentence = sentence;

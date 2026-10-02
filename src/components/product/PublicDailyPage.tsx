@@ -2,6 +2,8 @@ import Link from 'next/link';
 
 import type { PublicDailyData } from '@/lib/product/public-daily-data';
 import { ArrowIcon } from './ArrowIcon';
+import { DailyPublicationNote } from './DailyPublicationNote';
+import { DailyReadingRefresh } from './DailyReadingRefresh';
 import { HeroSignupForm } from './HeroSignupForm';
 import { MacroMarketChart } from './MacroMarketChart';
 import styles from './PublicDailyPage.module.css';
@@ -85,6 +87,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
 
   return (
     <main className={styles.page} data-public-daily={data.asset}>
+      <DailyReadingRefresh />
       <nav className={styles.marketSwitch} aria-label="Daily market scores">
         <Link href="/today" aria-current={data.asset === 'stocks' ? 'page' : undefined}>Stocks</Link>
         <Link href="/crypto" aria-current={data.asset === 'crypto' ? 'page' : undefined}>Crypto</Link>
@@ -104,7 +107,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           <div className={styles.readingHeader}>
             <h2 id="public-reading-heading">Public reading</h2>
             <div>
-              <p>Previous session</p>
+              <p>Latest published session</p>
               {score ? <time dateTime={score.tradeDate}>{displayDate(score.tradeDate)}</time> : <span>Awaiting a reading</span>}
             </div>
           </div>
@@ -127,10 +130,11 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
               <p>{data.loadError ?? 'A public score will appear here after a session has been published. Join the free email updates below.'}</p>
             </div>
           )}
+          {score ? <DailyPublicationNote score={score} /> : null}
           <div className={styles.access}>
             {data.missingSessionDate && score ? (
-              <p>No reading is available for <time dateTime={data.missingSessionDate}>{displayDate(data.missingSessionDate)}</time>. This is the previous published session.</p>
-            ) : <p>This public daily view shows the previous published session. Free scores arrive by email on weekdays. Pro opens the current reading and full briefing.</p>}
+              <p>No reading is available for <time dateTime={data.missingSessionDate}>{displayDate(data.missingSessionDate)}</time>. This is the latest published reading.</p>
+            ) : <p>The latest published daily score. This page checks for new readings while open. Pro adds the current trading decision and immediate full briefing.</p>}
             <Link href="/pricing" className={styles.quietLink} data-analytics-event="daily_pro_click" data-analytics-location={`${data.asset}_daily_reading`}>Explore Pro <ArrowIcon /></Link>
           </div>
         </section>
@@ -166,17 +170,6 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           <p>The model compares these conditions with similar historical sessions and their following market returns.</p>
           <Link href="/about" className={styles.textLink}>About Macro Bias <ArrowIcon /></Link>
         </div>
-      </section>
-
-      <section className={styles.guide} aria-labelledby="guide-heading">
-        <h2 id="guide-heading">One score. A market backdrop.</h2>
-        <p className={styles.sectionDescription}>The scale runs from −100 to +100. Read the number and the published regime together.</p>
-        <dl className={styles.regimes}>
-          <div><dt><span className={styles.negativeDot} />Risk-off</dt><dd>A defensive bias in the published reading.</dd></div>
-          <div><dt><span className={styles.neutralDot} />Neutral</dt><dd>No clear risk-on or risk-off classification for the session.</dd></div>
-          <div><dt><span className={styles.positiveDot} />Risk-on</dt><dd>A risk-taking bias in the published reading.</dd></div>
-        </dl>
-        <p className={styles.guideCaption}>The score provides context. Pro adds separate trading permissions and reliability checks.</p>
       </section>
 
       <section className={styles.pro} aria-labelledby="pro-heading">

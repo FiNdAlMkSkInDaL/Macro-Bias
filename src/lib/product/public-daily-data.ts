@@ -115,9 +115,9 @@ function emptyData(asset: ProductAsset): PublicDailyData {
 }
 
 /**
- * Public daily-page data, bounded by the score the viewer is allowed to see.
- * Price and score history share that cutoff; newer paid-session values are never
- * serialized to a free viewer. Paid signal and briefing fields come exclusively
+ * Public daily-page data, bounded by the selected published score date.
+ * Numeric scores are public; price and score history share that date cutoff.
+ * Paid signal and briefing fields come exclusively
  * from getViewerScore's existing subscription checks.
  * Routes that already checked access can reuse that ProductScore result.
  */
@@ -125,7 +125,7 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
   const result = emptyData(asset);
   let viewer;
   try {
-    viewer = preloadedScore ?? await getViewerScore(asset);
+    viewer = preloadedScore ?? await getViewerScore(asset, undefined, 'latest-publication');
   } catch {
     result.loadError = SCORE_LOAD_ERROR;
     result.availability.scoreStatus = 'unavailable';

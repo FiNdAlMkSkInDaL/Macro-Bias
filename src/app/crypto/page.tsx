@@ -11,11 +11,11 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Crypto score — Macro Bias',
   description:
-    'Explore the previous published crypto score, Bitcoin price history and the wider market backdrop. Get free daily stock and crypto updates by email.',
+    'Explore the latest published crypto score, Bitcoin price history and the wider market backdrop. Get free daily stock and crypto updates by email.',
 };
 
 export default async function CryptoPage() {
-  const viewer = await getViewerScore('crypto');
+  const viewer = await getViewerScore('crypto', undefined, 'latest-publication');
 
   if (!viewer.signedIn && !viewer.paid) {
     return <PublicDailyPage data={await loadPublicDailyData('crypto', viewer)} />;

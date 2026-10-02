@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { MacroMarketChart } from './MacroMarketChart';
 import type { PublicDailyData } from '@/lib/product/public-daily-data';
 import { ArrowIcon } from './ArrowIcon';
+import { DailyPublicationNote } from './DailyPublicationNote';
+import { DailyReadingRefresh } from './DailyReadingRefresh';
 import { MarketTabs, MemberShell } from './MemberShell';
 import { ProDecision, ProReading } from './ProReading';
 import ui from './MemberUI.module.css';
@@ -28,6 +30,7 @@ export function ProDailyPage({ data, briefing }: {
       {briefing.href ? <Link className={ui.button} href={briefing.href}>Read full briefing</Link> : null}
       <Link className={ui.secondaryButton} href={archive}>Briefing archive</Link>
     </>}>
+      <DailyReadingRefresh />
       <div data-pro-daily={data.asset}>
         <div className={styles.toolbar}>
           <MarketTabs asset={data.asset} />
@@ -43,6 +46,7 @@ export function ProDailyPage({ data, briefing }: {
             <a className={ui.textLink} href={stocks ? '/today' : '/crypto'}>Reload reading<ArrowIcon /></a>
           </section>
         )}
+        {score ? <DailyPublicationNote score={score} /> : null}
         <section className={styles.chart} aria-label="Price and score history">
           <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
           <p className={styles.chartCaption}>Explore past sessions; the decision above stays on the published session.</p>

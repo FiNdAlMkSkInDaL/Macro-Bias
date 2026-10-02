@@ -8,6 +8,7 @@ import {
   createSupabaseBrowserClient,
   getSupabaseBrowserClientConfigError,
 } from '@/lib/supabase/browser';
+import styles from './login.module.css';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -123,60 +124,62 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-16">
-      <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-        Account
-      </p>
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white">
-        {authMode === 'signin' ? 'Sign in' : 'Create account'}
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-zinc-400">
-        Sign in to read older full briefings and manage your account. If you choose Pro, your access begins once your subscription is confirmed.
-      </p>
-      <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-        <label className="block text-sm text-zinc-300">
-          Email
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="mt-2 h-12 w-full border border-zinc-800 bg-zinc-950 px-4 text-white outline-none focus:border-zinc-500"
-          />
-        </label>
-        <label className="block text-sm text-zinc-300">
-          Password
-          <input
-            type="password"
-            required
-            autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-2 h-12 w-full border border-zinc-800 bg-zinc-950 px-4 text-white outline-none focus:border-zinc-500"
-          />
-        </label>
+    <main className={styles.page} data-member-page>
+      <header className={styles.header}>
+        <h1>{authMode === 'signin' ? 'Sign in' : 'Create account'}</h1>
+        <p>
+          Read older full briefings and manage your account. If you choose Pro, your access begins once your subscription is confirmed.
+        </p>
+      </header>
+      <div className={styles.panel}>
+        <form className={styles.form} onSubmit={handleSubmit} aria-busy={isSubmitting} aria-describedby={errorMessage ? 'auth-error' : statusMessage ? 'auth-status' : undefined}>
+          <label className={styles.field}>
+            Email
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label className={styles.field}>
+            Password
+            <input
+              name="password"
+              type="password"
+              required
+              autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={styles.submit}
+          >
+            {isSubmitting ? (authMode === 'signin' ? 'Signing in…' : 'Creating account…') : authMode === 'signin' ? 'Sign in' : 'Create your free account'}
+          </button>
+        </form>
         <button
-          type="submit"
+          type="button"
           disabled={isSubmitting}
-          className="h-12 w-full bg-white text-sm font-semibold text-black disabled:opacity-60"
+          className={styles.switchMode}
+          onClick={() => {
+            setAuthMode((mode) => (mode === 'signin' ? 'signup' : 'signin'));
+            setErrorMessage(null);
+            setStatusMessage(null);
+          }}
         >
-          {isSubmitting ? 'Working' : authMode === 'signin' ? 'Sign in' : 'Create account'}
+          {authMode === 'signin' ? 'Need an account?' : 'Already have an account?'}
         </button>
-      </form>
-      <button
-        type="button"
-        className="mt-4 text-sm text-zinc-500"
-        onClick={() => {
-          setAuthMode((mode) => (mode === 'signin' ? 'signup' : 'signin'));
-          setErrorMessage(null);
-          setStatusMessage(null);
-        }}
-      >
-        {authMode === 'signin' ? 'Need an account?' : 'Already have an account?'}
-      </button>
-      {errorMessage && <p className="mt-4 text-sm text-rose-300">{errorMessage}</p>}
-      {statusMessage && <p className="mt-4 text-sm text-emerald-300">{statusMessage}</p>}
+        {errorMessage ? <p id="auth-error" className={`${styles.message} ${styles.error}`} role="alert">{errorMessage}</p> : null}
+        {statusMessage ? <p id="auth-status" className={styles.message} role="status">{statusMessage}</p> : null}
+      </div>
     </main>
   );
 }

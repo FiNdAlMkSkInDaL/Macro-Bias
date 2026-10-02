@@ -11,11 +11,11 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Stock score — Macro Bias',
   description:
-    'Explore the previous published stock score, SPY price history and the market signals behind Macro Bias. Get free daily stock and crypto updates by email.',
+    'Explore the latest published stock score, SPY price history and the market signals behind Macro Bias. Get free daily stock and crypto updates by email.',
 };
 
 export default async function TodayPage() {
-  const viewer = await getViewerScore('stocks');
+  const viewer = await getViewerScore('stocks', undefined, 'latest-publication');
 
   if (!viewer.signedIn && !viewer.paid) {
     return <PublicDailyPage data={await loadPublicDailyData('stocks', viewer)} />;

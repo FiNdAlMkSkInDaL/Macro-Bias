@@ -2,6 +2,8 @@ import Link from 'next/link';
 
 import type { PublicDailyData } from '@/lib/product/public-daily-data';
 import { ArrowIcon } from './ArrowIcon';
+import { DailyPublicationNote } from './DailyPublicationNote';
+import { DailyReadingRefresh } from './DailyReadingRefresh';
 import { MacroMarketChart } from './MacroMarketChart';
 import { MarketTabs, MemberShell, MemberUpgrade } from './MemberShell';
 import ui from './MemberUI.module.css';
@@ -27,7 +29,8 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
   const briefings = stocks ? '/briefings' : '/crypto/briefings';
   const history = stocks ? '/track-record' : '/crypto/track-record';
   return (
-    <MemberShell title={`Your ${stocks ? 'stock' : 'crypto'} reading`} description={score ? <>Previous published session · <time dateTime={score.tradeDate}>{dateLabel(score.tradeDate)}</time></> : 'Previous published session'} plan="Free plan">
+    <MemberShell title={`Your ${stocks ? 'stock' : 'crypto'} reading`} description={score ? <>Latest published session · <time dateTime={score.tradeDate}>{dateLabel(score.tradeDate)}</time></> : 'Latest published session'} plan="Free plan">
+      <DailyReadingRefresh />
       <div data-member-daily={data.asset}>
         <MarketTabs asset={data.asset} />
         {score && regime ? (
@@ -41,17 +44,17 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
             </div>
             <div className={styles.interpretation}>
               <h2>What this reading means</h2><p>{regime.explanation}</p>
+              <DailyPublicationNote score={score} />
               <div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link><Link className={ui.textLink} href={briefings}>Read older briefings<ArrowIcon /></Link></div>
             </div>
           </section>
         ) : (
-          <div className={ui.notice}>{data.loadError || 'A previous-session reading is not available yet.'}<div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link></div></div>
+          <div className={ui.notice}>{data.loadError || 'A published reading is not available yet.'}<div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link></div></div>
         )}
         <section className={styles.chart} aria-label="Price and score history">
           <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
         </section>
         <div className={styles.lower}>
-          <section><h2>How to read this score</h2><p>The scale runs from −100 to +100. Lower values lean toward risk-off conditions; higher values lean toward risk-on.</p><div className={styles.guide}><span>−100<small>Risk-off</small></span><span>0<small>Mixed</small></span><span>+100<small>Risk-on</small></span></div><p>The published regime is stored with each reading. It can differ from the score’s numeric tilt when the model finds no tradable edge.</p></section>
           <section><h2>Keep exploring</h2><Link className={styles.explore} href={history}><span>Track record<small>Review published readings and stored outcomes.</small></span><ArrowIcon /></Link><Link className={styles.explore} href="/account"><span>Email settings<small>Choose weekday stock and crypto updates.</small></span><ArrowIcon /></Link></section>
         </div>
         <MemberUpgrade />
