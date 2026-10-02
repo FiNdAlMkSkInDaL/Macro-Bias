@@ -48,6 +48,14 @@ export type DailyBriefingQuantContext = {
   tradeDate: string;
   /** Model v5+ tradable permission layer from engine_inputs. */
   signal: TradableSignal | null;
+  /** Already-recorded model context for explaining the published score. */
+  publishedScoreContext?: {
+    averageForward1DayReturn: number | null;
+    averageForward3DayReturn: number | null;
+    blendedForwardReturn: number | null;
+    componentSummaries: string[];
+    marketDataDate: string | null;
+  };
 };
 
 export type DailyBriefingConviction = "HIGH" | "MEDIUM" | "LOW";

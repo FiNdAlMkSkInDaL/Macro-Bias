@@ -146,7 +146,50 @@
   opacity: .65;
 }
 
-.page button:focus-visible {
+.forgotPassword,
+.textLink {
+  color: var(--auth-muted);
+  font-family: var(--font-heading), sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: color .15s;
+}
+
+.forgotPassword {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -8px 0;
+}
+
+.fieldHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 14px;
+}
+
+.secondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+}
+
+.forgotPassword:hover,
+.textLink:hover {
+  color: var(--auth-accent);
+}
+
+.page :is(button, a):focus-visible {
   outline: 2px solid var(--auth-accent);
   outline-offset: 4px;
 }
@@ -163,6 +206,24 @@
 
 .error {
   color: #f4a5a5;
+}
+
+.help {
+  margin: -2px 0 0;
+  color: var(--auth-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.stateText {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.successLink {
+  text-decoration: none;
 }
 
 @media (max-width: 600px) {
@@ -185,7 +246,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page :is(input, button) {
+  .page :is(input, button, a) {
     transition: none;
   }
 }

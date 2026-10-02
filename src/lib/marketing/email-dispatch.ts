@@ -6,7 +6,6 @@ import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-confi
 import type { WeeklyDigestData, WeeklyBriefingRow } from '../briefing/weekly-digest-data';
 import { getAppUrl, getRequiredServerEnv } from '../server-env';
 import type { TradableSignal } from '../signal';
-import { formatPermissionLine, formatSignalSocialLine } from '../signal/format-tradable-signal';
 import {
   formatAddressList,
   isResendTestRestrictionMessage,
@@ -59,7 +58,7 @@ type DispatchQuantBriefingOptions = {
   recipients: readonly string[];
   tier?: QuantBriefingTier;
   weeklyDigest?: WeeklyDigestData | null;
-  /** Model v5+ permission layer for email header / subject. */
+  /** Retained for callers; model controls are explained in the narrative. */
   signal?: TradableSignal | null;
 };
 
@@ -134,10 +133,9 @@ function buildHeaderSummary(
   score: number,
   label: string,
   isOverrideActive: boolean,
-  signal?: TradableSignal | null,
 ) {
-  const permission = formatPermissionLine(signal, score);
-  return `${permission} | LABEL: ${formatDisplayLabel(label)} (${formatSignedNumber(score)}) | ${getMacroOverlayLabel(isOverrideActive)}`;
+  const scoreText = `BASE SCORE: ${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
+  return isOverrideActive ? `OVERRIDE ACTIVE | ${scoreText}` : scoreText;
 }
 
 function renderMonospaceSpan(value: string, color?: string) {
@@ -609,22 +607,15 @@ function buildHeaderTickerHtml(
   const baselineLabel = formatDisplayLabel(label);
   const baselineScore = formatSignedNumber(score);
   const overlayLabel = getMacroOverlayLabel(isOverrideActive);
-  const statusSubline = isOverrideActive ? 'Headline-driven session' : 'Score is in play';
-  const permission = formatPermissionLine(signal, score);
-  const permissionShort = formatSignalSocialLine(signal, score);
+  const statusSubline = isOverrideActive
+    ? 'Headline-driven session'
+    : signal?.noTrade ? 'Background context today' : 'Score is in play';
 
   return `<div>
     <div class="email-label" style="color: #52525b; font-size: 10px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase;">Daily Macro Bias</div>
-    <div style="margin-top: 12px; color: #f8fafc; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;">
-      ${renderMonospaceSpan(permissionShort)}
-    </div>
-    <div style="margin-top: 8px; color: #94a3b8; font-size: 13px; line-height: 1.5;">${escapeHtml(permission)}</div>
-    <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-      <div class="email-label" style="color: #52525b; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;">Label / Score</div>
-      <div style="margin-top: 8px; color: ${accentColor}; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;">
-        ${escapeHtml(baselineLabel)}
-        <span style="font-size: 18px; margin-left: 8px;">${escapeHtml(`(${baselineScore})`)}</span>
-      </div>
+    <div style="margin-top: 12px; color: ${accentColor}; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;">
+      ${escapeHtml(baselineLabel)}
+      <span style="font-size: 20px; margin-left: 8px;">${escapeHtml(`(${baselineScore})`)}</span>
     </div>
     <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
       <div class="email-label" style="color: #52525b; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;">Regime Status</div>
@@ -1014,7 +1005,7 @@ function buildEmailHtml(
   const cryptoBriefingUrl = escapeHtml(new URL('/crypto', getAppUrl()).toString());
   const referralPageUrl = escapeHtml(new URL('/refer', getAppUrl()).toString());
   const upgradeUrl = escapeHtml(buildUpgradeUrl());
-  const headerSummary = escapeHtml(buildHeaderSummary(score, label, isOverrideActive, signal));
+  const headerSummary = escapeHtml(buildHeaderSummary(score, label, isOverrideActive));
   const overrideStatusColor = getOverrideStatusColor(isOverrideActive);
   const bodyCopyHtml = renderNewsletterCopyHtml(
     newsletterCopy,
@@ -1072,7 +1063,7 @@ function buildEmailHtml(
                 ${referralWidgetHtml}
                 <div style="padding: 20px 0; text-align: center;">
                   <p style="margin: 0 0 8px; font-size: 11px; color: #3f3f46; -webkit-text-fill-color: #3f3f46;">
-                    <a href="${cryptoBriefingUrl}" style="color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; text-decoration: none;">macro-bias.com/crypto</a>
+                    <a href="${dashboardUrl}" style="color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; text-decoration: none;">macro-bias.com</a>
                   </p>
                   <p style="margin: 0; font-size: 10px; color: #3f3f46; -webkit-text-fill-color: #3f3f46;">
                     You're receiving this because you opted into Macro Bias daily emails.
@@ -1125,7 +1116,7 @@ function buildEmailText(
 
   return [
     'Macro Bias Daily Quant Briefing',
-    buildHeaderSummary(score, label, isOverrideActive, signal),
+    buildHeaderSummary(score, label, isOverrideActive),
     strippedBodyCopy,
     weeklyRecapText,
     footerCallToAction,
@@ -1145,31 +1136,14 @@ export function createQuantBriefingEmailContent(
   weeklyDigest?: WeeklyDigestData | null,
   signal?: TradableSignal | null,
 ): QuantBriefingEmailContent {
-  // News override is a hard quant refuse for the permission users act on.
-  const effectiveSignal: TradableSignal | null | undefined = isOverrideActive
-    ? {
-        position: 'NO_TRADE',
-        size: 0,
-        reliability: 'F',
-        neighborAgreement: signal?.neighborAgreement ?? 0,
-        meanNeighborDistance: signal?.meanNeighborDistance ?? Number.POSITIVE_INFINITY,
-        distanceQuality: signal?.distanceQuality ?? 0,
-        noTrade: true,
-        reason:
-          'Macro overlay override is active. Model permission forced to NO_TRADE until the catalyst settles.',
-      }
-    : signal;
-
-  const subjectPrefix = getMacroOverlayLabel(isOverrideActive);
-  const permissionTag = formatSignalSocialLine(effectiveSignal, score);
   const weeklyTag =
     weeklyDigest && weeklyDigest.sessionCount > 0
       ? ` + Weekly Recap ${getTrendEmoji(weeklyDigest.trendDirection)}`
       : '';
   const labelText = `${formatDisplayLabel(label)} (${formatSignedNumber(score)})`;
   const subject = isOverrideActive
-    ? `Override Active | ${permissionTag} | ${labelText}${weeklyTag}`
-    : `${subjectPrefix} | ${permissionTag} | ${labelText}${weeklyTag}`;
+    ? `Override Active | ${labelText}${weeklyTag}`
+    : `${labelText}${weeklyTag}`;
 
   return {
     html: buildEmailHtml(
@@ -1179,7 +1153,7 @@ export function createQuantBriefingEmailContent(
       isOverrideActive,
       tier,
       weeklyDigest,
-      effectiveSignal,
+      signal,
     ),
     subject,
     text: buildEmailText(
@@ -1189,7 +1163,7 @@ export function createQuantBriefingEmailContent(
       isOverrideActive,
       tier,
       weeklyDigest,
-      effectiveSignal,
+      signal,
     ),
   };
 }

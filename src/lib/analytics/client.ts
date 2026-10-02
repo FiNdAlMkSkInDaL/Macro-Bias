@@ -81,12 +81,31 @@ export function trackClientEvent(event: ClientAnalyticsEvent) {
     return;
   }
 
+  // Authentication routes must never send email-link credentials, continuations
+  // or recovery form interactions to marketing analytics.
+  if (/^\/(?:auth(?:\/|$)|forgot-password(?:\/|$)|reset-password(?:\/|$))/.test(window.location.pathname)) return;
+  const currentParams = new URLSearchParams(window.location.search);
+  if (['token_hash', 'token', 'access_token', 'refresh_token', 'code'].some((key) => currentParams.has(key))) return;
+
+  let referrer: string | null = event.referrer ?? document.referrer ?? null;
+  if (referrer) {
+    try {
+      const url = new URL(referrer);
+      if (/^\/(?:auth(?:\/|$)|forgot-password(?:\/|$)|reset-password(?:\/|$))/.test(url.pathname)) referrer = null;
+      else {
+        ['token_hash', 'token', 'access_token', 'refresh_token', 'code'].forEach((key) => url.searchParams.delete(key));
+        url.hash = '';
+        referrer = url.toString();
+      }
+    } catch { referrer = null; }
+  }
+
   const payload = JSON.stringify({
     anonymousId: getAnonymousId(),
     eventName: event.eventName,
     metadata: event.metadata ?? {},
     pagePath: event.pagePath ?? window.location.pathname,
-    referrer: event.referrer ?? document.referrer ?? null,
+    referrer,
     sessionId: getSessionId(),
     subscriberEmail: event.subscriberEmail ?? null,
     ...getUtmValues(),

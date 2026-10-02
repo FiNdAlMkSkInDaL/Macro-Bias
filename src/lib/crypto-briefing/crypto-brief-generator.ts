@@ -61,12 +61,16 @@ function countSentences(value: string) {
 }
 
 function validateCryptoNewsletterCopy(newsletterCopy: string) {
+  if (/\b(?:NO_TRADE|Permission\s*:|Reliability\s+[A-F]\b|rel\s+[A-F]\b|Size\s+\d+%)/i.test(newsletterCopy)) {
+    throw new Error("Anthropic crypto briefing exposed model control fields.");
+  }
+
   const headers = Object.values(CRYPTO_BRIEFING_SECTION_HEADERS);
   const matches = [...newsletterCopy.matchAll(
-    new RegExp(`^(${headers.map((header) => header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s*:?[ \t]*$`, "gm"),
+    new RegExp(`^(${headers.map((header) => header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})[ \\t]*(?::[ \\t]*(.*))?$`, "gm"),
   )];
 
-  if (matches.length !== headers.length) {
+  if (matches.length !== headers.length || matches.some((match, index) => match[1] !== headers[index])) {
     throw new Error("Anthropic crypto briefing failed section parsing.");
   }
 
@@ -77,7 +81,7 @@ function validateCryptoNewsletterCopy(newsletterCopy: string) {
     const title = match[1];
     const start = match.index! + match[0].length;
     const end = index + 1 < matches.length ? matches[index + 1].index! : newsletterCopy.length;
-    sections.set(title, newsletterCopy.slice(start, end).trim());
+    sections.set(title, [match[2] ?? "", newsletterCopy.slice(start, end)].join("\n").trim());
   }
 
   const regimeStatus = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.bottomLine) ?? "";
@@ -120,17 +124,14 @@ function validateCryptoNewsletterCopy(newsletterCopy: string) {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  if (modelContextLines.length !== 3) {
-    throw new Error("Anthropic crypto briefing model context must be 2 sentences plus diagnostics.");
+  const diagnosticIndex = modelContextLines.findIndex((line) => line.startsWith("Model Diagnostics:"));
+  if (diagnosticIndex !== modelContextLines.length - 1 || diagnosticIndex === -1) {
+    throw new Error("Anthropic crypto briefing diagnostics line is malformed.");
   }
-
-  if (countSentences(modelContextLines[0]) + countSentences(modelContextLines[1]) !== 2) {
+  if (countSentences(modelContextLines.slice(0, diagnosticIndex).join(" ")) !== 2) {
     throw new Error("Anthropic crypto briefing model context must begin with exactly 2 sentences.");
   }
 
-  if (!modelContextLines[2].startsWith("Model Diagnostics:")) {
-    throw new Error("Anthropic crypto briefing diagnostics line is malformed.");
-  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -250,10 +251,6 @@ function parseCryptoBriefingResponse(raw: string): CryptoBriefingLLMResponse {
 function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
   const label = biasResult.label.replace(/_/g, " ");
   const score = biasResult.score > 0 ? `+${biasResult.score}` : `${biasResult.score}`;
-  const signal = biasResult.signal;
-  const permission = signal
-    ? `Permission: ${signal.position} · Reliability ${signal.reliability} · Size ${Math.round(signal.size * 100)}%`
-    : `Permission unavailable · score ${score}`;
   const btcChange = biasResult.tickerChanges["BTC-USD"];
   const btcPct = btcChange
     ? `${btcChange.percentChange > 0 ? "+" : ""}${btcChange.percentChange.toFixed(2)}%`
@@ -261,7 +258,9 @@ function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
 
   return [
     `${CRYPTO_BRIEFING_SECTION_HEADERS.bottomLine}:`,
-    `${permission}. Crypto is in a ${label.toLowerCase()} regime (${score}). **BTC** moved ${btcPct} in the last session.${signal?.reason ? ` ${signal.reason}` : ""}`,
+    biasResult.signal?.noTrade
+      ? `Crypto is in a ${label.toLowerCase()} regime, but the historical match is too weak to put much weight on the score today.`
+      : `Crypto is in a ${label.toLowerCase()} regime, and the score still deserves weight today.`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.marketBreakdown}:`,
     `- **Bitcoin**: Neutral -- **BTC** closed at $${btcChange?.close.toLocaleString() ?? "n/a"} with a ${btcPct} move, so price alone is not giving a strong message.`,
@@ -273,7 +272,9 @@ function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
     `The close in **BTC** matters less than the broader macro and relative-strength backdrop. Confidence improves if **ETH** and higher-beta crypto stop lagging while the dollar backdrop eases.`,
     "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.modelNotes}:`,
-    `${permission}. The nearest analog set gives a usable baseline, but this fallback is leaning on compressed quant context rather than a full narrative read.`,
+    biasResult.signal?.noTrade
+      ? `The historical match is not strong enough to give a reliable comparison today. The numeric score is background context until a clearer pattern develops.`
+      : `The nearest analog set gives a usable baseline, but this fallback is leaning on compressed quant context rather than a full narrative read. Similar setups were mixed enough that the score should be treated as a directional lean, not a precise path forecast.`,
     `Model Diagnostics: BTC Close $${btcChange?.close.toLocaleString() ?? "n/a"} | BTC Daily Change ${btcPct} | Score ${score} | Analogs ${biasResult.componentScores[0]?.analogDates?.slice(0, 3).join(", ") || "n/a"}.`,
   ].join("\n");
 }
@@ -309,7 +310,14 @@ async function generateAnthropicCryptoBriefing(
   const raw = extractTextResponse(response.content);
   if (!raw) throw new Error("Anthropic crypto briefing response had no text content.");
 
-  return parseCryptoBriefingResponse(raw);
+  const parsed = parseCryptoBriefingResponse(raw);
+  const factualDiagnostics = buildFallbackBriefing(biasResult).match(/^Model Diagnostics:.*$/m)?.[0];
+  return {
+    ...parsed,
+    newsletter_copy: factualDiagnostics
+      ? parsed.newsletter_copy.replace(/^[ \t]*Model Diagnostics:.*$/m, factualDiagnostics)
+      : parsed.newsletter_copy,
+  };
 }
 
 export async function generateCryptoDailyBriefing(

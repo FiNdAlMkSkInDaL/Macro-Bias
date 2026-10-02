@@ -73,7 +73,8 @@ type DailyBriefingPromptPayload = {
   score: number;
   stressTest: DailyBriefingStressTest;
   tradeDate: string;
-  /** Lead decision layer for the LLM. */
+  publishedScoreContext: DailyBriefingQuantContext["publishedScoreContext"];
+  /** Internal limits to explain in plain English, without exposing control fields. */
   tradableSignal: {
     position: string;
     size: number;
@@ -275,6 +276,7 @@ async function getQuantScore(
         score: latestSnapshot.score,
         tradeDate: latestSnapshot.trade_date,
         signal,
+        publishedScoreContext: getPublishedScoreContext(latestSnapshot),
       },
       warnings: historicalAnalogs ? [] : ["Historical analog context was unavailable for the briefing."],
     };
@@ -290,10 +292,28 @@ async function getQuantScore(
         score: latestSnapshot.score,
         tradeDate: latestSnapshot.trade_date,
         signal: extractTradableSignal(latestSnapshot.engine_inputs),
+        publishedScoreContext: getPublishedScoreContext(latestSnapshot),
       },
       warnings: [`Quant context degraded: ${message}`],
     };
   }
+}
+
+function getPublishedScoreContext(snapshot: StoredBiasSnapshot) {
+  const components = Array.isArray(snapshot.component_scores)
+    ? snapshot.component_scores.filter(isRecord)
+    : [];
+  const firstComponent = components[0];
+  const engine = isRecord(snapshot.engine_inputs) ? snapshot.engine_inputs : {};
+  const tradeWindow = isRecord(engine.tradeWindow) ? engine.tradeWindow : {};
+  const finiteNumber = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
+  return {
+    averageForward1DayReturn: finiteNumber(firstComponent?.averageForward1DayReturn),
+    averageForward3DayReturn: finiteNumber(firstComponent?.averageForward3DayReturn),
+    blendedForwardReturn: finiteNumber(engine.blendedForwardReturn),
+    componentSummaries: components.flatMap((component) => typeof component.summary === "string" ? [component.summary] : []).slice(0, 4),
+    marketDataDate: typeof tradeWindow.latestTradeDate === "string" ? tradeWindow.latestTradeDate : null,
+  };
 }
 
 function buildPromptPayload(
@@ -311,6 +331,7 @@ function buildPromptPayload(
     newsSummary: news.summary,
     newsDisclaimer: news.disclaimer,
     headlines: news.headlines.slice(0, DAILY_BRIEFING_MAX_HEADLINES),
+    publishedScoreContext: quant.publishedScoreContext,
     playbook,
     stressTest,
     tradableSignal: quant.signal
@@ -394,7 +415,7 @@ function isDailyBriefingLLMResponse(value: unknown): value is DailyBriefingLLMRe
 }
 
 function normalizeNewsletterCopy(newsletterCopy: string) {
-  return newsletterCopy.replaceAll(
+  return newsletterCopy.replace(/\r\n/g, "\n").replaceAll(
     DAILY_BRIEFING_MACRO_HEADER_TYPO,
     DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus,
   );
@@ -429,12 +450,18 @@ function countSentences(value: string) {
 
 function splitNewsletterSections(newsletterCopy: string) {
   const normalized = normalizeNewsletterCopy(newsletterCopy).trim();
-  const headers = Object.values(DAILY_BRIEFING_SECTION_HEADERS);
+  const headers = [
+    DAILY_BRIEFING_SECTION_HEADERS.bottomLine,
+    DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook,
+    DAILY_BRIEFING_SECTION_HEADERS.stressTest,
+    DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus,
+    DAILY_BRIEFING_SECTION_HEADERS.quantCorner,
+  ];
   const matches = [...normalized.matchAll(
-    new RegExp(`^(${headers.map((header) => header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s*$`, "gm"),
+    new RegExp(`^(${headers.map((header) => header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})[ \\t]*(?::[ \\t]*(.*))?$`, "gm"),
   )];
 
-  if (matches.length !== headers.length) {
+  if (matches.length !== headers.length || matches.some((match, index) => match[1] !== headers[index])) {
     return null;
   }
 
@@ -445,7 +472,7 @@ function splitNewsletterSections(newsletterCopy: string) {
     const title = match[1];
     const start = match.index! + match[0].length;
     const end = index + 1 < matches.length ? matches[index + 1].index! : normalized.length;
-    const content = normalized.slice(start, end).trim();
+    const content = [match[2] ?? "", normalized.slice(start, end)].join("\n").trim();
     sections.set(title, content);
   }
 
@@ -456,6 +483,10 @@ function splitNewsletterSections(newsletterCopy: string) {
 }
 
 function validateNewsletterCopy(newsletterCopy: string) {
+  if (/\b(?:NO_TRADE|Permission\s*:|Reliability\s+[A-F]\b|rel\s+[A-F]\b|Size\s+\d+%)/i.test(newsletterCopy)) {
+    throw new Error("Anthropic daily briefing exposed model control fields.");
+  }
+
   const parsed = splitNewsletterSections(newsletterCopy);
 
   if (!parsed) {
@@ -511,15 +542,13 @@ function validateNewsletterCopy(newsletterCopy: string) {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  if (modelContextLines.length < 2 || modelContextLines.length > 3) {
-    throw new Error("Anthropic daily briefing model context must be 2 short sentences plus optional diagnostics.");
-  }
-
-  if (countSentences(modelContextLines[0]) + countSentences(modelContextLines[1]) !== 2) {
+  const diagnosticIndex = modelContextLines.findIndex((line) => line.startsWith("Model Diagnostics:"));
+  const narrativeLines = diagnosticIndex === -1 ? modelContextLines : modelContextLines.slice(0, diagnosticIndex);
+  if (countSentences(narrativeLines.join(" ")) !== 2) {
     throw new Error("Anthropic daily briefing model context must begin with exactly 2 sentences.");
   }
 
-  if (modelContextLines.length === 3 && !modelContextLines[2].startsWith("Model Diagnostics:")) {
+  if (diagnosticIndex !== -1 && diagnosticIndex !== modelContextLines.length - 1) {
     throw new Error("Anthropic daily briefing model context diagnostics line is malformed.");
   }
 }
@@ -696,7 +725,26 @@ async function generateAnthropicBriefing(
     throw new Error("Anthropic daily briefing response did not include text content.");
   }
 
-  return parseDailyBriefingResponse(rawResponse);
+  const parsed = parseDailyBriefingResponse(rawResponse);
+  const factualFallback = strategyContext.strategy.buildFallbackBriefing({
+    ...strategyContext,
+    suggestedOverrideActive: parsed.is_override_active,
+  });
+  const factualDiagnostics = factualFallback.match(/^Model Diagnostics:.*$/m)?.[0];
+  let newsletterCopy = factualDiagnostics
+    ? parsed.newsletter_copy.replace(/^[ \t]*Model Diagnostics:.*$/m, factualDiagnostics)
+    : parsed.newsletter_copy;
+  // These averages describe the analog set, never the single closest session.
+  // Keep AI interpretation elsewhere while grounding the compact factual section.
+  if (quant.publishedScoreContext?.averageForward1DayReturn != null &&
+      quant.publishedScoreContext?.averageForward3DayReturn != null) {
+    const modelContext = factualFallback.slice(factualFallback.indexOf(DAILY_BRIEFING_SECTION_HEADERS.quantCorner));
+    newsletterCopy = newsletterCopy.replace(/^MODEL CONTEXT[ \t]*(?::[^\n]*)?[\s\S]*$/m, modelContext);
+  }
+  return {
+    ...parsed,
+    newsletter_copy: newsletterCopy,
+  };
 }
 
 async function synthesizeDailyBriefingFromContext(

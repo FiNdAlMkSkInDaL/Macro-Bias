@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const forgotPasswordHref = `/forgot-password?${new URLSearchParams({ redirectTo: redirectPath }).toString()}`;
 
   function continueAfterSignIn(path: string) {
     window.location.assign(path);
@@ -33,7 +34,7 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'signup') setAuthMode('signup');
     const explicitContinuation = continuationFromSearchParams({
-      redirectTo: params.get('redirectTo'),
+      redirectTo: params.get('redirectTo') ?? params.get('next'),
       plan: params.get('plan'),
       coupon: params.get('coupon'),
     });
@@ -42,11 +43,13 @@ export default function LoginPage() {
 
     if (authError) {
       setErrorMessage(authError);
+    } else if (params.get('passwordReset') === 'success') {
+      setStatusMessage('Password updated. Sign in with your new password.');
     }
 
     // A plain visit from the header has no return path. Keep the form on screen
     // even when this browser already has a session.
-    if (!supabase || !explicitContinuation) {
+    if (!supabase || !explicitContinuation || params.get('passwordReset') === 'success') {
       return;
     }
 
@@ -146,9 +149,15 @@ export default function LoginPage() {
               onChange={(event) => setEmail(event.target.value)}
             />
           </label>
-          <label className={styles.field}>
-            Password
+          <div className={styles.field}>
+            <div className={styles.fieldHeading}>
+              <label htmlFor="login-password">Password</label>
+              {authMode === 'signin' ? (
+                <a className={styles.forgotPassword} href={forgotPasswordHref}>Forgot password?</a>
+              ) : null}
+            </div>
             <input
+              id="login-password"
               name="password"
               type="password"
               required
@@ -156,7 +165,7 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-          </label>
+          </div>
           <button
             type="submit"
             disabled={isSubmitting}
