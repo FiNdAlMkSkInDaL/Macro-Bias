@@ -1,4 +1,11 @@
 .neutral{color:#f1f5ef}
+.accessCell.accessCell{white-space:normal;min-width:190px;font-family:var(--font-heading),sans-serif;color:#c9f58a}
+.accessCell small{display:block;margin-top:6px;color:#acb6ad;font-size:12px;line-height:1.6}
+.gate{margin-top:28px;padding:32px;border:1px solid #2a342c;border-top:2px solid #c9f58a;border-radius:4px;background:#111512}
+.gate h2{margin:0 0 16px;font-size:32px;font-weight:600;letter-spacing:-.03em;line-height:1.2}
+.gate p{max-width:680px;margin:0 0 16px;color:#acb6ad;font-size:16px;line-height:1.7}
+.gate .release{color:#f1f5ef;font-size:14px}
+@media(max-width:600px){.gate{padding:24px 20px}.gate h2{font-size:27px}.gate p{font-size:15px}.accessCell.accessCell{min-width:170px}}
 .links{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
 .archiveToolbar{display:flex;justify-content:space-between;align-items:center;gap:20px}
 .archiveToolbar p{margin:0;font-family:var(--font-data),monospace;font-size:12px}

@@ -1,22 +1,18 @@
-import { MarketTabs, MemberShell } from '@/components/product/MemberShell';
 import styles from '@/components/product/MemberUI.module.css';
 import { formatScore, formatSignedPercent, formatTradeDate } from '@/lib/public-proof/format';
 import type { SettledSession } from '@/lib/track-record/settled-sessions';
 
-export function SettledSessions({ asset, market, rows, loadError = null }: {
+export function SettledSessionsSection({ asset, market, rows, loadError = null }: {
   asset: string;
   market: string;
   rows: SettledSession[];
   loadError?: string | null;
 }) {
   return (
-    <MemberShell title={`${asset} track record`}>
-      <MarketTabs asset={asset === 'Crypto' ? 'crypto' : 'stocks'} view="history" />
-      <p className={styles.muted}>Review settled next-session open-to-close results for {market}.</p>
       <section className={styles.section} aria-labelledby="settled-results">
         <h2 id="settled-results">Settled sessions</h2>
         <p>Results from the latest 80 published scores. A row appears once the next session has a stored open and close.</p>
-        {loadError ? <p className={styles.notice} role="status">Settled results are temporarily unavailable. Please try again.</p> : rows.length === 0 ? <p className={styles.notice}>No settled next-session results have been stored yet.</p> : (
+        {loadError ? <p className={styles.notice} role="status">{loadError}</p> : rows.length === 0 ? <p className={styles.notice}>No settled next-session results have been stored yet.</p> : (
           <>
             <p>{rows.length} settled session{rows.length === 1 ? '' : 's'}.</p>
             <div className={styles.tableWrap} style={{ maxHeight: '34rem' }} tabIndex={0} role="region" aria-label={`${asset} settled sessions`}>
@@ -30,6 +26,5 @@ export function SettledSessions({ asset, market, rows, loadError = null }: {
         )}
         <p>Not financial advice.</p>
       </section>
-    </MemberShell>
   );
 }

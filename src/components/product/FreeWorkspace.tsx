@@ -134,7 +134,7 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
 
         <div className={styles.history}>
           <MacroMarketChart
-            variant="history" instrument={instrument} title={`${instrument} price & daily bias`} defaultRangeMonths={3}
+            variant="history" instrument={instrument} title={`${instrument} price & daily bias`}
             candles={data.active.candles} marks={data.active.history}
             latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null}
             notice={data.active.historyNotice ?? data.active.priceNotice ?? data.active.loadError}

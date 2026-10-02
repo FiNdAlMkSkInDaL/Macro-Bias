@@ -143,7 +143,6 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           variant="history"
           instrument={market.instrument}
           title={`${market.chartName} price + daily bias`}
-          defaultRangeMonths={3}
           candles={data.candles}
           marks={data.history}
           latest={latest}

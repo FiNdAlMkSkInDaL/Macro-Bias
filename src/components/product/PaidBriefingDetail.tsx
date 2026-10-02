@@ -11,7 +11,7 @@ import type { ProductAsset } from '@/lib/product/score-access';
 import { getAppUrl } from '@/lib/server-env';
 import { MemberShell, MarketTabs } from './MemberShell';
 import { ArrowIcon } from './ArrowIcon';
-import { briefingBasePath, briefingDate, briefingLabel, briefingScore, briefingTone } from './PaidBriefingArchive';
+import { briefingBasePath, briefingDate, briefingLabel, briefingScore, briefingTone, releaseTime } from './PaidBriefingArchive';
 import { prepareBriefingDocument, type BriefingHeading } from './briefing-document';
 import shared from './MemberUI.module.css';
 import styles from './PaidBriefing.module.css';
@@ -38,7 +38,7 @@ function StockStructuredData({ briefing }: { briefing: PaidBriefingDocument }) {
   const article = {
     '@context': 'https://schema.org', '@type': 'Article',
     headline: `${displayLabel} (${displayScore}) — ${displayDate}`, description,
-    datePublished: briefing.generatedAt, dateModified: briefing.generatedAt,
+    datePublished: briefing.publishedAt, dateModified: briefing.generatedAt,
     mainEntityOfPage: canonicalUrl, url: canonicalUrl, articleSection: 'Daily Macro Briefing',
     author: { '@type': 'Organization', name: 'Macro Bias' },
     publisher: { '@type': 'Organization', name: 'Macro Bias', url: appUrl, logo: { '@type': 'ImageObject', url: `${appUrl}/icon.png` } },
@@ -57,13 +57,37 @@ function StockStructuredData({ briefing }: { briefing: PaidBriefingDocument }) {
 }
 
 export function PaidBriefingDetail({ asset, date, data }: { asset: ProductAsset; date: string; data: PaidBriefingDetailData }) {
-  const { briefing, archive, loadError } = data;
+  const { briefing, metadata, access, viewer, archive, loadError } = data;
   const basePath = briefingBasePath(asset);
   const workspacePath = asset === 'stocks' ? '/dashboard' : '/crypto/dashboard';
   const dailyPath = asset === 'stocks' ? '/today' : '/crypto';
   const title = asset === 'stocks' ? 'Stock briefing' : 'Crypto briefing';
+  const plan = viewer.isPro ? 'Pro plan' : viewer.signedIn ? 'Free plan' : undefined;
+  if (!briefing && metadata && !loadError && (access.kind === 'sign-in' || access.kind === 'pro-required')) {
+    const returnPath = `${basePath}/${date}`;
+    const signInPath = `/login?redirectTo=${encodeURIComponent(returnPath)}`;
+    return <MemberShell title={title} description={<time dateTime={date}>{briefingDate(date, true)}</time>} plan={plan} narrow>
+      <MarketTabs asset={asset} view="briefings" />
+      <dl className={styles.readingStrip}>
+        <div><dt>Public dated reading</dt><dd><span className={briefingTone(metadata.biasLabel)}>{briefingScore(metadata.score)}</span><span>{briefingLabel(metadata.biasLabel)}</span></dd></div>
+        <div><dt>Source session</dt><dd><time dateTime={metadata.tradeDate}>{briefingDate(metadata.tradeDate)}</time></dd></div>
+        <div><dt>First published</dt><dd>{metadata.publishedAt ? releaseTime(metadata.publishedAt) : 'Unavailable'}</dd></div>
+      </dl>
+      <section className={styles.gate} aria-labelledby="briefing-access-title" data-briefing-gate={access.kind}>
+        <h2 id="briefing-access-title">{access.kind === 'sign-in' ? 'Sign in to read this briefing' : 'Get the full market read'}</h2>
+        <p>{access.kind === 'sign-in' ? 'The full briefing is included with a Free account. Sign in to read the published market context, model notes and risk check.' : 'Pro includes this full briefing now, with the published market context, model notes and risk check. Scores and dated readings are public.'}</p>
+        {access.kind === 'pro-required' ? <p className={styles.release}>{access.freeAvailableAt ? <>Available with Free from <time dateTime={access.freeAvailableAt}>{releaseTime(access.freeAvailableAt)}</time>.</> : 'The Free release date is unavailable for this stored publication.'}</p> : null}
+        <div className={shared.actions}>
+          {access.kind === 'sign-in' ? <Link className={shared.button} href={signInPath}>Sign in to read<ArrowIcon /></Link> : <Link className={shared.button} href={`/pricing?redirectTo=${encodeURIComponent(returnPath)}`}>Explore Pro<ArrowIcon /></Link>}
+          {access.kind === 'pro-required' && !viewer.signedIn ? <Link className={shared.textLink} href={signInPath}>Already have access? Sign in<ArrowIcon /></Link> : null}
+          <Link className={shared.textLink} href={basePath}>All briefings<ArrowIcon /></Link>
+        </div>
+      </section>
+      <p className={styles.navigationNotice}>Free access opens seven complete calendar days after first publication, using UTC time.</p>
+    </MemberShell>;
+  }
   if (!briefing) return (
-    <MemberShell title={title} description={briefingDate(date, true)} plan="Pro plan" narrow>
+    <MemberShell title={title} description={briefingDate(date, true)} plan={plan} narrow>
       <MarketTabs asset={asset} view="briefings" />
       <div className={shared.notice} role="status">{loadError ?? 'This briefing is not available.'}</div>
       <div className={shared.actions}><Link className={shared.textLink} href={basePath}>All briefings<ArrowIcon /></Link><Link className={shared.textLink} href={workspacePath}>Open workspace<ArrowIcon /></Link><Link className={shared.textLink} href={dailyPath}>Daily reading<ArrowIcon /></Link></div>
@@ -90,16 +114,17 @@ export function PaidBriefingDetail({ asset, date, data }: { asset: ProductAsset;
   };
 
   return (
-    <MemberShell title={title} description={<time dateTime={briefing.briefingDate}>{briefingDate(briefing.briefingDate, true)}</time>} plan="Pro plan" narrow>
+    <MemberShell title={title} description={<time dateTime={briefing.briefingDate}>{briefingDate(briefing.briefingDate, true)}</time>} plan={plan} narrow>
       {asset === 'stocks' ? <StockStructuredData briefing={briefing} /> : null}
-      <div className={styles.readerGrid} data-paid-briefing>
+      <div className={styles.readerGrid} data-paid-briefing data-briefing-access={access.kind}>
         <div className={styles.readerMain}>
           <div className={styles.readerToolbar}><MarketTabs asset={asset} view="briefings" /><div className={styles.links}><Link className={shared.textLink} href={workspacePath}>Open workspace</Link><Link className={shared.textLink} href={basePath}>All briefings</Link></div></div>
           <dl className={styles.readingStrip}>
-            <div><dt>Briefing reading</dt><dd><span className={briefingTone(briefing.biasLabel)}>{briefingScore(briefing.score)}</span><span>{briefingLabel(briefing.biasLabel)}</span></dd></div>
+            <div><dt>Public dated reading</dt><dd><span className={briefingTone(briefing.biasLabel)}>{briefingScore(briefing.score)}</span><span>{briefingLabel(briefing.biasLabel)}</span></dd></div>
             <div><dt>Source session</dt><dd><time dateTime={briefing.tradeDate}>{briefingDate(briefing.tradeDate)}</time></dd></div>
             <div><dt>Generated</dt><dd>{generatedTime(briefing.generatedAt)}</dd></div>
           </dl>
+          {asset === 'stocks' && briefing.tradeDate !== briefing.briefingDate ? <p className={styles.navigationNotice}>The public reading is dated {briefingDate(briefing.briefingDate)}. The published commentary below uses the source session {briefingDate(briefing.tradeDate)}.</p> : null}
           {document.headings.length ? <details className={styles.mobileContents}><summary>Contents</summary><Contents headings={document.headings} /></details> : null}
           {briefing.overrideActive ? <p className={styles.overrideNotice}>Override active for this briefing.</p> : null}
           <article className={styles.article} aria-label={`Full ${asset === 'stocks' ? 'stock' : 'crypto'} briefing`}>

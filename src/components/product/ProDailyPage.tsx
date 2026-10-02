@@ -44,7 +44,7 @@ export function ProDailyPage({ data, briefing }: {
           </section>
         )}
         <section className={styles.chart} aria-label="Price and score history">
-          <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" defaultRangeMonths={3} notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
+          <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
           <p className={styles.chartCaption}>Explore past sessions; the decision above stays on the published session.</p>
         </section>
         <div className={styles.lower}>

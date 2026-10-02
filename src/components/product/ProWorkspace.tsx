@@ -331,7 +331,7 @@ export function ProWorkspace({ asset, published, signal, chart, pillars, assets,
       </div>
       <div className={styles.chart}>
         <MacroMarketChart
-          variant="history" instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'BTC'} price & daily bias`} defaultRangeMonths={3}
+          variant="history" instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'BTC'} price & daily bias`}
           candles={chart.candles} marks={chart.history}
           latest={chart.score ? { tradeDate: chart.score.tradeDate, score: chart.score.score, biasLabel: chart.score.label } : null}
           notice={chart.historyNotice ?? chart.priceNotice ?? chart.loadError}

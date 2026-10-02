@@ -59,7 +59,7 @@ const structuredData = {
         "SPY, QQQ, XLP, TLT, and GLD dashboard tracking",
         "VIX and HYG signal integration in the backend model",
         "Quant-style intermarket monitoring for macro risk shifts",
-        "Premium heatmap workflow for fast pre-market context",
+        "Pro market workspace for fast pre-market context",
       ],
       keywords: SITE_KEYWORDS.join(", "),
       offers: {

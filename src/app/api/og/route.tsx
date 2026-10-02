@@ -2,7 +2,7 @@ import { ImageResponse } from '@vercel/og';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { latestStoredTradeDate } from '../../../lib/product/score-access';
-import { createSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { getBriefingMetadata } from '../../../lib/product/paid-briefing-data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -90,21 +90,13 @@ async function getSnapshotForDate(date: string): Promise<SnapshotLike | null> {
     return null;
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('daily_market_briefings')
-    .select('quant_score, bias_label, trade_date')
-    .eq('briefing_date', date)
-    .order('generated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) return null;
+  const data = await getBriefingMetadata('stocks', date);
+  if (!data || data.score === null) return null;
 
   return {
-    score: data.quant_score as number,
-    bias_label: data.bias_label as string,
-    trade_date: data.trade_date as string,
+    score: data.score,
+    bias_label: data.biasLabel,
+    trade_date: data.date,
   };
 }
 
@@ -182,7 +174,7 @@ function subscriberImage(fonts: OgFont[]) {
           textAlign: 'center',
         }}
       >
-        Today&apos;s score is for subscribers.
+        Read the full current briefing with Pro.
       </div>
     ),
     {
@@ -197,18 +189,8 @@ export async function GET(request: NextRequest) {
     const dateParam = request.nextUrl.searchParams.get('date');
     const latestTradeDate = await latestStoredTradeDate('stocks');
     const fonts = await getOgFonts();
-    const requestedLatest =
-      !dateParam || (latestTradeDate != null && dateParam >= latestTradeDate);
-
-    if (requestedLatest) {
-      return subscriberImage(fonts);
-    }
-
-    const snapshot = await getSnapshotForDate(dateParam);
-
-    if (snapshot && latestTradeDate != null && snapshot.trade_date >= latestTradeDate) {
-      return subscriberImage(fonts);
-    }
+    const requestedDate = dateParam ?? latestTradeDate;
+    const snapshot = requestedDate ? await getSnapshotForDate(requestedDate) : null;
 
     if (!snapshot) {
       return new ImageResponse(

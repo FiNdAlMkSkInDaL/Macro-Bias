@@ -1,7 +1,6 @@
 export type MarketChartScore = { tradeDate: string; score: number; biasLabel: string };
 export type MarketChartCandle = { tradeDate: string; open: number; high: number; low: number; close: number };
 export type MarketChartSession = { tradeDate: string; candle: MarketChartCandle | null; mark: MarketChartScore | null };
-export type MarketChartMonths = 2 | 3;
 export type MarketChartSeries = { sessions: MarketChartSession[]; latestMark: MarketChartScore | null; anchorDate: string | null };
 
 const TRADE_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,10 +23,10 @@ function validCandle(candle: MarketChartCandle) {
 }
 
 /** Calendar subtraction, clamped to the target month's final day in UTC. */
-export function marketHistoryStart(tradeDate: string, months: MarketChartMonths): string | null {
+export function marketHistoryStart(tradeDate: string): string | null {
   if (!validTradeDate(tradeDate)) return null;
   const end = new Date(`${tradeDate}T00:00:00Z`);
-  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - months, 1));
+  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 3, 1));
   const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
   start.setUTCDate(Math.min(end.getUTCDate(), lastDay));
   return start.toISOString().slice(0, 10);
@@ -48,8 +47,8 @@ export function buildMarketChartSeries(candles: readonly MarketChartCandle[], ma
   };
 }
 
-export function windowMarketChartSeries(series: MarketChartSeries, months: MarketChartMonths) {
-  const windowStart = series.anchorDate ? marketHistoryStart(series.anchorDate, months) : null;
+export function windowMarketChartSeries(series: MarketChartSeries) {
+  const windowStart = series.anchorDate ? marketHistoryStart(series.anchorDate) : null;
   const windowEnd = series.anchorDate;
   const sessions = windowStart && windowEnd
     ? series.sessions.filter((session) => session.tradeDate >= windowStart && session.tradeDate <= windowEnd)

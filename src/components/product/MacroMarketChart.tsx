@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
-import { buildMarketChartSeries, marketChartPriceBounds, windowMarketChartSeries, type MarketChartCandle, type MarketChartMonths, type MarketChartScore } from '@/lib/product/market-chart';
+import { buildMarketChartSeries, marketChartPriceBounds, windowMarketChartSeries, type MarketChartCandle, type MarketChartScore } from '@/lib/product/market-chart';
 import { formatBiasLabel, formatScore, formatTradeDate, formatUsd } from '@/lib/public-proof/format';
 import styles from './MacroMarketChart.module.css';
 
@@ -45,7 +45,7 @@ function Chevron({ direction }: { direction: 'left' | 'right' }) {
 }
 
 export function MacroMarketChart({
-  candles, marks, latest, notice, instrument = 'SPY', title, variant = 'hero', defaultRangeMonths = variant === 'history' ? 3 : 2,
+  candles, marks, latest, notice, instrument = 'SPY', title, variant = 'hero',
 }: {
   candles: readonly MarketChartCandle[];
   marks: readonly MarketChartScore[];
@@ -54,9 +54,7 @@ export function MacroMarketChart({
   instrument?: 'SPY' | 'BTC';
   title?: string;
   variant?: 'hero' | 'history';
-  defaultRangeMonths?: MarketChartMonths;
 }) {
-  const [rangeMonths, setRangeMonths] = useState<MarketChartMonths>(defaultRangeMonths);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [pinnedDate, setPinnedDate] = useState<string | null>(null);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -68,7 +66,7 @@ export function MacroMarketChart({
 
   // Pointer selection does not rebuild the date joins or price bounds.
   const series = useMemo(() => buildMarketChartSeries(candles, marks, latest), [candles, marks, latest]);
-  const history = useMemo(() => windowMarketChartSeries(series, rangeMonths), [series, rangeMonths]);
+  const history = useMemo(() => windowMarketChartSeries(series), [series]);
   const bounds = useMemo(() => marketChartPriceBounds(history.candles), [history]);
   const dateIndices = useMemo(() => new Map(history.sessions.map((session, index) => [session.tradeDate, index])), [history]);
   const { sessions, latestCandle, latestMark } = history;
@@ -111,7 +109,7 @@ export function MacroMarketChart({
   }
 
   return (
-    <section className={`${styles['macro-panel']} ${variant === 'history' ? styles['macro-history'] : styles['macro-hero']}`} aria-label={title ?? `${instrument} prices and Macro Bias`} data-market-chart data-instrument={instrument} data-range-months={rangeMonths}>
+    <section className={`${styles['macro-panel']} ${variant === 'history' ? styles['macro-history'] : styles['macro-hero']}`} aria-label={title ?? `${instrument} prices and Macro Bias`} data-market-chart data-instrument={instrument} data-range-months={3}>
       {variant === 'hero' ? (
         <>
           <div className={styles['macro-panel-heading']}><p>{title ?? `THE MARKET BEHIND ${instrument}`}</p><span>{latestMark ? formatTradeDate(latestMark.tradeDate) : 'Score not available'}</span></div>
@@ -130,13 +128,10 @@ export function MacroMarketChart({
 
       <div className={styles['macro-instrument-row']}>
         <div className={styles['macro-instrument']}><InstrumentHeading>{instrument}</InstrumentHeading><p>{latestCandle ? formatUsd(latestCandle.close) : 'Price not available'}</p><span className={styles['macro-close-date']}>{latestCandle ? `Close · ${shortDate(latestCandle.tradeDate)}` : 'Daily prices'}</span></div>
-        <div className={styles['macro-range']} role="group" aria-label={`${instrument} chart history range`}>
-          {([2, 3] as const).map((months) => <button key={months} type="button" aria-label={`${months} months`} aria-pressed={rangeMonths === months} onClick={() => { setRangeMonths(months); setActiveDate(null); setPinnedDate(null); }}>{months}M</button>)}
-        </div>
       </div>
 
       <div className={styles['macro-chart']}>
-        <div className={styles['macro-plot']} role="group" aria-label={`${instrument} daily prices and Macro Bias scores, ${rangeMonths} months, ${sessions.length} dates. Use arrow keys to move, Home or End to jump, and Escape for the latest session.`}
+        <div className={styles['macro-plot']} role="group" aria-label={`${instrument} daily prices and Macro Bias scores, 3 calendar months, ${sessions.length} dates. Use arrow keys to move, Home or End to jump, and Escape for the latest session.`}
           onPointerDown={(event) => {
             if (event.pointerType === 'mouse' || !sessions.length) return;
             const index = touchIndex(event);

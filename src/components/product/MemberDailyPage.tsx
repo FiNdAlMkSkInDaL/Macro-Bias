@@ -48,7 +48,7 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
           <div className={ui.notice}>{data.loadError || 'A previous-session reading is not available yet.'}<div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link></div></div>
         )}
         <section className={styles.chart} aria-label="Price and score history">
-          <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" defaultRangeMonths={3} notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
+          <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
         </section>
         <div className={styles.lower}>
           <section><h2>How to read this score</h2><p>The scale runs from −100 to +100. Lower values lean toward risk-off conditions; higher values lean toward risk-on.</p><div className={styles.guide}><span>−100<small>Risk-off</small></span><span>0<small>Mixed</small></span><span>+100<small>Risk-on</small></span></div><p>The published regime is stored with each reading. It can differ from the score’s numeric tilt when the model finds no tradable edge.</p></section>

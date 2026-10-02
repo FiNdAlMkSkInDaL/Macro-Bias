@@ -71,7 +71,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <main className={styles.landing} data-macro-landing>
       {checkout === 'success' ? (
         <p className="mb-8 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-          Stripe accepted the subscription. Today&apos;s score shows once the webhook grants access. Refresh if it is still the previous session.
+          Thank you for subscribing. Your Pro briefings and workspace will be available once your subscription is confirmed. Refresh if your access is still updating.
         </p>
       ) : null}
       {checkout === 'active' ? (
@@ -133,7 +133,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className={styles.pro} aria-labelledby="pro-heading">
         <div>
           <h2 id="pro-heading">Go deeper with Pro.</h2>
-          <p>The full briefing. A clear trading permission,<br className={styles.desktopBreak} /> reliability grade and size hint. Today&apos;s scores in your dashboard.</p>
+          <p>The current full briefing. A clear trading permission,<br className={styles.desktopBreak} /> reliability grade and size hint. The evidence behind each decision.</p>
         </div>
         <div className={styles.proActions}>
           <Link href="/pricing" className={styles.primaryLink} data-analytics-event="landing_pro_click" data-analytics-location="landing_pro">

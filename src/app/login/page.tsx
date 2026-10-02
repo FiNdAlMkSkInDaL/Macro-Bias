@@ -30,6 +30,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'signup') setAuthMode('signup');
     const explicitContinuation = continuationFromSearchParams({
       redirectTo: params.get('redirectTo'),
       plan: params.get('plan'),
@@ -130,7 +131,7 @@ export default function LoginPage() {
         {authMode === 'signin' ? 'Sign in' : 'Create account'}
       </h1>
       <p className="mt-3 text-sm leading-6 text-zinc-400">
-        Checkout on /pricing uses this account. The webhook grants access after Stripe confirms the subscription.
+        Sign in to read older full briefings and manage your account. If you choose Pro, your access begins once your subscription is confirmed.
       </p>
       <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
         <label className="block text-sm text-zinc-300">

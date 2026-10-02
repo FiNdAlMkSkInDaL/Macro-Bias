@@ -2,15 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { createSupabaseBrowserClient, getSupabaseBrowserClientConfigError } from '@/lib/supabase/browser';
 import styles from './SiteNav.module.css';
 
 const ADMIN_EMAIL = 'finphillips21@gmail.com';
 const PUBLIC_LINKS = [
-  { href: '/today', label: 'Stocks' },
-  { href: '/crypto', label: 'Crypto' },
+  { href: '/today', label: 'Today' },
   { href: '/track-record', label: 'Track Record' },
   { href: '/pricing', label: 'Pricing' },
 ];
@@ -18,8 +17,9 @@ const PUBLIC_LINKS = [
 function isCurrent(pathname: string, href: string) {
   if (href.endsWith('/dashboard')) return pathname === '/dashboard' || pathname === '/crypto/dashboard';
   if (href.endsWith('/track-record')) return pathname === '/track-record' || pathname === '/crypto/track-record';
-  if (href === '/today') return pathname === '/today' || pathname === '/briefings' || pathname.startsWith('/briefings/');
-  if (href === '/crypto') return pathname === '/crypto' || pathname === '/crypto/briefings' || pathname.startsWith('/crypto/briefings/');
+  if (href === '/today') return pathname === '/today' || pathname === '/crypto'
+    || pathname === '/briefings' || pathname.startsWith('/briefings/')
+    || pathname === '/crypto/briefings' || pathname.startsWith('/crypto/briefings/');
   return pathname === href;
 }
 
@@ -27,12 +27,12 @@ export function SiteNav() {
   const pathname = usePathname();
   const cryptoMarket = pathname.startsWith('/crypto');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const memberLinks = [
     { href: cryptoMarket ? '/crypto/dashboard' : '/dashboard', label: 'Dashboard' },
-    { href: '/today', label: 'Stocks' },
-    { href: '/crypto', label: 'Crypto' },
+    { href: '/today', label: 'Today' },
     { href: cryptoMarket ? '/crypto/track-record' : '/track-record', label: 'History' },
     { href: '/refer', label: 'Referrals' },
   ];
@@ -75,7 +75,13 @@ export function SiteNav() {
   }
 
   return (
-    <header className={styles.header}>
+    <header className={styles.header} onKeyDown={(event) => {
+      if (event.key === 'Escape' && mobileMenuOpen) {
+        event.preventDefault();
+        setMobileMenuOpen(false);
+        menuButton.current?.focus();
+      }
+    }}>
       <div className={`${styles.bar} ${pathname === '/' ? styles.homeBar : ''}`}>
         <Link href="/" className={styles.brand} data-analytics-event="nav_logo_click" data-analytics-label="Macro Bias" data-analytics-location="site_nav">Macro Bias</Link>
         <nav className={styles.desktop} aria-label="Main navigation">
@@ -86,7 +92,7 @@ export function SiteNav() {
         <div className={styles.utility}>
           <Link href={signedIn ? '/account' : '/login'} aria-current={pathname === '/account' ? 'page' : undefined} data-analytics-event="nav_cta_click" data-analytics-label={signedIn ? 'Account' : 'Sign in'} data-analytics-location="site_nav">{signedIn ? 'Account' : 'Sign in'}</Link>
           {signedIn ? <button className={styles.signOut} type="button" onClick={() => { void handleSignOut(); }}>Sign out</button> : null}
-          <button className={styles.menuButton} type="button" onClick={() => setMobileMenuOpen((open) => !open)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen} aria-controls="mobile-site-navigation">
+          <button ref={menuButton} className={styles.menuButton} type="button" onClick={() => setMobileMenuOpen((open) => !open)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen} aria-controls="mobile-site-navigation">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d={mobileMenuOpen ? 'M5 5l10 10M15 5L5 15' : 'M3 5h14M3 10h14M3 15h14'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
         </div>

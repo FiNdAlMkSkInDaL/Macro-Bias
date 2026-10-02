@@ -148,7 +148,7 @@ export default function EmailsPage() {
           {statusMessage ?? "\u00A0"}
         </p>
         <p className="mt-1 text-center text-xs text-zinc-500">
-          Already subscribed? Invite 3 traders and unlock 7 days of Premium {"->"}{" "}
+          Already subscribed? Invite 3 traders and unlock 7 days of Pro {"->"}{" "}
           <Link
             href="/refer"
             className="text-sky-400 underline"
@@ -164,7 +164,7 @@ export default function EmailsPage() {
           <div className="mx-auto mt-6 max-w-xl rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-center">
             <p className="text-sm text-zinc-400">Know someone who'd find this useful?</p>
             <p className="mt-1 text-xs text-zinc-500">
-              Invite 3 traders, unlock 7 days of Premium {"->"}{" "}
+              Invite 3 traders, unlock 7 days of Pro {"->"}{" "}
               <Link
                 href="/refer"
                 className="text-sky-400 underline"

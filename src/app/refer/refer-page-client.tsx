@@ -54,7 +54,7 @@ export default function ReferPageClient({ signedIn = false, initialEmail = null,
   const [data, setData] = useState<ReferralHub | null>(initialHub);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
-  const preferencesPath = signedIn ? '/account' : '/emails';
+  const preferencesPath = signedIn ? '/account' : '/login?redirectTo=%2Faccount';
 
   useEffect(() => { trackClientEvent({ eventName: 'referral_page_viewed', pagePath: '/refer' }); }, []);
 

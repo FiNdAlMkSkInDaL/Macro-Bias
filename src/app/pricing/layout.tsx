@@ -6,7 +6,7 @@ const SITE_URL = "https://macro-bias.com";
 export const metadata: Metadata = {
   title: "Pricing — Macro Bias",
   description:
-    "Free sees the previous session. Paid sees today's stock and crypto score, the grade, the size hint, and the morning email. Not financial advice.",
+    "Explore public scores and history for free. Sign in for full briefings seven full days after original publication. Pro includes current stock and crypto briefings, workspaces, decisions and evidence.",
   keywords: [
     "macro bias pricing",
     "trading signal subscription",
@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     siteName: "Macro Bias",
     title: "Pricing — Macro Bias",
     description:
-      "Free sees the previous session. Paid sees today's score, grade, size hint, and morning email.",
+      "Free history and older full briefings. Current stock and crypto briefings and workspaces with Pro, from $25 monthly or $190 annually.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Pricing — Macro Bias",
     description:
-      "Today's stock and crypto score for subscribers. Not financial advice.",
+      "Current stock and crypto briefings, decisions and evidence with Pro. $25 monthly or $190 annually.",
   },
 };
 

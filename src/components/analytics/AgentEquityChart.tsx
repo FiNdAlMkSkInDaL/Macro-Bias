@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import type { PaperTradingEquityCurvePoint } from "@/lib/paper-trading/get-paper-trading-dashboard-data";
+import { marketHistoryStart } from "@/lib/product/market-chart";
 
 function formatShortDate(date: string) {
   const parsedDate = new Date(`${date}T00:00:00Z`);
@@ -78,11 +79,15 @@ export default function AgentEquityChart({
 }: {
   data: PaperTradingEquityCurvePoint[];
 }) {
-  if (data.length === 0) {
+  const end = data.reduce((latest, point) => point.date > latest ? point.date : latest, "");
+  const start = marketHistoryStart(end);
+  const chartData = start ? data.filter((point) => point.date >= start && point.date <= end) : [];
+
+  if (chartData.length === 0) {
     return null;
   }
 
-  const values = data.map((point) => point.equityIndex);
+  const values = chartData.map((point) => point.equityIndex);
   let min = Math.floor(Math.min(...values) - 0.5);
   let max = Math.ceil(Math.max(...values) + 0.5);
 
@@ -91,15 +96,15 @@ export default function AgentEquityChart({
     max += 1;
   }
 
-  const tickInterval = Math.max(1, Math.floor(data.length / 4));
-  const xTicks = data
-    .filter((_, index) => index % tickInterval === 0 || index === data.length - 1)
+  const tickInterval = Math.max(1, Math.floor(chartData.length / 4));
+  const xTicks = chartData
+    .filter((_, index) => index % tickInterval === 0 || index === chartData.length - 1)
     .map((point) => point.date);
 
   return (
-    <div className="h-[340px] w-full sm:h-[400px]">
+    <div className="h-[340px] w-full sm:h-[400px]" data-range-months={3}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+        <LineChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
           <CartesianGrid
             strokeDasharray="3 3"
             stroke="rgba(255,255,255,0.04)"

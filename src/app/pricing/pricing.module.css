@@ -1,0 +1,47 @@
+.page{--pricing-bg:#090b0a;--pricing-surface:#111512;--pricing-border:#2a342c;--pricing-text:#f1f5ef;--pricing-muted:#acb6ad;--pricing-accent:#c9f58a;max-width:1320px;margin:0 auto;padding:74px 40px 44px;background:var(--pricing-bg);color:var(--pricing-text);font-family:var(--font-heading),sans-serif}
+.introduction{padding-bottom:24px;border-bottom:1px solid var(--pricing-border)}
+.introduction h1{margin:0;font-size:clamp(36px,5.5vw,58px);font-weight:600;line-height:1.08;letter-spacing:-.045em;text-wrap:balance}
+.introduction p{max-width:900px;margin:18px 0 0;font-size:20px;line-height:1.55;color:var(--pricing-muted)}
+.billingSelector{display:flex;justify-content:flex-end;margin:24px 0 20px}
+.billingSelector button{min-width:110px;min-height:44px;padding:10px 20px;border:1px solid var(--pricing-border);color:var(--pricing-muted);font-size:14px;font-weight:500;transition:color .15s,border-color .15s,background .15s}
+.billingSelector button:first-child{border-radius:4px 0 0 4px}
+.billingSelector button:last-child{border-radius:0 4px 4px 0}
+.billingSelector button[aria-pressed=true]{z-index:1;border-color:var(--pricing-accent);background:#171f14;color:var(--pricing-text)}
+.billingSelector button:hover{color:var(--pricing-text)}
+.plans{display:grid;grid-template-columns: .77fr 1fr;gap:20px}
+.plan{display:flex;flex-direction:column;min-width:0;padding:36px 38px 32px;border:1px solid var(--pricing-border);border-radius:4px;background:var(--pricing-surface)}
+.proPlan{border-top:3px solid var(--pricing-accent);padding-top:34px}
+.plan h2{margin:0;font-size:30px;font-weight:600;line-height:1.2;letter-spacing:-.03em}
+.planDescription{margin:10px 0 0;color:var(--pricing-muted);font-size:16px;line-height:1.5}
+.price{display:flex;align-items:baseline;gap:16px;margin:25px 0 0;font-family:var(--font-data),monospace;font-size:56px;line-height:1.2;letter-spacing:-.045em}
+.price span{color:var(--pricing-muted);font-size:14px;letter-spacing:0}
+.billingDetail{margin:12px 0 0;min-height:40px;font-family:var(--font-data),monospace;color:var(--pricing-muted);font-size:12px;line-height:1.7}
+.primaryButton,.secondaryButton{display:inline-flex;justify-content:center;align-items:center;gap:14px;min-height:50px;padding:12px 20px;border:1px solid var(--pricing-accent);border-radius:4px;background:var(--pricing-accent);color:var(--pricing-bg);font-family:var(--font-heading),sans-serif;font-size:15px;font-weight:600;line-height:1.4;transition:background .15s,border-color .15s}
+.primaryButton{width:100%;margin-top:18px}
+.primaryButton:hover{border-color:#dbffb0;background:#dbffb0}
+.primaryButton svg{width:18px;height:18px}
+.secondaryButton{width:100%;color:var(--pricing-text);background:transparent;border-color:#a6b3a7}
+.secondaryButton:hover{border-color:var(--pricing-accent);color:var(--pricing-accent)}
+.freeActions{margin-top:30px}
+.historyLink{display:inline-flex;align-items:center;gap:10px;min-height:44px;font-family:var(--font-data),monospace;font-size:12px;text-decoration:underline;text-underline-offset:4px}
+.historyLink svg{width:16px;height:16px}
+.features{display:flex;flex-direction:column;gap:18px;flex:1;margin:32px 0 0;padding:30px 0 0;list-style:none;border-top:1px solid var(--pricing-border)}
+@media(min-width:701px){.proPlan .features{margin-top:36px}}
+.features li{display:flex;align-items:flex-start;gap:18px;font-size:15px;line-height:1.6;color:#d1d9d1}
+.features svg{flex-shrink:0;width:20px;height:20px;margin-top:2px;color:var(--pricing-accent)}
+.planNote{margin:34px 0 0;font-size:13px;line-height:1.6;color:var(--pricing-muted)}
+.billingComparison{margin-top:58px;padding:36px 0;border-top:1px solid var(--pricing-border);border-bottom:1px solid var(--pricing-border)}
+.billingComparison h2{margin:0;font-size:32px;line-height:1.2;font-weight:600;letter-spacing:-.03em}
+.billingComparison p{margin:12px 0 0;font-size:16px;line-height:1.65;color:var(--pricing-muted)}
+.faq{padding-top:36px}
+.faq>h2{margin:0 0 24px;color:var(--pricing-muted);font-family:var(--font-data),monospace;font-size:12px;font-weight:400;line-height:1.5;text-transform:uppercase;letter-spacing:.025em}
+.questions{display:grid;grid-template-columns:1fr 1fr;column-gap:72px;row-gap:0;position:relative}
+.questions::after{content:"";position:absolute;inset:0 auto 0 50%;border-left:1px solid var(--pricing-border)}
+.questions>div{padding:0 0 22px;min-width:0}
+.questions>div:nth-child(n+3){padding-top:24px;border-top:1px solid var(--pricing-border)}
+.questions h3{margin:0;font-size:18px;font-weight:600;line-height:1.5;letter-spacing:-.015em}
+.questions p{margin:8px 0 0;color:var(--pricing-muted);font-size:15px;line-height:1.65}
+.disclaimer{margin:32px 0 0;padding-top:28px;border-top:1px solid var(--pricing-border);color:#89958a;font-family:var(--font-data),monospace;font-size:10px;line-height:1.7}
+.page :is(a,button):focus-visible{outline:2px solid var(--pricing-accent);outline-offset:4px}
+@media(max-width:1023px){.page{padding:54px 24px 36px}.introduction p{font-size:18px}.plan{padding:28px 26px}.proPlan{padding-top:26px}.price{font-size:48px}.features li{font-size:14px}.features{gap:16px}.questions{column-gap:48px}.billingComparison h2{font-size:28px}}
+@media(max-width:700px){.page{padding:38px 20px 32px}.introduction h1{font-size:38px}.introduction p{font-size:16px}.desktopBreak{display:none}.billingSelector{margin:22px 0 18px}.billingSelector button{min-height:48px;min-width:100px}.plans{grid-template-columns:1fr;gap:20px}.plan{padding:28px 24px}.proPlan{padding-top:26px}.plan h2{font-size:28px}.features{margin-top:26px;padding-top:24px}.planNote{margin-top:28px}.billingComparison{margin-top:36px;padding:28px 0}.billingComparison h2{font-size:26px}.billingComparison p{font-size:15px}.questions{grid-template-columns:1fr}.questions::after{display:none}.questions>div{padding-bottom:22px}.questions>div:nth-child(n+2){padding-top:22px;border-top:1px solid var(--pricing-border)}.faq{padding-top:28px}.faq>h2{margin-bottom:22px}.primaryButton,.secondaryButton{min-height:50px}}
