@@ -9,6 +9,8 @@ function isProtectedPath(pathname: string) {
     pathname.startsWith('/account/') ||
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
+    pathname === '/crypto/dashboard' ||
+    pathname.startsWith('/crypto/dashboard/') ||
     pathname === '/analytics' ||
     pathname.startsWith('/analytics/') ||
     pathname === '/test' ||

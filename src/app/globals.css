@@ -4,10 +4,45 @@
 
 :root {
   color-scheme: dark;
+  --scrollbar-track: #090b0a;
+  --scrollbar-thumb: #768b73;
+  --scrollbar-thumb-active: #c9f58a;
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: auto;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  min-width: 32px;
+  border: 3px solid var(--scrollbar-track);
+  border-radius: 8px;
+  background: var(--scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+}
+
+@media (forced-colors: active) {
+  * { scrollbar-color: auto; }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner { background: Canvas; }
+  ::-webkit-scrollbar-thumb { border-color: Canvas; background: ButtonText; }
 }
 
 html,

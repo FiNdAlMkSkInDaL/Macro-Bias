@@ -5,10 +5,10 @@ import { MemberShell } from "@/components/product/MemberShell";
 import { ProBriefingActions, ProWorkspace, type ProAssetQuote } from "@/components/product/ProWorkspace";
 import { CRYPTO_MODEL_SETTINGS } from "@/components/product/pro-model-settings";
 import { loadWorkspaceData } from "@/lib/product/workspace-data";
+import { requireWorkspaceStatus } from "@/lib/product/workspace-auth";
 import { loadPaidBriefingLink } from "@/lib/product/paid-briefing-link";
 import { ManagePlan } from "@/components/billing/ManagePlan";
 import { getStripeCustomerId } from "@/lib/billing/stripe-customer";
-import { getUserSubscriptionStatus } from "@/lib/billing/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { extractTradableSignal } from "@/lib/signal/format-tradable-signal";
 import type {
@@ -226,10 +226,10 @@ function extractAnalogData(componentScores: CryptoBiasComponentResult[]) {
 export default async function CryptoDashboardPage() {
   noStore();
 
-  const status = await getUserSubscriptionStatus();
+  const status = await requireWorkspaceStatus('/crypto/dashboard');
   if (!status.isPro) {
     const data = await loadWorkspaceData('crypto', status);
-    return <FreeWorkspace data={data} audience={status.user ? 'member' : 'public'} userId={status.user?.id ?? null} />;
+    return <FreeWorkspace data={data} audience="member" userId={status.user.id} />;
   }
 
   const { isPro, user } = status;

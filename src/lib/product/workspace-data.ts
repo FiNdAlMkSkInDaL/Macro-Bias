@@ -215,6 +215,10 @@ async function loadVerifiedAlerts(status: SubscriptionStatusResult): Promise<Wor
  * delayed dashboard feature without adding permission fields to crypto.
  */
 export async function loadWorkspaceData(asset: ProductAsset, subscriptionStatus: SubscriptionStatusResult): Promise<WorkspaceData> {
+  if (!subscriptionStatus.user?.id) {
+    throw new Error('Sign in to open a workspace.');
+  }
+
   const otherAsset: ProductAsset = asset === 'stocks' ? 'crypto' : 'stocks';
   const unavailableViewer: ProductScore = {
     paid: subscriptionStatus.isPro, signedIn: Boolean(subscriptionStatus.user),

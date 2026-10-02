@@ -51,27 +51,12 @@ const MARKETS = {
   },
 } as const;
 
-const REGIMES: Record<string, { label: string; title: string; description: string; tone: 'neutral' | 'positive' | 'negative' }> = {
-  NEUTRAL: {
-    label: 'Neutral', title: 'No clear directional backdrop.',
-    description: 'The model has not assigned a risk-on or risk-off regime to this published session.', tone: 'neutral',
-  },
-  RISK_ON: {
-    label: 'Risk-on', title: 'A risk-taking backdrop.',
-    description: 'A risk-on bias was published for this session. Use it as context alongside your own setup.', tone: 'positive',
-  },
-  EXTREME_RISK_ON: {
-    label: 'Extreme risk-on', title: 'A strong risk-taking backdrop.',
-    description: 'An extreme risk-on bias was published for this session. It describes the market backdrop, without guaranteeing the next move.', tone: 'positive',
-  },
-  RISK_OFF: {
-    label: 'Risk-off', title: 'A defensive backdrop.',
-    description: 'A risk-off bias was published for this session. Use it as context alongside your own setup.', tone: 'negative',
-  },
-  EXTREME_RISK_OFF: {
-    label: 'Extreme risk-off', title: 'A strongly defensive backdrop.',
-    description: 'An extreme risk-off bias was published for this session. It describes the market backdrop, without guaranteeing the next move.', tone: 'negative',
-  },
+const REGIMES: Record<string, { label: string; tone: 'neutral' | 'positive' | 'negative' }> = {
+  NEUTRAL: { label: 'Neutral', tone: 'neutral' },
+  RISK_ON: { label: 'Risk-on', tone: 'positive' },
+  EXTREME_RISK_ON: { label: 'Extreme risk-on', tone: 'positive' },
+  RISK_OFF: { label: 'Risk-off', tone: 'negative' },
+  EXTREME_RISK_OFF: { label: 'Extreme risk-off', tone: 'negative' },
 };
 
 function displayDate(date: string) {
@@ -84,6 +69,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
   const score = data.score;
   const regime = score ? REGIMES[score.label] : null;
   const latest = score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null;
+  const latestPriceDate = data.availability.lastCandleDate;
 
   return (
     <main className={styles.page} data-public-daily={data.asset}>
@@ -97,17 +83,12 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
         <div className={styles.heroCopy}>
           <h1 id="daily-heading">{market.headline}<span>{market.accent}</span></h1>
           <p className={styles.description}>{market.description}</p>
-          <div className={styles.signup}>
-            <p className={styles.signupLabel}>Free daily stock + crypto scores and market updates.</p>
-            <HeroSignupForm location={market.signupHero} pagePath={market.path} />
-          </div>
         </div>
-
         <section className={styles.reading} aria-labelledby="public-reading-heading" data-public-reading>
           <div className={styles.readingHeader}>
-            <h2 id="public-reading-heading">Public reading</h2>
+            <h2 id="public-reading-heading">{market.name} today</h2>
             <div>
-              <p>Latest published session</p>
+              <p>Latest reading</p>
               {score ? <time dateTime={score.tradeDate}>{displayDate(score.tradeDate)}</time> : <span>Awaiting a reading</span>}
             </div>
           </div>
@@ -121,8 +102,6 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
                 <div className={styles.scaleTrack}><span className={styles[`${regime.tone}Marker`]} style={{ left: `${(score.score + 100) / 2}%` }} /></div>
                 <div className={styles.scaleLabels}><span>−100</span><span>0</span><span>+100</span></div>
               </div>
-              <h3>{regime.title}</h3>
-              <p className={styles.readingDescription}>{regime.description}</p>
             </>
           ) : (
             <div className={styles.unavailable}>
@@ -130,19 +109,32 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
               <p>{data.loadError ?? 'A public score will appear here after a session has been published. Join the free email updates below.'}</p>
             </div>
           )}
-          {score ? <DailyPublicationNote score={score} /> : null}
-          <div className={styles.access}>
-            {data.missingSessionDate && score ? (
-              <p>No reading is available for <time dateTime={data.missingSessionDate}>{displayDate(data.missingSessionDate)}</time>. This is the latest published reading.</p>
-            ) : <p>The latest published daily score. This page checks for new readings while open. Pro adds the current trading decision and immediate full briefing.</p>}
-            <Link href="/pricing" className={styles.quietLink} data-analytics-event="daily_pro_click" data-analytics-location={`${data.asset}_daily_reading`}>Explore Pro <ArrowIcon /></Link>
-          </div>
+          <dl className={styles.priceDate}>
+            <div>
+              <dt>{market.instrument} price close</dt>
+              <dd>{latestPriceDate ? <time dateTime={latestPriceDate}>{displayDate(latestPriceDate)}</time> : 'Not available'}</dd>
+            </div>
+          </dl>
+          {data.priceNotice ? <p className={styles.status} role="status">{data.priceNotice}</p> : null}
+          {data.missingSessionDate && score ? (
+            <p className={styles.status}>Awaiting a reading for <time dateTime={data.missingSessionDate}>{displayDate(data.missingSessionDate)}</time>.</p>
+          ) : null}
+          {score ? (
+            <details className={styles.provenance}>
+              <summary>Publication &amp; model source<ArrowIcon /></summary>
+              <DailyPublicationNote score={score} variant="detail" />
+            </details>
+          ) : null}
         </section>
+        <div className={styles.signup}>
+          <p className={styles.signupLabel}>Free daily stock + crypto scores and market updates.</p>
+          <HeroSignupForm location={market.signupHero} pagePath={market.path} />
+        </div>
       </section>
 
       <section className={styles.history} aria-labelledby="history-heading">
         <h2 id="history-heading">Put the reading in perspective.</h2>
-        <p>{market.chartName} price and daily {data.asset === 'crypto' ? 'crypto ' : ''}Macro Bias{score ? <>, through <time dateTime={score.tradeDate}>{displayDate(score.tradeDate)}</time>.</> : '.'}</p>
+        <p>{market.chartName} price and daily {data.asset === 'crypto' ? 'crypto ' : ''}Macro Bias.</p>
         <MacroMarketChart
           variant="history"
           instrument={market.instrument}
@@ -150,7 +142,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           candles={data.candles}
           marks={data.history}
           latest={latest}
-          notice={data.historyNotice ?? data.priceNotice ?? data.loadError}
+          notice={[data.historyNotice, data.priceNotice, data.loadError].filter(Boolean).join(' ') || null}
         />
       </section>
 

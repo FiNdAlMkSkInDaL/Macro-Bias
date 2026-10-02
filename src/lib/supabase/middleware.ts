@@ -42,10 +42,11 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
   return {
     response,
-    user: user as User | null,
+    user: authError ? null : user as User | null,
   };
 }

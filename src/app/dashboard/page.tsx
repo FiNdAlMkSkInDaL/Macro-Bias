@@ -9,10 +9,10 @@ import { MemberShell } from "@/components/product/MemberShell";
 import { ProBriefingActions, ProWorkspace, type ProAssetQuote } from "@/components/product/ProWorkspace";
 import { STOCK_MODEL_SETTINGS } from "@/components/product/pro-model-settings";
 import { loadWorkspaceData } from "@/lib/product/workspace-data";
+import { requireWorkspaceStatus } from "@/lib/product/workspace-auth";
 import { loadPaidBriefingLink } from "@/lib/product/paid-briefing-link";
 import { ManagePlan } from "../../components/billing/ManagePlan";
 import { getStripeCustomerId } from "../../lib/billing/stripe-customer";
-import { getUserSubscriptionStatus } from "../../lib/billing/subscription";
 import type { BiasLabel } from "../../lib/macro-bias/types";
 import { getAppUrl } from "../../lib/server-env";
 import { CORE_ASSET_TICKERS, type BiasAsset, type BiasData } from "../../types";
@@ -391,10 +391,10 @@ async function getDashboardData(baseUrl: string, cookieHeader: string | null): P
 export default async function DashboardPage() {
   noStore();
 
-  const status = await getUserSubscriptionStatus();
+  const status = await requireWorkspaceStatus('/dashboard');
   if (!status.isPro) {
     const data = await loadWorkspaceData('stocks', status);
-    return <FreeWorkspace data={data} audience={status.user ? 'member' : 'public'} userId={status.user?.id ?? null} />;
+    return <FreeWorkspace data={data} audience="member" userId={status.user.id} />;
   }
 
   const { isPro, user } = status;

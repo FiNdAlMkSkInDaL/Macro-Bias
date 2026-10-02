@@ -98,6 +98,7 @@ function loaders(tables, fail) {
     '../supabase/admin': { createSupabaseAdminClient: () => db.client },
   });
   const data = load('src/lib/product/public-daily-data.ts', {
+    '../market-data/completed-price-bars': load('src/lib/market-data/completed-price-bars.ts', {}),
     'server-only': {}, '../supabase/admin': { createSupabaseAdminClient: () => db.client }, './score-access': scores,
   });
   return { db, scores, data };
@@ -135,7 +136,9 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
       now = Date.parse('2026-10-02T11:30:00Z');
     });
     await check(`${asset}: empty, query outage, invalid score and missing candle remain honest`, async () => {
-      const empty = loaders(fixture(asset, []).tables);
+      const emptyTables = fixture(asset, []).tables;
+      emptyTables.etf_daily_prices = [];
+      const empty = loaders(emptyTables);
       const none = await empty.data.loadPublicDailyData(asset);
       assert.equal(none.score, null);
       assert.equal(none.availability.windowEnd, null);
@@ -156,6 +159,18 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
       assert.equal(missingPrice.candles.length, 0);
       assert.equal(missingPrice.availability.priceStatus, 'empty');
     });
+    await check(`${asset}: completed quote history remains available when no score exists or score loading fails`, async () => {
+      const { tables } = fixture(asset, []);
+      const quoteOnly = await loaders(tables).data.loadPublicDailyData(asset);
+      assert.equal(quoteOnly.score, null);
+      assert.equal(quoteOnly.candles.length, 1);
+      assert.equal(quoteOnly.availability.priceStatus, 'available');
+      const failed = loaders(tables, ({ table: name }) => name === (asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores'));
+      const preserved = await failed.data.loadPublicDailyData(asset);
+      assert.equal(preserved.score, null); assert.ok(preserved.loadError);
+      assert.equal(preserved.availability.scoreStatus, 'unavailable');
+      assert.equal(preserved.candles.length, 1); assert.equal(preserved.availability.priceStatus, 'available');
+    });
     await check(`${asset}: default delay and paid current-decision selector stay unchanged`, async () => {
       const { tables } = fixture(asset);
       const { scores } = loaders(tables);
@@ -167,7 +182,7 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
       assert.equal(pro.score.modelDecision.size, 0.5);
     });
   }
-  await check('publication, stock source prices and quote dates stay distinct; newer bars cannot cross reading date', async () => {
+  await check('publication and source dates stay distinct; unfinished stock bars are excluded', async () => {
     const { tables } = fixture('stocks');
     tables.etf_daily_prices.push({ ticker: 'SPY', trade_date: '2026-10-02', open: 11, high: 12, low: 10, close: 11 });
     const daily = await loaders(tables).data.loadPublicDailyData('stocks');
@@ -175,6 +190,44 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     assert.equal(daily.score.publishedAt, '2026-10-01T13:09:00Z');
     assert.equal(daily.score.sourceTradeDate, '2026-09-30');
     assert.equal(daily.candles.at(-1).tradeDate, '2026-09-30');
+    assert.match(daily.priceNotice, /Completed SPY close pending for 1 Oct 2026/);
+  });
+  await check('both markets refresh completed quotes without a new score; exact-date joins preserve missing scores', async () => {
+    const chart = load('src/lib/product/market-chart.ts', {});
+    for (const asset of ['stocks', 'crypto']) {
+      now = Date.parse(asset === 'stocks' ? '2026-10-02T20:16:00Z' : '2026-10-03T00:01:00Z');
+      const { tables } = fixture(asset);
+      const { data } = loaders(tables);
+      const before = await data.loadPublicDailyData(asset);
+      tables.etf_daily_prices.push({ ticker: asset === 'stocks' ? 'SPY' : 'BTC-USD', trade_date: '2026-10-02', open: 11, high: 12, low: 10, close: 11 });
+      const refreshed = await data.loadPublicDailyData(asset);
+      assert.equal(refreshed.score.tradeDate, before.score.tradeDate);
+      assert.equal(refreshed.score.sourceTradeDate, before.score.sourceTradeDate);
+      assert.equal(refreshed.availability.lastCandleDate, '2026-10-02');
+      assert.equal(refreshed.availability.windowStart, '2026-07-02');
+      assert.equal(refreshed.availability.windowEnd, '2026-10-02');
+      const series = chart.windowMarketChartSeries(chart.buildMarketChartSeries(refreshed.candles, refreshed.history, null));
+      assert.equal(series.latestMark.tradeDate, '2026-10-01');
+      assert.equal(series.latestCandle.tradeDate, '2026-10-02');
+      assert.equal(series.sessions.at(-1).mark, null);
+      assert.equal(refreshed.priceNotice, null);
+    }
+    now = Date.parse('2026-10-02T11:30:00Z');
+  });
+  await check('NYSE weekend and holiday do not produce a false overdue-price notice; BTC current UTC day stays excluded', async () => {
+    const { tables } = fixture('stocks', ['2026-09-04']);
+    tables.etf_daily_prices[0].trade_date = '2026-09-04';
+    now = Date.parse('2026-09-07T21:00:00Z');
+    const holiday = await loaders(tables).data.loadPublicDailyData('stocks');
+    assert.equal(holiday.availability.lastCandleDate, '2026-09-04');
+    assert.equal(holiday.priceNotice, null);
+    now = Date.parse('2026-09-06T14:00:00Z');
+    assert.equal((await loaders(tables).data.loadPublicDailyData('stocks')).priceNotice, null);
+    now = Date.parse('2026-10-02T12:00:00Z');
+    const crypto = fixture('crypto');
+    crypto.tables.etf_daily_prices.push({ ticker: 'BTC-USD', trade_date: '2026-10-02', open: 11, high: 12, low: 10, close: 11 });
+    assert.equal((await loaders(crypto.tables).data.loadPublicDailyData('crypto')).availability.lastCandleDate, '2026-10-01');
+    now = Date.parse('2026-10-02T11:30:00Z');
   });
   await check('Pro missing current stock session remains unavailable instead of moving a dated decision', async () => {
     const { tables } = fixture('stocks', ['2026-09-29']);

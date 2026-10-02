@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createSupabaseAdminClient } from '../supabase/admin';
+import { completedPriceDateCutoff, isCompletedPriceDate, latestCompletedPriceDate } from '../market-data/completed-price-bars';
 import { getViewerScore, type ProductAsset, type ProductScore, type ViewerScore } from './score-access';
 
 export type PublicDailyHistoryScore = {
@@ -115,8 +116,8 @@ function emptyData(asset: ProductAsset): PublicDailyData {
 }
 
 /**
- * Public daily-page data, bounded by the selected published score date.
- * Numeric scores are public; price and score history share that date cutoff.
+ * Scores stop at the selected publication; completed quotes can advance on their
+ * independent schedule. Exact-date joins never substitute a newer score.
  * Paid signal and briefing fields come exclusively
  * from getViewerScore's existing subscription checks.
  * Routes that already checked access can reuse that ProductScore result.
@@ -129,27 +130,28 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
   } catch {
     result.loadError = SCORE_LOAD_ERROR;
     result.availability.scoreStatus = 'unavailable';
-    return result;
   }
 
-  result.missingSessionDate = validDate(viewer.missingSessionDate) ? viewer.missingSessionDate : null;
-  if (viewer.loadError) {
+  result.missingSessionDate = validDate(viewer?.missingSessionDate) ? viewer.missingSessionDate : null;
+  if (viewer?.loadError) {
     result.loadError = SCORE_LOAD_ERROR;
     result.availability.scoreStatus = 'unavailable';
-    return result;
   }
 
-  const score = viewer.score;
-  if (!score) return result;
-  if (score.asset !== asset || !validDate(score.tradeDate) || !Number.isFinite(score.score) || Math.abs(score.score) > 100 || !BIAS_LABELS.has(score.label)) {
+  let score = viewer?.loadError ? null : viewer?.score ?? null;
+  if (score && (score.asset !== asset || !validDate(score.tradeDate) || !Number.isFinite(score.score) || Math.abs(score.score) > 100 || !BIAS_LABELS.has(score.label))) {
     result.loadError = SCORE_LOAD_ERROR;
     result.availability.scoreStatus = 'unavailable';
-    return result;
+    score = null;
   }
 
-  result.score = score.paid ? score : { ...score, permission: null, grade: null, sizePct: null, sentence: null };
-  const end = score.tradeDate;
-  const start = threeMonthsBefore(end);
+  result.score = score ? score.paid ? score : { ...score, permission: null, grade: null, sizePct: null, sentence: null } : null;
+  const now = new Date();
+  const scoreEnd = score?.tradeDate ?? null;
+  const priceEnd = completedPriceDateCutoff(result.ticker, now);
+  const end = scoreEnd && scoreEnd > priceEnd ? scoreEnd : priceEnd;
+  // Fetch enough data for either end, then use the latest actually stored date.
+  const start = threeMonthsBefore(scoreEnd && scoreEnd < priceEnd ? scoreEnd : priceEnd);
   result.availability.windowStart = start;
   result.availability.windowEnd = end;
 
@@ -157,14 +159,14 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
     const supabase = createSupabaseAdminClient();
     const scoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
     const [history, prices] = await Promise.allSettled([
-      supabase.from(scoreTable)
+      scoreEnd ? supabase.from(scoreTable)
         .select('trade_date, score, bias_label')
-        .gte('trade_date', start).lte('trade_date', end)
-        .order('trade_date', { ascending: true }).limit(HISTORY_LIMIT),
+        .gte('trade_date', start).lte('trade_date', scoreEnd)
+        .order('trade_date', { ascending: true }).limit(HISTORY_LIMIT) : Promise.resolve({ data: [], error: null }),
       supabase.from('etf_daily_prices')
         .select('trade_date, open, high, low, close').eq('ticker', result.ticker)
-        .gte('trade_date', start).lte('trade_date', end)
-        .order('trade_date', { ascending: true }).limit(HISTORY_LIMIT),
+        .gte('trade_date', start).lte('trade_date', priceEnd)
+        .order('trade_date', { ascending: false }).limit(HISTORY_LIMIT),
     ]);
 
     if (history.status === 'rejected' || history.value.error) {
@@ -174,8 +176,10 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
       result.history = (history.value.data ?? [])
         .map((row: Record<string, unknown>) => scoreFromRow(row, start, end))
         .filter((row): row is PublicDailyHistoryScore => row != null);
-      result.availability.scoreStatus = result.history.length ? 'available' : 'empty';
-      if (!result.history.length) result.historyNotice = 'Score history is not available for this date range yet.';
+      if (scoreEnd) {
+        result.availability.scoreStatus = result.history.length ? 'available' : 'empty';
+        if (!result.history.length) result.historyNotice = 'Score history is not available for this date range yet.';
+      }
     }
 
     if (prices.status === 'rejected' || prices.value.error) {
@@ -183,23 +187,36 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
       result.availability.priceStatus = 'unavailable';
     } else {
       result.candles = (prices.value.data ?? [])
-        .map((row: Record<string, unknown>) => candleFromRow(row, start, end))
-        .filter((row): row is PublicDailyCandle => row != null);
+        .map((row: Record<string, unknown>) => candleFromRow(row, start, priceEnd))
+        .filter((row): row is PublicDailyCandle => row != null && isCompletedPriceDate(result.ticker, row.tradeDate, now))
+        .sort((left, right) => left.tradeDate.localeCompare(right.tradeDate));
       result.availability.priceStatus = result.candles.length ? 'available' : 'empty';
       if (!result.candles.length) result.priceNotice = 'Price history is not available for this date range yet.';
     }
   } catch {
     result.historyNotice = HISTORY_LOAD_ERROR;
     result.priceNotice = 'Price history is temporarily unavailable. Please try again.';
-    result.availability.scoreStatus = 'unavailable';
+    if (scoreEnd) result.availability.scoreStatus = 'unavailable';
     result.availability.priceStatus = 'unavailable';
   }
 
+  const lastPrice = result.candles.at(-1)?.tradeDate;
+  const actualEnd = lastPrice && (!scoreEnd || lastPrice > scoreEnd) ? lastPrice : scoreEnd;
+  const actualStart = actualEnd ? threeMonthsBefore(actualEnd) : null;
+  result.history = result.history.filter((row) => actualStart && row.tradeDate >= actualStart);
+  result.candles = result.candles.filter((row) => actualStart && row.tradeDate >= actualStart);
+  result.availability.windowStart = actualStart;
+  result.availability.windowEnd = actualEnd;
   result.availability.scoreCount = result.history.length;
   result.availability.candleCount = result.candles.length;
   result.availability.firstScoreDate = result.history[0]?.tradeDate ?? null;
   result.availability.lastScoreDate = result.history.at(-1)?.tradeDate ?? null;
   result.availability.firstCandleDate = result.candles[0]?.tradeDate ?? null;
   result.availability.lastCandleDate = result.candles.at(-1)?.tradeDate ?? null;
+  const expectedPriceDate = latestCompletedPriceDate(result.ticker, now);
+  if (!result.priceNotice && result.availability.lastCandleDate && result.availability.lastCandleDate < expectedPriceDate) {
+    const date = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${expectedPriceDate}T00:00:00Z`));
+    result.priceNotice = `Completed ${asset === 'stocks' ? 'SPY' : 'BTC'} close pending for ${date}.`;
+  }
   return result;
 }

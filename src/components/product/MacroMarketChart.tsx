@@ -70,7 +70,7 @@ export function MacroMarketChart({
   const bounds = useMemo(() => marketChartPriceBounds(history.candles), [history]);
   const dateIndices = useMemo(() => new Map(history.sessions.map((session, index) => [session.tradeDate, index])), [history]);
   const { sessions, latestCandle, latestMark } = history;
-  const defaultIndex = latestMark ? dateIndices.get(latestMark.tradeDate) ?? sessions.length - 1 : sessions.length - 1;
+  const defaultIndex = sessions.length - 1;
   const selectedIndex = (activeDate ? dateIndices.get(activeDate) : undefined) ?? (pinnedDate ? dateIndices.get(pinnedDate) : undefined) ?? defaultIndex;
   const selectedSession = sessions[selectedIndex] ?? null;
   const isLatestSession = Boolean(selectedSession) && selectedSession?.tradeDate === sessions[defaultIndex]?.tradeDate;

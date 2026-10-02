@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { deriveHistoricalAnalogs } from "../../../../lib/market-data/derive-historical-analogs";
 import { getRecentBiasSnapshots } from "../../../../lib/market-data/get-latest-bias-snapshot";
-import { selectVisibleRow, stockSessionDate, viewerIsPaid } from "../../../../lib/product/score-access";
+import { getUserSubscriptionStatus } from "../../../../lib/billing/subscription";
+import { selectVisibleRow, stockSessionDate } from "../../../../lib/product/score-access";
 import { BIAS_PILLAR_WEIGHTS } from "../../../../lib/macro-bias/constants";
 import type { BiasComponentResult, BiasPillarKey } from "../../../../lib/macro-bias/types";
 import { CORE_ASSET_TICKERS } from "../../../../types";
@@ -203,7 +204,14 @@ function buildFrontendTickerChanges(tickerChanges: unknown) {
 
 export async function GET() {
   try {
-    const paid = await viewerIsPaid();
+    const status = await getUserSubscriptionStatus();
+    if (!status.user?.id) {
+      return NextResponse.json(
+        { error: "Sign in to open a workspace." },
+        { status: 401, headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    const paid = status.isPro;
     const rows = await getRecentBiasSnapshots(2);
     const selected = selectVisibleRow(rows, paid, stockSessionDate());
     const snapshot = selected.row;
@@ -246,7 +254,7 @@ export async function GET() {
         createdAt: snapshot.created_at,
         updatedAt: snapshot.updated_at,
       },
-    });
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error("Failed to read latest macro bias snapshot.", error);
 

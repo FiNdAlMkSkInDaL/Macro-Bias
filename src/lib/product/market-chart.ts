@@ -43,7 +43,7 @@ export function buildMarketChartSeries(candles: readonly MarketChartCandle[], ma
   return {
     sessions: dates.map((tradeDate) => ({ tradeDate, candle: candleMap.get(tradeDate) ?? null, mark: scoreMap.get(tradeDate) ?? null })),
     latestMark,
-    anchorDate: latestMark?.tradeDate ?? dates.at(-1) ?? null,
+    anchorDate: dates.at(-1) ?? null,
   };
 }
 
