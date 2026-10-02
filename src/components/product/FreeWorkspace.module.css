@@ -1,0 +1,118 @@
+.page { background: #090b0a; color: #f1f5ef; font-family: var(--font-heading), sans-serif; }
+.container { width: 100%; max-width: 1320px; margin: 0 auto; padding: 40px 40px 64px; }
+.header { margin-bottom: 24px; }
+.titleLine { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 22px; }
+.titleLine h1 { font-size: 42px; line-height: 1.15; font-weight: 600; letter-spacing: -0.04em; }
+.titleLine > span { color: #acb6ad; font-family: var(--font-data), monospace; font-size: 13px; }
+.header > p { margin-top: 12px; color: #acb6ad; font-size: 16px; line-height: 1.65; }
+.marketSwitch { display: flex; gap: 24px; margin-top: 20px; border-bottom: 1px solid #2a342c; }
+.marketSwitch a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0 9px; border-bottom: 2px solid transparent; color: #acb6ad; font-size: 13px; }
+.marketSwitch a[aria-current='page'] { border-color: #c9f58a; color: #c9f58a; }
+.panel { min-width: 0; margin-top: 20px; padding: 24px; border: 1px solid #2a342c; border-radius: 4px; background: #111512; }
+.readings { margin-top: 0; padding: 20px 24px; }
+.reading { min-width: 0; }
+.reading h2 { font-size: 16px; line-height: 1.5; font-weight: 500; }
+.scoreLine { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 22px; margin: 8px 0; }
+.score { font-size: 48px; line-height: 1.15; font-weight: 600; letter-spacing: -0.05em; }
+.bias { color: #acb6ad; font-size: 22px; line-height: 1.4; }
+.readingFoot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
+.readingFoot p { font-size: 12px; line-height: 1.6; }
+.label { color: #acb6ad; font-size: 12px; line-height: 1.5; }
+.reading time { font-family: var(--font-data), monospace; font-size: 12px; line-height: 1.6; }
+.reading a, .emailUtility a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: #c9f58a; font-size: 13px; line-height: 1.5; }
+.reading a svg, .emailUtility a svg, .readingRows svg { flex-shrink: 0; width: 18px; height: 18px; }
+.readingEmpty { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-height: 88px; margin-top: 12px; }
+.readingEmpty p { color: #acb6ad; font-size: 14px; line-height: 1.6; }
+.history { margin-top: 20px; }
+.history > section { border-radius: 4px; }
+.sectionHeading { display: flex; align-items: start; justify-content: space-between; gap: 16px 24px; padding-bottom: 16px; border-bottom: 1px solid #2a342c; }
+.panel h2 { font-size: 24px; line-height: 1.25; font-weight: 500; letter-spacing: -0.025em; }
+.readings h2 { font-size: 24px; }
+.previewLabel { margin-bottom: 8px; color: #acb6ad; font-size: 12px; }
+.otherMarket .reading h2 { font-size: 18px; letter-spacing: 0; }
+.otherMarket .score { font-size: 36px; }
+.otherMarket .bias { font-size: 18px; }
+.sectionHeading p, .emailUtility p, .offer p { margin-top: 5px; color: #acb6ad; font-size: 16px; line-height: 1.6; }
+.date { flex-shrink: 0; padding-top: 3px; }
+.date > span { display: block; margin-bottom: 5px; color: #acb6ad; font-size: 12px; }
+.date time, .date > p { color: #f1f5ef; font-family: var(--font-data), monospace; font-size: 13px; line-height: 1.6; }
+.participationFields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 16px; }
+.participationFields > div { min-width: 0; padding: 0 20px; border-left: 1px solid #2a342c; }
+.participationFields > div:first-child { padding-left: 0; border-left: 0; }
+.participationFields > div:last-child { padding-right: 0; }
+.participationFields dt { margin-bottom: 8px; color: #acb6ad; font-size: 12px; }
+.participationFields dd { font-family: var(--font-data), monospace; font-size: 14px; line-height: 1.6; }
+.participationFields dd strong { font-weight: 500; color: #f1f5ef; }
+.participationFields time, .breadthDetail { display: block; margin-top: 5px; color: #acb6ad; font-family: var(--font-heading), sans-serif; font-size: 12px; }
+.tapeNote { margin-top: 14px; color: #acb6ad; font-size: 12px; line-height: 1.6; }
+.notice { margin-top: 16px; color: #acb6ad; font-size: 14px; line-height: 1.65; }
+.tableScroll { overflow-x: auto; }
+.tableScroll:focus-visible { outline: 2px solid #c9f58a; outline-offset: 4px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.tape { width: 100%; min-width: 550px; border-collapse: collapse; text-align: left; font-family: var(--font-data), monospace; font-size: 13px; line-height: 1.6; }
+.tape th, .tape td { padding: 10px 12px; border-bottom: 1px solid #2a342c; font-weight: 500; }
+.tape th:first-child { padding-left: 0; }
+.tape td:last-child { padding-right: 0; }
+.tape thead th { color: #acb6ad; font-size: 12px; }
+.tape tbody tr:last-child th, .tape tbody tr:last-child td { border-bottom: 0; }
+.sourceDate { display: block; color: #acb6ad; font-family: var(--font-heading), sans-serif; font-size: 11px; }
+.mobilePriceDate { display: none; }
+.page [data-tone='positive'] { color: #c9f58a; }
+.page [data-tone='negative'] { color: #ef9d9d; }
+.readingRows a { display: grid; grid-template-columns: minmax(160px, 0.4fr) minmax(0, 1.6fr) 20px; align-items: center; gap: 18px; min-height: 52px; padding: 10px 0; border-bottom: 1px solid #2a342c; }
+.readingRows a:last-child { border-bottom: 0; }
+.readingRows strong { font-size: 16px; font-weight: 500; }
+.readingRows span { color: #acb6ad; font-size: 16px; line-height: 1.5; }
+.readingRows svg { color: #c9f58a; }
+.emailUtility, .offer { display: flex; align-items: center; justify-content: space-between; gap: 20px 28px; }
+.emailUtility h2, .offer h2 { font-size: 20px; }
+.emailUtility a { flex-shrink: 0; }
+.primaryLink { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 136px; min-height: 44px; padding: 12px 20px; border-radius: 4px; background: #c9f58a; color: #090b0a; font-size: 13px; font-weight: 600; }
+.page a:focus-visible { outline: 2px solid #c9f58a; outline-offset: 4px; }
+.page a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.primaryLink:hover { background: #d9ffa7; text-decoration: none; }
+.proWorkspace { min-width: 0; }
+.proWorkspace h3 { font-size: 24px; line-height: 1.3; font-weight: 500; letter-spacing: -0.025em; }
+.proWorkspace :global(p.text-sm) { font-size: 16px; line-height: 1.65; }
+.proWorkspace :global(th) { font-weight: 500; }
+.proUtility { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px 24px; margin-top: -10px; margin-bottom: 20px; }
+.proChart > section { border-radius: 4px; }
+.proPermission { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-bottom: 8px; padding: 24px; border: 1px solid #2a342c; border-radius: 4px; background: #111512; }
+
+@media (max-width: 1023px) {
+  .container { padding: 32px 24px 48px; }
+  .readings { padding: 20px; }
+  .sectionHeading p, .emailUtility p, .offer p { font-size: 15px; }
+}
+
+@media (max-width: 639px) {
+  .container { padding: 28px 20px 40px; }
+  .titleLine { gap: 8px 14px; }
+  .titleLine h1 { font-size: 32px; }
+  .header > p { margin-top: 10px; }
+  .panel { padding: 20px; }
+  .score { font-size: 44px; }
+  .bias { font-size: 20px; }
+  .readingFoot { align-items: flex-start; }
+  .sectionHeading { flex-direction: column; gap: 12px; }
+  .panel h2 { font-size: 22px; }
+  .readings h2 { font-size: 22px; }
+  .date { padding-top: 0; }
+  .participationFields { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .participationFields > div, .participationFields > div:first-child { padding: 0 0 16px; border-left: 0; border-bottom: 1px solid #2a342c; }
+  .participationFields > div:last-child { padding-bottom: 0; border-bottom: 0; }
+  .tape { min-width: 0; font-size: 12px; }
+  .tape th, .tape td { padding-right: 8px; padding-left: 8px; }
+  .tape td:last-of-type { padding-right: 0; }
+  .priceDateColumn { display: none; }
+  .mobilePriceDate { display: block; margin-top: 5px; color: #acb6ad; font-size: 11px; }
+  .readingRows a { grid-template-columns: minmax(0, 1fr) 20px; gap: 4px 12px; padding: 14px 0; }
+  .readingRows span { grid-column: 1; grid-row: 2; font-size: 15px; }
+  .readingRows svg { grid-column: 2; grid-row: 1 / span 2; }
+  .emailUtility, .offer { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .emailUtility h2, .offer h2 { font-size: 20px; }
+  .offer .primaryLink { width: 100%; }
+  .proUtility { justify-content: flex-start; }
+  .proPermission { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 20px; }
+  .proWorkspace h3 { font-size: 22px; }
+}

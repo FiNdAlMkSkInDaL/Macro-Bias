@@ -1,0 +1,14 @@
+.reading{min-width:0;padding:18px 20px;border:1px solid #2a342c;border-radius:4px;background:#111512;color:#f1f5ef}
+.readingHeader{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.reading h2{margin:0;font-size:20px;line-height:1.3;font-weight:600;letter-spacing:-.025em}
+.readingHeader time{color:#acb6ad;font-family:var(--font-data),monospace;font-size:12px;line-height:1.6;text-align:right}
+.readingBody{display:grid;grid-template-columns:140px minmax(0,1fr);gap:24px;align-items:center;margin-top:16px}
+.value{min-width:0}
+.value p{margin:0;font-family:var(--font-data),monospace;font-size:48px;line-height:1.1;letter-spacing:-.05em;font-weight:600}
+.value>span{display:block;margin-top:4px;font-size:15px;line-height:1.4;font-weight:500}
+.reading[data-tone=positive] .value p{color:#c9f58a}.reading[data-tone=negative] .value p{color:#ef9d9d}
+.scale{min-width:0;margin:0 4px}.rail{position:relative;height:7px;border-radius:2px;background:#394239}.rail>span{position:absolute;top:-4px;width:4px;height:15px;background:#f1f5ef;transform:translateX(-50%)}
+.reading[data-tone=positive] .rail>span{background:#c9f58a}.reading[data-tone=negative] .rail>span{background:#ef9d9d}
+.scaleLabels{display:flex;justify-content:space-between;margin-top:10px;font-family:var(--font-data),monospace;font-size:12px;line-height:1.5;color:#acb6ad}
+.missing{margin:16px 0 0;color:#acb6ad;font-size:15px;line-height:1.65}
+@media(max-width:600px){.reading{padding:16px}.readingHeader{gap:12px;align-items:flex-start}.reading h2{font-size:18px}.readingBody{grid-template-columns:104px minmax(0,1fr);gap:16px;margin-top:12px}.value p{font-size:42px}.value>span{font-size:14px}}

@@ -108,7 +108,7 @@ const REGIME_CONTENT: Record<RegimeSlug, RegimeContent> = {
       {
         question: "How do I get daily Risk On/Risk Off alerts?",
         answer:
-          "Sign up for the free Macro Bias daily email. You'll receive the algo's regime score every trading day before the bell. Premium subscribers get the full briefing with sector breakdown, model notes, and risk check.",
+          "Sign up for the free Macro Bias daily email. You'll receive the algo's regime score every trading day before the bell. Pro subscribers get the full briefing with sector breakdown, model notes, and risk check.",
       },
     ],
     seoTitle: "Risk On Regime — Daily Macro Bias Signal for Day Traders",
@@ -158,7 +158,7 @@ const REGIME_CONTENT: Record<RegimeSlug, RegimeContent> = {
       {
         question: "What causes a Neutral regime to shift?",
         answer:
-          "A catalyst — usually a VIX spike, a credit spread widening, or a decisive break of SPY's 20-day SMA — pushes the model out of Neutral. The premium daily briefing includes K-NN diagnostics that quantify how close the current state is to flipping.",
+          "A catalyst — usually a VIX spike, a credit spread widening, or a decisive break of SPY's 20-day SMA — pushes the model out of Neutral. The Pro daily briefing includes K-NN diagnostics that quantify how close the current state is to flipping.",
       },
     ],
     seoTitle: "Neutral Regime — When to Sit Tight | Macro Bias Algo",
@@ -198,7 +198,7 @@ const REGIME_CONTENT: Record<RegimeSlug, RegimeContent> = {
       {
         question: "How do I trade Risk Off as a day trader?",
         answer:
-          "Focus on short setups, put spreads, or TLT/GLD longs. If you trade equities, stick to low-beta names with relative strength. Reduce overall sizing and avoid overnight long exposure. The premium briefing provides specific sector-by-sector scoring and catalyst analysis.",
+          "Focus on short setups, put spreads, or TLT/GLD longs. If you trade equities, stick to low-beta names with relative strength. Reduce overall sizing and avoid overnight long exposure. The Pro briefing provides specific sector-by-sector scoring and catalyst analysis.",
       },
       {
         question: "How quickly can Risk Off reverse to Risk On?",
@@ -248,7 +248,7 @@ const REGIME_CONTENT: Record<RegimeSlug, RegimeContent> = {
       {
         question: "How should I protect my portfolio in Extreme Risk Off?",
         answer:
-          "Move to heavy cash positions, consider long TLT (bonds) and GLD (gold) for defensive exposure, and avoid buying equity dips without confirmation. If shorting, keep sizes small because volatility is extreme in both directions. The premium briefing includes specific sector risk protocol for each session.",
+          "Move to heavy cash positions, consider long TLT (bonds) and GLD (gold) for defensive exposure, and avoid buying equity dips without confirmation. If shorting, keep sizes small because volatility is extreme in both directions. The Pro briefing includes specific sector risk protocol for each session.",
       },
       {
         question: "How rare is Extreme Risk Off?",

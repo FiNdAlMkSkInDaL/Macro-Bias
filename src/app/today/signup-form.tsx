@@ -77,7 +77,7 @@ export function TodaySignupForm() {
           First briefing arrives before the next market open.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          Invite 3 traders and unlock 7 days of Premium.{" "}
+          Invite 3 traders and unlock 7 days of Pro.{" "}
           <a
             href="/refer"
             className="text-sky-400 underline"

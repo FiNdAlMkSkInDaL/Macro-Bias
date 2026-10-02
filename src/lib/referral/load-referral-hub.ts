@@ -9,7 +9,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 const REWARD_TIERS = [
   { tier: 1, threshold: 3, label: '7-day full briefing unlock' },
-  { tier: 2, threshold: 7, label: '1 free month of Premium' },
+  { tier: 2, threshold: 7, label: '1 free month of Pro' },
   { tier: 3, threshold: 15, label: 'Free annual subscription' },
 ];
 

@@ -95,7 +95,7 @@ export default async function RegimeIndexPage() {
         name: "Can I get alerts when the regime changes?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes. Free subscribers receive a daily email with the regime score and bottom line summary. Premium subscribers get the full briefing with sector breakdown, model notes, and risk check before the opening bell.",
+          text: "Yes. Free subscribers receive a daily email with the regime score and bottom line summary. Pro subscribers get the full briefing with sector breakdown, model notes, and risk check before the opening bell.",
         },
       },
     ],
@@ -268,7 +268,7 @@ export default async function RegimeIndexPage() {
               </h3>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
                 Yes. Free subscribers receive a daily email with the regime score.
-                Premium subscribers get the full briefing including sector scoring
+                Pro subscribers get the full briefing including sector scoring
                 and K-NN diagnostics before the opening bell.
               </p>
             </div>
@@ -295,7 +295,7 @@ export default async function RegimeIndexPage() {
               className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-6 py-3 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
               href="/pricing"
             >
-              Start 7-Day Free Trial
+              Explore Pro
             </Link>
           </div>
         </section>

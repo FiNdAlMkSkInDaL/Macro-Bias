@@ -384,9 +384,10 @@ export async function getAnalyticsAdminUser(): Promise<User | null> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user || user.email !== ANALYTICS_ADMIN_EMAIL) {
+  if (authError || !user || user.email !== ANALYTICS_ADMIN_EMAIL) {
     return null;
   }
 

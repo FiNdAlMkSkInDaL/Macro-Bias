@@ -43,7 +43,7 @@ const WELCOME_DRIP_STEPS = [
     microChallenge: "Tomorrow morning, try this: read the bias score before opening any charts. Decide if it is a day to push or a day to protect. Then see how the session plays out.",
     order: 2,
     secondaryHref: "/pricing",
-    secondaryLabel: "See Premium features",
+    secondaryLabel: "See Pro features",
     subject: "The 90-second morning routine that changes how you trade",
     summary:
       "Here is the simplest way to use Macro Bias: read the score before the open, decide if the day favors offense or defense, and lock your plan before emotion gets involved.",
@@ -56,7 +56,7 @@ const WELCOME_DRIP_STEPS = [
     paragraphs: [
       "Think of the daily briefing as a weather report for the market. You would not plan a beach day without checking the forecast. Same idea here. On strong days, it tells you to lean in. On rough days, it tells you to sit tight or go small.",
       "That one shift, matching your aggression to the environment, tends to improve consistency faster than any new indicator or signal service.",
-      "One more thing: every subscriber gets a unique referral link. Three verified referrals unlock 7 days of Premium, 7 unlock a free month, and 15 unlock a free annual plan. Check your referral status at macro-bias.com/refer.",
+      "One more thing: every subscriber gets a unique referral link. Three verified referrals unlock 7 days of Pro, 7 unlock a free month, and 15 unlock a free annual plan. Check your referral status at macro-bias.com/refer.",
     ],
   },
   {
@@ -85,26 +85,26 @@ const WELCOME_DRIP_STEPS = [
   },
   {
     ctaHref: "/pricing",
-    ctaLabel: "Start your 7-day free trial",
+    ctaLabel: "Explore Pro",
     dayOffset: 7,
     eyebrow: "[ Welcome 04 ]",
     hook: "If the free daily score has been useful, the full briefing gives you everything behind it: the sector breakdown, the risk levels, and the historical patterns that drive the call.",
-    microChallenge: "Try Premium for a week. At the end, ask yourself one question: did I take fewer bad trades? If yes, it is worth it. If not, cancel and keep the free list.",
+    microChallenge: "Read an older full briefing with a free account. Check how the decision, risk context, and evidence would fit into your morning routine.",
     order: 4,
     secondaryHref: "/dashboard",
     secondaryLabel: "Preview the dashboard",
     subject: "See what is behind the daily score",
     summary:
-      "The free list gives you the headline: Risk-On, Neutral, or Risk-Off. Premium gives you everything behind it, so you can understand why the call is what it is and plan accordingly.",
+      "The free list gives you the headline: Risk-On, Neutral, or Risk-Off. Pro gives you everything behind it, so you can understand why the call is what it is and plan accordingly.",
     title: "The full picture, not just the headline.",
     bullets: [
       "Full daily briefing with sector breakdown and risk context.",
       "Historical pattern matching: what happened on days like today.",
-      "Live dashboard with the model's real-time readings.",
+      "Daily workspace with the published model reading, reliability grade, and size hint.",
     ],
     paragraphs: [
       "If the free score already helped you skip a bad trade or hold a winner longer, the full briefing gives you the context to do that more consistently. You will see which sectors are leading, where risk is building, and how today compares to similar sessions going back years.",
-      "It is $25/month or $190/year, with a 7-day free trial. Keep it only if it makes your trading better. No contracts, cancel anytime.",
+      "Pro is $25/month or $190/year, with the same access on either plan. Annual billing saves $110 compared with 12 monthly payments. Pro access begins once your subscription is confirmed, and you can manage cancellation from your account.",
     ],
   },
 ] as const;

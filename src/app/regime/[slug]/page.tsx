@@ -356,7 +356,7 @@ export default async function RegimePage({ params }: PageProps) {
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
             Free subscribers get the daily regime score and bottom line
-            summary every trading day. Premium unlocks the full briefing with
+            summary every trading day. Pro includes the full briefing with
             sector breakdown, model notes, and risk check.
           </p>
           <RegimeSignupForm regime={content.headline} />
@@ -365,7 +365,7 @@ export default async function RegimePage({ params }: PageProps) {
               className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-gradient-to-r from-sky-500 to-sky-600 px-5 py-2.5 font-[family:var(--font-data)] text-xs font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-400 hover:to-sky-500"
               href="/pricing"
             >
-              Start 7-Day Free Trial — $25/mo after
+              Explore Pro — $25/month
             </Link>
           </div>
         </section>
