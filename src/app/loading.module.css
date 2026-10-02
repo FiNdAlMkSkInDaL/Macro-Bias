@@ -1,0 +1,10 @@
+.shell{max-width:1320px;min-height:60vh;margin:0 auto;padding:40px;color:#acb6ad}
+.title{margin:0 0 12px;color:#f1f5ef;font-size:32px;font-weight:500;letter-spacing:-.025em}
+.status{margin:0 0 28px;font-size:14px}
+.panels{display:grid;gap:20px}
+.reading,.chart{border:1px solid #2a342c;background:#0d120e;padding:24px;border-radius:12px}
+.reading span,.chart>span{display:block;height:12px;max-width:240px;margin-bottom:18px;background:#1b241d;border-radius:4px}
+.reading .readingValue{height:48px;max-width:180px}
+.reading span:last-child{max-width:320px;margin:0}
+.chartArea{height:280px;border-left:1px solid #243027;border-bottom:1px solid #243027;background:repeating-linear-gradient(to bottom,transparent,transparent 55px,#1b241d 56px)}
+@media(max-width:760px){.shell{padding:28px 20px}.title{font-size:27px}.reading,.chart{padding:20px}.chartArea{height:220px}}

@@ -30,10 +30,10 @@ function changeLabel(value: number) {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
-function Reading({ name, score, href, error }: { name: 'Stocks' | 'Crypto'; score: ViewerScore | null; href: string; error: string | null }) {
+function Reading({ name, heading, score, href, error }: { name: 'Stocks' | 'Crypto'; heading: string; score: ViewerScore | null; href: string; error: string | null }) {
   return (
     <article className={styles.reading} data-workspace-reading={name.toLowerCase()}>
-      <h2>{name}</h2>
+      <h2>{heading}</h2>
       {score ? (
         <>
           <div className={styles.scoreLine}>
@@ -41,7 +41,7 @@ function Reading({ name, score, href, error }: { name: 'Stocks' | 'Crypto'; scor
             <p className={styles.bias}>{biasLabel(score.label)}</p>
           </div>
           <div className={styles.readingFoot}>
-            <p><span className={styles.label}>Previous published session</span><time dateTime={score.tradeDate}>{dateLabel(score.tradeDate)}</time></p>
+            <p><span className={styles.label}>Previous published session · </span><time dateTime={score.tradeDate}>{dateLabel(score.tradeDate)}</time></p>
             <Link href={href}>Open {name === 'Stocks' ? 'stock' : 'crypto'} reading <ArrowIcon /></Link>
           </div>
         </>
@@ -74,31 +74,16 @@ function emailSummary(data: WorkspaceData) {
   return 'Weekday email updates are off.';
 }
 
-function stockExplanation(data: WorkspaceData) {
-  const score = data.active.score;
-  const context = data.stockContext;
-  if (!context || !score) return 'A saved position is not available for this session.';
-  if (score.label === 'NEUTRAL' && Math.abs(score.score) <= 10 && context.permission === 'FLAT') {
-    return 'The published score is near neutral, and the saved position is cash.';
-  }
-  const regime = biasLabel(score.label).toLowerCase();
-  const position = context.permission === 'LONG' ? 'long' : context.permission === 'SHORT' ? 'short' : 'cash';
-  return context.permission === 'NO_TRADE'
-    ? `The published regime is ${regime}, and the saved permission is no trade.`
-    : `The published regime is ${regime}, and the saved position is ${position}.`;
-}
-
 export function FreeWorkspace({ data, audience = 'member', userId }: {
   data: WorkspaceData;
   audience?: 'member' | 'public';
   userId: string | null;
 }) {
-  const stocks = data.asset === 'stocks' ? data.active : data.otherMarket;
-  const crypto = data.asset === 'crypto' ? data.active : data.otherMarket;
   const score = data.active.score;
   const instrument = data.asset === 'stocks' ? 'SPY' : 'BTC';
-  const context = data.stockContext;
   const marketName = data.asset === 'stocks' ? 'stock' : 'crypto';
+  const activeName = data.asset === 'stocks' ? 'Stocks' : 'Crypto';
+  const otherName = data.asset === 'stocks' ? 'Crypto' : 'Stocks';
   const dailyHref = data.asset === 'stocks' ? '/today' : '/crypto';
   const historyHref = data.asset === 'stocks' ? '/track-record' : '/crypto/track-record';
   const accountHref = audience === 'member' ? '/account' : '/login?redirectTo=/account';
@@ -110,7 +95,7 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
   ];
   const offer = (
     <section className={`${styles.panel} ${styles.offer}`} aria-labelledby="workspace-pro-heading">
-      <div><h2 id="workspace-pro-heading">Get the full market read</h2><p>Pro adds the current workspace reading, full briefing, permission, reliability and suggested size.</p></div>
+      <div><h2 id="workspace-pro-heading">Get the full market read</h2><p>Pro brings the latest session to your workspace and unlocks full recent briefings.</p></div>
       <Link href="/pricing" className={styles.primaryLink}>Explore Pro</Link>
     </section>
   );
@@ -120,16 +105,15 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
       <div className={styles.container}>
         <header className={styles.header}>
           <div className={styles.titleLine}><h1>Your market overview</h1><span>Free plan</span></div>
-          <p>Read the previous published session, explore its history, and choose what reaches your inbox.</p>
+          <p>Daily scores, market history and your weekday emails.</p>
           <nav className={styles.marketSwitch} aria-label="Dashboard markets">
             <Link href="/dashboard" aria-current={data.asset === 'stocks' ? 'page' : undefined}>Stocks</Link>
             <Link href="/crypto/dashboard" aria-current={data.asset === 'crypto' ? 'page' : undefined}>Crypto</Link>
           </nav>
         </header>
 
-        <section className={`${styles.panel} ${styles.readings}`} aria-label="Previous published market readings">
-          <Reading name="Stocks" score={stocks.score} href="/today" error={stocks.loadError} />
-          <Reading name="Crypto" score={crypto.score} href="/crypto" error={crypto.loadError} />
+        <section className={`${styles.panel} ${styles.readings}`} aria-label="Active market daily score">
+          <Reading name={activeName} heading={`Daily ${marketName} score`} score={data.active.score} href={dailyHref} error={data.active.loadError} />
         </section>
 
         <div className={styles.history}>
@@ -141,52 +125,38 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
           />
         </div>
 
-        {data.asset === 'stocks' ? (
-          <section className={styles.panel} aria-labelledby="workspace-context-heading" data-stock-session-context>
-            <div className={styles.sectionHeading}>
-              <div><h2 id="workspace-context-heading">Previous-session stock context</h2><p>Your previous published stock reading, with the key fields that were saved.</p></div>
-              <div className={styles.date}><span>Session date</span>{score ? <time dateTime={score.tradeDate}>{dateLabel(score.tradeDate)}</time> : <p>Not available</p>}</div>
-            </div>
-            <dl className={styles.contextFields}>
-              <div><dt>Permission</dt><dd>{context?.permission ?? '—'}<span className={styles.metricDefinition}>Saved position: long, short, cash or no trade.</span></dd></div>
-              <div><dt>Size</dt><dd>{context?.sizePct != null ? `${context.sizePct}%` : '—'}</dd></div>
-              <div><dt>Reliability</dt><dd>{context?.reliability ?? '—'}<span className={styles.metricDefinition}>Model grade combining agreement and match closeness.</span></dd></div>
-              <div><dt>Agreement</dt><dd>{context?.agreementPct != null ? `${context.agreementPct}%` : '—'}<span className={styles.metricDefinition}>{score?.score === 0 ? 'Share of historical matches with near-flat returns.' : 'Share of historical matches aligned with the score’s direction.'}</span></dd></div>
-              <div className={styles.reason}><dt>Reason</dt><dd><p data-stock-reason>{stockExplanation(data)}</p>{context?.reason ? <details className={styles.modelDetails}><summary>Model details</summary><p data-saved-model-reason>{context.reason}</p></details> : null}</dd></div>
-            </dl>
-            <p className={styles.metricNote}>Agreement describes historical matches, not a win probability.</p>
-            {data.stockContextNotice ? <p className={styles.notice}>{data.stockContextNotice}</p> : null}
-          </section>
-        ) : (
-          <section className={styles.panel} aria-labelledby="workspace-context-heading" data-crypto-session-context>
-            <div className={styles.sectionHeading}>
-              <div><h2 id="workspace-context-heading">Previous-session crypto context</h2><p>Stored market participation for this published reading.</p></div>
-              <div className={styles.date}><span>Snapshot date</span>{data.tape.tradeDate ? <time dateTime={data.tape.tradeDate}>{dateLabel(data.tape.tradeDate)}</time> : <p>Not available</p>}</div>
-            </div>
-            <dl className={styles.cryptoFields}>
-              <div><dt>Strongest</dt><Move entry={data.tape.strongest} /></div>
-              <div><dt>Weakest</dt><Move entry={data.tape.weakest} /></div>
-              <div><dt>Breadth</dt><dd>{data.tape.breadth.total ? <><strong>{data.tape.breadth.advancers}/{data.tape.breadth.total}</strong> advancing<span className={styles.breadthDetail}>{data.tape.breadth.decliners} declining · {data.tape.breadth.unchanged} unchanged</span></> : 'Not available'}</dd></div>
-            </dl>
-          </section>
-        )}
-
-        <section className={styles.panel} aria-labelledby="workspace-tape-heading">
+        <section className={styles.panel} aria-labelledby="workspace-context-heading" data-session-participation={data.asset}>
           <div className={styles.sectionHeading}>
-            <div><h2 id="workspace-tape-heading">Market tape</h2><p>Key markets from the previous published {marketName} snapshot.</p></div>
+            <div><h2 id="workspace-context-heading">Across the market</h2><p>Moves in the saved {marketName} basket for this previous published session.</p></div>
             <div className={styles.date}><span>Snapshot date</span>{data.tape.tradeDate ? <time dateTime={data.tape.tradeDate}>{dateLabel(data.tape.tradeDate)}</time> : <p>Not available</p>}</div>
           </div>
+          <dl className={styles.participationFields}>
+            <div><dt>Strongest</dt><Move entry={data.tape.strongest} /></div>
+            <div><dt>Weakest</dt><Move entry={data.tape.weakest} /></div>
+            <div><dt>Basket breadth</dt><dd>{data.tape.breadth.total ? <><strong>{data.tape.breadth.advancers}/{data.tape.breadth.total}</strong> advancing<span className={styles.breadthDetail}>{data.tape.breadth.decliners} declining · {data.tape.breadth.unchanged} unchanged</span></> : 'Not available'}</dd></div>
+          </dl>
           <p className={styles.tapeNote}>Saved quotes use their listed price dates, which may precede the snapshot. Snapshot quotes can differ from the chart’s daily closing prices.</p>
           {data.tape.entries.length ? (
-            <div className={styles.tableScroll}>
+            <div className={styles.tableScroll} tabIndex={0} role="region" aria-label="Saved market prices and source dates, scroll horizontally if needed">
               <table className={styles.tape}>
-                <thead><tr><th>Symbol</th><th>Close</th><th>Change</th><th>Price date</th></tr></thead>
+                <caption className={styles.srOnly}>Market moves from the previous published session and their source price dates</caption>
+                <thead><tr><th scope="col">Symbol</th><th scope="col">Close</th><th scope="col">Change</th><th scope="col" className={styles.priceDateColumn}>Price date</th></tr></thead>
                 <tbody>{data.tape.entries.map((entry) => (
-                  <tr key={entry.ticker}><th scope="row">{entry.ticker}</th><td>{priceFormatter.format(entry.close)}</td><td data-tone={entry.percentChange > 0 ? 'positive' : entry.percentChange < 0 ? 'negative' : 'neutral'}>{changeLabel(entry.percentChange)}</td><td><time dateTime={entry.tradeDate}>{dateLabel(entry.tradeDate)}</time>{entry.dateSource === 'snapshot' ? <span className={styles.sourceDate}>Snapshot date</span> : null}</td></tr>
+                  <tr key={entry.ticker}>
+                    <th scope="row">{entry.ticker}</th>
+                    <td>{priceFormatter.format(entry.close)}<span className={styles.mobilePriceDate}><time dateTime={entry.tradeDate}>{dateLabel(entry.tradeDate)}</time>{entry.dateSource === 'snapshot' ? <span className={styles.sourceDate}>Snapshot date</span> : null}</span></td>
+                    <td data-tone={entry.percentChange > 0 ? 'positive' : entry.percentChange < 0 ? 'negative' : 'neutral'}>{changeLabel(entry.percentChange)}</td>
+                    <td className={styles.priceDateColumn}><time dateTime={entry.tradeDate}>{dateLabel(entry.tradeDate)}</time>{entry.dateSource === 'snapshot' ? <span className={styles.sourceDate}>Snapshot date</span> : null}</td>
+                  </tr>
                 ))}</tbody>
               </table>
             </div>
           ) : <p className={styles.notice}>{data.tape.notice ?? 'Market moves are not available for this session.'}</p>}
+        </section>
+
+        <section className={`${styles.panel} ${styles.otherMarket}`} aria-label="Other market preview">
+          <p className={styles.previewLabel}>Also in your workspace</p>
+          <Reading name={otherName} heading={`${otherName} score`} score={data.otherMarket.score} href={data.asset === 'stocks' ? '/crypto' : '/today'} error={data.otherMarket.loadError} />
         </section>
 
         <section className={styles.panel} aria-labelledby="workspace-continue-heading">

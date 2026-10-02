@@ -6,7 +6,7 @@ import { ArrowIcon } from './ArrowIcon';
 import { DailyPublicationNote } from './DailyPublicationNote';
 import { DailyReadingRefresh } from './DailyReadingRefresh';
 import { MarketTabs, MemberShell } from './MemberShell';
-import { ProDecision, ProReading } from './ProReading';
+import { ProReading } from './ProReading';
 import ui from './MemberUI.module.css';
 import styles from './ProDailyPage.module.css';
 
@@ -38,7 +38,6 @@ export function ProDailyPage({ data, briefing }: {
         {score ? (
           <div className={styles.current} data-current-session={score.tradeDate}>
             <ProReading asset={data.asset} tradeDate={score.tradeDate} score={score.score} label={score.label} />
-            <ProDecision asset={data.asset} tradeDate={score.tradeDate} signal={score.modelDecision ?? null} />
           </div>
         ) : (
           <section className={ui.notice} aria-label="Published reading unavailable">
@@ -49,7 +48,7 @@ export function ProDailyPage({ data, briefing }: {
         {score ? <DailyPublicationNote score={score} /> : null}
         <section className={styles.chart} aria-label="Price and score history">
           <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
-          <p className={styles.chartCaption}>Explore past sessions; the decision above stays on the published session.</p>
+          <p className={styles.chartCaption}>Explore past sessions; the score above stays on the published session.</p>
         </section>
         <div className={styles.lower}>
           <section className={styles.brief} aria-labelledby="pro-session-brief-heading">

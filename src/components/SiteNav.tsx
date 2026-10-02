@@ -1,6 +1,6 @@
 "use client";
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -17,10 +17,19 @@ const PUBLIC_LINKS = [
 function isCurrent(pathname: string, href: string) {
   if (href.endsWith('/dashboard')) return pathname === '/dashboard' || pathname === '/crypto/dashboard';
   if (href.endsWith('/track-record')) return pathname === '/track-record' || pathname === '/crypto/track-record';
-  if (href === '/today') return pathname === '/today' || pathname === '/crypto'
+  if (href === '/today' || href === '/crypto') return pathname === '/today' || pathname === '/crypto'
     || pathname === '/briefings' || pathname.startsWith('/briefings/')
     || pathname === '/crypto/briefings' || pathname.startsWith('/crypto/briefings/');
   return pathname === href;
+}
+
+function NavigationLabel({ label }: { label: string }) {
+  const { pending } = useLinkStatus();
+  return <span className={styles.linkLabel} data-pending={pending || undefined}>
+    {label}
+    {pending ? <span className={styles.pendingDot} aria-hidden="true" /> : null}
+    <span className={styles.screenReaderStatus} role="status">{pending ? `Opening ${label}…` : ''}</span>
+  </span>;
 }
 
 export function SiteNav() {
@@ -32,7 +41,7 @@ export function SiteNav() {
   const [signedIn, setSignedIn] = useState(false);
   const memberLinks = [
     { href: cryptoMarket ? '/crypto/dashboard' : '/dashboard', label: 'Dashboard' },
-    { href: '/today', label: 'Today' },
+    { href: cryptoMarket ? '/crypto' : '/today', label: 'Today' },
     { href: cryptoMarket ? '/crypto/track-record' : '/track-record', label: 'History' },
     { href: '/refer', label: 'Referrals' },
   ];
@@ -83,14 +92,14 @@ export function SiteNav() {
       }
     }}>
       <div className={`${styles.bar} ${pathname === '/' ? styles.homeBar : ''}`}>
-        <Link href="/" className={styles.brand} data-analytics-event="nav_logo_click" data-analytics-label="Macro Bias" data-analytics-location="site_nav">Macro Bias</Link>
+        <Link href="/" className={styles.brand} data-analytics-event="nav_logo_click" data-analytics-label="Macro Bias" data-analytics-location="site_nav"><NavigationLabel label="Macro Bias" /></Link>
         <nav className={styles.desktop} aria-label="Main navigation">
           {links.map(({ href, label }) => (
-            <Link key={href} href={href} aria-current={isCurrent(pathname, href) ? 'page' : undefined} data-analytics-event="nav_link_click" data-analytics-label={label} data-analytics-location="site_nav">{label}</Link>
+            <Link key={href} href={href} aria-current={isCurrent(pathname, href) ? 'page' : undefined} data-analytics-event="nav_link_click" data-analytics-label={label} data-analytics-location="site_nav"><NavigationLabel label={label} /></Link>
           ))}
         </nav>
         <div className={styles.utility}>
-          <Link href={signedIn ? '/account' : '/login'} aria-current={pathname === '/account' ? 'page' : undefined} data-analytics-event="nav_cta_click" data-analytics-label={signedIn ? 'Account' : 'Sign in'} data-analytics-location="site_nav">{signedIn ? 'Account' : 'Sign in'}</Link>
+          <Link href={signedIn ? '/account' : '/login'} aria-current={pathname === '/account' ? 'page' : undefined} data-analytics-event="nav_cta_click" data-analytics-label={signedIn ? 'Account' : 'Sign in'} data-analytics-location="site_nav"><NavigationLabel label={signedIn ? 'Account' : 'Sign in'} /></Link>
           {signedIn ? <button className={styles.signOut} type="button" onClick={() => { void handleSignOut(); }}>Sign out</button> : null}
           <button ref={menuButton} className={styles.menuButton} type="button" onClick={() => setMobileMenuOpen((open) => !open)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen} aria-controls="mobile-site-navigation">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d={mobileMenuOpen ? 'M5 5l10 10M15 5L5 15' : 'M3 5h14M3 10h14M3 15h14'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -99,7 +108,7 @@ export function SiteNav() {
       </div>
       {mobileMenuOpen ? (
         <nav className={styles.mobile} id="mobile-site-navigation" aria-label="Mobile navigation">
-          {links.map(({ href, label }) => <Link key={href} href={href} aria-current={isCurrent(pathname, href) ? 'page' : undefined} onClick={() => setMobileMenuOpen(false)} data-analytics-event="nav_link_click" data-analytics-label={label} data-analytics-location="site_nav_mobile">{label}</Link>)}
+          {links.map(({ href, label }) => <Link key={href} href={href} aria-current={isCurrent(pathname, href) ? 'page' : undefined} onClick={() => setMobileMenuOpen(false)} data-analytics-event="nav_link_click" data-analytics-label={label} data-analytics-location="site_nav_mobile"><NavigationLabel label={label} /></Link>)}
           {signedIn ? <button type="button" onClick={() => { void handleSignOut(); }}>Sign out</button> : null}
         </nav>
       ) : null}

@@ -1,11 +1,14 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-config';
 import { getUserSubscriptionStatus, type SubscriptionStatusResult } from '../billing/subscription';
 import { selectVisibleRow, stockSessionDate } from '../market-data/stock-session';
 import { extractTradableSignal } from '../signal/format-tradable-signal';
 import type { PositionPermission, TradableSignal } from '../signal/types';
 import { createSupabaseAdminClient } from '../supabase/admin';
+import { readPaidWorkspaceSelection, readRecentScoreMetadata } from './workspace-snapshot';
 
 export { selectVisibleRow, stockSessionDate };
 
@@ -37,13 +40,9 @@ type ScoreRow = {
   updated_at: string | null;
   created_at?: string | null;
   source_date?: string | null;
+  engine_inputs?: Record<string, unknown> | null;
 };
 
-const SCORE_COLUMNS = 'trade_date, score, bias_label, updated_at, created_at';
-const SCORE_COLUMNS_BY_TABLE = {
-  macro_bias_scores: `${SCORE_COLUMNS}, source_date:ticker_changes->SPY->>tradeDate`,
-  crypto_bias_scores: `${SCORE_COLUMNS}, source_date:ticker_changes->"BTC-USD"->>tradeDate`,
-} as const;
 type ScoreTable = 'macro_bias_scores' | 'crypto_bias_scores';
 
 export type ProductScore = {
@@ -57,22 +56,6 @@ export type ProductScore = {
 export async function viewerIsPaid() {
   const { isPro } = await getUserSubscriptionStatus();
   return isPro;
-}
-
-async function loadRecentScores(table: ScoreTable) {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from(table)
-    .select(SCORE_COLUMNS_BY_TABLE[table])
-    .order('trade_date', { ascending: false })
-    .limit(5);
-
-  if (error) {
-    const detail = /<!DOCTYPE|522|timed out/i.test(error.message) ? 'the database timed out' : error.message.slice(0, 300);
-    throw new Error(`Failed to load ${table}: ${detail}`);
-  }
-
-  return (data as ScoreRow[] | null) ?? [];
 }
 
 function toLoadError(table: ScoreTable, error: unknown) {
@@ -141,7 +124,7 @@ function sectionParagraph(briefContent: string, header: string) {
   return firstParagraph(body.join(' ')) ?? firstParagraph(briefContent);
 }
 
-async function stockSentence(tradeDate: string) {
+const stockSentence = cache(async (tradeDate: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tradeDate)) {
     return null;
   }
@@ -160,9 +143,9 @@ async function stockSentence(tradeDate: string) {
   }
 
   return sectionParagraph(data.brief_content, DAILY_BRIEFING_SECTION_HEADERS.bottomLine);
-}
+});
 
-async function cryptoSentence(tradeDate: string) {
+const cryptoSentence = cache(async (tradeDate: string) => {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('crypto_daily_briefings')
@@ -177,27 +160,18 @@ async function cryptoSentence(tradeDate: string) {
   }
 
   return firstParagraph(data.brief_content);
-}
+});
 
-async function loadTradableSignal(table: ScoreTable, tradeDate: string): Promise<TradableSignal | null> {
+const loadTradableSignal = cache(async (table: ScoreTable, tradeDate: string): Promise<TradableSignal | null> => {
   try {
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from(table)
-      .select('tradableSignal:engine_inputs->tradableSignal')
-      .eq('trade_date', tradeDate)
-      .maybeSingle();
-
-    if (error || !data || typeof data !== 'object') {
-      return null;
-    }
-
-    const tradableSignal = 'tradableSignal' in data ? data.tradableSignal : null;
-    return extractTradableSignal({ tradableSignal });
+    const { data, error } = await createSupabaseAdminClient().from(table)
+      .select('tradableSignal:engine_inputs->tradableSignal').eq('trade_date', tradeDate).maybeSingle();
+    if (error || !data) return null;
+    return extractTradableSignal({ tradableSignal: data.tradableSignal });
   } catch {
     return null;
   }
-}
+});
 
 function toViewerScore(
   asset: ProductAsset,
@@ -229,13 +203,15 @@ export async function getViewerScore(
   asset: ProductAsset,
   subscriptionStatus?: SubscriptionStatusResult,
   selection: 'entitled-session' | 'latest-publication' = 'entitled-session',
+  options: { includeSentence?: boolean; includeSnapshot?: boolean } = {},
 ): Promise<ProductScore> {
   const table: ScoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
   let paid = false;
   let signedIn = false;
+  let status: SubscriptionStatusResult;
 
   try {
-    const status = subscriptionStatus ?? await getUserSubscriptionStatus();
+    status = subscriptionStatus ?? await getUserSubscriptionStatus();
     paid = status.isPro;
     signedIn = Boolean(status.user);
   } catch (error) {
@@ -249,10 +225,12 @@ export async function getViewerScore(
   }
 
   try {
-    const rows = await loadRecentScores(table);
+    const rows = paid && options.includeSnapshot ? [] : await readRecentScoreMetadata(asset);
     // Daily numeric readings are public, including the newest stored publication.
     // Keep the existing current-decision selector for Pro and other product routes.
-    const selected = !paid && selection === 'latest-publication'
+    const selected = paid && options.includeSnapshot ? await readPaidWorkspaceSelection(asset, status)
+      : paid ? selectVisibleRow(rows, true, asset === 'stocks' ? stockSessionDate() : null)
+      : selection === 'latest-publication'
       ? { row: rows[0] ?? null, missingSessionDate: null }
       : selectVisibleRow(rows, paid, asset === 'stocks' ? stockSessionDate() : null);
 
@@ -271,8 +249,11 @@ export async function getViewerScore(
     let sentence: string | null = null;
     if (paid) {
       [signal, sentence] = await Promise.all([
-        loadTradableSignal(table, tradeDate),
-        asset === 'stocks' ? stockSentence(tradeDate) : cryptoSentence(tradeDate),
+        options.includeSnapshot
+          ? Promise.resolve(extractTradableSignal('engine_inputs' in selected.row ? selected.row.engine_inputs : null))
+          : loadTradableSignal(table, tradeDate),
+        options.includeSentence === false ? Promise.resolve(null)
+          : asset === 'stocks' ? stockSentence(tradeDate) : cryptoSentence(tradeDate),
       ]);
     }
     const score = toViewerScore(asset, selected.row, paid, !paid && selection !== 'latest-publication', signal, tradeDate);
@@ -300,7 +281,7 @@ export async function getViewerScore(
 }
 
 export async function latestStoredTradeDate(asset: ProductAsset) {
-  const rows = await loadRecentScores(asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores');
+  const rows = await readRecentScoreMetadata(asset);
   return rows[0]?.trade_date ?? null;
 }
 

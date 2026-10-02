@@ -8,7 +8,8 @@ import type { WorkspaceData, WorkspaceMarketTape } from '@/lib/product/workspace
 import type { TradableSignal } from '@/lib/signal/types';
 import { MacroMarketChart } from './MacroMarketChart';
 import { MarketTabs } from './MemberShell';
-import { ProDecision, ProReading } from './ProReading';
+import { ProReading } from './ProReading';
+import type { ProContextObservation } from './pro-context-observations';
 import styles from './ProWorkspace.module.css';
 
 export type ProPillar = {
@@ -81,7 +82,6 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
 const priceFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
 });
-const numberFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 function finite(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -106,19 +106,10 @@ function price(value: number | null, ticker: string) {
   return ticker === 'VIX' ? value.toFixed(2) : priceFormatter.format(value);
 }
 
-function count(value: number | null | undefined) {
-  return finite(value) ? numberFormatter.format(value) : 'Not available';
-}
-
 function matchDateSpan(matches: { tradeDate: string }[]) {
   const dates = matches.map((match) => match.tradeDate).sort();
   if (!dates.length) return null;
   return `Displayed match dates: ${dateLabel(dates[0])} – ${dateLabel(dates.at(-1))}.`;
-}
-
-function disposition(value: number | null) {
-  if (!finite(value)) return 'Not available';
-  return value > 0.15 ? 'Bullish' : value < -0.15 ? 'Bearish' : 'Neutral';
 }
 
 function cryptoMatchScore(distance: number) {
@@ -129,69 +120,57 @@ function Metric({ label, value, className, children }: { label: string; value: R
   return <div><dt>{label}</dt><dd className={className}>{value}{children ? <small>{children}</small> : null}</dd></div>;
 }
 
-function ModelContext({ pillars }: { pillars: ProPillar[] }) {
+function ModelContext({ observations }: { observations: ProContextObservation[] }) {
   return (
     <div className={styles.contextPanel} data-pro-pillars>
       <h3>Model context</h3>
-      <p className={styles.contextNote}>Saved diagnostic allocations of the published score.</p>
-      <div className={styles.pillarHeading} aria-hidden="true"><span>Context</span><span>Contribution</span><span>Details</span></div>
-      {pillars.map((pillar) => (
-        <article className={styles.pillar} key={pillar.key} data-pro-pillar={pillar.key}>
-          <div className={styles.pillarName}><h4>{pillar.label}</h4><p>{pillar.source}</p></div>
-          <p className={`${styles.contribution} ${tone(pillar.contribution)}`}>{finite(pillar.contribution) ? `${pillar.contribution > 0 ? '+' : ''}${pillar.contribution.toFixed(1)} pts` : 'Not available'}</p>
+      <p className={styles.contextNote}>Recorded inputs for this published session.</p>
+      {observations.length ? observations.slice(0, 3).map((observation) => (
+        <article className={styles.pillar} key={observation.key} data-pro-context={observation.key}>
+          <div className={styles.pillarName}><h4>{observation.label}</h4></div>
           <div className={styles.pillarDescription}>
-            <p>{pillar.description}</p>
-            <details className={styles.technical}>
-              <summary>Technical detail</summary>
-              <dl className={styles.technicalValues}>
-                <div><dt>Saved weight</dt><dd>{finite(pillar.weight) ? `${pillar.weight.toFixed(0)} pts` : 'Not available'}</dd></div>
-                <div><dt>Saved signal</dt><dd>{finite(pillar.signal) ? pillar.signal.toFixed(4) : 'Not available'}</dd></div>
-                <div><dt>Signal disposition</dt><dd>{disposition(pillar.signal)}</dd></div>
-              </dl>
-              <p className={styles.technicalExplanation}>Contributions allocate the finished score. They are not independent forecasts or a linear formula for producing it.</p>
-              <p className={styles.savedNarrative} data-saved-pillar-summary>{pillar.summary ?? 'A saved model narrative is not available for this context.'}</p>
-            </details>
+            <p>{observation.text}</p>
           </div>
         </article>
-      ))}
+      )) : <p className={styles.contextNote}>Recorded model context is unavailable for this session.</p>}
     </div>
   );
 }
 
-function MarketPrices({ assets, tape }: { assets: ProAssetQuote[]; tape: WorkspaceMarketTape }) {
-  const coreBasket = tape.entries.map((entry) => entry.ticker).join(', ');
+export function ProMarketPrices({ assets, tape, loading = false }: { assets: ProAssetQuote[]; tape: WorkspaceMarketTape; loading?: boolean }) {
+  const basket = tape.entries.map((entry) => entry.ticker.replace('-USD', '')).join(' · ');
   const supplementalQuotes = assets
     .filter((asset) => asset.dateSource === 'supplemental' && finite(asset.currentPrice) && asset.currentPrice > 0)
     .map((asset) => asset.ticker)
-    .join(', ');
+    .length > 0;
   return (
     <div className={styles.marketPanel} data-pro-market-prices>
       <h3>Across the market</h3>
-      <p className={styles.contextNote} data-pro-core-basket>Summaries use the saved core basket: {coreBasket || 'Not available'}.</p>
-      <dl className={styles.participation} aria-label="Saved core basket participation">
+      <p className={styles.contextNote} data-pro-core-basket>Basket moves · {basket || 'Recorded prices unavailable'}</p>
+      <dl className={styles.participation} aria-label="Tracked basket moves">
         <Metric label="Strongest" value={tape.strongest?.ticker ?? 'Not available'}><span className={tone(tape.strongest?.percentChange)}>{percentage(tape.strongest?.percentChange)}</span></Metric>
         <Metric label="Weakest" value={tape.weakest?.ticker ?? 'Not available'}><span className={tone(tape.weakest?.percentChange)}>{percentage(tape.weakest?.percentChange)}</span></Metric>
-        <Metric label="Breadth" value={tape.breadth.total ? `${tape.breadth.advancers}/${tape.breadth.total}` : 'Not available'}>advancing in the saved core basket</Metric>
+        <Metric label="Advancing" value={tape.breadth.total ? `${tape.breadth.advancers}/${tape.breadth.total}` : 'Not available'}>in the tracked basket</Metric>
       </dl>
       <div className={styles.marketTableWrap} tabIndex={0} role="region" aria-label="Market prices and source dates, scroll horizontally if needed">
         <table className={`${styles.table} ${styles.marketTable}`}>
           <caption className={styles.srOnly}>Saved snapshot quotes and latest available supplemental daily quotes</caption>
-          <thead><tr><th scope="col">Market</th><th scope="col">Price</th><th scope="col">Day move</th><th scope="col">Price date</th></tr></thead>
+          <thead><tr><th scope="col">Market</th><th scope="col">Price</th><th scope="col">Day move</th><th scope="col" className={styles.quoteDate}>Price date</th></tr></thead>
           <tbody>{assets.map((asset) => {
             const hasPrice = finite(asset.currentPrice) && asset.currentPrice > 0;
             const move = hasPrice ? asset.dailyChangePercent : null;
             return (
             <tr key={asset.ticker} data-pro-asset={asset.ticker} data-pro-quote-source={asset.dateSource ?? undefined}>
               <th scope="row">{asset.ticker.replace('-USD', '')}</th>
-              <td>{price(asset.currentPrice, asset.ticker)}</td>
+              <td>{price(asset.currentPrice, asset.ticker)}{hasPrice && asset.tradeDate ? <time className={styles.mobilePriceDate} dateTime={asset.tradeDate}>{asset.tradeDate}</time> : null}</td>
               <td className={tone(move)}>{percentage(move)}</td>
-              <td>{hasPrice && asset.tradeDate ? <time dateTime={asset.tradeDate}>{asset.tradeDate}</time> : 'Not available'}{hasPrice && asset.dateSource === 'snapshot' ? <span className={styles.dateSource}>snapshot date</span> : null}</td>
+              <td className={styles.quoteDate}>{hasPrice && asset.tradeDate ? <time dateTime={asset.tradeDate}>{asset.tradeDate}</time> : 'Not available'}{hasPrice && asset.dateSource === 'snapshot' ? <span className={styles.dateSource}>snapshot date</span> : null}</td>
             </tr>
             );
           })}</tbody>
         </table>
       </div>
-      <p className={styles.quoteNote}>{supplementalQuotes ? `Supplemental quotes (${supplementalQuotes}) are excluded from these summaries. ` : 'Supplemental quotes are excluded from these summaries. '}Saved quotes and supplemental prices may use different dates. Snapshot quotes can differ from the chart’s daily closing prices.</p>
+      <p className={styles.quoteNote}>{loading ? 'Additional market prices are loading. ' : ''}{supplementalQuotes ? 'Additional quotes are shown at their own price dates and excluded from the basket summaries.' : 'Prices are shown at their recorded dates.'}</p>
       {tape.notice ? <p className={styles.quoteNote}>{tape.notice}</p> : null}
     </div>
   );
@@ -208,12 +187,11 @@ function HistoricalComparisons({ historical }: { historical: ProStockComparisons
           <Metric label="Average open-to-close" value={percentage(historical.clusterAveragePlaybook.intradayNet)} className={tone(historical.clusterAveragePlaybook.intradayNet)} />
           <Metric label="Average session range" value={percentage(historical.clusterAveragePlaybook.sessionRange, false)} />
         </dl>
-        <p className={styles.sampleNote}>{count(historical.candidateCount)} historical candidates across {count(historical.alignedSessionCount)} aligned sessions. {matchDateSpan(historical.matches)}</p>
-        <p className={styles.sampleNote}>Averages describe the displayed following-session comparisons. This table may differ from the match set used to calculate the published score.</p>
+        <p className={styles.sampleNote}>{matchDateSpan(historical.matches)} These are SPY moves in the session after each match; they describe historical outcomes rather than a forecast.</p>
         <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Stock historical comparisons, scroll horizontally if needed">
           <table className={`${styles.table} ${styles.historyTable}`}>
             <caption className={styles.srOnly}>SPY outcomes in the session following each historical match</caption>
-            <thead><tr><th scope="col">Matched session</th><th scope="col">Match score</th><th scope="col">Overnight gap</th><th scope="col">Open-to-close</th><th scope="col">Session range</th></tr></thead>
+            <thead><tr><th scope="col">Similar session</th><th scope="col">Similarity</th><th scope="col">Overnight gap</th><th scope="col">Open-to-close</th><th scope="col">Session range</th></tr></thead>
             <tbody>{historical.matches.map((match) => (
               <tr key={match.tradeDate}>
                 <th scope="row"><time dateTime={match.tradeDate}>{dateLabel(match.tradeDate)}</time><span className={styles.followingDate}>Following <time dateTime={match.nextSessionDate}>{dateLabel(match.nextSessionDate)}</time></span></th>
@@ -225,7 +203,7 @@ function HistoricalComparisons({ historical }: { historical: ProStockComparisons
             ))}</tbody>
           </table>
         </div>
-        <p className={styles.sampleNote}>Match score is a distance-based comparison, not a win probability. Gap compares the following open with the matched close; open-to-close compares that session’s close with its open; range compares its high with its low.</p>
+        <p className={styles.sampleNote}>The averages describe these displayed matches, which may differ from the set used for the score. Similarity measures how closely the historical conditions match. Overnight gap compares the next open with the previous close; open-to-close and range describe that following session.</p>
       </>
     );
   }
@@ -233,16 +211,16 @@ function HistoricalComparisons({ historical }: { historical: ProStockComparisons
     <>
       <dl className={styles.summaryMetrics}>
         <Metric label="Historical matches" value={`${historical.matchCount} sessions`} />
-        <Metric label="Weighted average · next 1 session" value={percentage(historical.avg1d)} className={tone(historical.avg1d)} />
-        <Metric label="Weighted average · next 3 sessions" value={percentage(historical.avg3d)} className={tone(historical.avg3d)} />
+        <Metric label="Average after 1 day" value={percentage(historical.avg1d)} className={tone(historical.avg1d)} />
+        <Metric label="Average after 3 days" value={percentage(historical.avg3d)} className={tone(historical.avg3d)} />
         <Metric label="Matches with a BTC decline" value={<>{finite(historical.bearish1d) ? `${Math.round(historical.bearish1d * 100)}%` : 'Not available'}<span className={styles.metricSecondary}>next 1 session</span></>}><span>{finite(historical.bearish3d) ? `${Math.round(historical.bearish3d * 100)}%` : 'Not available'} over the next 3 sessions</span></Metric>
       </dl>
       <p className={styles.sampleNote}>{matchDateSpan(historical.matches)}</p>
-      <p className={styles.sampleNote}>BTC returns are close-to-close over the next one or three aligned daily sessions, including weekends. Averages weight closer matches more heavily; decline percentages count matches equally.</p>
+      <p className={styles.sampleNote}>BTC moves are measured from one daily close to the next, including weekends. The averages give closer matches more weight; the decline percentages count each match equally.</p>
       <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Crypto historical comparisons, scroll horizontally if needed">
         <table className={`${styles.table} ${styles.historyTable}`}>
           <caption className={styles.srOnly}>Following BTC close-to-close returns for each historical match</caption>
-          <thead><tr><th scope="col">Matched session</th><th scope="col">Match score</th><th scope="col">BTC · next 1 session</th><th scope="col">BTC · next 3 sessions</th></tr></thead>
+          <thead><tr><th scope="col">Similar session</th><th scope="col">Similarity</th><th scope="col">BTC after 1 day</th><th scope="col">BTC after 3 days</th></tr></thead>
           <tbody>{historical.matches.map((match) => (
             <tr key={match.tradeDate}>
               <th scope="row"><time dateTime={match.tradeDate}>{dateLabel(match.tradeDate)}</time></th>
@@ -253,39 +231,8 @@ function HistoricalComparisons({ historical }: { historical: ProStockComparisons
           ))}</tbody>
         </table>
       </div>
-      <p className={styles.sampleNote}>Match score is a distance-based comparison, not a win probability. These historical outcomes describe the saved matches.</p>
-      <details className={styles.matchDetails}>
-        <summary>Match distances & weights</summary>
-        <dl className={styles.matchRows}>{historical.matches.map((match) => <div key={match.tradeDate}><dt>{dateLabel(match.tradeDate)}</dt><dd>Distance {finite(match.distance) ? match.distance.toFixed(4) : 'Not available'} · Weight {finite(match.weight) ? match.weight.toFixed(4) : 'Not available'}</dd></div>)}</dl>
-      </details>
+      <p className={styles.sampleNote}>Similarity measures how closely the historical conditions match. These historical outcomes describe the recorded matches rather than a forecast.</p>
     </>
-  );
-}
-
-function ModelDiagnostics({ diagnostics, historical, tradeDate }: { diagnostics: ProDiagnostics; historical: ProStockComparisons | ProCryptoComparisons | null; tradeDate: string | null }) {
-  return (
-    <details className={styles.diagnostics} data-pro-model-settings>
-      <summary>Model settings & diagnostics</summary>
-      <div className={styles.diagnosticsBody}>
-        <h3>Saved session</h3>
-        <dl className={styles.diagnosticGrid}>
-          <Metric label="Published session" value={dateLabel(tradeDate)} />
-          <Metric label="Saved model version" value={diagnostics.modelVersion ?? 'Not available'} />
-          <Metric label="Scoring matches" value={count(diagnostics.scoringMatchCount)} />
-          <Metric label="Blended historical return" value={percentage(diagnostics.blendedForwardReturn)} />
-          <Metric label="Created" value={diagnostics.createdAt ? <time dateTime={diagnostics.createdAt}>{diagnostics.createdAt}</time> : 'Not available'} />
-          <Metric label="Updated" value={diagnostics.updatedAt ? <time dateTime={diagnostics.updatedAt}>{diagnostics.updatedAt}</time> : 'Not available'} />
-          {historical?.kind === 'stocks' ? <>
-            <Metric label="Aligned historical sessions" value={count(historical.alignedSessionCount)} />
-            <Metric label="Historical candidates" value={count(historical.candidateCount)} />
-            <Metric label="Historical price coverage" value={historical.featureTickers.join(', ') || 'Not available'} />
-          </> : null}
-        </dl>
-        <h3>Current model settings</h3>
-        <p className={styles.sampleNote}>These settings describe the current model. Older stored sessions may use a different model version.</p>
-        <dl className={styles.diagnosticGrid}>{diagnostics.settings.map((setting) => <Metric key={setting.label} label={setting.label} value={setting.value}>{setting.description}</Metric>)}</dl>
-      </div>
-    </details>
   );
 }
 
@@ -302,16 +249,18 @@ export function ProBriefingActions({ asset, briefing }: {
   );
 }
 
-export function ProWorkspace({ asset, published, signal, chart, pillars, assets, participation, historical, diagnostics, notice, actions, briefing }: {
+export function ProWorkspace({ asset, published, chart, observations = [], assets, participation, historical, marketPrices, notice, actions, briefing }: {
   asset: ProductAsset;
   published: { tradeDate: string; score: number; label: string } | null;
-  signal: TradableSignal | null;
+  signal?: TradableSignal | null;
   chart: WorkspaceData['active'];
-  pillars: ProPillar[];
+  pillars?: ProPillar[];
+  observations?: ProContextObservation[];
   assets: ProAssetQuote[];
   participation: WorkspaceMarketTape;
   historical: ProStockComparisons | ProCryptoComparisons | null;
-  diagnostics: ProDiagnostics;
+  diagnostics?: ProDiagnostics;
+  marketPrices?: ReactNode;
   notice?: string | null;
   actions?: ReactNode;
   briefing: { href: string | null; notice: string | null };
@@ -327,7 +276,6 @@ export function ProWorkspace({ asset, published, signal, chart, pillars, assets,
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
       <div className={styles.readingGrid} data-pro-reading-grid>
         <ProReading asset={asset} tradeDate={tradeDate} score={published?.score ?? null} label={published?.label ?? null} />
-        <ProDecision asset={asset} tradeDate={tradeDate} signal={signal} />
       </div>
       <div className={styles.chart}>
         <MacroMarketChart
@@ -336,16 +284,15 @@ export function ProWorkspace({ asset, published, signal, chart, pillars, assets,
           latest={chart.score ? { tradeDate: chart.score.tradeDate, score: chart.score.score, biasLabel: chart.score.label } : null}
           notice={chart.historyNotice ?? chart.priceNotice ?? chart.loadError}
         />
-        <p className={styles.chartNote}>Explore past sessions; the reading, model decision and briefing above stay on the published session.</p>
+        <p className={styles.chartNote}>Explore past sessions; the daily score and briefing stay on the published session.</p>
       </div>
       <section className={styles.evidence} aria-labelledby={`${asset}-evidence-heading`}>
-        <header className={styles.sectionHeading}><h2 id={`${asset}-evidence-heading`}>What is shaping the reading</h2><p>Saved context for the published session.</p></header>
-        <div className={styles.evidenceGrid}><ModelContext pillars={pillars} /><MarketPrices assets={assets} tape={participation} /></div>
+        <header className={styles.sectionHeading}><h2 id={`${asset}-evidence-heading`}>Behind the daily score</h2></header>
+        <div className={styles.evidenceGrid}><ModelContext observations={observations} />{marketPrices ?? <ProMarketPrices assets={assets} tape={participation} />}</div>
       </section>
       <section className={styles.history} aria-labelledby={`${asset}-historical-heading`} data-pro-historical>
         <header className={styles.sectionHeading}><h2 id={`${asset}-historical-heading`}>What similar sessions did</h2><p>Historical comparisons for the published reading.</p></header>
         <HistoricalComparisons historical={historical} />
-        <ModelDiagnostics diagnostics={diagnostics} historical={historical} tradeDate={tradeDate} />
       </section>
       {actions ? <div className={styles.utility}>{actions}</div> : null}
     </div>

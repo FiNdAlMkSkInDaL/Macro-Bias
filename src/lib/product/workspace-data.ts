@@ -3,11 +3,14 @@ import 'server-only';
 import { loadAlertPreferences, type AlertPreferences } from '../account/alert-preferences';
 import type { SubscriptionStatusResult } from '../billing/subscription';
 import { CRYPTO_TRACKED_TICKERS } from '../crypto-bias/constants';
+import type { CryptoBiasScoreRow } from '../crypto-bias/types';
 import { TRACKED_TICKERS } from '../macro-bias/constants';
+import type { MacroBiasScoreRow } from '../macro-bias/types';
 import type { PositionPermission, ReliabilityGrade } from '../signal/types';
 import { createSupabaseAdminClient } from '../supabase/admin';
 import { loadPublicDailyData, type PublicDailyData } from './public-daily-data';
 import { getViewerScore, type ProductAsset, type ProductScore, type ViewerScore } from './score-access';
+import { readPaidWorkspaceSelection, type WorkspaceSnapshot } from './workspace-snapshot';
 
 export type WorkspaceTickerChange = {
   ticker: string;
@@ -152,7 +155,7 @@ function stockContext(row: Record<string, unknown>, score: ViewerScore): Workspa
   };
 }
 
-async function loadDatedContext(asset: ProductAsset, score: ViewerScore | null) {
+async function loadDatedContext(asset: ProductAsset, score: ViewerScore | null, snapshot: WorkspaceSnapshot | null) {
   const tape = emptyTape(score);
   let context: WorkspaceStockContext | null = null;
   let contextNotice: string | null = null;
@@ -161,14 +164,25 @@ async function loadDatedContext(asset: ProductAsset, score: ViewerScore | null) 
     return { tape, context, contextNotice };
   }
   try {
-    const admin = createSupabaseAdminClient();
-    const table = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
-    const columns = `trade_date, ticker_changes${asset === 'stocks' ? `, ${STOCK_CONTEXT_COLUMNS}` : ''}`;
-    const { data, error } = await admin.from(table).select(columns).eq('trade_date', score.tradeDate).maybeSingle();
-    if (error) throw error;
+    let data: unknown;
+    if (score.paid && snapshot?.trade_date === score.tradeDate) {
+      const signal = record(snapshot.engine_inputs?.tradableSignal) ? snapshot.engine_inputs.tradableSignal : {};
+      data = {
+        trade_date: snapshot.trade_date, ticker_changes: snapshot.ticker_changes,
+        permission: signal.position, size: signal.size, reliability: signal.reliability,
+        agreement: signal.neighborAgreement, reason: signal.reason,
+      };
+    } else {
+      const admin = createSupabaseAdminClient();
+      const table = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
+      const columns = `trade_date, ticker_changes${asset === 'stocks' && score.paid ? `, ${STOCK_CONTEXT_COLUMNS}` : ''}`;
+      const response = await admin.from(table).select(columns).eq('trade_date', score.tradeDate).maybeSingle();
+      if (response.error) throw response.error;
+      data = response.data;
+    }
     if (!record(data) || data.trade_date !== score.tradeDate) {
       tape.notice = 'Market moves are not available for this score session yet.';
-      contextNotice = asset === 'stocks' ? 'Stock trade context is not available for this score session yet.' : null;
+      contextNotice = asset === 'stocks' && score.paid ? 'Stock trade context is not available for this score session yet.' : null;
       return { tape, context, contextNotice };
     }
     const tickers: readonly string[] = asset === 'stocks' ? TRACKED_TICKERS : CRYPTO_TRACKED_TICKERS;
@@ -187,13 +201,13 @@ async function loadDatedContext(asset: ProductAsset, score: ViewerScore | null) 
       total: tape.entries.length,
     };
     if (!tape.entries.length) tape.notice = 'Market moves are not available for this score session yet.';
-    if (asset === 'stocks') {
+    if (asset === 'stocks' && score.paid) {
       context = stockContext(data, score);
       if (!context) contextNotice = 'Stock trade context is not available for this score session yet.';
     }
   } catch {
     tape.notice = TAPE_NOTICE;
-    contextNotice = asset === 'stocks' ? CONTEXT_NOTICE : null;
+    contextNotice = asset === 'stocks' && score.paid ? CONTEXT_NOTICE : null;
   }
   return { tape, context, contextNotice };
 }
@@ -208,13 +222,24 @@ async function loadVerifiedAlerts(status: SubscriptionStatusResult): Promise<Wor
   }
 }
 
-/**
- * Read-only workspace data. Reuses one trusted subscription lookup, caps active
- * history and all snapshot context at that viewer's visible session, and never
- * loads referral or billing actions. Free stock context preserves the existing
- * delayed dashboard feature without adding permission fields to crypto.
- */
-export async function loadWorkspaceData(asset: ProductAsset, subscriptionStatus: SubscriptionStatusResult): Promise<WorkspaceData> {
+/** Full server-only snapshot, selected through the same verified paid session. */
+export function loadWorkspaceSnapshot(asset: 'stocks', status: SubscriptionStatusResult): Promise<MacroBiasScoreRow | null>;
+export function loadWorkspaceSnapshot(asset: 'crypto', status: SubscriptionStatusResult): Promise<CryptoBiasScoreRow | null>;
+export function loadWorkspaceSnapshot(asset: ProductAsset, status: SubscriptionStatusResult): Promise<WorkspaceSnapshot | null>;
+export async function loadWorkspaceSnapshot(asset: ProductAsset, status: SubscriptionStatusResult): Promise<WorkspaceSnapshot | null> {
+  try {
+    return (await readPaidWorkspaceSelection(asset, status)).row;
+  } catch {
+    return null;
+  }
+}
+
+/** Read-only workspace data; dated history and market moves retain their cutoffs. */
+export async function loadWorkspaceData(
+  asset: ProductAsset,
+  subscriptionStatus: SubscriptionStatusResult,
+  options: { includeMemberExtras?: boolean } = {},
+): Promise<WorkspaceData> {
   if (!subscriptionStatus.user?.id) {
     throw new Error('Sign in to open a workspace.');
   }
@@ -224,20 +249,29 @@ export async function loadWorkspaceData(asset: ProductAsset, subscriptionStatus:
     paid: subscriptionStatus.isPro, signedIn: Boolean(subscriptionStatus.user),
     score: null, missingSessionDate: null, loadError: SCORE_NOTICE,
   };
-  const [activeViewer, otherViewer, alerts] = await Promise.allSettled([
-    getViewerScore(asset, subscriptionStatus),
-    getViewerScore(otherAsset, { ...subscriptionStatus, isPro: false }),
-    loadVerifiedAlerts(subscriptionStatus),
-  ]);
-  const candidate = activeViewer.status === 'fulfilled' ? activeViewer.value : unavailableViewer;
+  const includeExtras = options.includeMemberExtras !== false;
+  const activeViewer = getViewerScore(asset, subscriptionStatus, 'entitled-session', { includeSentence: false, includeSnapshot: subscriptionStatus.isPro });
+  const snapshot = subscriptionStatus.isPro ? loadWorkspaceSnapshot(asset, subscriptionStatus) : Promise.resolve(null);
+  const otherViewer = includeExtras
+    ? getViewerScore(otherAsset, { ...subscriptionStatus, isPro: false }).catch(() => ({ ...unavailableViewer, paid: false }))
+    : Promise.resolve({ ...unavailableViewer, paid: false, loadError: null });
+  const alerts = includeExtras
+    ? loadVerifiedAlerts(subscriptionStatus)
+    : Promise.resolve({ preferences: null, notice: null });
+  const candidate = await activeViewer.catch(() => unavailableViewer);
   // Fail closed if an unexpected access result disagrees with the trusted status.
   const authorized = candidate.paid === subscriptionStatus.isPro && (!candidate.score || candidate.score.paid === subscriptionStatus.isPro);
-  const active = await loadPublicDailyData(asset, authorized ? { ...candidate, score: candidate.score ? projectScore(candidate.score) : null } : unavailableViewer);
-  const dated = await loadDatedContext(asset, active.score);
+  const visible = authorized ? { ...candidate, score: candidate.score ? projectScore(candidate.score) : null } : unavailableViewer;
+  const [active, dated, other, alertState] = await Promise.all([
+    loadPublicDailyData(asset, visible),
+    snapshot.then((row) => loadDatedContext(asset, visible.score, row)),
+    otherViewer,
+    alerts,
+  ]);
   return {
     asset, active,
-    otherMarket: safeOtherScore(otherViewer.status === 'fulfilled' ? otherViewer.value : { ...unavailableViewer, paid: false }, otherAsset),
-    alerts: alerts.status === 'fulfilled' ? alerts.value : { preferences: null, notice: 'Email preferences are temporarily unavailable. Please try again.' },
+    otherMarket: safeOtherScore(other, otherAsset),
+    alerts: alertState,
     tape: dated.tape, stockContext: dated.context, stockContextNotice: dated.contextNotice,
   };
 }
