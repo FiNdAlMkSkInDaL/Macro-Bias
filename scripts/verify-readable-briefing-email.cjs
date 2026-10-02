@@ -186,7 +186,9 @@ async function run() {
     assert.ok(result.newsletterCopy.includes('+0.26% after one day and -0.04% after three days'));
     assert.ok(h.aiRequests[0].messages[0].content.includes('"publishedScoreContext"'));
     const draft = cleanStock.replace('The closest match is 2026-09-24.\nThat comparison provides context rather than a precise forecast.',
-      'The closest match is 2026-09-24, when current fixture momentum was mixed. That session averaged +0.26% after one day and -0.04% after three days.');
+      'The closest match is 2026-09-24, when current fixture momentum was mixed. That session averaged +0.26% after one day and -0.04% after three days.')
+      .replace('Base model score: NEUTRAL (+5), and the setup remains intact.',
+        'The neutral score is de-emphasized due to headlines (5, blended forward +0.13%).');
     const ai = harness({ aiResponse: { is_override_active: false, newsletter_copy: draft } });
     const accepted = await ai.load('src/lib/briefing/daily-brief-generator.ts').generateDailyBriefingFromContext(q, news);
     assert.equal(accepted.generatedBy, 'anthropic');
@@ -194,7 +196,14 @@ async function run() {
     assert.ok(!accepted.newsletterCopy.includes('That session averaged'));
     assert.ok(!accepted.newsletterCopy.includes('when current fixture momentum'));
     assert.ok(accepted.newsletterCopy.includes('Match Confidence 99%'));
+    assert.ok(accepted.newsletterCopy.includes('NEUTRAL (+5) is close to zero with only a small positive lean'));
+    assert.ok(!accepted.newsletterCopy.includes('blended forward'));
     assert.ok(ai.aiRequests[0].system.includes('Component summaries describe current market inputs'));
+    const override = await harness({ aiResponse: { is_override_active: true, newsletter_copy: draft } })
+      .load('src/lib/briefing/daily-brief-generator.ts').generateDailyBriefingFromContext(q, news);
+    assert.equal(override.generatedBy, 'anthropic');
+    assert.ok(override.newsletterCopy.includes("but today's headlines reduce its weight"));
+    assert.ok(override.newsletterCopy.includes('The headline set does not overturn the historical pattern.'));
     const reordered = draft.replace(/(WHY IT MATTERS\n[\s\S]*?)(MODEL CONTEXT\n[\s\S]*)$/, '$2\n$1');
     const rejected = await harness({ aiResponse: { is_override_active: false, newsletter_copy: reordered } })
       .load('src/lib/briefing/daily-brief-generator.ts').generateDailyBriefingFromContext(q, news);

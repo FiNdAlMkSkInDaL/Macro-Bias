@@ -734,6 +734,13 @@ async function generateAnthropicBriefing(
   let newsletterCopy = factualDiagnostics
     ? parsed.newsletter_copy.replace(/^[ \t]*Model Diagnostics:.*$/m, factualDiagnostics)
     : parsed.newsletter_copy;
+  const factualBaseScore = splitNewsletterSections(factualFallback)?.sections.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest);
+  if (factualBaseScore) {
+    newsletterCopy = newsletterCopy.replace(
+      /^BASE SCORE[ \t]*(?::[^\n]*)?[\s\S]*?(?=^WHY IT MATTERS)/m,
+      `${DAILY_BRIEFING_SECTION_HEADERS.stressTest}: ${factualBaseScore}\n\n`,
+    );
+  }
   // These averages describe the analog set, never the single closest session.
   // Keep AI interpretation elsewhere while grounding the compact factual section.
   if (quant.publishedScoreContext?.averageForward1DayReturn != null &&

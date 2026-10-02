@@ -67,6 +67,7 @@ export const INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT = [
   `${DAILY_BRIEFING_SECTION_HEADERS.stressTest}: Exactly 1 short sentence.`,
   "State the base model score in plain English and explicitly say whether it is being emphasized or de-emphasized.",
   "Include the numeric score in parentheses.",
+  "Use plain English, not raw numerical tuples or 'blended forward' shorthand, to explain the score and its weight today.",
   "Explain what that score means: a near-zero neutral score has only a small directional lean. When publishedScoreContext is available, use its recorded historical returns and component summaries to explain that context in plain English without inventing drivers.",
   "The published score is authoritative. Do not recalculate it or treat component contribution allocations as independent forecasts. Explain the historical baseline separately from today's headline override, and respect marketDataDate when describing observed market facts.",
   "Recorded forward-return averages summarize the nearest historical analog set, not the single closest date. Component summaries describe current market inputs, not the conditions on that historical date.",
