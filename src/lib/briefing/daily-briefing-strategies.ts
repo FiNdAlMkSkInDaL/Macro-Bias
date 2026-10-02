@@ -1,5 +1,4 @@
 import type { BiasLabel } from "@/lib/macro-bias/types";
-import { formatPermissionLine } from "@/lib/signal/format-tradable-signal";
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from "./daily-briefing-config";
 import type {
@@ -98,11 +97,7 @@ function buildModelDiagnostics(context: DailyBriefingStrategyContext) {
   const matchConfidence = leadAnalog?.matchConfidence ?? null;
   const analogReference = context.quant.analogReference ?? "n/a";
   const overrideState = context.suggestedOverrideActive ? "ACTIVE" : "INACTIVE";
-  const signal = context.quant.signal;
-  const agreement =
-    signal != null ? `${Math.round(signal.neighborAgreement * 100)}%` : "n/a";
-
-  return `Model Diagnostics: ${formatPermissionLine(signal, context.quant.score)} | Closest Match ${analogReference} | Intraday Net ${formatSignedPercent(intradayNet)} | Session Range ${formatSignedPercent(sessionRange)} | Match Confidence ${formatMatchConfidence(matchConfidence)} | Neighbor Agreement ${agreement} | Override ${overrideState}.`;
+  return `Model Diagnostics: Closest Match ${analogReference} | Intraday Net ${formatSignedPercent(intradayNet)} | Session Range ${formatSignedPercent(sessionRange)} | Match Confidence ${formatMatchConfidence(matchConfidence)} | Override ${overrideState}.`;
 }
 
 function buildQuantCorner(context: DailyBriefingStrategyContext) {
@@ -110,22 +105,36 @@ function buildQuantCorner(context: DailyBriefingStrategyContext) {
     const firstSentence = "There is not enough clean history here, so the analog comparison is weak today.";
     const secondSentence = context.suggestedOverrideActive
       ? "That matters even less than usual because the news changed the setup."
+      : context.quant.signal?.noTrade
+      ? "The score is background context until the supporting evidence improves."
       : "That makes the score usable, but less sturdy than a clean analog day.";
 
     return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
   }
 
   const analogReference = getAnalogReferenceText(context.quant);
+  const published = context.quant.publishedScoreContext;
+  if (published?.averageForward1DayReturn != null && published?.averageForward3DayReturn != null) {
+    const firstSentence = `The closest historical match is ${analogReference}, while the wider set of similar sessions averaged ${formatSignedPercent(published.averageForward1DayReturn)} after one day and ${formatSignedPercent(published.averageForward3DayReturn)} after three days.`;
+    const secondSentence = context.suggestedOverrideActive
+      ? "Today's headlines make that historical comparison background context rather than a guide."
+      : context.quant.signal?.noTrade
+      ? "The supporting evidence is too weak to rely on that comparison today."
+      : "Those averages describe the historical baseline rather than a forecast for today's session.";
+    return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
+  }
   const firstSentence = `Closest match is ${analogReference}, which was a quieter session than this one.`;
   const secondSentence = context.suggestedOverrideActive
     ? "On a normal day this setup would usually stay contained, but today's news makes that comparison more of a baseline than a guide."
+    : context.quant.signal?.noTrade
+    ? "On a normal day this setup would usually stay contained, but the supporting evidence is too weak to rely on that comparison today."
     : "On a normal day this setup would usually stay fairly contained, and that comparison still deserves weight because the pattern is still intact.";
 
   return `${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}: ${firstSentence} ${secondSentence}\n${buildModelDiagnostics(context)}`;
 }
 
 function buildTraderPlaybook(context: DailyBriefingStrategyContext) {
-  const convictionText = formatConviction(context.playbook.conviction);
+  const convictionText = context.quant.signal?.noTrade ? "Low" : formatConviction(context.playbook.conviction);
   const favoredGroups = context.suggestedOverrideActive
     ? "stock-specific setups"
     : summarizeFocus(context.playbook.favoredGroups);
@@ -152,9 +161,20 @@ function buildTraderPlaybook(context: DailyBriefingStrategyContext) {
 
 function buildStressTest(context: DailyBriefingStrategyContext) {
   const scoreText = `${formatBiasLabel(context.quant.label)} (${context.quant.score > 0 ? "+" : ""}${context.quant.score.toFixed(0)})`;
+  const meaning = context.quant.label === "NEUTRAL"
+    ? context.quant.score === 0 ? "sits at zero without a directional lean"
+      : context.quant.score > 0 ? "is close to zero with only a small positive lean"
+      : "is close to zero with only a small negative lean"
+    : context.quant.score > 0 ? "shows a positive historical lean" : "shows a negative historical lean";
+  const published = context.quant.publishedScoreContext;
+  const recordedReturns = published?.averageForward1DayReturn != null && published?.averageForward3DayReturn != null
+    ? `, with similar sessions averaging ${formatSignedPercent(published.averageForward1DayReturn)} after one day and ${formatSignedPercent(published.averageForward3DayReturn)} after three days`
+    : "";
   const sentence = context.suggestedOverrideActive
-    ? `Base model score: ${scoreText}, but it is de-emphasized until the market stops trading on fresh headlines.`
-    : `Base model score: ${scoreText}, and it still deserves weight because the setup has not broken.`;
+    ? `Base model score: ${scoreText} ${meaning}${recordedReturns}, but today's headlines reduce its weight.`
+    : context.quant.signal?.noTrade
+    ? `Base model score: ${scoreText} ${meaning}${recordedReturns}, but it carries less weight because the supporting evidence is weak today.`
+    : `Base model score: ${scoreText} ${meaning}${recordedReturns}, and the historical pattern remains useful context.`;
 
   return `${DAILY_BRIEFING_SECTION_HEADERS.stressTest}: ${sentence}`;
 }
@@ -162,6 +182,12 @@ function buildStressTest(context: DailyBriefingStrategyContext) {
 function buildTrustCheck(context: DailyBriefingStrategyContext) {
   if (context.suggestedOverrideActive) {
     return `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: ${formatCatalyst(context.catalyst)} is moving the tape more than the normal setup this morning. If the market keeps repricing every new headline, the pattern is still broken.`;
+  }
+
+  if (context.quant.signal?.noTrade) {
+    return context.news.status === "unavailable"
+      ? `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: The model's supporting evidence is not strong enough to rely on the score today, and the live news read is unavailable. Confidence improves if a clearer pattern develops and the news read returns.`
+      : `${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}: The model's supporting evidence is not strong enough to rely on the score today. Confidence improves if a clearer pattern develops.`;
   }
 
   if (context.news.status === "unavailable") {
@@ -176,24 +202,25 @@ function buildTrustCheck(context: DailyBriefingStrategyContext) {
 }
 
 function buildBottomLine(context: DailyBriefingStrategyContext) {
-  const labelText = formatBiasLabel(context.quant.label);
-  const permission = context.suggestedOverrideActive
-    ? "Permission: NO_TRADE · Reliability F · Size 0% (macro overlay override)"
-    : formatPermissionLine(context.quant.signal, context.quant.score);
-
   if (context.suggestedOverrideActive) {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Override active: ${permission}. Headline-driven session, so the score is background context for now.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Override active: headline-driven session, so the score is background context for now.`;
+  }
+
+  if (context.quant.signal?.noTrade) {
+    return context.news.status === "unavailable"
+      ? `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the historical match is too weak to put much weight on the score, and the live news read is unavailable today.`
+      : `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the historical match is too weak to put much weight on the score today.`;
   }
 
   if (context.news.status === "unavailable") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: ${permission}. Label ${labelText}, score ${context.quant.score}. Usable, but the missing news read lowers confidence.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the score is usable, but the missing news read lowers confidence.`;
   }
 
   if (context.playbook.conviction === "LOW") {
-    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: ${permission}. Label ${labelText}, score ${context.quant.score}. Still needs confirmation from the tape.`;
+    return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern shaky: the score is usable, but it still needs confirmation from the tape.`;
   }
 
-  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern intact: ${permission}. Label ${labelText}, score ${context.quant.score}. The score deserves real weight today.`;
+  return `${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}: Pattern intact: the score deserves real weight today.`;
 }
 
 class NewsAwareBriefingStrategy implements DailyBriefingStrategy {
