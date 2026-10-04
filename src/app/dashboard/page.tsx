@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { Suspense } from "react";
 
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { FreeWorkspace } from "@/components/product/FreeWorkspace";
 import { MemberShell } from "@/components/product/MemberShell";
 import { ProBriefingActions, ProMarketPrices, ProWorkspace, type ProAssetQuote } from "@/components/product/ProWorkspace";
@@ -91,7 +92,7 @@ export default async function DashboardPage() {
         assets={assets}
         participation={workspaceData.tape}
         marketPrices={
-          <Suspense fallback={<ProMarketPrices assets={assets} tape={workspaceData.tape} loading />}>
+          <Suspense fallback={<ProMarketPrices assets={assets} tape={workspaceData.tape} loading loadingTickers={SUPPLEMENTAL_TICKERS.map(([, ticker]) => ticker)} />}>
             <StockMarketPrices assets={assets} tape={workspaceData.tape} />
           </Suspense>
         }
@@ -100,7 +101,7 @@ export default async function DashboardPage() {
           candidateCount: historical.candidateCount, featureTickers: historical.featureTickers,
           clusterAveragePlaybook: historical.clusterAveragePlaybook, matches: historical.topMatches,
         } : null}
-        actions={<Suspense fallback={<a href="/refer">Refer friends</a>}><StockPlanActions userId={status.user.id} isPro={status.isPro} /></Suspense>}
+        actions={<Suspense fallback={<><a href="/refer">Refer friends</a><LoadingIndicator compact label="Loading account options" /></>}><StockPlanActions userId={status.user.id} isPro={status.isPro} /></Suspense>}
       />
     </MemberShell>
   );

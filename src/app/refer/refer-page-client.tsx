@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 
+import { LoadingAnnouncement, LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { MemberShell } from '@/components/product/MemberShell';
 import member from '@/components/product/MemberUI.module.css';
 import { trackClientEvent } from '@/lib/analytics/client';
@@ -99,16 +100,16 @@ export default function ReferPageClient({ signedIn = false, initialEmail = null,
     <MemberShell title="Your referrals" description="Share your link and follow verified referrals." narrow>
       {signedIn ? (
         <div className={styles.reload}>
-          {initialEmail ? <><span>{initialEmail}</span><button type="button" className={member.secondaryButton} disabled={loadState === 'loading'} onClick={() => void loadHub(initialEmail)}>{loadState === 'loading' ? 'Loading…' : 'Reload referrals'}</button></> : <p className={member.notice}>Email lookup is unavailable for this account. <Link className={member.textLink} href="/account">View your account</Link></p>}
+          {initialEmail ? <><span>{initialEmail}</span><button type="button" className={member.secondaryButton} disabled={loadState === 'loading'} onClick={() => void loadHub(initialEmail)}>{loadState === 'loading' ? <LoadingIndicator compact label="Loading referrals" /> : 'Reload referrals'}</button></> : <p className={member.notice}>Email lookup is unavailable for this account. <Link className={member.textLink} href="/account">View your account</Link></p>}
         </div>
       ) : (
         <form className={styles.lookup} onSubmit={handleLoad} aria-busy={loadState === 'loading'}>
           <div><label htmlFor="referral-email">Subscriber email</label><input id="referral-email" type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={event => setEmail(event.target.value)} /></div>
-          <button type="submit" className={member.secondaryButton} disabled={loadState === 'loading'}>{loadState === 'loading' ? 'Loading…' : 'Load referrals'}</button>
+          <button type="submit" className={member.secondaryButton} disabled={loadState === 'loading'}>{loadState === 'loading' ? <LoadingIndicator compact announce={false} label="Loading referrals" /> : 'Load referrals'}</button>
           <p>Use the email address you subscribed with.</p>
         </form>
       )}
-      {loadState === 'loading' ? <p role="status" className={styles.feedback}>Loading referrals…</p> : null}
+      {!signedIn && loadState === 'loading' ? <LoadingAnnouncement label="Loading referrals" /> : null}
       {errorMessage ? <p role="alert" className={member.notice}>{errorMessage}</p> : null}
       {needsSubscription ? (
         <section className={member.notice} aria-label="Referral subscription availability">

@@ -3,6 +3,7 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
+import { LoadingAnnouncement, LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { continuationFromSearchParams } from '@/lib/auth/continuation';
 import {
   createSupabaseBrowserClient,
@@ -171,9 +172,10 @@ export default function LoginPage() {
             disabled={isSubmitting}
             className={styles.submit}
           >
-            {isSubmitting ? (authMode === 'signin' ? 'Signing in…' : 'Creating account…') : authMode === 'signin' ? 'Sign in' : 'Create your free account'}
+            {isSubmitting ? <LoadingIndicator compact announce={false} label={authMode === 'signin' ? 'Signing in' : 'Creating account'} /> : authMode === 'signin' ? 'Sign in' : 'Create your free account'}
           </button>
         </form>
+        {isSubmitting ? <LoadingAnnouncement label={authMode === 'signin' ? 'Signing in' : 'Creating account'} /> : null}
         <button
           type="button"
           disabled={isSubmitting}

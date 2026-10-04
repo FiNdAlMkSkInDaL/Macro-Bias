@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { LoadingAnnouncement, LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { trackClientEvent } from "@/lib/analytics/client";
 import { useReferralCode } from "@/lib/referral/client";
 
@@ -95,7 +96,7 @@ export default function EmailsPage() {
         </p>
 
         {/* Form */}
-        <form className="mx-auto mt-8 flex max-w-xl flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
+        <form className="mx-auto mt-8 flex max-w-xl flex-col gap-3 sm:flex-row" onSubmit={handleSubmit} aria-busy={isLoading}>
           <label className="sr-only" htmlFor="email">
             Email address
           </label>
@@ -115,9 +116,10 @@ export default function EmailsPage() {
             disabled={isLoading || neitherSelected}
             className="h-12 border border-white px-5 text-sm font-medium text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? "Adding..." : "Get the daily briefing"}
+            {isLoading ? <LoadingIndicator compact announce={false} label="Adding your email" /> : "Get the daily briefing"}
           </button>
         </form>
+        {isLoading ? <LoadingAnnouncement label="Adding your email" /> : null}
 
         {/* Newsletter preference checkboxes */}
         <div className="mx-auto mt-4 flex max-w-xl items-center justify-center gap-6">
@@ -145,7 +147,7 @@ export default function EmailsPage() {
         )}
 
         <p className={`mt-3 text-center text-sm ${statusColor}`} aria-live="polite">
-          {statusMessage ?? "\u00A0"}
+          {isLoading ? "\u00A0" : statusMessage ?? "\u00A0"}
         </p>
         <p className="mt-1 text-center text-xs text-zinc-500">
           Already subscribed? Invite 3 traders and unlock 7 days of Pro {"->"}{" "}

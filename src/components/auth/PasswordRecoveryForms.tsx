@@ -3,6 +3,7 @@
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
+import { LoadingAnnouncement, LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import styles from '@/app/login/login.module.css';
 import { continuationFromSearchParams } from '@/lib/auth/continuation';
 
@@ -97,10 +98,11 @@ export function ForgotPasswordForm() {
               />
             </label>
             <button type="submit" className={styles.submit} disabled={isSubmitting}>
-              {isSubmitting ? 'Sending reset link…' : 'Send reset link'}
+              {isSubmitting ? <LoadingIndicator compact announce={false} label="Sending reset link" /> : 'Send reset link'}
             </button>
           </form>
         )}
+        {isSubmitting ? <LoadingAnnouncement label="Sending reset link" /> : null}
         <div className={styles.secondaryActions}>
           {isSent ? <button type="button" className={styles.switchMode} onClick={() => setIsSent(false)}>Use a different email</button> : null}
           <a className={styles.textLink} href={continuationHref('/login', redirectTo)}>Back to sign in</a>
@@ -201,7 +203,7 @@ export function ResetPasswordForm() {
         <p>{linkState === 'complete' ? 'Sign in with your new password to continue.' : 'Save a new password for your Macro Bias account.'}</p>
       </header>
       <div className={styles.panel}>
-        {linkState === 'checking' ? <p className={styles.stateText} role="status">Checking your reset link…</p> : null}
+        {linkState === 'checking' ? <div className={styles.stateText}><LoadingIndicator compact label="Checking your reset link" /></div> : null}
         {linkState === 'invalid' || linkState === 'unavailable' ? (
           <>
             <p className={styles.stateText} role="alert">{linkState === 'invalid' ? INVALID_LINK : 'We couldn’t check your reset link. Check your connection and reload this page, or request a new link.'}</p>
@@ -246,10 +248,11 @@ export function ResetPasswordForm() {
               />
             </label>
             <button type="submit" className={styles.submit} disabled={isSubmitting}>
-              {isSubmitting ? 'Saving password…' : 'Save new password'}
+              {isSubmitting ? <LoadingIndicator compact announce={false} label="Saving password" /> : 'Save new password'}
             </button>
           </form>
         ) : null}
+        {isSubmitting ? <LoadingAnnouncement label="Saving password" /> : null}
         {linkState === 'complete' ? (
           <a className={`${styles.submit} ${styles.successLink}`} href={continuationHref('/login', redirectTo, { passwordReset: 'success' })}>Sign in</a>
         ) : null}

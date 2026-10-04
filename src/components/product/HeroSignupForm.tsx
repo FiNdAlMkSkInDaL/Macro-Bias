@@ -2,6 +2,7 @@
 
 import { type FormEvent, useId, useState } from 'react';
 
+import { LoadingAnnouncement, LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { trackClientEvent } from '@/lib/analytics/client';
 import { customerEmailRejection } from '@/lib/marketing/recipient-policy';
 
@@ -70,7 +71,7 @@ export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { 
   }
 
   return (
-    <form id={location === 'landing_hero' ? 'free-alerts' : undefined} className={styles.form} noValidate onSubmit={handleSubmit}>
+    <><form id={location === 'landing_hero' ? 'free-alerts' : undefined} className={styles.form} noValidate onSubmit={handleSubmit} aria-busy={state === 'loading'}>
       {state === 'success' ? (
         <p className={styles.success} role="status">{message}</p>
       ) : (
@@ -91,7 +92,7 @@ export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { 
               className={styles.input}
             />
             <button type="submit" disabled={state === 'loading'} className={styles.button}>
-              {state === 'loading' ? 'Adding…' : 'Get the daily score'}
+              {state === 'loading' ? <LoadingIndicator compact announce={false} label="Adding your email" /> : 'Get the daily score'}
               {state !== 'loading' ? <ArrowIcon /> : null}
             </button>
           </div>
@@ -104,5 +105,7 @@ export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { 
         Free weekday emails. Unsubscribe anytime.
       </p>
     </form>
+      {state === 'loading' ? <LoadingAnnouncement label="Adding your email" /> : null}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import 'server-only';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import type { ProductAsset } from '@/lib/product/score-access';
 import type { WorkspaceData, WorkspaceMarketTape } from '@/lib/product/workspace-data';
 import type { TradableSignal } from '@/lib/signal/types';
@@ -137,7 +138,7 @@ function ModelContext({ observations }: { observations: ProContextObservation[] 
   );
 }
 
-export function ProMarketPrices({ assets, tape, loading = false }: { assets: ProAssetQuote[]; tape: WorkspaceMarketTape; loading?: boolean }) {
+export function ProMarketPrices({ assets, tape, loading = false, loadingTickers = [] }: { assets: ProAssetQuote[]; tape: WorkspaceMarketTape; loading?: boolean; loadingTickers?: readonly string[] }) {
   const basket = tape.entries.map((entry) => entry.ticker.replace('-USD', '')).join(' · ');
   const supplementalQuotes = assets
     .filter((asset) => asset.dateSource === 'supplemental' && finite(asset.currentPrice) && asset.currentPrice > 0)
@@ -146,31 +147,33 @@ export function ProMarketPrices({ assets, tape, loading = false }: { assets: Pro
   return (
     <div className={styles.marketPanel} data-pro-market-prices>
       <h3>Across the market</h3>
+      {loading ? <div className={styles.quoteLoading}><LoadingIndicator compact label="Loading additional market prices" /></div> : null}
       <p className={styles.contextNote} data-pro-core-basket>Basket moves · {basket || 'Recorded prices unavailable'}</p>
       <dl className={styles.participation} aria-label="Tracked basket moves">
         <Metric label="Strongest" value={tape.strongest?.ticker ?? 'Not available'}><span className={tone(tape.strongest?.percentChange)}>{percentage(tape.strongest?.percentChange)}</span></Metric>
         <Metric label="Weakest" value={tape.weakest?.ticker ?? 'Not available'}><span className={tone(tape.weakest?.percentChange)}>{percentage(tape.weakest?.percentChange)}</span></Metric>
         <Metric label="Advancing" value={tape.breadth.total ? `${tape.breadth.advancers}/${tape.breadth.total}` : 'Not available'}>in the tracked basket</Metric>
       </dl>
-      <div className={styles.marketTableWrap} tabIndex={0} role="region" aria-label="Market prices and source dates, scroll horizontally if needed">
+      <div className={styles.marketTableWrap} tabIndex={0} role="region" aria-label="Market prices and source dates, scroll horizontally if needed" aria-busy={loading || undefined}>
         <table className={`${styles.table} ${styles.marketTable}`}>
           <caption className={styles.srOnly}>Saved snapshot quotes and latest available supplemental daily quotes</caption>
           <thead><tr><th scope="col">Market</th><th scope="col">Price</th><th scope="col">Day move</th><th scope="col" className={styles.quoteDate}>Price date</th></tr></thead>
           <tbody>{assets.map((asset) => {
             const hasPrice = finite(asset.currentPrice) && asset.currentPrice > 0;
+            const pending = loading && !hasPrice && loadingTickers.includes(asset.ticker);
             const move = hasPrice ? asset.dailyChangePercent : null;
             return (
             <tr key={asset.ticker} data-pro-asset={asset.ticker} data-pro-quote-source={asset.dateSource ?? undefined}>
               <th scope="row">{asset.ticker.replace('-USD', '')}</th>
-              <td>{price(asset.currentPrice, asset.ticker)}{hasPrice && asset.tradeDate ? <time className={styles.mobilePriceDate} dateTime={asset.tradeDate}>{asset.tradeDate}</time> : null}</td>
-              <td className={tone(move)}>{percentage(move)}</td>
-              <td className={styles.quoteDate}>{hasPrice && asset.tradeDate ? <time dateTime={asset.tradeDate}>{asset.tradeDate}</time> : 'Not available'}{hasPrice && asset.dateSource === 'snapshot' ? <span className={styles.dateSource}>snapshot date</span> : null}</td>
+              <td>{pending ? <><span className={styles.quoteSkeleton} aria-hidden="true" /><span className={styles.srOnly}>Loading price</span><span className={styles.mobilePendingDate} aria-hidden="true" /></> : price(asset.currentPrice, asset.ticker)}{hasPrice && asset.tradeDate ? <time className={styles.mobilePriceDate} dateTime={asset.tradeDate}>{asset.tradeDate}</time> : null}</td>
+              <td className={tone(move)}>{pending ? <><span className={`${styles.quoteSkeleton} ${styles.quoteMoveSkeleton}`} aria-hidden="true" /><span className={styles.srOnly}>Loading day move</span></> : percentage(move)}</td>
+              <td className={styles.quoteDate}>{pending ? <><span className={`${styles.quoteSkeleton} ${styles.quoteDateSkeleton}`} aria-hidden="true" /><span className={styles.srOnly}>Loading price date</span></> : hasPrice && asset.tradeDate ? <time dateTime={asset.tradeDate}>{asset.tradeDate}</time> : 'Not available'}{hasPrice && asset.dateSource === 'snapshot' ? <span className={styles.dateSource}>snapshot date</span> : null}</td>
             </tr>
             );
           })}</tbody>
         </table>
       </div>
-      <p className={styles.quoteNote}>{loading ? 'Additional market prices are loading. ' : ''}{supplementalQuotes ? 'Additional quotes are shown at their own price dates and excluded from the basket summaries.' : 'Prices are shown at their recorded dates.'}</p>
+      <p className={styles.quoteNote}>{supplementalQuotes ? 'Additional quotes are shown at their own price dates and excluded from the basket summaries.' : 'Prices are shown at their recorded dates.'}</p>
       {tape.notice ? <p className={styles.quoteNote}>{tape.notice}</p> : null}
     </div>
   );

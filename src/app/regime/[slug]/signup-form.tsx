@@ -3,6 +3,8 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 
+import { LoadingAnnouncement, LoadingIndicator } from "@/components/ui/LoadingIndicator";
+
 type SubmissionState = "idle" | "loading" | "success" | "error";
 
 export function RegimeSignupForm({ regime }: { regime: string }) {
@@ -59,6 +61,7 @@ export function RegimeSignupForm({ regime }: { regime: string }) {
       <form
         className="flex max-w-xl flex-col gap-3 sm:flex-row"
         onSubmit={handleSubmit}
+        aria-busy={isLoading}
       >
         <label className="sr-only" htmlFor="regime-email">
           Email address
@@ -79,11 +82,12 @@ export function RegimeSignupForm({ regime }: { regime: string }) {
           disabled={isLoading}
           className="h-11 border border-white/20 bg-white/5 px-5 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? "Adding..." : "Get Free Alerts"}
+          {isLoading ? <LoadingIndicator compact announce={false} label="Adding your email" /> : "Get Free Alerts"}
         </button>
       </form>
+      {isLoading ? <LoadingAnnouncement label="Adding your email" /> : null}
       <p className={`mt-2 text-xs ${statusColor}`} aria-live="polite">
-        {statusMessage ?? "\u00A0"}
+        {isLoading ? "\u00A0" : statusMessage ?? "\u00A0"}
       </p>
     </div>
   );

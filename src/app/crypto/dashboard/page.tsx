@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { Suspense } from "react";
 
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { FreeWorkspace } from "@/components/product/FreeWorkspace";
 import { MemberShell } from "@/components/product/MemberShell";
 import { ProBriefingActions, ProMarketPrices, ProWorkspace, type ProAssetQuote } from "@/components/product/ProWorkspace";
@@ -179,7 +180,7 @@ export default async function CryptoDashboardPage() {
           };
         })}
         assets={crossAssetMapAssets}
-        marketPrices={<Suspense fallback={<ProMarketPrices assets={crossAssetMapAssets} tape={workspaceData.tape} loading />}><CryptoMarketPrices assets={crossAssetMapAssets} tape={workspaceData.tape} /></Suspense>}
+        marketPrices={<Suspense fallback={<ProMarketPrices assets={crossAssetMapAssets} tape={workspaceData.tape} loading loadingTickers={SUPPLEMENTAL_TICKERS.map(([, ticker]) => ticker)} />}><CryptoMarketPrices assets={crossAssetMapAssets} tape={workspaceData.tape} /></Suspense>}
         participation={workspaceData.tape}
         historical={analogData ? { kind: 'crypto', ...analogData } : null}
         diagnostics={{
@@ -190,7 +191,7 @@ export default async function CryptoDashboardPage() {
           scoringMatchCount,
           settings: CRYPTO_MODEL_SETTINGS,
         }}
-        actions={<Suspense fallback={<a href="/refer">Refer friends</a>}><CryptoPlanActions userId={user.id} isPro={isPro} /></Suspense>}
+        actions={<Suspense fallback={<><a href="/refer">Refer friends</a><LoadingIndicator compact label="Loading account options" /></>}><CryptoPlanActions userId={user.id} isPro={isPro} /></Suspense>}
       />
     </MemberShell>
   );
