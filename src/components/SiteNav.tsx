@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "../lib/supabase/browser";
 import { getSupabaseBrowserClientConfigError } from "../lib/supabase/browser";
 
-const ADMIN_EMAIL = "finphillips21@gmail.com";
+const ADMIN_EMAILS = new Set(["finphillips21@gmail.com", "finlayp32@gmail.com"]);
 
 const NAV_LINKS = [
   { href: "/today", label: "Stocks" },
@@ -28,6 +28,7 @@ export function SiteNav() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAdmin(Boolean(session?.user?.email_confirmed_at && ADMIN_EMAILS.has(session.user.email?.toLowerCase() ?? '')));
       if (session?.user) {
         setSignedIn(true);
         setAccountHref("/account");
@@ -40,7 +41,7 @@ export function SiteNav() {
       setAccountLabel("Sign in");
     });
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email === ADMIN_EMAIL) setIsAdmin(true);
+      setIsAdmin(Boolean(user?.email_confirmed_at && ADMIN_EMAILS.has(user.email?.toLowerCase() ?? '')));
     });
 
     return () => {

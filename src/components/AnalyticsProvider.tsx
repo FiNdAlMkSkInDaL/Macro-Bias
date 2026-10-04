@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { getAnonymousId, getSessionId, trackClientEvent } from "@/lib/analytics/client";
+import { getAcquisitionAttribution, trackClientEvent } from "@/lib/analytics/client";
+import { AnalyticsPreferences } from './AnalyticsPreferences';
 
 function getElementLabel(element: HTMLElement) {
   const explicitLabel = element.dataset.analyticsLabel?.trim();
@@ -29,11 +30,6 @@ export function AnalyticsProvider() {
   const lastTrackedPathRef = useRef<string | null>(null);
 
   useEffect(() => {
-    getAnonymousId();
-    getSessionId();
-  }, []);
-
-  useEffect(() => {
     const queryString = searchParams.toString();
     const pagePath = queryString ? `${pathname}?${queryString}` : pathname;
 
@@ -44,15 +40,20 @@ export function AnalyticsProvider() {
     lastTrackedPathRef.current = pagePath;
     trackClientEvent({
       eventName: "page_view",
-      metadata: {
-        title: document.title,
-      },
-      pagePath,
+      pagePath: pathname,
     });
   }, [pathname, searchParams]);
 
   useEffect(() => {
+    let lastActivity = 0;
+    function refreshActivity() {
+      const now = Date.now();
+      if (now - lastActivity < 60_000) return;
+      lastActivity = now;
+      getAcquisitionAttribution();
+    }
     function handleClick(event: MouseEvent) {
+      refreshActivity();
       const target = event.target;
 
       if (!(target instanceof Element)) {
@@ -87,11 +88,15 @@ export function AnalyticsProvider() {
     }
 
     document.addEventListener("click", handleClick);
+    document.addEventListener('keydown', refreshActivity, { passive: true });
+    document.addEventListener('scroll', refreshActivity, { passive: true });
 
     return () => {
       document.removeEventListener("click", handleClick);
+      document.removeEventListener('keydown', refreshActivity);
+      document.removeEventListener('scroll', refreshActivity);
     };
   }, []);
 
-  return null;
+  return <AnalyticsPreferences pagePath={pathname} />;
 }

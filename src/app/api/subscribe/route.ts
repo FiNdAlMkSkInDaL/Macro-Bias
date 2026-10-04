@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { logMarketingEvent } from '@/lib/analytics/server';
+import { recordSubscriberAcquisition } from '@/lib/analytics/conversions';
 import { enrollSubscriberInWelcomeDrip, dispatchPendingWelcomeDripEmails } from '@/lib/marketing/welcome-drip';
 import { REFERRAL_CODE_MAX_LENGTH } from '@/lib/referral/constants';
 import { generateReferralCode } from '@/lib/referral/generate-referral-code';
@@ -71,18 +72,32 @@ export async function POST(request: Request) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from('free_subscribers').upsert(
-    {
-      email,
-      status: 'active',
-      tier: 'free',
-      stocks_opted_in: stocksOptedIn,
-      crypto_opted_in: cryptoOptedIn,
-    },
-    {
-      onConflict: 'email',
-    },
-  );
+  const subscriberValues = {
+    email,
+    status: 'active',
+    tier: 'free',
+    stocks_opted_in: stocksOptedIn,
+    crypto_opted_in: cryptoOptedIn,
+  };
+  // ON CONFLICT DO NOTHING returns only a genuinely inserted subscriber. This
+  // avoids counting retries, returning subscribers or concurrent requests twice.
+  const { data: insertedSubscriber, error: insertError } = await supabase.from('free_subscribers')
+    .upsert(subscriberValues, { onConflict: 'email', ignoreDuplicates: true })
+    .select('email, created_at').maybeSingle();
+  let error = insertError;
+  let subscriberCreatedAt = insertedSubscriber?.created_at;
+  let reactivated = false;
+  if (!error && !insertedSubscriber) {
+    const { data: existing, error: existingError } = await supabase.from('free_subscribers')
+      .select('status, created_at').eq('email', email).maybeSingle();
+    error = existingError;
+    subscriberCreatedAt = existing?.created_at;
+    reactivated = existing?.status === 'inactive';
+    if (!error) {
+      const updated = await supabase.from('free_subscribers').update(subscriberValues).eq('email', email);
+      error = updated.error;
+    }
+  }
 
   if (error) {
     return NextResponse.json(
@@ -127,20 +142,21 @@ export async function POST(request: Request) {
 
   const sideEffects = await Promise.allSettled([
     enrollSubscriberInWelcomeDrip(email),
-    logMarketingEvent({
-      eventName: 'email_subscribed',
-      metadata: {
-        source: 'subscribe_api',
-      },
+    recordSubscriberAcquisition({
+      email,
+      createdAt: subscriberCreatedAt,
+      newSubscriber: Boolean(insertedSubscriber),
+      reactivated,
+      headers: request.headers,
       pagePath,
-      referrer,
-      subscriberEmail: email,
+      stocksOptedIn,
+      cryptoOptedIn,
     }),
   ]);
 
   for (const result of sideEffects) {
     if (result.status === 'rejected') {
-      console.error('[subscribe] post-subscribe side effect failed', result.reason);
+      console.warn('[subscribe] A post-subscribe side effect was not completed.');
     }
   }
 

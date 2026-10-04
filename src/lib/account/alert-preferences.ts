@@ -71,7 +71,7 @@ export async function saveAlertPreferences(
   const admin = createSupabaseAdminClient();
   const { data: existing, error: existingError } = await admin
     .from('free_subscribers')
-    .select('email')
+    .select('email, status, created_at')
     .eq('email', normalizedEmail)
     .maybeSingle();
 
@@ -89,19 +89,35 @@ export async function saveAlertPreferences(
     stocks_opted_in: stocksOptedIn,
   };
 
-  const { error } = existing
-    ? await admin.from('free_subscribers').update(row).eq('email', normalizedEmail)
-    : await admin.from('free_subscribers').insert({
-        ...row,
-        email: normalizedEmail,
-        tier: 'free',
-      });
+  let inserted: { created_at: string } | null = null;
+  let writeError;
+  if (existing) {
+    const result = await admin.from('free_subscribers').update(row).eq('email', normalizedEmail);
+    writeError = result.error;
+  } else {
+    const result = await admin.from('free_subscribers').upsert({
+      ...row, email: normalizedEmail, tier: 'free',
+    }, { onConflict: 'email', ignoreDuplicates: true }).select('created_at').maybeSingle();
+    writeError = result.error;
+    inserted = result.data;
+    // A concurrent signup may have won the insert; this remains a preferences
+    // update and cannot produce a second new-subscriber conversion.
+    if (!writeError && !inserted) {
+      const updated = await admin.from('free_subscribers').update(row).eq('email', normalizedEmail);
+      writeError = updated.error;
+    }
+  }
 
-  if (error) {
-    throw new Error(`Failed to save email alerts: ${error.message}`);
+  if (writeError) {
+    throw new Error(`Failed to save email alerts: ${writeError.message}`);
   }
 
   if (!alertsOn) {
     await stopScheduledAlerts(normalizedEmail);
   }
+  return {
+    newSubscriber: Boolean(inserted),
+    reactivated: alertsOn && existing?.status === 'inactive',
+    createdAt: inserted?.created_at ?? existing?.created_at,
+  };
 }
