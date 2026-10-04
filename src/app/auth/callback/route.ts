@@ -7,6 +7,7 @@ import { createRecoveryGrant, hasFreshRecoveryAuthentication } from '../../../li
 import { createRecoveryRouteClient, setRecoveryCookie } from '../../../lib/auth/recovery-server';
 import { getRequiredServerEnv } from '../../../lib/server-env';
 import { GET as handleRecovery } from '../recovery/route';
+import { confirmAccountAcquisition } from '@/lib/analytics/conversions';
 
 type PendingCookie = { name: string; value: string; options: CookieOptions };
 
@@ -61,6 +62,9 @@ export async function GET(request: NextRequest) {
       const response = recovery.respond(NextResponse.redirect(new URL('/reset-password#', request.nextUrl.origin), 303));
       return setRecoveryCookie(response, request, grant);
     }
+
+    try { await confirmAccountAcquisition({ user, headers: request.headers, flowType }); }
+    catch { console.warn('[auth] Account attribution was unavailable.'); }
 
     const response = NextResponse.redirect(new URL(redirectPath, request.nextUrl.origin));
     cookiesToApply.forEach(({ name, value, options }) => response.cookies.set(name, value, options));

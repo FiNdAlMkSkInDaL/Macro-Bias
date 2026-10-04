@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
+import { attributionFromStripeMetadata, recordPaidAcquisition } from '@/lib/analytics/conversions';
+
 import { createSupabaseAdminClient } from '../../../../lib/supabase/admin';
 import { getStripeClient, getStripeWebhookSecret } from '../../../../lib/stripe';
 
@@ -10,6 +12,7 @@ const ENTITLED_STATUSES = new Set<Stripe.Subscription.Status>(['active', 'triali
 const IGNORED_PROFILE_SYNC_ERROR_CODES = new Set(['42P01', '42703', 'PGRST204', 'PGRST205']);
 
 type BillingSyncInput = {
+  acquisitionMetadata?: Stripe.Metadata | null;
   customerId: string | null;
   email: string | null;
   subscriptionId: string | null;
@@ -207,6 +210,7 @@ async function syncBillingAccess(input: BillingSyncInput) {
   }
 
   await syncLegacyProfileEntitlement(resolvedUserId, isEntitledStatus(input.subscriptionStatus));
+  return resolvedUserId;
 }
 
 async function buildCheckoutSessionSyncInput(session: Stripe.Checkout.Session): Promise<BillingSyncInput> {
@@ -249,6 +253,7 @@ async function buildInvoiceSyncInput(invoice: Stripe.Invoice): Promise<BillingSy
   }
 
   return {
+    acquisitionMetadata: subscription.metadata,
     customerId,
     email: invoice.customer_email ?? (await getStripeCustomerEmail(customerId)),
     subscriptionId,
@@ -319,7 +324,18 @@ export async function POST(request: Request) {
       }
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
-        await syncBillingAccess(await buildInvoiceSyncInput(invoice));
+        const input = await buildInvoiceSyncInput(invoice);
+        const userId = await syncBillingAccess(input);
+        // Billing remains authoritative and is synchronized first. Only an
+        // actual first payment is a conversion; trials/free coupons/renewals
+        // and test-mode events cannot inflate marketing results.
+        await recordPaidAcquisition({
+          stripe,
+          invoice,
+          userId,
+          customerId: input.customerId,
+          attribution: attributionFromStripeMetadata(input.acquisitionMetadata),
+        });
         break;
       }
       case 'invoice.payment_failed': {

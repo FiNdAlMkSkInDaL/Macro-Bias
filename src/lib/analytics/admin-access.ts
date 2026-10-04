@@ -11,8 +11,10 @@ export const ANALYTICS_ADMIN_EMAILS = new Set([
 ]);
 
 export const getAnalyticsAdminUser = cache(async () => {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user?.email_confirmed_at || !user.email || !ANALYTICS_ADMIN_EMAILS.has(user.email.trim().toLowerCase())) return null;
-  return user;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user?.email_confirmed_at || !user.email || !ANALYTICS_ADMIN_EMAILS.has(user.email.trim().toLowerCase())) return null;
+    return user;
+  } catch { return null; }
 });
