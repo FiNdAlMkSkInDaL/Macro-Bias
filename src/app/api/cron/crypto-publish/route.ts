@@ -40,7 +40,6 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 export const revalidate = 0;
 
-const MAX_HISTORY_ROWS = 60;
 const DELIVERY_BUDGET_MS = 270_000;
 const REFERRAL_TAIL_BUDGET_MS = 285_000;
 const CRYPTO_DATABASE_TIMEOUT_MS = 5_000;
@@ -121,18 +120,25 @@ function createCryptoAdminClient(deadlineAt: number) {
   });
 }
 
-async function getRecentCryptoSnapshots(deadlineAt: number): Promise<CryptoBiasScoreRow[]> {
+async function getCryptoSnapshotForDate(tradeDate: string, deadlineAt: number): Promise<CryptoBiasScoreRow | null> {
   const supabase = createCryptoAdminClient(deadlineAt);
   const { data, error } = await supabase
     .from("crypto_bias_scores")
     .select(
       "id, trade_date, score, bias_label, component_scores, ticker_changes, engine_inputs, technical_indicators, created_at, updated_at",
     )
-    .order("trade_date", { ascending: false })
-    .limit(MAX_HISTORY_ROWS);
+    .eq("trade_date", tradeDate)
+    .limit(1)
+    .maybeSingle();
 
-  if (error) throw error;
-  return (data as CryptoBiasScoreRow[] | null) ?? [];
+  if (error) {
+    const code = typeof error.code === "string" && /^[a-z0-9_]{1,64}$/i.test(error.code)
+      ? error.code : "unknown_database_error";
+    const category = /abort|timeout|timed out/i.test(`${error.message ?? ""} ${error.hint ?? ""}`)
+      ? "request_timeout" : code;
+    throw new Error(`Failed to read stored crypto score for ${tradeDate} (${category}).`);
+  }
+  return data as CryptoBiasScoreRow | null;
 }
 
 async function getCryptoBriefingForDate(tradeDate: string, deadlineAt: number) {
@@ -814,11 +820,12 @@ async function handleCryptoPublish(request: NextRequest) {
       warnings.push(`Market data sync failed: ${msg}`);
     }
 
-    /* Step 2: Get latest snapshot */
+    /* Step 2: Read only the completed UTC day's stored snapshot. */
     ensureCryptoRuntimeBudget(deliveryDeadlineAt);
-    const snapshots = await getRecentCryptoSnapshots(deliveryDeadlineAt);
-    const latestSnapshot = snapshots.find(row => row.trade_date === expectedTradeDate && isValidSnapshot(row));
-    if (!latestSnapshot) throw new Error(`No valid stored crypto score for completed UTC day ${expectedTradeDate}.`);
+    const latestSnapshot = await getCryptoSnapshotForDate(expectedTradeDate, deliveryDeadlineAt);
+    if (!latestSnapshot || latestSnapshot.trade_date !== expectedTradeDate || !isValidSnapshot(latestSnapshot)) {
+      throw new Error(`No valid stored crypto score for completed UTC day ${expectedTradeDate}.`);
+    }
     const biasResult = snapshotToBiasResult(latestSnapshot);
     const { data: completedPrice, error: completedPriceError } = await createCryptoAdminClient(deliveryDeadlineAt)
       .from("etf_daily_prices").select("trade_date").eq("ticker", "BTC-USD").eq("trade_date", expectedTradeDate).maybeSingle();
