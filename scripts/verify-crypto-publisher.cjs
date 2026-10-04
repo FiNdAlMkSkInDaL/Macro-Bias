@@ -44,11 +44,11 @@ function harness(options = {}) {
     constructor(...args) { args.length ? super(...args) : super(clock); }
     static now() { return clock; }
   }
-  function query(table, initialRows) {
+  function query(table, initialRows, captured = {}) {
     const state = { filters: [], first: 0, last: Infinity, order: null, single: false, head: false, count: false };
     const result = {
-      select(columns, config = {}) { state.head = config.head; state.count = config.count; return result; },
-      eq(key, value) { state.filters.push(row => row[key] === value); return result; },
+      select(columns, config = {}) { captured.columns = columns; state.head = config.head; state.count = config.count; return result; },
+      eq(key, value) { (captured.equalities ??= []).push({ key, value }); state.filters.push(row => row[key] === value); return result; },
       in(key, values) { state.filters.push(row => values.includes(row[key])); return result; },
       not(key, operator, value) {
         const values = operator === 'in' ? JSON.parse(`[${value.slice(1, -1)}]`) : null;
@@ -56,10 +56,10 @@ function harness(options = {}) {
       },
       gte(key, value) { state.filters.push(row => row[key] >= value); return result; },
       lte(key, value) { state.filters.push(row => row[key] <= value); return result; },
-      order(key, config = {}) { state.order = { key, ascending: config.ascending !== false }; return result; },
-      limit(value) { state.last = value - 1; return result; },
+      order(key, config = {}) { state.order = { key, ascending: config.ascending !== false }; captured.order = state.order; return result; },
+      limit(value) { captured.limit = value; state.last = value - 1; return result; },
       range(first, last) { state.first = first; state.last = last; return result; },
-      maybeSingle() { state.single = true; return result; }, single() { state.single = true; return result; },
+      maybeSingle() { captured.maybeSingle = true; state.single = true; return result; }, single() { state.single = true; return result; },
       upsert(values, config) {
         const rows = Array.isArray(values) ? values : [values];
         for (const row of rows) {
@@ -75,7 +75,7 @@ function harness(options = {}) {
       },
       update(values) { effects.writes.push({ table, update: clone(values) }); return result; },
       then(resolve, reject) {
-        if (options.queryError?.table === table) return Promise.resolve({ data: null, error: { message: 'Fixture query failed' } }).then(resolve, reject);
+        if (options.queryError?.table === table) return Promise.resolve({ data: null, error: options.queryError.error ?? { message: 'Fixture query failed' } }).then(resolve, reject);
         let rows = (initialRows ?? tables[table] ?? []).filter(row => state.filters.every(filter => filter(row)));
         const count = rows.length;
         if (state.order) rows = [...rows].sort((left, right) => String(left[state.order.key]).localeCompare(String(right[state.order.key])) * (state.order.ascending ? 1 : -1));
@@ -86,7 +86,7 @@ function harness(options = {}) {
     return result;
   }
   const database = {
-    from(table) { effects.queries.push({ table }); return query(table); },
+    from(table) { const captured = { table }; effects.queries.push(captured); return query(table, undefined, captured); },
     rpc(name, args) {
       effects.queries.push({ rpc: name, args });
       const events = tables.marketing_event_log ?? [];
@@ -230,6 +230,34 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
       assert.equal(response.status, 500); assert.equal(fixture.effects.deliveries.length, 0);
       assert.equal(fixture.effects.models.length, 0); assert.equal(fixture.effects.writes.length, 0);
       assert.equal(fixture.effects.finishes[0].status, 'failed');
+    }
+  });
+  await check('snapshot read fetches exactly the expected completed day while retaining full generator fields', async () => {
+    const tables = defaultTables(); const expected = clone(tables.crypto_bias_scores[0]); tables.crypto_daily_briefings = [];
+    expected.component_scores = [{ key: 'fixture-component', summary: 'Stored fixture context' }];
+    expected.engine_inputs = { blendedForwardReturn: 0.25, modelVersion: 'stored-fixture-version' };
+    tables.crypto_bias_scores = [{ ...expected, trade_date: '2026-10-04', score: 90 },
+      ...Array.from({ length: 65 }, (_, index) => ({ ...expected, trade_date: new Date(Date.parse('2026-10-02T00:00:00Z') - index * 86_400_000).toISOString().slice(0, 10), score: -90 })), expected];
+    const fixture = harness({ tables }); const original = clone(fixture.tables.crypto_bias_scores);
+    const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    assert.equal(response.status, 200); assert.equal(response.data.score, expected.score); assert.equal(response.data.tradeDate, expected.trade_date);
+    const queries = fixture.effects.queries.filter(item => item.table === 'crypto_bias_scores'); assert.equal(queries.length, 1);
+    assert.deepEqual(queries[0].equalities, [{ key: 'trade_date', value: '2026-10-03' }]); assert.equal(queries[0].limit, 1); assert.equal(queries[0].maybeSingle, true); assert.equal(queries[0].order, undefined);
+    assert.equal(queries[0].columns, 'id, trade_date, score, bias_label, component_scores, ticker_changes, engine_inputs, technical_indicators, created_at, updated_at');
+    assert.equal(fixture.effects.models.length, 1); assert.deepEqual(fixture.effects.models[0].componentScores, expected.component_scores);
+    assert.deepEqual(fixture.effects.models[0].tickerChanges, expected.ticker_changes); assert.equal(fixture.effects.models[0].blendedForwardReturn, 0.25); assert.equal(fixture.effects.models[0].modelVersion, 'stored-fixture-version');
+    assert.deepEqual(fixture.tables.crypto_bias_scores, original);
+  });
+  await check('snapshot errors report date and sanitized code or timeout category before body/model/mail effects', async () => {
+    for (const [error, category] of [
+      [{ code: '57014', message: 'Private SQL fixture prose' }, '57014'],
+      [{ code: '', message: 'TimeoutError: operation was aborted due to timeout', hint: 'Private fixture details' }, 'request_timeout'],
+      [{ code: '<private-code>', message: '<private database HTML>' }, 'unknown_database_error'],
+    ]) {
+      const fixture = harness({ queryError: { table: 'crypto_bias_scores', error } });
+      const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+      assert.equal(response.status, 500); assert.equal(response.data.error, `Failed to read stored crypto score for 2026-10-03 (${category}).`);
+      assert.equal(fixture.effects.models.length, 0); assert.equal(fixture.effects.writes.length, 0); assert.equal(fixture.effects.deliveries.length, 0); assert.equal(fixture.effects.finishes[0].status, 'failed');
     }
   });
   await check('sync failure can safely reuse a fresh stored score/body without generation or overwrite', async () => {
