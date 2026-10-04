@@ -284,6 +284,8 @@ async function generateAnthropicCryptoBriefing(
 ): Promise<CryptoBriefingLLMResponse> {
   const anthropic = new Anthropic({
     apiKey: getRequiredServerEnv("ANTHROPIC_API_KEY"),
+    timeout: 45_000,
+    maxRetries: 0,
   });
 
   const payload = buildPromptPayload(biasResult);
@@ -304,7 +306,7 @@ async function generateAnthropicCryptoBriefing(
           },
         ],
       }),
-    CRYPTO_LLM_RETRY_OPTIONS,
+    { ...CRYPTO_LLM_RETRY_OPTIONS, maxAttempts: 2 },
   );
 
   const raw = extractTextResponse(response.content);
@@ -366,7 +368,7 @@ export async function persistCryptoBriefing(
       is_override_active: isOverrideActive,
       model_version: "crypto-model-v1",
     },
-    { onConflict: "trade_date" },
+    { onConflict: "trade_date", ignoreDuplicates: true },
   );
 
   if (error) {

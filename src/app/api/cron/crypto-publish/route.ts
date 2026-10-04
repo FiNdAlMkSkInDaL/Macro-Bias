@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { TwitterApi } from "twitter-api-v2";
 
@@ -8,7 +9,8 @@ import {
   persistCryptoBriefing,
 } from "@/lib/crypto-briefing/crypto-brief-generator";
 import { upsertCryptoMarketData } from "@/lib/crypto-market-data/upsert-crypto-market-data";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { latestCompletedCryptoTradeDate } from "@/lib/crypto-market-data/crypto-session";
+import { claimCryptoPublication, finishCryptoPublication, sendCryptoEmailOnce, type CryptoPublicationClaim } from "@/lib/crypto-briefing/crypto-delivery";
 import {
   isSubscriptionActive,
   type SubscriptionStatus,
@@ -16,13 +18,12 @@ import {
 import { filterSubscribedEmailRecipients } from '@/lib/marketing/email-preferences';
 import {
   formatAddressList,
-  isResendTestRestrictionMessage,
   isUnverifiedTestSender,
   partitionRecipients,
 } from '@/lib/marketing/recipient-policy';
 import { partitionUnlockedSubscribers } from "@/lib/referral/premium-unlock";
 import { verifyPendingReferrals } from "@/lib/referral/verify-referrals";
-import { getAppUrl } from "@/lib/server-env";
+import { getAppUrl, getRequiredServerEnv } from "@/lib/server-env";
 import { isBlueskyConfigured, publishToBluesky } from "@/lib/social/bluesky";
 import { sanitizeForSocial } from "@/lib/social/sanitize";
 import { isTelegramConfigured, publishToTelegram } from "@/lib/social/telegram";
@@ -40,6 +41,9 @@ export const maxDuration = 300;
 export const revalidate = 0;
 
 const MAX_HISTORY_ROWS = 60;
+const DELIVERY_BUDGET_MS = 270_000;
+const REFERRAL_TAIL_BUDGET_MS = 285_000;
+const CRYPTO_DATABASE_TIMEOUT_MS = 5_000;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -100,8 +104,25 @@ function isValidSnapshot(row: CryptoBiasScoreRow): boolean {
 /*  Supabase queries                                                   */
 /* ------------------------------------------------------------------ */
 
-async function getRecentCryptoSnapshots(): Promise<CryptoBiasScoreRow[]> {
-  const supabase = createSupabaseAdminClient();
+function ensureCryptoRuntimeBudget(deadlineAt: number) {
+  if (Date.now() >= deadlineAt) throw new Error("Crypto publication runtime budget exhausted; delivery can resume safely.");
+}
+
+function createCryptoAdminClient(deadlineAt: number) {
+  // Scope network bounds to this crypto job without changing shared admin/auth behavior.
+  return createClient(getRequiredServerEnv("NEXT_PUBLIC_SUPABASE_URL"), getRequiredServerEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: async (input, init) => {
+      ensureCryptoRuntimeBudget(deadlineAt);
+      const timeout = AbortSignal.timeout(Math.ceil(Math.min(CRYPTO_DATABASE_TIMEOUT_MS, deadlineAt - Date.now())));
+      const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+      return fetch(input, { ...init, signal });
+    } },
+  });
+}
+
+async function getRecentCryptoSnapshots(deadlineAt: number): Promise<CryptoBiasScoreRow[]> {
+  const supabase = createCryptoAdminClient(deadlineAt);
   const { data, error } = await supabase
     .from("crypto_bias_scores")
     .select(
@@ -114,17 +135,17 @@ async function getRecentCryptoSnapshots(): Promise<CryptoBiasScoreRow[]> {
   return (data as CryptoBiasScoreRow[] | null) ?? [];
 }
 
-async function hasCryptoBriefingForDate(tradeDate: string): Promise<boolean> {
-  const supabase = createSupabaseAdminClient();
+async function getCryptoBriefingForDate(tradeDate: string, deadlineAt: number) {
+  const supabase = createCryptoAdminClient(deadlineAt);
   const { data, error } = await supabase
     .from("crypto_daily_briefings")
-    .select("id")
+    .select("id, brief_content, score, bias_label, is_override_active, created_at")
     .eq("trade_date", tradeDate)
     .limit(1)
     .maybeSingle();
 
   if (error) throw new Error(`Failed to check existing crypto briefing: ${error.message}`);
-  return Boolean(data);
+  return data;
 }
 
 function snapshotToBiasResult(row: CryptoBiasScoreRow): CryptoDailyBiasResult {
@@ -434,7 +455,6 @@ function buildCryptoBriefingEmailText(
 }
 
 const SOCIAL_PUBLISHING_ENABLED = false;
-const CRYPTO_EMAIL_BATCH_SIZE = 100;
 const DEFAULT_CRYPTO_FROM_ADDRESS = "Macro Bias <briefing@macro-bias.com>";
 const CRYPTO_PREMIUM_RECIPIENT_PAGE_SIZE = 1000;
 
@@ -447,20 +467,6 @@ function getCryptoFromAddress() {
   return getOptionalServerEnv("RESEND_FROM_ADDRESS") ?? DEFAULT_CRYPTO_FROM_ADDRESS;
 }
 
-function getShadowRunRecipient() {
-  const configuredRecipient = process.env.SHADOW_RUN_EMAIL?.trim();
-  return configuredRecipient || null;
-}
-
-function applyShadowRunOverride(emails: string[]) {
-  const shadow = getShadowRunRecipient();
-  if (!shadow) return emails;
-  const normalized = shadow.toLowerCase();
-  const match = emails.find((e) => e.toLowerCase() === normalized);
-  console.log(`[crypto-publish] Shadow run override: forcing delivery to ${match ?? shadow}`);
-  return [match ?? shadow];
-}
-
 function buildUnsubscribeUrl(email: string) {
   const url = new URL("/api/subscribe/unsubscribe", getAppUrl());
   url.searchParams.set("email", email);
@@ -471,7 +477,10 @@ async function dispatchCryptoBriefingEmails(
   newsletterCopy: string,
   score: number,
   label: BiasLabel,
+  tradeDate: string,
+  deadlineAt: number,
 ) {
+  ensureCryptoRuntimeBudget(deadlineAt);
   const resendApiKey = getOptionalServerEnv("RESEND_API_KEY");
   if (!resendApiKey) {
     const message = "RESEND_API_KEY is not configured, so the crypto email was not sent.";
@@ -479,7 +488,7 @@ async function dispatchCryptoBriefingEmails(
     return { premiumSent: 0, freeSent: 0, skipped: true, failure: message };
   }
 
-  const supabase = createSupabaseAdminClient();
+  const supabase = createCryptoAdminClient(deadlineAt);
 
   /* --- Load premium recipients from users table --- */
   const premiumEmails = new Map<string, string>();
@@ -570,11 +579,12 @@ async function dispatchCryptoBriefingEmails(
   const resend = new Resend(resendApiKey);
 
   const signedLabel = score > 0 ? `+${score}` : `${score}`;
-  const subject = `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel})`;
-  const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label);
-  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label);
-  const premiumText = buildCryptoBriefingEmailText(newsletterCopy, score, label, "premium");
-  const freeText = buildCryptoBriefingEmailText(newsletterCopy, score, label, "free");
+  const subject = `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel}) — ${tradeDate} UTC`;
+  const dateContext = `Based on the completed ${tradeDate} UTC daily candle. Bitcoin trades every day.`;
+  const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label).replace('<!-- Footer -->', `<p style="color:#94a3b8;font-size:12px;line-height:1.6;">${escapeHtml(dateContext)}</p><!-- Footer -->`);
+  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label).replace('<!-- Footer -->', `<p style="color:#94a3b8;font-size:12px;line-height:1.6;">${escapeHtml(dateContext)}</p><!-- Footer -->`);
+  const premiumText = `${dateContext}\n\n${buildCryptoBriefingEmailText(newsletterCopy, score, label, "premium")}`;
+  const freeText = `${dateContext}\n\n${buildCryptoBriefingEmailText(newsletterCopy, score, label, "free")}`;
   const fromAddress = getCryptoFromAddress();
   const deliverableAddresses = [...premiumList, ...freeList];
 
@@ -586,58 +596,44 @@ async function dispatchCryptoBriefingEmails(
 
   async function sendCryptoBatches(recipients: string[], html: string, text: string) {
     let sent = 0;
-
-    for (let i = 0; i < recipients.length; i += CRYPTO_EMAIL_BATCH_SIZE) {
-      const batch = recipients.slice(i, i + CRYPTO_EMAIL_BATCH_SIZE);
+    let alreadyAccepted = 0;
+    for (const email of [...new Set(recipients.map(value => value.trim().toLowerCase()))]) {
+      if (Date.now() >= deadlineAt) {
+        return { sent, alreadyAccepted, failure: "Crypto delivery runtime budget exhausted; remaining recipients can resume safely." };
+      }
       try {
-        const response = await resend.batch.send(
-          batch.map((email) => {
-            const unsubUrl = buildUnsubscribeUrl(email);
-            return {
-              from: fromAddress,
-              to: [email],
-              subject,
-              html: html.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
-              text: text.replaceAll("{{UNSUBSCRIBE_URL}}", unsubUrl),
-              headers: {
-                "List-Unsubscribe": `<${unsubUrl}>`,
-                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-              },
-            };
-          }),
-        );
-        if (response.error) {
-          const testRestricted = isResendTestRestrictionMessage(response.error.message);
-          const failure = testRestricted
-            ? `Resend API key is still on the test restriction (${response.error.message}). The crypto batch was not sent. Addresses not sent: ${formatAddressList(batch)}.`
-            : `Resend batch send failed: ${response.error.message} Addresses in the failed batch: ${formatAddressList(batch)}.`;
-          console.warn(`[crypto-publish] ${failure}`);
-          return { sent, failure };
+        const unsubUrl = buildUnsubscribeUrl(email);
+        const result = await sendCryptoEmailOnce({ tradeDate, recipient: email, resend, deadlineAt, payload: {
+          from: fromAddress, to: [email], subject,
+          html: html.replaceAll("{{UNSUBSCRIBE_URL}}", escapeHtml(unsubUrl)),
+          text: text.replaceAll("{{UNSUBSCRIBE_URL}}", unsubUrl),
+          headers: { "List-Unsubscribe": `<${unsubUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+        } });
+        if (result.status === "accepted") sent += 1;
+        else if (result.status === "already_accepted") alreadyAccepted += 1;
+        else {
+          const failure = `Crypto email delivery is ${result.status}; a durable receipt is required before completion.`;
+          return { sent, alreadyAccepted, failure };
         }
-        sent += batch.length;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown";
-        const failure = `Resend batch send failed: ${msg} Addresses in the failed batch: ${formatAddressList(batch)}.`;
-        console.warn(`[crypto-publish] ${failure}`);
-        return { sent, failure };
+      } catch {
+        return { sent, alreadyAccepted, failure: "Crypto delivery claim or provider request failed; retry preserves the stored payload." };
       }
     }
-
-    return { sent, failure: null };
+    return { sent, alreadyAccepted, failure: null };
   }
 
-  const premiumRecipients = applyShadowRunOverride(premiumList);
+  const premiumRecipients = premiumList;
   const premiumDispatch = premiumRecipients.length
     ? await sendCryptoBatches(premiumRecipients, premiumHtml, premiumText)
-    : { sent: 0, failure: null };
+    : { sent: 0, alreadyAccepted: 0, failure: null };
   if (premiumDispatch.failure) {
-    return { premiumSent: premiumDispatch.sent, freeSent: 0, skipped: false, failure: premiumDispatch.failure };
+    return { premiumSent: premiumDispatch.sent, freeSent: 0, alreadyAccepted: premiumDispatch.alreadyAccepted, skipped: false, failure: premiumDispatch.failure };
   }
 
-  const freeRecipients = applyShadowRunOverride(freeList);
+  const freeRecipients = freeList;
   const freeDispatch = freeRecipients.length
     ? await sendCryptoBatches(freeRecipients, freeHtml, freeText)
-    : { sent: 0, failure: null };
+    : { sent: 0, alreadyAccepted: 0, failure: null };
 
   if (!freeDispatch.failure) {
     console.log(
@@ -648,6 +644,7 @@ async function dispatchCryptoBriefingEmails(
   return {
     premiumSent: premiumDispatch.sent,
     freeSent: freeDispatch.sent,
+    alreadyAccepted: premiumDispatch.alreadyAccepted + freeDispatch.alreadyAccepted,
     skipped: false,
     failure: freeDispatch.failure,
   };
@@ -784,22 +781,33 @@ async function publishCryptoToSocial(
 /* ------------------------------------------------------------------ */
 
 async function handleCryptoPublish(request: NextRequest) {
+  let publicationClaim: CryptoPublicationClaim | null = null;
   try {
     if (!isAuthorizedCronRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const runStartedAt = Date.now();
+    const deliveryDeadlineAt = runStartedAt + DELIVERY_BUDGET_MS;
+    if (getOptionalServerEnv("SHADOW_RUN_EMAIL")) {
+      throw new Error("Shadow email routing must be disabled before running the crypto service.");
+    }
     const skipEmail = request.nextUrl.searchParams.get("skipEmail") === "true";
-    const todayDate = new Date().toISOString().slice(0, 10);
+    const expectedTradeDate = latestCompletedCryptoTradeDate();
     const warnings: string[] = [];
+    publicationClaim = await claimCryptoPublication(expectedTradeDate, deliveryDeadlineAt);
+    if (publicationClaim.completed) {
+      return NextResponse.json({ ok: true, skipped: true, reason: "Crypto publication and delivery already completed.", tradeDate: expectedTradeDate });
+    }
+    if (!publicationClaim.claimed) {
+      return NextResponse.json({ ok: true, skipped: true, reason: "Crypto publication is already running.", tradeDate: expectedTradeDate }, { status: 202 });
+    }
 
     /* Step 1: Upsert crypto market data */
-    let upsertSucceeded = false;
     try {
       console.log("[crypto-publish] Starting upsertCryptoMarketData()");
       const result = await upsertCryptoMarketData();
       console.log(`[crypto-publish] Finished upsertCryptoMarketData() — trade date ${result.tradeDate}`);
-      upsertSucceeded = true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown";
       console.warn(`[crypto-publish] upsertCryptoMarketData() failed: ${msg}`);
@@ -807,49 +815,42 @@ async function handleCryptoPublish(request: NextRequest) {
     }
 
     /* Step 2: Get latest snapshot */
-    const snapshots = await getRecentCryptoSnapshots();
-    if (snapshots.length === 0) {
-      return NextResponse.json(
-        {
-          error: upsertSucceeded
-            ? "No crypto bias snapshots available."
-            : "Crypto market data sync failed and no cached snapshots.",
-        },
-        { status: 404 },
-      );
-    }
-
-    let latestIdx = 0;
-    while (latestIdx < snapshots.length && !isValidSnapshot(snapshots[latestIdx])) {
-      latestIdx += 1;
-    }
-    if (latestIdx >= snapshots.length) {
-      return NextResponse.json({ error: "No valid crypto bias snapshots found." }, { status: 404 });
-    }
-
-    const latestSnapshot = snapshots[latestIdx];
+    ensureCryptoRuntimeBudget(deliveryDeadlineAt);
+    const snapshots = await getRecentCryptoSnapshots(deliveryDeadlineAt);
+    const latestSnapshot = snapshots.find(row => row.trade_date === expectedTradeDate && isValidSnapshot(row));
+    if (!latestSnapshot) throw new Error(`No valid stored crypto score for completed UTC day ${expectedTradeDate}.`);
     const biasResult = snapshotToBiasResult(latestSnapshot);
-    const briefingAlreadyExists = await hasCryptoBriefingForDate(latestSnapshot.trade_date);
+    const { data: completedPrice, error: completedPriceError } = await createCryptoAdminClient(deliveryDeadlineAt)
+      .from("etf_daily_prices").select("trade_date").eq("ticker", "BTC-USD").eq("trade_date", expectedTradeDate).maybeSingle();
+    if (completedPriceError || completedPrice?.trade_date !== expectedTradeDate) {
+      throw new Error(`The completed BTC candle for ${expectedTradeDate} is unavailable; publication was withheld.`);
+    }
+    let storedBriefing = await getCryptoBriefingForDate(expectedTradeDate, deliveryDeadlineAt);
 
     /* Step 3: Generate and persist briefing */
-    let briefingResult;
-    if (briefingAlreadyExists) {
-      warnings.push("Re-publish: crypto briefing was already persisted.");
-      briefingResult = await generateCryptoDailyBriefing(biasResult);
-    } else {
-      briefingResult = await generateCryptoDailyBriefing(biasResult);
+    let briefingGeneratedBy = "stored";
+    if (!storedBriefing) {
+      ensureCryptoRuntimeBudget(deliveryDeadlineAt);
+      const generated = await generateCryptoDailyBriefing(biasResult);
+      briefingGeneratedBy = generated.generatedBy;
+      warnings.push(...generated.warnings);
       console.log(
-        `[crypto-publish] Generated briefing via ${briefingResult.generatedBy}, override=${briefingResult.isOverrideActive}`,
+        `[crypto-publish] Generated briefing via ${generated.generatedBy}, override=${generated.isOverrideActive}`,
       );
 
+      ensureCryptoRuntimeBudget(deliveryDeadlineAt);
       await persistCryptoBriefing(
         latestSnapshot.trade_date,
         latestSnapshot.score,
         latestSnapshot.bias_label,
-        briefingResult.newsletterCopy,
-        briefingResult.isOverrideActive,
+        generated.newsletterCopy,
+        generated.isOverrideActive,
       );
+      storedBriefing = await getCryptoBriefingForDate(expectedTradeDate, deliveryDeadlineAt);
       console.log(`[crypto-publish] Persisted crypto briefing for ${latestSnapshot.trade_date}`);
+    }
+    if (!storedBriefing?.brief_content || storedBriefing.score !== latestSnapshot.score || storedBriefing.bias_label !== latestSnapshot.bias_label) {
+      throw new Error("The persisted crypto briefing does not match its stored score; delivery was withheld.");
     }
 
     const { formatSignalSocialLine } = await import(
@@ -861,7 +862,7 @@ async function handleCryptoPublish(request: NextRequest) {
     );
 
     /* Step 4: Email dispatch, only after a stored score exists for the latest session. */
-    let emailResult: { premiumSent: number; freeSent: number; skipped: boolean; failure?: string | null } = {
+    let emailResult: { premiumSent: number; freeSent: number; skipped: boolean; failure?: string | null; alreadyAccepted?: number } = {
       premiumSent: 0,
       freeSent: 0,
       skipped: true,
@@ -869,11 +870,12 @@ async function handleCryptoPublish(request: NextRequest) {
     };
     let emailBlockedReason: string | null = null;
     if (!skipEmail) {
-      const scoreCheck = createSupabaseAdminClient();
+      const scoreCheck = createCryptoAdminClient(deliveryDeadlineAt);
       const { data: latestPrice, error: priceError } = await scoreCheck
         .from("etf_daily_prices")
         .select("trade_date")
         .eq("ticker", "BTC-USD")
+        .lte("trade_date", expectedTradeDate)
         .order("trade_date", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -891,15 +893,14 @@ async function handleCryptoPublish(request: NextRequest) {
       warnings.push(emailBlockedReason);
     } else {
       emailResult = await dispatchCryptoBriefingEmails(
-        briefingResult.newsletterCopy,
+        storedBriefing.brief_content,
         latestSnapshot.score,
         latestSnapshot.bias_label,
+        expectedTradeDate,
+        deliveryDeadlineAt,
       );
       if (emailResult.failure) {
         warnings.push(emailResult.failure);
-      }
-      if (!emailResult.skipped && !emailResult.failure) {
-        await verifyPendingReferrals(createSupabaseAdminClient());
       }
     }
 
@@ -909,7 +910,7 @@ async function handleCryptoPublish(request: NextRequest) {
       socialResult = await publishCryptoToSocial(
         latestSnapshot.score,
         latestSnapshot.bias_label,
-        briefingResult.newsletterCopy,
+        storedBriefing.brief_content,
         permissionLine,
       );
     } catch (err) {
@@ -920,8 +921,24 @@ async function handleCryptoPublish(request: NextRequest) {
     const cryptoEmailsSent = emailResult.premiumSent + emailResult.freeSent;
     const emailFailed =
       !skipEmail &&
-      !emailBlockedReason &&
-      Boolean(emailResult.failure || cryptoEmailsSent === 0);
+      Boolean(emailBlockedReason || emailResult.failure || cryptoEmailsSent + (emailResult.alreadyAccepted ?? 0) === 0);
+    await finishCryptoPublication(publicationClaim, emailFailed ? "failed" : skipEmail ? "published" : "completed", {
+      tradeDate: expectedTradeDate, publishedAt: storedBriefing.created_at,
+      premiumAccepted: emailResult.premiumSent, freeAccepted: emailResult.freeSent,
+      alreadyAccepted: emailResult.alreadyAccepted ?? 0, emailSkipped: skipEmail,
+    });
+
+    // Ancillary rewards run only after mail completion is durable. Their shared
+    // Stripe/Resend/analytics dependencies retain their existing network behavior.
+    if (!skipEmail && !emailFailed && !emailResult.skipped) {
+      const referralDeadlineAt = runStartedAt + REFERRAL_TAIL_BUDGET_MS;
+      if (Date.now() >= referralDeadlineAt) {
+        warnings.push("Referral verification deferred: crypto runtime budget exhausted.");
+      } else {
+        try { await verifyPendingReferrals(createCryptoAdminClient(referralDeadlineAt)); }
+        catch { warnings.push("Referral verification did not complete; pending referrals can retry later."); }
+      }
+    }
 
     return NextResponse.json({
       ok: !emailFailed,
@@ -929,17 +946,24 @@ async function handleCryptoPublish(request: NextRequest) {
       tradeDate: latestSnapshot.trade_date,
       score: latestSnapshot.score,
       biasLabel: latestSnapshot.bias_label,
-      briefingGeneratedBy: briefingResult.generatedBy,
-      overrideActive: briefingResult.isOverrideActive,
+      briefingGeneratedBy,
+      overrideActive: storedBriefing.is_override_active,
+      publishedAt: storedBriefing.created_at,
+      candleDate: expectedTradeDate,
+      deliveryStatus: emailFailed ? "failed" : skipEmail ? "skipped" : "provider_accepted",
+      alreadyAccepted: emailResult.alreadyAccepted ?? 0,
       premiumEmailsSent: emailResult.premiumSent,
       freeEmailsSent: emailResult.freeSent,
       xPosted: socialResult.xPosted,
       blueskyPosted: socialResult.blueskyPosted,
       telegramPosted: socialResult.telegramPosted,
       threadsPosted: socialResult.threadsPosted,
-      warnings: [...warnings, ...briefingResult.warnings],
+      warnings,
     }, { status: emailFailed ? 500 : 200 });
   } catch (error) {
+    if (publicationClaim?.claimed) {
+      try { await finishCryptoPublication(publicationClaim, "failed", { failure: "Publication did not complete." }); } catch { /* Fail closed: lease/recipient receipts remain durable. */ }
+    }
     const message = error instanceof Error ? error.message : "Failed to run crypto publish cron.";
     console.error(`[crypto-publish] Fatal: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });

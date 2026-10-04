@@ -425,15 +425,16 @@ export async function getAnalyticsDashboardData(): Promise<AnalyticsDashboardDat
   ] = await Promise.all([
     admin.from("free_subscribers").select("status, stocks_opted_in, crypto_opted_in, created_at"),
     admin.from("users").select("subscription_status"),
-    admin.from("marketing_event_log").select("id", { count: "exact", head: true }).gte("created_at", oneDayAgo),
-    admin.from("marketing_event_log").select("id", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
-    admin.from("marketing_event_log").select("id", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
+    admin.from("marketing_event_log").select("id", { count: "exact", head: true }).not("event_name", "in", '("crypto_publication","crypto_email_delivery")').gte("created_at", oneDayAgo),
+    admin.from("marketing_event_log").select("id", { count: "exact", head: true }).not("event_name", "in", '("crypto_publication","crypto_email_delivery")').gte("created_at", sevenDaysAgo),
+    admin.from("marketing_event_log").select("id", { count: "exact", head: true }).not("event_name", "in", '("crypto_publication","crypto_email_delivery")').gte("created_at", thirtyDaysAgo),
     admin.rpc("get_top_pages", { since: sevenDaysAgo, lim: 15 }),
-    admin.rpc("get_top_events", { since: sevenDaysAgo, lim: 15 }),
+    admin.rpc("get_top_events", { since: sevenDaysAgo, lim: 17 }).not("event_name", "in", '("crypto_publication","crypto_email_delivery")').limit(15),
     admin.rpc("get_utm_sources", { since: thirtyDaysAgo, lim: 15 }),
     admin
       .from("marketing_event_log")
       .select("event_name, page_path, subscriber_email, utm_source, created_at")
+      .not("event_name", "in", '("crypto_publication","crypto_email_delivery")')
       .order("created_at", { ascending: false })
       .limit(30),
     admin.from("welcome_email_drip_enrollments").select("status"),
@@ -458,6 +459,7 @@ export async function getAnalyticsDashboardData(): Promise<AnalyticsDashboardDat
     admin
       .from("marketing_event_log")
       .select("created_at, event_name, metadata, page_path, subscriber_email, utm_source")
+      .not("event_name", "in", '("crypto_publication","crypto_email_delivery")')
       .gte("created_at", thirtyDaysAgo)
       .order("created_at", { ascending: false })
       .limit(5000),
