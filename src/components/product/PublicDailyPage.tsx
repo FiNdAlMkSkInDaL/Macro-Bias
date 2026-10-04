@@ -111,7 +111,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           )}
           <dl className={styles.priceDate}>
             <div>
-              <dt>{market.instrument} price close</dt>
+              <dt>{data.asset === 'crypto' ? 'BTC daily close (UTC)' : `${market.instrument} price close`}</dt>
               <dd>{latestPriceDate ? <time dateTime={latestPriceDate}>{displayDate(latestPriceDate)}</time> : 'Not available'}</dd>
             </div>
           </dl>

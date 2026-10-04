@@ -17,7 +17,7 @@ export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Account & emails',
-  description: 'Your plan and weekday email preferences.',
+  description: 'Your plan and email preferences.',
 };
 
 function billingLabel(status: SubscriptionStatus, isPro: boolean) {
@@ -75,7 +75,7 @@ export default async function AccountPage() {
               {planStatus ? <p className={styles.planStatus}>{planStatus}</p> : null}
               {storedBillingStatus ? <p className={styles.billingStatus}>Billing: {storedBillingStatus.toLowerCase()}</p> : null}
               <p className={styles.copy}>
-                {isPro ? 'Full readings and market workspaces.' : 'Previous published readings and weekday email updates.'}
+                {isPro ? 'Full readings and market workspaces.' : 'Previous published readings and email updates.'}
               </p>
             </div>
             {billingResult.status === 'fulfilled' ? (
@@ -92,13 +92,14 @@ export default async function AccountPage() {
         </section>
 
         <section className={styles.section} aria-labelledby="account-emails-heading">
-          <h2 id="account-emails-heading">Weekday email updates</h2>
+          <h2 id="account-emails-heading">Email updates</h2>
           {isPro ? (
             <div className={styles.emailContext}>
               <p className={styles.copy}>{subscription ? 'Pro briefings include both markets. These choices configure free daily updates.' : 'Your Pro access includes the tools and full web briefings. These choices configure free daily updates.'}</p>
               {subscription ? <p className={styles.emailHelp}>To stop Pro briefing emails, use the unsubscribe link in a briefing email.</p> : null}
             </div>
           ) : <p className={styles.copy}>Choose stocks, crypto, or both.</p>}
+          <p className={styles.emailHelp}>Stock updates follow market days. Crypto updates run every day, including weekends.</p>
           {alerts ? (
             <AlertForm cryptoOptedIn={alerts.cryptoOptedIn} stocksOptedIn={alerts.stocksOptedIn} paid={isPro} subscriberStatus={alerts.status} subscriptionEmails={subscription} />
           ) : (

@@ -102,7 +102,7 @@ export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { 
         </>
       )}
       <p id={`${inputId}-helper`} className={styles.helper}>
-        Free weekday emails. Unsubscribe anytime.
+        Free stock emails on market days; crypto every day. Unsubscribe anytime.
       </p>
     </form>
       {state === 'loading' ? <LoadingAnnouncement label="Adding your email" /> : null}

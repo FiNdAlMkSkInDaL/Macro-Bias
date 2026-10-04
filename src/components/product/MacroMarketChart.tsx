@@ -127,8 +127,9 @@ export function MacroMarketChart({
       ) : null}
 
       <div className={styles['macro-instrument-row']}>
-        <div className={styles['macro-instrument']}><InstrumentHeading>{instrument}</InstrumentHeading><p>{latestCandle ? formatUsd(latestCandle.close) : 'Price not available'}</p><span className={styles['macro-close-date']}>{latestCandle ? `Close · ${shortDate(latestCandle.tradeDate)}` : 'Daily prices'}</span></div>
+        <div className={styles['macro-instrument']}><InstrumentHeading>{instrument}</InstrumentHeading><p>{latestCandle ? formatUsd(latestCandle.close) : 'Price not available'}</p><span className={styles['macro-close-date']}>{latestCandle ? instrument === 'BTC' ? `Daily close · ${shortDate(latestCandle.tradeDate)} UTC` : `Close · ${shortDate(latestCandle.tradeDate)}` : 'Daily prices'}</span></div>
       </div>
+      {instrument === 'BTC' ? <p className={styles['macro-market-note']}>Bitcoin trades 24/7. Prices show completed UTC daily candles.</p> : null}
 
       <div className={styles['macro-chart']}>
         <div className={styles['macro-plot']} role="group" aria-label={`${instrument} daily prices and Macro Bias scores, 3 calendar months, ${sessions.length} dates. Use arrow keys to move, Home or End to jump, and Escape for the latest session.`}

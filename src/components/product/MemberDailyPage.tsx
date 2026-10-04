@@ -55,7 +55,7 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
           <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
         </section>
         <div className={styles.lower}>
-          <section><h2>Keep exploring</h2><Link className={styles.explore} href={history}><span>Track record<small>Review published readings and stored outcomes.</small></span><ArrowIcon /></Link><Link className={styles.explore} href="/account"><span>Email settings<small>Choose weekday stock and crypto updates.</small></span><ArrowIcon /></Link></section>
+          <section><h2>Keep exploring</h2><Link className={styles.explore} href={history}><span>Track record<small>Review published readings and stored outcomes.</small></span><ArrowIcon /></Link><Link className={styles.explore} href="/account"><span>Email settings<small>Choose stock and crypto updates.</small></span><ArrowIcon /></Link></section>
         </div>
         <MemberUpgrade />
       </div>

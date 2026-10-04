@@ -81,11 +81,11 @@ export function AlertForm({ cryptoOptedIn, stocksOptedIn, paid = false, subscrib
         <legend className={styles.screenReaderOnly}>Markets for email updates</legend>
         <label className={styles.choice}>
           <input type="checkbox" name="stocks" aria-labelledby="stocks-email-label" aria-describedby="stocks-email-description" checked={stocks} onChange={(event) => { setStocks(event.target.checked); setMessage(null); }} />
-          <span><strong id="stocks-email-label">Stocks</strong><span id="stocks-email-description">The stock-market score and regime</span></span>
+          <span><strong id="stocks-email-label">Stocks</strong><span id="stocks-email-description">The stock-market score and regime on market days</span></span>
         </label>
         <label className={styles.choice}>
           <input type="checkbox" name="crypto" aria-labelledby="crypto-email-label" aria-describedby="crypto-email-description" checked={crypto} onChange={(event) => { setCrypto(event.target.checked); setMessage(null); }} />
-          <span><strong id="crypto-email-label">Crypto</strong><span id="crypto-email-description">The crypto-market score and regime</span></span>
+          <span><strong id="crypto-email-label">Crypto</strong><span id="crypto-email-description">The crypto-market score and regime every day, including weekends</span></span>
         </label>
       </fieldset>
       <div className={styles.formActions}>

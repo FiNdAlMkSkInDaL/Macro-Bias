@@ -71,7 +71,7 @@ function emailSummary(data: WorkspaceData) {
   if (preferences.stocksOptedIn && preferences.cryptoOptedIn) return 'Stocks and crypto are on.';
   if (preferences.stocksOptedIn) return 'Stock updates are on. Crypto updates are off.';
   if (preferences.cryptoOptedIn) return 'Crypto updates are on. Stock updates are off.';
-  return 'Weekday email updates are off.';
+  return 'Email updates are off.';
 }
 
 export function FreeWorkspace({ data, audience = 'member', userId }: {
@@ -91,7 +91,7 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
     { title: 'Daily reading', description: 'See the score and what its regime means.', href: dailyHref },
     { title: 'Track record', description: 'Review published readings and stored outcomes.', href: historyHref },
     { title: 'Referrals', description: 'Find your link and earned rewards.', href: '/refer' },
-    { title: 'Email settings', description: 'Choose weekday stock and crypto updates.', href: accountHref },
+    { title: 'Email settings', description: 'Choose stock and crypto updates.', href: accountHref },
   ];
   const offer = (
     <section className={`${styles.panel} ${styles.offer}`} aria-labelledby="workspace-pro-heading">
@@ -105,7 +105,7 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
       <div className={styles.container}>
         <header className={styles.header}>
           <div className={styles.titleLine}><h1>Your market overview</h1><span>Free plan</span></div>
-          <p>Daily scores, market history and your weekday emails.</p>
+          <p>Daily scores, market history and your email updates.</p>
           <nav className={styles.marketSwitch} aria-label="Dashboard markets">
             <Link href="/dashboard" aria-current={data.asset === 'stocks' ? 'page' : undefined}>Stocks</Link>
             <Link href="/crypto/dashboard" aria-current={data.asset === 'crypto' ? 'page' : undefined}>Crypto</Link>
@@ -165,7 +165,7 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
         </section>
 
         <section className={`${styles.panel} ${styles.emailUtility}`} aria-labelledby="workspace-emails-heading" data-workspace-email-status={data.alerts.preferences ? 'verified' : 'unavailable'}>
-          <div><h2 id="workspace-emails-heading">Your weekday emails</h2><p>{audience === 'member' ? emailSummary(data) : 'Sign in to see and manage your email preferences.'}</p></div>
+          <div><h2 id="workspace-emails-heading">Your email updates</h2><p>{audience === 'member' ? emailSummary(data) : 'Sign in to see and manage your email preferences.'}</p></div>
           <Link href={accountHref}>{audience === 'member' ? 'Manage preferences' : 'Sign in'} <ArrowIcon /></Link>
         </section>
 

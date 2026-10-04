@@ -24,6 +24,7 @@
 .macro-instrument > p { color: #b4c0b8; font-family: var(--font-data), monospace; font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .macro-close-date { width: 100%; color: #91a096; font-family: var(--font-data), monospace; font-size: 10px; line-height: 1.5; }
 .macro-history .macro-close-date { width: auto; }
+.macro-market-note { margin: -4px 0 14px; color: #9eada3; font-size: 11px; line-height: 1.6; }
 .macro-chart { display: grid; grid-template-columns: minmax(0, 1fr) 42px; grid-template-rows: var(--macro-plot-height) auto; column-gap: 8px; }
 .macro-plot { position: relative; min-width: 0; touch-action: pan-y; }
 .macro-svg { display: block; width: 100%; height: 100%; overflow: visible; }
