@@ -16,6 +16,11 @@ import type {
 } from "../crypto-bias/types";
 import { stationarizeLevelFeatures } from "../signal/rolling-percentile";
 import { createSupabaseAdminClient } from "../supabase/admin";
+import {
+  cryptoUtcDayStart,
+  isCompletedCryptoTradeDate,
+  latestCompletedCryptoTradeDate,
+} from "./crypto-session";
 
 type CryptoSyncOptions = {
   lookbackDays?: number;
@@ -36,6 +41,8 @@ type HistoricalPriceRow = {
   adjusted_close: number;
   volume: number;
   source: string;
+  /** Retained only on in-memory carried feature inputs, never on persisted prices. */
+  carried_forward_from?: string;
 };
 
 type YahooChartQuote = {
@@ -77,7 +84,8 @@ const DEFAULT_ANALOG_LOOKBACK_DAYS = 3653;
 const MIN_ANALOG_LOOKBACK_DAYS = 45;
 const PRICE_UPSERT_LOOKBACK_DAYS = 30;
 const UPSERT_BATCH_SIZE = 1000;
-const YAHOO_FETCH_MAX_ATTEMPTS = 3;
+const YAHOO_FETCH_MAX_ATTEMPTS = 2;
+const YAHOO_FETCH_TIMEOUT_MS = 10_000;
 const YAHOO_FETCH_BASE_DELAY_MS = 1_500;
 const STAGGER_DELAY_MS = 250;
 
@@ -106,12 +114,6 @@ function subtractDays(date: Date, days: number) {
 function subtractYears(date: Date, years: number) {
   const next = new Date(date);
   next.setUTCFullYear(next.getUTCFullYear() - years);
-  return next;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
   return next;
 }
 
@@ -172,7 +174,7 @@ async function fetchTickerHistory(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         },
         cache: "no-store",
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(YAHOO_FETCH_TIMEOUT_MS),
       });
 
       if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
@@ -184,7 +186,7 @@ async function fetchTickerHistory(
         throw new Error(`Yahoo chart API request failed for ${ticker}: ${response.status}.`);
       }
 
-      return parseYahooChartResponse(ticker, await response.json());
+      return parseYahooChartResponse(ticker, await response.json(), period2);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(`Unknown fetch error for ${ticker}`);
       if (attempt < YAHOO_FETCH_MAX_ATTEMPTS) continue;
@@ -197,6 +199,7 @@ async function fetchTickerHistory(
 function parseYahooChartResponse(
   ticker: string,
   payload: YahooChartResponse,
+  asOfDate: Date,
 ): HistoricalPriceRow[] {
   const errorMessage = payload.chart?.error?.description;
   const result = payload.chart?.result?.[0];
@@ -210,16 +213,26 @@ function parseYahooChartResponse(
 
   return timestamps
     .map((timestamp, index) => {
+      if (!Number.isFinite(timestamp)) return null;
+      const tradeDate = formatTradeDate(new Date(timestamp * 1000));
+      if (!isCompletedCryptoTradeDate(tradeDate, asOfDate)) return null;
+      const openValue = quote.open?.[index];
+      const highValue = quote.high?.[index];
+      const lowValue = quote.low?.[index];
       const closeValue = quote.close?.[index];
-      if (closeValue == null) return null;
-      const close = roundPrice(closeValue);
+      if (![openValue, highValue, lowValue, closeValue].every(
+        (value) => typeof value === "number" && Number.isFinite(value) && value > 0,
+      )) return null;
+      if (highValue! < Math.max(openValue!, closeValue!) ||
+          lowValue! > Math.min(openValue!, closeValue!) || highValue! < lowValue!) return null;
+      const close = roundPrice(closeValue!);
 
       return {
         ticker,
-        trade_date: formatTradeDate(new Date(timestamp * 1000)),
-        open: roundPrice(quote.open?.[index] ?? close),
-        high: roundPrice(quote.high?.[index] ?? close),
-        low: roundPrice(quote.low?.[index] ?? close),
+        trade_date: tradeDate,
+        open: roundPrice(openValue!),
+        high: roundPrice(highValue!),
+        low: roundPrice(lowValue!),
         close,
         adjusted_close: roundPrice(adjustedCloses[index] ?? close),
         volume: Math.round(quote.volume?.[index] ?? 0),
@@ -249,7 +262,7 @@ async function fetchSharedTickerFromDb(
 ): Promise<HistoricalPriceRow[]> {
   const storedTicker = normalizeTickerForStorage(ticker);
   const minDate = formatTradeDate(period1);
-  const maxDate = formatTradeDate(period2);
+  const maxDate = latestCompletedCryptoTradeDate(period2);
   const all: HistoricalPriceRow[] = [];
   const pageSize = 1000;
   let from = 0;
@@ -527,7 +540,7 @@ function carryForwardFill(
     if (existing) {
       filled.push(existing);
     } else if (lastKnown) {
-      filled.push({ ...lastKnown, trade_date: date });
+      filled.push({ ...lastKnown, trade_date: date, carried_forward_from: lastKnown.trade_date });
     }
   }
 
@@ -549,7 +562,7 @@ async function upsertRowsInBatches(
 
   for (let i = 0; i < batches.length; i += 1) {
     log(`Upserting batch ${i + 1} of ${batches.length} to ${tableName}...`);
-    const { error } = await supabase.from(tableName).upsert(batches[i], { onConflict });
+    const { error } = await supabase.from(tableName).upsert(batches[i], { onConflict, ignoreDuplicates: true });
     if (error) return error;
   }
 
@@ -572,15 +585,24 @@ export async function upsertCryptoMarketData(
   const period1 = requestedWindowStart < maxRollingWindowStart
     ? maxRollingWindowStart
     : requestedWindowStart;
-  const period2 = addDays(asOfDate, 1);
+  const period2 = cryptoUtcDayStart(asOfDate);
+  const expectedTradeDate = latestCompletedCryptoTradeDate(asOfDate);
 
   log(`Lookback from ${formatTradeDate(period1)} to ${formatTradeDate(asOfDate)}.`);
 
-  // Fetch crypto-only tickers from Yahoo Finance with staggered requests
+  // Independent histories overlap, with staggered starts to avoid a request burst.
+  // Keep provider retries within the cron budget so delivery can finish and be recorded.
   const cryptoHistories: Record<string, HistoricalPriceRow[]> = {};
-  for (const ticker of CRYPTO_ONLY_TICKERS) {
-    cryptoHistories[ticker] = await fetchTickerHistoryWithLogging(ticker, period1, period2);
-    await sleep(STAGGER_DELAY_MS);
+  const fetchedHistories = await Promise.allSettled(
+    CRYPTO_ONLY_TICKERS.map(async (ticker, index) => {
+      if (index > 0) await sleep(index * STAGGER_DELAY_MS);
+      return [ticker, await fetchTickerHistoryWithLogging(ticker, period1, period2)] as const;
+    }),
+  );
+  for (const result of fetchedHistories) {
+    if (result.status === "rejected") throw result.reason;
+    const [ticker, history] = result.value;
+    cryptoHistories[ticker] = history;
   }
 
   // Fetch shared tickers from DB first; fall back to Yahoo if missing
@@ -632,6 +654,10 @@ export async function upsertCryptoMarketData(
 
   const latestTradeDate = sortedCommonDates.at(-1)!;
   const previousTradeDate = sortedCommonDates.at(-2)!;
+  const expectedPreviousDate = formatTradeDate(subtractDays(new Date(`${expectedTradeDate}T00:00:00Z`), 1));
+  if (latestTradeDate !== expectedTradeDate || previousTradeDate !== expectedPreviousDate) {
+    throw new Error(`Crypto daily data is stale or incomplete: expected ${expectedPreviousDate} and ${expectedTradeDate}, latest common dates are ${previousTradeDate} and ${latestTradeDate}.`);
+  }
 
   log(`Latest trade date: ${latestTradeDate}, previous: ${previousTradeDate}.`);
 
@@ -728,15 +754,7 @@ export async function upsertCryptoMarketData(
         percentChange: calculatePercentChange(latest.close, prev.close),
       };
     } else {
-      // SOL may be missing on early dates; use a zero-change placeholder
-      const latestRow = history?.at(-1);
-      tickerChanges[ticker] = {
-        ticker,
-        tradeDate: latestTradeDate,
-        close: latestRow?.close ?? 0,
-        previousClose: latestRow?.close ?? 0,
-        percentChange: 0,
-      };
+      throw new Error(`Missing completed ${ticker} candles for ${previousTradeDate} or ${latestTradeDate}.`);
     }
   }
 
@@ -795,6 +813,12 @@ export async function upsertCryptoMarketData(
         tradableSignal: biasResult.signal,
         blendedForwardReturn: biasResult.blendedForwardReturn,
         modelVersion: biasResult.modelVersion ?? CRYPTO_MODEL_VERSION,
+        sharedMarketDataAsOf: Object.fromEntries([
+          ["DXY", dxyFilled], ["GLD", gldFilled], ["TLT", tltFilled],
+        ].map(([ticker, history]) => {
+          const row = buildTradeDateLookup(history as HistoricalPriceRow[]).get(latestTradeDate);
+          return [ticker, row?.carried_forward_from ?? row?.trade_date ?? null];
+        })),
       },
       technical_indicators: { BTC: btcTechnicalsByDate[latestTradeDate] ?? {} },
     },

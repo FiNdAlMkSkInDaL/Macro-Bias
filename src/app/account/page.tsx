@@ -76,7 +76,7 @@ export default async function AccountPage() {
       <section className="mt-6 border border-white/10 p-5">
         <h2 className="text-lg font-semibold text-white">Email alerts</h2>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          Morning email for this account. Stocks, crypto, or both. Saving does not send a message.
+          Morning email for this account. Stocks, crypto, or both. Stock emails follow market days; crypto emails run every day, including weekends. Saving does not send a message.
         </p>
         <AlertForm cryptoOptedIn={alerts.cryptoOptedIn} stocksOptedIn={alerts.stocksOptedIn} />
       </section>
