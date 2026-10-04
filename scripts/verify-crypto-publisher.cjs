@@ -35,12 +35,14 @@ function defaultTables(now = '2026-10-04T12:30:00Z') {
 }
 function harness(options = {}) {
   const now = options.now ?? '2026-10-04T12:30:00Z';
+  let clock = Date.parse(now); let releaseReferral;
   const tables = clone(options.tables ?? defaultTables(now));
-  const effects = { queries: [], writes: [], claims: [], finishes: [], deliveries: [], models: [], syncs: [], referrals: [], aiOptions: [], aiRequests: [] };
+  const effects = { queries: [], writes: [], claims: [], finishes: [], deliveries: [], models: [], syncs: [], referrals: [], aiOptions: [], aiRequests: [], adminClients: [], timeouts: [], network: [] };
+  const timeline = []; const adminConfigurations = [];
   const env = { CRON_SECRET: 'fixture-secret', RESEND_API_KEY: 'fixture-delivery-key', ...options.env };
   class FixtureDate extends Date {
-    constructor(...args) { args.length ? super(...args) : super(now); }
-    static now() { return Date.parse(now); }
+    constructor(...args) { args.length ? super(...args) : super(clock); }
+    static now() { return clock; }
   }
   function query(table, initialRows) {
     const state = { filters: [], first: 0, last: Infinity, order: null, single: false, head: false, count: false };
@@ -105,11 +107,14 @@ function harness(options = {}) {
       this.messages = { create: async input => { effects.aiRequests.push(clone(input)); throw new Error('Isolated AI timeout'); } };
     } },
     resend: { Resend: class {} },
+    '@supabase/supabase-js': { createClient: (_, __, config) => {
+      adminConfigurations.push(config); effects.adminClients.push({ auth: clone(config.auth), boundedFetch: typeof config.global?.fetch === 'function' }); return database;
+    } },
     'src/lib/supabase/admin.ts': { createSupabaseAdminClient: () => database },
     'src/lib/supabase/server.ts': { createSupabaseServerClient: async () => database },
     'src/lib/server-env.ts': { getAppUrl: () => 'https://www.macro-bias.com', getRequiredServerEnv: () => 'fixture-key' },
     'src/lib/crypto-market-data/upsert-crypto-market-data.ts': { upsertCryptoMarketData: async () => {
-      effects.syncs.push(true); if (options.syncError) throw new Error('Fixture sync failed'); return { tradeDate: tables.crypto_bias_scores?.[0]?.trade_date };
+      effects.syncs.push(true); clock += options.syncDelay ?? 0; if (options.syncError) throw new Error('Fixture sync failed'); return { tradeDate: tables.crypto_bias_scores?.[0]?.trade_date };
     } },
     'src/lib/crypto-briefing/crypto-brief-generator.ts': {
       generateCryptoDailyBriefing: async input => { effects.models.push(clone(input)); return { generatedBy: 'fixture', newsletterCopy: BODY, isOverrideActive: false, warnings: [] }; },
@@ -119,16 +124,22 @@ function harness(options = {}) {
       },
     },
     'src/lib/crypto-briefing/crypto-delivery.ts': {
-      claimCryptoPublication: async date => { effects.claims.push(date); if (options.claimError) throw new Error('Fixture claim failed'); return claim; },
-      finishCryptoPublication: async (value, status, metadata) => { effects.finishes.push({ status, metadata: clone(metadata) }); },
+      claimCryptoPublication: async (date, deadlineAt) => { effects.claims.push({ date, deadlineAt }); if (options.claimError) throw new Error('Fixture claim failed'); return claim; },
+      finishCryptoPublication: async (value, status, metadata) => { effects.finishes.push({ status, metadata: clone(metadata) }); timeline.push(`finish:${status}`); clock += options.finishDelay ?? 0; },
       sendCryptoEmailOnce: async input => {
-        effects.deliveries.push({ recipient: input.recipient, tradeDate: input.tradeDate, payload: clone(input.payload) });
+        effects.deliveries.push({ recipient: input.recipient, tradeDate: input.tradeDate, deadlineAt: input.deadlineAt, payload: clone(input.payload) });
+        timeline.push('delivery'); clock += options.deliveryDelay ?? 0;
         if (options.deliveryError) throw new Error('Fixture provider failed');
-        return { status: options.deliveryStatus ?? 'accepted' };
+        return { status: options.deliveryStatuses?.[effects.deliveries.length - 1] ?? options.deliveryStatus ?? 'accepted' };
       },
     },
     'src/lib/referral/premium-unlock.ts': { partitionUnlockedSubscribers: async (_, emails) => ({ unlockedEmails: [], regularFreeEmails: emails }) },
-    'src/lib/referral/verify-referrals.ts': { verifyPendingReferrals: async () => { effects.referrals.push(true); } },
+    'src/lib/referral/verify-referrals.ts': { verifyPendingReferrals: async () => {
+      effects.referrals.push(true); timeline.push('referrals:start');
+      if (options.referralError) throw new Error('Fixture referral failure');
+      if (options.deferReferral) await new Promise(resolve => { releaseReferral = resolve; });
+      timeline.push('referrals:end');
+    } },
     'src/lib/social/bluesky.ts': { isBlueskyConfigured: () => false },
     'src/lib/social/telegram.ts': { isTelegramConfigured: () => false },
     'src/lib/social/threads.ts': { isThreadsConfigured: () => false },
@@ -159,6 +170,8 @@ function harness(options = {}) {
     };
     vm.runInNewContext(`(function(exports,require,module){${compiled}\n})`, {
       Date: FixtureDate, Error, Intl, Buffer, URL, process: { env }, console: { log() {}, warn() {}, error() {} },
+      AbortSignal: { timeout(value) { effects.timeouts.push(value); return AbortSignal.timeout(value); }, any: AbortSignal.any },
+      fetch: async (input, init) => { effects.network.push({ signal: init.signal }); return { ok: true }; },
       setTimeout: fn => { fn(); return 0; }, clearTimeout() {},
     }, { filename })(module.exports, localRequire, module);
     return module.exports;
@@ -167,7 +180,8 @@ function harness(options = {}) {
     nextUrl: new URL(`https://fixture.invalid/api/cron/crypto-publish${params}`),
     headers: new Headers({ ...(authorization === null ? {} : { authorization }), ...extra }),
   });
-  return { load, effects, tables, request };
+  return { load, effects, tables, request, timeline, adminConfigurations,
+    advance(value) { clock += value; }, now() { return clock; }, releaseReferral() { releaseReferral(); } };
 }
 let passed = 0;
 async function check(name, run) { await run(); passed++; console.log(`PASS ${name}`); }
@@ -273,6 +287,71 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     for (const header of ['REGIME STATUS', 'MARKET MAP', 'RISK FRAME', 'MODEL CONTEXT']) assert.ok(premium.text.includes(header));
     assert.equal(free.text.includes('RISK FRAME'), false); assert.ok(premium.html.includes('RISK FRAME'));
     assert.equal(response.data.premiumEmailsSent, 2); assert.equal(response.data.freeEmailsSent, 1);
+  });
+  await check('shadow recipient configuration rejects authorized service before all effects', async () => {
+    for (const params of ['', '?skipEmail=true']) {
+      const fixture = harness({ env: { SHADOW_RUN_EMAIL: 'shadow@fixture-mail.net' } });
+      const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request(params));
+      assert.equal(response.status, 500); assert.match(response.data.error, /Shadow email routing/);
+      assert.ok(Object.values(fixture.effects).every(values => values.length === 0));
+    }
+  });
+  await check('absolute 270-second cutoff after data sync prevents subsequent data/model/mail effects', async () => {
+    const fixture = harness({ syncDelay: 270_000 }); const startedAt = fixture.now();
+    const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    assert.equal(response.status, 500); assert.equal(fixture.effects.claims[0].deadlineAt, startedAt + 270_000);
+    assert.equal(fixture.effects.syncs.length, 1); assert.equal(fixture.effects.queries.length, 0);
+    assert.equal(fixture.effects.models.length, 0); assert.equal(fixture.effects.deliveries.length, 0); assert.equal(fixture.effects.finishes[0].status, 'failed');
+  });
+  await check('35 eligible unique recipients require 35 awaited accepted or existing receipts before completion', async () => {
+    const tables = defaultTables();
+    tables.users = Array.from({ length: 5 }, (_, index) => ({ email: `paid-${index}@fixture-mail.net`, subscription_status: 'active' }));
+    tables.free_subscribers = Array.from({ length: 30 }, (_, index) => ({ email: `crypto-${index}@fixture-mail.net`, status: 'active', crypto_opted_in: true }));
+    tables.free_subscribers.push({ ...tables.free_subscribers[0] }, { email: tables.users[0].email, status: 'active', crypto_opted_in: true },
+      { email: 'stock-only@fixture-mail.net', status: 'active', crypto_opted_in: false });
+    const fixture = harness({ tables, deliveryStatuses: Array(5).fill('already_accepted') }); const startedAt = fixture.now();
+    const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    assert.equal(response.status, 200); assert.equal(response.data.freeEmailsSent, 30); assert.equal(response.data.premiumEmailsSent, 0); assert.equal(response.data.alreadyAccepted, 5);
+    assert.equal(fixture.effects.deliveries.length, 35); assert.equal(new Set(fixture.effects.deliveries.map(delivery => delivery.recipient)).size, 35);
+    assert.ok(fixture.effects.deliveries.every(delivery => delivery.deadlineAt === startedAt + 270_000));
+    assert.deepEqual(fixture.timeline.slice(-3), ['finish:completed', 'referrals:start', 'referrals:end']);
+    assert.equal(fixture.timeline.filter(event => event === 'delivery').length, 35);
+  });
+  await check('cutoff preserves partial new and prior receipt counts and leaves publication resumable', async () => {
+    const tables = defaultTables(); tables.free_subscribers = Array.from({ length: 3 }, (_, index) => ({ email: `partial-${index}@fixture-mail.net`, status: 'active', crypto_opted_in: true }));
+    const fixture = harness({ tables, deliveryDelay: 135_000, deliveryStatuses: ['already_accepted', 'accepted'] });
+    const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    assert.equal(response.status, 500); assert.equal(response.data.deliveryStatus, 'failed'); assert.equal(response.data.freeEmailsSent, 1); assert.equal(response.data.alreadyAccepted, 1);
+    assert.equal(fixture.effects.deliveries.length, 2); assert.equal(fixture.effects.finishes[0].status, 'failed'); assert.equal(fixture.effects.finishes[0].metadata.alreadyAccepted, 1);
+    assert.equal(fixture.effects.referrals.length, 0);
+  });
+  await check('crypto-only admin fetch aborts in five seconds or remaining budget and rejects expired requests', async () => {
+    const fixture = harness(); await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    const config = fixture.adminConfigurations[0]; assert.deepEqual(clone(config.auth), { autoRefreshToken: false, persistSession: false });
+    assert.ok(fixture.effects.adminClients.every(client => client.boundedFetch));
+    await config.global.fetch('https://fixture.invalid/database', {}); assert.equal(fixture.effects.timeouts.at(-1), 5_000); assert.ok(fixture.effects.network[0].signal instanceof AbortSignal);
+    fixture.advance(268_000); await config.global.fetch('https://fixture.invalid/database', {}); assert.equal(fixture.effects.timeouts.at(-1), 2_000);
+    fixture.advance(2_000); await assert.rejects(() => config.global.fetch('https://fixture.invalid/database', {}), /runtime budget exhausted/); assert.equal(fixture.effects.network.length, 2);
+  });
+  await check('referral tail failure becomes warning after durable completion without a failed mail state', async () => {
+    const fixture = harness({ referralError: true }); const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    assert.equal(response.status, 200); assert.equal(response.data.deliveryStatus, 'provider_accepted'); assert.equal(fixture.effects.finishes.length, 1); assert.equal(fixture.effects.finishes[0].status, 'completed');
+    assert.ok(response.data.warnings.some(warning => warning.startsWith('Referral verification did not complete')));
+    assert.deepEqual(fixture.timeline.slice(-2), ['finish:completed', 'referrals:start']);
+  });
+  await check('exhausted ancillary budget defers referrals after completed receipt cleanup', async () => {
+    const fixture = harness({ deliveryDelay: 275_000, finishDelay: 10_000 });
+    const response = await fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request());
+    assert.equal(response.status, 200); assert.equal(fixture.effects.finishes[0].status, 'completed'); assert.equal(fixture.effects.referrals.length, 0);
+    assert.ok(response.data.warnings.some(warning => warning.startsWith('Referral verification deferred')));
+  });
+  await check('referral tail is awaited only after durable finish and receives its own bounded client', async () => {
+    const fixture = harness({ deferReferral: true }); let settled = false;
+    const pending = fixture.load('src/app/api/cron/crypto-publish/route.ts').GET(fixture.request()).then(value => { settled = true; return value; });
+    for (let attempt = 0; fixture.effects.referrals.length === 0 && attempt < 100; attempt++) await Promise.resolve();
+    assert.equal(fixture.effects.referrals.length, 1); assert.equal(settled, false); assert.equal(fixture.effects.finishes[0].status, 'completed');
+    fixture.advance(284_000); await fixture.adminConfigurations.at(-1).global.fetch('https://fixture.invalid/referral', {}); assert.equal(fixture.effects.timeouts.at(-1), 1_000);
+    fixture.releaseReferral(); assert.equal((await pending).status, 200); assert.equal(settled, true);
   });
   await check('actual generator persistence never overwrites an existing historical briefing', async () => {
     const fixture = harness(); const original = clone(fixture.tables.crypto_daily_briefings[0]);

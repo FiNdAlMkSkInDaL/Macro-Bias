@@ -16,27 +16,44 @@ const fixturePayload = recipient => ({ from: 'fixture@example.invalid', to: [rec
 function harness(options = {}) {
   let clock = Date.parse('2026-10-04T08:00:00Z');
   const rows = options.rows || new Map(); const writes = []; const calls = []; const effects = options.effects || new Map(); const delays = [];
+  const signals = []; const databaseCalls = [];
   let providerIndex = 0; let updateIndex = 0;
   let releaseReceipt;
   class FixtureDate extends Date {
     constructor(...args) { super(...(args.length ? args : [clock])); }
     static now() { return clock; }
   }
+  class FixtureSignal {
+    constructor(timeoutMs) { this.timeoutMs = timeoutMs; this.expiresAt = clock + timeoutMs; this.aborted = false; this.listeners = new Set(); signals.push(this); }
+    static timeout(timeoutMs) { return new FixtureSignal(timeoutMs); }
+    addEventListener(_, listener) { this.listeners.add(listener); }
+    removeEventListener(_, listener) { this.listeners.delete(listener); }
+    abort() { if (this.aborted) return; this.aborted = true; for (const listener of [...this.listeners]) listener(); }
+  }
+  function advance(value) {
+    clock += value;
+    for (const signal of signals) if (signal.expiresAt <= clock) signal.abort();
+  }
   function field(row, key) {
     return key.startsWith('metadata->>') ? row.metadata[key.slice(11)] : row[key];
   }
   const admin = { from(table) {
     assert.equal(table, 'marketing_event_log');
-    let operation = 'select'; let values; const filters = [];
+    let operation = 'select'; let values; let signal; const filters = [];
     const query = {
       select() { return query; },
       eq(key, value) { filters.push(row => field(row, key) === value); return query; },
       insert(value) { operation = 'insert'; values = copy(value); return query; },
       update(value) { operation = 'update'; values = copy(value); return query; },
-      async maybeSingle() { return execute(); },
+      abortSignal(value) { signal = value; return query; },
+      maybeSingle() { return query; },
       then(resolve, reject) { return Promise.resolve(execute()).then(resolve, reject); },
     };
     function execute() {
+      assert.ok(signal, 'All claim queries must be abortable');
+      databaseCalls.push({ operation, timeoutMs: signal.timeoutMs });
+      advance(options.databaseDelay?.(operation, values) ?? 0);
+      if (signal.aborted) return { data: null, error: { code: 'offline_db_timeout' } };
       if (operation === 'insert') {
         if (options.failInsert) return { data: null, error: { code: 'offline_db_failure' } };
         if (rows.has(values.id)) return { data: null, error: { code: '23505' } };
@@ -50,6 +67,7 @@ function harness(options = {}) {
         if (options.failUpdate?.(values, updateIndex)) return { data: null, error: { code: 'offline_db_failure' } };
         if (!row) return { data: null, error: null };
         Object.assign(row, copy(values)); writes.push({ kind: operation, row: copy(row) });
+        advance(options.afterCommitDelay?.(values) ?? 0);
       }
       return { data: row ? copy(row) : null, error: null };
     }
@@ -60,7 +78,8 @@ function harness(options = {}) {
   }).outputText;
   const module = { exports: {} };
   vm.runInNewContext(`(function(require,module,exports){${compiled}\n})`, {
-    Date: FixtureDate, setTimeout(fn, delay) { delays.push(delay); clock += delay; fn(); return 0; },
+    Date: FixtureDate, AbortSignal: FixtureSignal,
+    setTimeout(fn, delay) { delays.push(delay); advance(delay); fn(); return 0; },
   })(name => {
     if (name === 'server-only') return {};
     if (name === 'node:crypto') return crypto;
@@ -68,21 +87,24 @@ function harness(options = {}) {
     throw new Error('Unexpected helper dependency');
   }, module, module.exports);
   const resend = { emails: { async send(payload, config) {
-    const call = { payload: copy(payload), key: config.idempotencyKey, startedAt: clock };
+    assert.ok(config.signal, 'Provider request must carry an actual fetch signal');
+    const call = { payload: copy(payload), key: config.idempotencyKey, startedAt: clock, timeoutMs: config.signal.timeoutMs };
     calls.push(call);
     const index = providerIndex++;
     const response = options.responses?.[index];
     if (response === 'throw') throw new Error('Offline uncertain provider fixture');
     if (response) return copy(response);
     if (!effects.has(call.key)) effects.set(call.key, `provider-fixture-${effects.size + 1}`);
+    advance(options.providerDelay ?? 0);
+    if (config.signal.aborted && !options.ignoreProviderAbort) return { data: null, error: { name: 'application_error', statusCode: null }, headers: null };
     if (options.deferReceipt && index === 0) await new Promise(resolve => { releaseReceipt = resolve; });
     return { data: { id: effects.get(call.key) }, error: null, headers: null };
   } } };
-  const send = (recipient = fixtureRecipient, payload = fixturePayload(recipient), tradeDate = '2026-10-03') =>
-    module.exports.sendCryptoEmailOnce({ tradeDate, recipient, payload, resend });
-  return { ...module.exports, rows, writes, calls, effects, delays, options, send,
+  const send = (recipient = fixtureRecipient, payload = fixturePayload(recipient), tradeDate = '2026-10-03', deadlineAt) =>
+    module.exports.sendCryptoEmailOnce({ tradeDate, recipient, payload, resend: options.resend ?? resend, deadlineAt });
+  return { ...module.exports, rows, writes, calls, effects, delays, signals, databaseCalls, options, send,
     releaseProviderReceipt() { releaseReceipt(); },
-    advance(value) { clock += value; }, now() { return clock; },
+    advance, now() { return clock; },
     delivery() { return [...rows.values()].find(row => row.event_name === 'crypto_email_delivery'); },
   };
 }
@@ -207,6 +229,69 @@ async function group(name, test) {
     assert.equal((await h.send(fixtureRecipient, payload)).status, 'failed'); assert.equal((await h.send(fixtureRecipient, fixturePayload(fixtureRecipient), '2026-02-30')).status, 'failed');
     assert.equal(h.calls.length, 0); h.options.responses = ['throw']; await h.send(); h.advance(LEASE + 1);
     h.delivery().metadata.first_attempt_at = 'invalid'; assert.equal((await h.send()).status, 'uncertain'); assert.equal(h.calls.length, 1);
+  });
+  await group('Publication and delivery database reads and writes use five-second aborts, including finish grace', async () => {
+    const h = harness(); const claim = await h.claimCryptoPublication('2026-10-03', h.now() + 270_000);
+    await h.claimCryptoPublication('2026-10-03', h.now() + 270_000);
+    await h.send(); await h.send(); h.advance(270_000);
+    await h.finishCryptoPublication(claim, 'completed', { accepted: 1 });
+    assert.ok(h.databaseCalls.length >= 9); assert.ok(h.databaseCalls.every(call => call.timeoutMs === 5_000));
+    assert.equal([...h.rows.values()].find(row => row.event_name === 'crypto_publication').metadata.state, 'completed');
+  });
+  await group('Provider aborts are ten seconds or the shorter remaining absolute deadline', async () => {
+    const regular = harness(); assert.equal((await regular.send()).status, 'accepted'); assert.equal(regular.calls[0].timeoutMs, 10_000);
+    const short = harness(); assert.equal((await short.send(fixtureRecipient, fixturePayload(fixtureRecipient), '2026-10-03', short.now() + 2_500)).status, 'accepted');
+    assert.equal(short.calls[0].timeoutMs, 2_500); assert.equal(short.databaseCalls[0].timeoutMs, 2_500);
+  });
+  await group('Provider timeout retains uncertain payload and key for one safe replay', async () => {
+    const h = harness({ providerDelay: 10_000 }); const first = await h.send(); assert.equal(first.status, 'uncertain');
+    assert.equal(h.delivery().metadata.state, 'uncertain'); const frozen = copy(h.delivery().metadata);
+    h.options.providerDelay = 0; h.advance(LEASE + 1);
+    const changed = fixturePayload(fixtureRecipient); changed.subject = 'Must not replace frozen subject';
+    assert.equal((await h.send(fixtureRecipient, changed)).status, 'accepted');
+    assert.deepEqual(h.calls[1].payload, frozen.payload); assert.equal(h.calls[1].key, frozen.idempotency_key); assert.equal(h.effects.size, 1);
+  });
+  await group('Expired cutoff and database abort stop before provider effects', async () => {
+    const expired = harness(); assert.equal((await expired.send(fixtureRecipient, fixturePayload(fixtureRecipient), '2026-10-03', expired.now())).status, 'uncertain');
+    assert.equal(expired.rows.size, 0); assert.equal(expired.databaseCalls.length, 0); assert.equal(expired.calls.length, 0);
+    const stalled = harness({ databaseDelay: () => 5_000 }); assert.equal((await stalled.send()).status, 'failed');
+    assert.equal(stalled.rows.size, 0); assert.equal(stalled.calls.length, 0);
+  });
+  await group('Queued cutoff cancels the turn and never starts a later send', async () => {
+    const h = harness({ deferReceipt: true }); const first = h.send();
+    for (let attempts = 0; h.calls.length === 0 && attempts < 50; attempts++) await Promise.resolve();
+    const secondRecipient = 'queued-fixture@example.invalid'; const frozen = fixturePayload(secondRecipient);
+    const queued = h.send(secondRecipient, frozen, '2026-10-03', h.now() + 100);
+    for (let attempt = 0; h.rows.size < 2 && attempt < 50; attempt++) await Promise.resolve();
+    for (let attempt = 0; h.signals.every(signal => signal.timeoutMs !== 100) && attempt < 50; attempt++) await Promise.resolve();
+    h.advance(100); assert.equal((await queued).status, 'uncertain'); assert.equal(h.calls.length, 1);
+    h.releaseProviderReceipt(); assert.equal((await first).status, 'accepted');
+    for (let attempt = 0; attempt < 10; attempt++) await Promise.resolve(); assert.equal(h.calls.length, 1);
+    h.advance(LEASE + 1); const changed = { ...frozen, subject: 'Changed after cutoff' };
+    assert.equal((await h.send(secondRecipient, changed)).status, 'accepted'); assert.deepEqual(h.calls[1].payload, frozen);
+  });
+  await group('Cutoff after sending CAS prevents provider effect and retains frozen claim', async () => {
+    const h = harness({ afterCommitDelay: values => values.metadata.state === 'sending' ? 100 : 0 });
+    assert.equal((await h.send(fixtureRecipient, fixturePayload(fixtureRecipient), '2026-10-03', h.now() + 100)).status, 'uncertain');
+    assert.equal(h.calls.length, 0); assert.equal(h.delivery().metadata.state, 'uncertain'); assert.ok(h.delivery().metadata.payload);
+  });
+  await group('Known provider receipt persists with fixed database grace after work cutoff', async () => {
+    const h = harness({ providerDelay: 100, ignoreProviderAbort: true });
+    assert.equal((await h.send(fixtureRecipient, fixturePayload(fixtureRecipient), '2026-10-03', h.now() + 100)).status, 'accepted');
+    assert.equal(h.delivery().metadata.email_id, 'provider-fixture-1'); assert.equal(h.databaseCalls.at(-1).timeoutMs, 5_000);
+  });
+  await group('Installed Resend SDK forwards the helper signal and treats aborted response bodies as uncertain', async () => {
+    const originalFetch = globalThis.fetch; const { Resend } = require('resend'); const h = harness({ resend: new Resend('offline-fixture-key') });
+    let providerRequests = 0;
+    try {
+      globalThis.fetch = async (_, init) => {
+        providerRequests += 1; assert.ok(init.signal); assert.equal(init.signal.timeoutMs, 10_000);
+        assert.ok(new Headers(init.headers).get('Idempotency-Key'));
+        return { ok: true, headers: new Headers(), async json() { h.advance(10_000); assert.equal(init.signal.aborted, true); throw new Error('Offline body abort'); } };
+      };
+      assert.equal((await h.send()).status, 'uncertain'); assert.equal(providerRequests, 1); assert.equal(h.delivery().metadata.state, 'uncertain');
+      assert.deepEqual(copy(h.delivery().metadata.payload), fixturePayload(fixtureRecipient));
+    } finally { globalThis.fetch = originalFetch; }
   });
   const passed = groups.every(g => g.passed);
   console.log(JSON.stringify({ passed, groups: groups.length, failures: groups.filter(g => !g.passed).map(g => g.name), remoteCalls: 0 }));

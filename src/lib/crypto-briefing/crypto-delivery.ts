@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createHash, randomUUID } from 'node:crypto';
-import type { Resend } from 'resend';
+import type { CreateEmailRequestOptions, Resend } from 'resend';
 
 import { createSupabaseAdminClient } from '../supabase/admin';
 
@@ -9,6 +9,8 @@ const TABLE = 'marketing_event_log';
 const LEASE_MS = 10 * 60 * 1_000;
 const REPLAY_WINDOW_MS = 24 * 60 * 60 * 1_000;
 const SEND_INTERVAL_MS = 550;
+const DATABASE_TIMEOUT_MS = 5_000;
+const PROVIDER_TIMEOUT_MS = 10_000;
 const PAGE_PATH = '/api/cron/crypto-publish';
 
 export type CryptoPublicationClaim = {
@@ -45,6 +47,24 @@ type Metadata = Record<string, unknown> & {
 type ClaimRow = { id: string; event_name: string; metadata: Metadata };
 type Admin = ReturnType<typeof createSupabaseAdminClient>;
 
+class DeliveryDeadlineError extends Error {
+  constructor() { super('Crypto email delivery deadline reached; retry is held.'); }
+}
+
+function remainingTime(deadlineAt: number) {
+  return deadlineAt - Date.now();
+}
+
+function boundedSignal(timeoutMs: number, deadlineAt = Infinity) {
+  const remaining = Math.min(timeoutMs, remainingTime(deadlineAt));
+  if (remaining <= 0) throw new DeliveryDeadlineError();
+  return AbortSignal.timeout(Math.ceil(remaining));
+}
+
+function deadlineResult(): CryptoEmailDeliveryResult {
+  return { status: 'uncertain', error: new DeliveryDeadlineError().message };
+}
+
 function dateIsValid(tradeDate: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(tradeDate)
     && Number.isFinite(Date.parse(`${tradeDate}T00:00:00Z`))
@@ -77,27 +97,28 @@ function validMetadata(value: unknown, tradeDate: string): value is Metadata {
     && Number.isFinite(instant(metadata.lease_until));
 }
 
-async function readClaim(admin: Admin, id: string, eventName: string, tradeDate: string) {
+async function readClaim(admin: Admin, id: string, eventName: string, tradeDate: string, deadlineAt = Infinity) {
   const { data, error } = await admin.from(TABLE)
-    .select('id,event_name,metadata').eq('id', id).eq('event_name', eventName).maybeSingle();
+    .select('id,event_name,metadata').eq('id', id).eq('event_name', eventName)
+    .abortSignal(boundedSignal(DATABASE_TIMEOUT_MS, deadlineAt)).maybeSingle();
   if (error || !data || !validMetadata(data.metadata, tradeDate)) {
     throw new Error('Could not read a valid crypto delivery claim.');
   }
   return data as ClaimRow;
 }
 
-async function replaceOwnedMetadata(admin: Admin, row: ClaimRow, metadata: Metadata) {
+async function replaceOwnedMetadata(admin: Admin, row: ClaimRow, metadata: Metadata, deadlineAt = Infinity) {
   const { data, error } = await admin.from(TABLE).update({ metadata })
     .eq('id', row.id).eq('event_name', row.event_name)
     .eq('metadata->>owner', row.metadata.owner)
     .eq('metadata->>state', row.metadata.state)
     .eq('metadata->>lease_until', row.metadata.lease_until)
-    .select('id').maybeSingle();
+    .select('id').abortSignal(boundedSignal(DATABASE_TIMEOUT_MS, deadlineAt)).maybeSingle();
   if (error) throw new Error('Could not persist crypto delivery state.');
   return Boolean(data);
 }
 
-export async function claimCryptoPublication(tradeDate: string): Promise<CryptoPublicationClaim> {
+export async function claimCryptoPublication(tradeDate: string, deadlineAt = Infinity): Promise<CryptoPublicationClaim> {
   if (!dateIsValid(tradeDate)) throw new Error('Invalid crypto publication date.');
   const admin = createSupabaseAdminClient();
   const id = deterministicId('crypto-publication', tradeDate);
@@ -110,11 +131,11 @@ export async function claimCryptoPublication(tradeDate: string): Promise<CryptoP
   };
   const { error } = await admin.from(TABLE).insert({
     id, event_name: 'crypto_publication', page_path: PAGE_PATH, metadata,
-  });
+  }).abortSignal(boundedSignal(DATABASE_TIMEOUT_MS, deadlineAt));
   if (!error) return { id, owner, claimed: true, completed: false };
   if (error.code !== '23505') throw new Error('Could not persist crypto publication claim.');
 
-  const row = await readClaim(admin, id, 'crypto_publication', tradeDate);
+  const row = await readClaim(admin, id, 'crypto_publication', tradeDate, deadlineAt);
   if (row.metadata.state === 'completed') {
     return { id, owner: row.metadata.owner, claimed: false, completed: true };
   }
@@ -124,7 +145,7 @@ export async function claimCryptoPublication(tradeDate: string): Promise<CryptoP
   if (row.metadata.state === 'claimed' && instant(row.metadata.lease_until) > now) {
     return { id, owner: row.metadata.owner, claimed: false, completed: false };
   }
-  const claimed = await replaceOwnedMetadata(admin, row, { ...row.metadata, ...metadata });
+  const claimed = await replaceOwnedMetadata(admin, row, { ...row.metadata, ...metadata }, deadlineAt);
   return { id, owner, claimed, completed: false };
 }
 
@@ -136,7 +157,8 @@ export async function finishCryptoPublication(
   if (!claim.claimed) throw new Error('Crypto publication claim is not owned.');
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin.from(TABLE).select('id,event_name,metadata')
-    .eq('id', claim.id).eq('event_name', 'crypto_publication').maybeSingle();
+    .eq('id', claim.id).eq('event_name', 'crypto_publication')
+    .abortSignal(boundedSignal(DATABASE_TIMEOUT_MS)).maybeSingle();
   if (error || !data || typeof data.metadata?.trade_date !== 'string'
     || !validMetadata(data.metadata, data.metadata.trade_date)
     || data.metadata.owner !== claim.owner || data.metadata.state !== 'claimed') {
@@ -153,14 +175,30 @@ export async function finishCryptoPublication(
 let sendQueue: Promise<void> = Promise.resolve();
 let nextSendAt = 0;
 
-async function withSendSlot<T>(run: () => Promise<T>): Promise<T> {
-  const turn = sendQueue.then(async () => {
-    const delay = Math.max(0, nextSendAt - Date.now());
-    if (delay > 0) await new Promise<void>((resolve) => setTimeout(resolve, delay));
-    return run();
+async function withSendSlot<T>(run: () => Promise<T>, deadlineAt: number): Promise<T> {
+  // Cancelling a queued turn prevents its callback from starting a later effect.
+  const waitSignal = Number.isFinite(deadlineAt)
+    ? boundedSignal(remainingTime(deadlineAt), deadlineAt) : null;
+  return new Promise<T>((resolve, reject) => {
+    let cancelled = false;
+    const abortWaiting = () => { cancelled = true; reject(new DeliveryDeadlineError()); };
+    waitSignal?.addEventListener('abort', abortWaiting, { once: true });
+    const turn = sendQueue.then(async () => {
+      if (cancelled || remainingTime(deadlineAt) <= 0) throw new DeliveryDeadlineError();
+      const delay = Math.max(0, nextSendAt - Date.now());
+      if (delay >= remainingTime(deadlineAt)) throw new DeliveryDeadlineError();
+      if (delay > 0) await new Promise<void>((done) => setTimeout(done, delay));
+      if (cancelled || remainingTime(deadlineAt) <= 0) throw new DeliveryDeadlineError();
+      waitSignal?.removeEventListener('abort', abortWaiting);
+      return run();
+    });
+    sendQueue = turn.then(() => undefined, () => undefined);
+    turn.then(value => {
+      waitSignal?.removeEventListener('abort', abortWaiting); resolve(value);
+    }, error => {
+      waitSignal?.removeEventListener('abort', abortWaiting); reject(error);
+    });
   });
-  sendQueue = turn.then(() => undefined, () => undefined);
-  return turn;
 }
 
 function validPayload(value: unknown, recipient: string): value is CryptoEmailPayload {
@@ -183,17 +221,19 @@ async function saveDeliveryOutcome(admin: Admin, row: ClaimRow, metadata: Metada
   try { return await replaceOwnedMetadata(admin, row, metadata); } catch { return false; }
 }
 
-export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resend }: {
+export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resend, deadlineAt = Infinity }: {
   tradeDate: string;
   recipient: string;
   payload: CryptoEmailPayload;
   resend: Pick<Resend, 'emails'>;
+  deadlineAt?: number;
 }): Promise<CryptoEmailDeliveryResult> {
   const email = recipient.trim().toLowerCase();
   if (!dateIsValid(tradeDate) || !/^[^\s@]+@[^\s@]+$/.test(email) || email.length > 320
     || !validPayload(payload, email)) {
     return { status: 'failed', error: 'Invalid crypto email delivery input.' };
   }
+  if (remainingTime(deadlineAt) <= 0) return deadlineResult();
   let admin: Admin;
   let row: ClaimRow;
   try {
@@ -211,12 +251,12 @@ export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resen
     const { error } = await admin.from(TABLE).insert({
       id, event_name: 'crypto_email_delivery', page_path: PAGE_PATH,
       subscriber_email: email, metadata,
-    });
+    }).abortSignal(boundedSignal(DATABASE_TIMEOUT_MS, deadlineAt));
     if (!error) {
       row = { id, event_name: 'crypto_email_delivery', metadata };
     } else {
       if (error.code !== '23505') throw new Error('Could not persist crypto email claim.');
-      row = await readClaim(admin, id, 'crypto_email_delivery', tradeDate);
+      row = await readClaim(admin, id, 'crypto_email_delivery', tradeDate, deadlineAt);
       if (row.metadata.state === 'accepted') {
         const emailId = row.metadata.email_id;
         return typeof emailId === 'string' && emailId.length > 0
@@ -241,18 +281,20 @@ export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resen
       }
       const claimed = await replaceOwnedMetadata(admin, row, {
         ...row.metadata, owner: metadata.owner, state: 'claimed', lease_until: metadata.lease_until,
-      });
+      }, deadlineAt);
       if (!claimed) return { status: 'in_progress' };
       row = { ...row, metadata: {
         ...row.metadata, owner: metadata.owner, state: 'claimed', lease_until: metadata.lease_until,
       } };
     }
   } catch {
+    if (remainingTime(deadlineAt) <= 0) return deadlineResult();
     return { status: 'failed', error: 'Could not persist crypto email claim before sending.' };
   }
 
   return withSendSlot(async (): Promise<CryptoEmailDeliveryResult> => {
     try {
+      if (remainingTime(deadlineAt) <= 0) return deadlineResult();
       const firstAttempt = instant(row.metadata.first_attempt_at);
       if (Number.isFinite(firstAttempt) && Date.now() - firstAttempt >= REPLAY_WINDOW_MS) {
         return { status: 'uncertain', error: 'Crypto email retry window has expired; automatic resend is blocked.' };
@@ -264,9 +306,10 @@ export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resen
         first_attempt_at: row.metadata.first_attempt_at ?? started, last_attempt_at: started,
         attempts: (typeof row.metadata.attempts === 'number' ? row.metadata.attempts : 0) + 1,
       };
-      if (!await replaceOwnedMetadata(admin, row, sending)) return { status: 'in_progress' };
+      if (!await replaceOwnedMetadata(admin, row, sending, deadlineAt)) return { status: 'in_progress' };
       row = { ...row, metadata: sending };
     } catch {
+      if (remainingTime(deadlineAt) <= 0) return deadlineResult();
       return { status: 'failed', error: 'Could not persist crypto email claim before sending.' };
     }
 
@@ -277,9 +320,12 @@ export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resen
       if (Number.isFinite(firstAttempt) && Date.now() - firstAttempt >= REPLAY_WINDOW_MS) {
         return { status: 'uncertain', error: 'Crypto email retry window has expired; automatic resend is blocked.' };
       }
-      const response = await resend.emails.send(jsonCopy(row.metadata.payload as CryptoEmailPayload), {
+      // The installed SDK forwards options to fetch, including its body-reading signal.
+      const requestOptions: CreateEmailRequestOptions & { signal: AbortSignal } = {
         idempotencyKey: row.metadata.idempotency_key as string,
-      });
+        signal: boundedSignal(PROVIDER_TIMEOUT_MS, deadlineAt),
+      };
+      const response = await resend.emails.send(jsonCopy(row.metadata.payload as CryptoEmailPayload), requestOptions);
       if (response.error) {
         const code = providerErrorCode(response.error);
         const rejected = typeof response.error.statusCode === 'number'
@@ -311,5 +357,8 @@ export async function sendCryptoEmailOnce({ tradeDate, recipient, payload, resen
       await saveDeliveryOutcome(admin, row, { ...row.metadata, state: 'uncertain' });
       return { status: 'uncertain', error: 'Crypto email provider outcome is unknown; retry is held.' };
     }
+  }, deadlineAt).catch((error: unknown) => {
+    if (error instanceof DeliveryDeadlineError) return deadlineResult();
+    throw error;
   });
 }
