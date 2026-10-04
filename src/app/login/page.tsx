@@ -163,6 +163,12 @@ export default function LoginPage() {
           {isSubmitting ? 'Working' : authMode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
       </form>
+      <a
+        href={`/forgot-password?${new URLSearchParams({ redirectTo: redirectPath }).toString()}`}
+        className="mt-4 inline-block text-sm text-zinc-300 underline underline-offset-4"
+      >
+        Forgot password?
+      </a>
       <button
         type="button"
         className="mt-4 text-sm text-zinc-500"

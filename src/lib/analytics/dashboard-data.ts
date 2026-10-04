@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { getPaperTradingDashboardData, type PaperTradingDashboardData } from "@/lib/paper-trading/get-paper-trading-dashboard-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAnalyticsAdminUser as getVerifiedAnalyticsAdminUser } from "@/lib/analytics/admin-access";
 
 const FUNNEL_SURFACES = ["/", "/emails", "/today", "/pricing", "/refer"] as const;
 
@@ -381,16 +381,7 @@ function buildCtaRows(events: MarketingEventRow[]): AnalyticsCtaRow[] {
 }
 
 export async function getAnalyticsAdminUser(): Promise<User | null> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || user.email !== ANALYTICS_ADMIN_EMAIL) {
-    return null;
-  }
-
-  return user;
+  return getVerifiedAnalyticsAdminUser();
 }
 
 export async function getAnalyticsDashboardData(): Promise<AnalyticsDashboardData> {
