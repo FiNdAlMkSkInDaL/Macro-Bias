@@ -21,7 +21,7 @@ export function sanitizeRedirectPath(rawRedirectPath: string | null): string | n
     return null;
   }
 
-  if (rawRedirectPath.includes('\\') || rawRedirectPath.includes('://') || rawRedirectPath.includes('\0')) {
+  if (rawRedirectPath.includes('\\') || rawRedirectPath.includes('://') || /[\u0000-\u001f\u007f]/.test(rawRedirectPath)) {
     return null;
   }
 
