@@ -17,6 +17,9 @@ const MAX_EVENT_ROWS = 25_000;
 const MAX_ENTITY_ROWS = 10_000;
 const QUERY_TIMEOUT_MS = 8_000;
 const DATASET_TIMEOUT_MS = 20_000;
+// Match conversions.ACQUISITION_CAPTURE_STARTED_AT without importing effect helpers.
+// Older inactive rows lack an initial preference snapshot and use the disclosed fallback.
+const ACQUISITION_CAPTURE_STARTED_AT = "2026-10-04T19:48:00.000Z";
 const INTERNAL_HOSTS = new Set(["macro-bias.com", "www.macro-bias.com", "checkout.stripe.com", "billing.stripe.com"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRIVATE_PATH = /^\/(?:analytics|api|account|alerts|auth|dashboard|test|admin|login|signup|sign-up|sign-in|forgot-password|reset-password|update-password|checkout|billing)(?:\/|$)/i;
@@ -296,12 +299,12 @@ function add(target: Bucket, item: Observation) {
   } else if (item.kind === "account") target.newAccounts++;
   else target.paidConversions++;
 }
-function metrics(target: Bucket): AcquisitionMetrics {
+function metrics(target: Bucket, hasSubscriberAttribution: boolean): AcquisitionMetrics {
   const subscriberVisitors = [...target.subscriberVisitors].filter((visitor) => target.visitors.has(visitor) && target.visitAt.get(visitor)! <= target.subscriberAt.get(visitor)!).length;
   return {
     pageViews: target.pageViews, visitors: target.visitors.size, sessions: target.sessions.size,
     newSubscribers: target.newSubscribers, newAccounts: target.newAccounts, paidConversions: target.paidConversions,
-    subscriberVisitors, subscriberRate: target.visitors.size ? subscriberVisitors / target.visitors.size * 100 : null,
+    subscriberVisitors, subscriberRate: hasSubscriberAttribution && target.visitors.size ? subscriberVisitors / target.visitors.size * 100 : null,
   };
 }
 function contentGroup(raw: unknown, landingPath: string): string {
@@ -382,10 +385,11 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
     const valid = confirmed?.kind === kind && confirmed.at === at ? confirmed : null;
     // A private, confirmed signup snapshot proves the original opt-in. Later
     // unsubscribe/interest changes must not erase that acquisition. Without
-    // such proof, active zero-opt-in rows can be referral access only and are
-    // excluded. Legacy inactive opt-outs remain an explicitly disclosed fallback.
-    if (kind === "subscriber" && "status" in item && item.status === "active"
-      && item.stocksOptedIn === false && item.cryptoOptedIn === false && !valid) {
+    // such proof, zero-opt-in rows can be referral access or all-alerts-off
+    // preference records. Only pre-capture inactive opt-outs keep the fallback.
+    if (kind === "subscriber" && "stocksOptedIn" in item
+      && item.stocksOptedIn === false && item.cryptoOptedIn === false && !valid
+      && (item.status === "active" || at >= ACQUISITION_CAPTURE_STARTED_AT)) {
       excludedReferralOnlyRows++;
       return;
     }
@@ -437,14 +441,17 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
     group(landings, touch.landingPath, { key: touch.landingPath, label: touch.landingPath }, item);
     group(content, item.contentGroup, { key: item.contentGroup, label: item.contentGroup }, item);
   }
+  const knownSubscriberSources = filtered.filter((item) => item.kind === "subscriber" && item.touch.source !== "unknown").length;
+  const hasSubscriberAttribution = knownSubscriberSources > 0;
   const rows = (map: typeof sources) => [...map.values()].map(({ row, bucket: item }) => {
-    const value = metrics(item);
+    const value = metrics(item, hasSubscriberAttribution);
     return { ...row, ...value, subscriberRate: row.source === "unknown" ? null : value.subscriberRate };
   }).sort((a, b) => b.newSubscribers - a.newSubscribers || b.paidConversions - a.paidConversions || b.visitors - a.visitors || b.pageViews - a.pageViews || a.label.localeCompare(b.label));
-  const overview = metrics(total);
+  const overview = metrics(total, hasSubscriberAttribution);
   const views = filtered.filter((item) => item.kind === "view");
   const subscribers = filtered.filter((item) => item.kind === "subscriber");
   const accounts = filtered.filter((item) => item.kind === "account");
+  const knownAccountSources = accounts.filter((item) => item.touch.source !== "unknown").length;
   const paid = filtered.filter((item) => item.kind === "paid");
   const hasPriorVisitEvidence = (item: Observation) => !!item.visitor && total.visitors.has(item.visitor) && total.visitAt.get(item.visitor)! <= item.at;
   // Count linked/unlinked conversion entities, not distinct visitors. Several
@@ -461,20 +468,21 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   const legacyPageViews = views.filter((item) => item.legacy).length;
   const warnings = datasets.filter((item) => !item.complete).map((item) => item.error ?? `${item.name} exceeded the bounded report read; displayed counts are a partial sample.`);
   if (legacyPageViews) warnings.push("Legacy views show only their recorded source. First/latest touch and 30-minute session timing were not recorded then.");
-  if (excludedReferralOnlyRows) warnings.push("Active records with neither newsletter opted in and no confirmed initial signup are excluded from new subscribers. A confirmed eligible signup remains counted after later unsubscribe or preference changes.");
+  if (excludedReferralOnlyRows) warnings.push("Records with neither newsletter opted in and no confirmed initial signup are excluded if active or created since capture began. A confirmed eligible signup remains counted after later unsubscribe or preference changes.");
   if (subscriberRowsWithoutInitialSnapshot) warnings.push(`${subscriberRowsWithoutInitialSnapshot} subscriber records have no original opt-in snapshot. Historical totals use stored creation dates and current preferences/status; original newsletter eligibility cannot be retrospectively proven and source remains Unknown.`);
   warnings.push("Historical subscriber/account sources remain Unknown when no confirmed attribution was saved. Paid upgrades are verified first payments recorded after this tracking release; older paid conversion history is unavailable.");
   if (overview.pageViews - identifiedPageViews > 0) warnings.push("Aggregate views without consent are counted as views only; distinct visitors, sessions and linked conversion rates cover identified traffic.");
   return {
     range, filters: { preset: filters.preset ?? "30d", source: filterSource, campaign: filterCampaign, touch: selectedTouch },
     overview, sourceRows: rows(sources), campaignRows: rows(campaigns), landingRows: rows(landings), contentRows: rows(content),
-    dailySeries: [...daily].map(([date, item]) => ({ date, ...metrics(item) })),
+    dailySeries: [...daily].map(([date, item]) => ({ date, ...metrics(item, hasSubscriberAttribution) })),
     funnel: [
       { key: "visitors", label: "Identified visitors", value: overview.visitors, denominator: null, rate: null, note: "Distinct IDs with identified views or explicit consent on a public visit in this period." },
       { key: "subscribers", label: "Visitors who subscribed", value: overview.subscriberVisitors, denominator: overview.visitors, rate: overview.subscriberRate, note: "Distinct visitors with identified visit evidence before a confirmed new subscription in this period. Unlinked/Unknown subscriptions are in the overview, not this visitor path." },
       ...(["account", "paid"] as const).map((kind) => {
         const linked = new Set(filtered.filter((item) => item.kind === kind && hasPriorVisitEvidence(item)).map((item) => item.visitor)).size;
-        return { key: kind, label: kind === "account" ? "Visitors who made accounts" : "Visitors who upgraded", value: linked, denominator: overview.visitors, rate: overview.visitors ? linked / overview.visitors * 100 : null,
+        const hasRateCoverage = kind === "account" ? knownAccountSources > 0 : linkedPaidCount > 0;
+        return { key: kind, label: kind === "account" ? "Visitors who made accounts" : "Visitors who upgraded", value: linked, denominator: overview.visitors, rate: hasRateCoverage && overview.visitors ? linked / overview.visitors * 100 : null,
           note: kind === "account" ? "Linked actual Auth registrations. Each milestone uses the observed-visitor denominator; newsletter and account paths can occur independently." : "Linked verified first payments since tracking began. Historical paid upgrades and revenue are unavailable; this is not a sequential funnel." };
       }),
     ],
@@ -482,9 +490,9 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
       complete: datasets.every((item) => item.complete), datasets, warnings,
       identifiedPageViews, unidentifiedPageViews: overview.pageViews - identifiedPageViews,
       identityCoveragePct: overview.pageViews ? identifiedPageViews / overview.pageViews * 100 : null,
-      knownSubscriberSources: subscribers.filter((item) => item.touch.source !== "unknown").length,
+      knownSubscriberSources,
       unknownSubscriberSources: subscribers.filter((item) => item.touch.source === "unknown").length,
-      knownAccountSources: accounts.filter((item) => item.touch.source !== "unknown").length,
+      knownAccountSources,
       unknownAccountSources: accounts.filter((item) => item.touch.source === "unknown").length,
       linkedSubscriberCount, linkedAccountCount, linkedPaidCount,
       unlinkedSubscriberCount: subscribers.length - linkedSubscriberCount,
@@ -502,9 +510,9 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
       "Visitors are distinct within each group. A visitor can use several sources/content groups, so grouped visitor/session counts are not additive.",
       "First touch is the earliest discovery saved within the 90-day attribution window. Latest touch is the last saved non-direct acquisition; direct returns and internal auth/checkout links do not overwrite it.",
       "Unidentified aggregate views show only the current visit source in either touch view; they have no persistent first/latest history or conversion linkage.",
-      "The newsletter rate is converted identified visitors divided by visitors with identified visit evidence in the same period and filters. Visit evidence must precede the conversion. It is an observed-period rate, not a lifetime acquisition cohort.",
+      "The newsletter rate is converted identified visitors divided by visitors with identified visit evidence in the same period and filters. Visit evidence must precede the conversion. It is an observed-period rate, not a lifetime acquisition cohort. Rates are unavailable when no subscriber has known source attribution in the selected period/filters, including before the first attributed signup.",
       "Linked/unlinked outcome counts count distinct conversion entities. Funnel values count distinct linked visitors, so several real signups from one visitor remain several outcomes. Unlinked means no earlier matching visit in the selected period/filters; a saved source can still be known.",
-      "New subscribers come from unique stored creation dates. A confirmed eligible signup snapshot retains its original attribution after unsubscribe or interest changes; current eligibility does not rewrite acquisition. Without an original snapshot, legacy totals use current preferences/status and cannot prove original eligibility. Active zero-opt-in rows without a confirmed signup, resubscriptions and repeated form successes are excluded.",
+      "New subscribers come from unique stored creation dates. A confirmed eligible signup snapshot retains its original attribution after unsubscribe or interest changes; current eligibility does not rewrite acquisition. Without an original snapshot, pre-capture inactive rows use the disclosed legacy fallback and cannot prove original eligibility. Active or post-capture zero-opt-in rows without a confirmed signup, resubscriptions and repeated form successes are excluded.",
       "New accounts are email-confirmed Auth accounts whose actual creation date falls in the period; confirmation is checked at report time. Unconfirmed registration attempts are excluded.",
       "Source filters apply to the chosen attribution touch, including Unknown; dates apply to the view/conversion occurrence, not the original discovery date.",
       "Share button clicks, client signup success signals, provider delivery claims and bot/test traffic are excluded from acquisition conversion totals.",
@@ -622,7 +630,7 @@ export function acquisitionCsv(report: AcquisitionReport, view: "sources" | "cam
   };
   const available = (name: AcquisitionDatasetCoverage["name"]) => report.coverage.datasets.find((item) => item.name === name)?.available !== false;
   const events = available("events"), subscribers = available("subscribers"), accounts = available("accounts");
-  const header = ["start_utc", "end_utc", "attribution_touch", "complete", "events_available", "subscribers_available", "accounts_available", "group", "source", "medium", "campaign", "page_views", "identified_visitors", "identified_sessions", "new_subscribers", "new_accounts", "confirmed_paid_upgrades", "linked_subscriber_visitors", "identified_visitor_signup_rate_pct"];
+  const header = ["start_utc", "end_utc", "attribution_touch", "datasets_complete", "events_available", "subscribers_available", "accounts_available", "group", "source", "medium", "campaign", "page_views", "tracked_visitors", "recorded_sessions", "new_subscribers", "new_accounts", "confirmed_paid_upgrades", "linked_subscriber_visitors", "linked_visitor_signup_rate_pct"];
   return [header.map(escape).join(","), ...rows.map((row) => [report.range.startDate, report.range.endDate, report.filters.touch, String(report.coverage.complete), String(events), String(subscribers), String(accounts), row.label, row.source, row.medium, row.campaign,
     events ? row.pageViews : null, events ? row.visitors : null, events ? row.sessions : null,
     subscribers ? row.newSubscribers : null, accounts ? row.newAccounts : null, events ? row.paidConversions : null,
