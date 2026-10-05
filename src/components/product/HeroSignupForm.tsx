@@ -1,11 +1,18 @@
 'use client';
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useId, useState } from 'react';
 
+import { LoadingAnnouncement, LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { trackClientEvent } from '@/lib/analytics/client';
 import { customerEmailRejection } from '@/lib/marketing/recipient-policy';
 
-export function HeroSignupForm() {
+import { ArrowIcon } from './ArrowIcon';
+import styles from './HeroSignupForm.module.css';
+
+type SignupLocation = 'landing_hero' | 'landing_footer' | 'stock_daily_hero' | 'stock_daily_footer' | 'crypto_daily_hero' | 'crypto_daily_footer';
+
+export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { location?: SignupLocation; pagePath?: '/' | '/today' | '/crypto' }) {
+  const inputId = useId();
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
@@ -34,7 +41,7 @@ export function HeroSignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          pagePath: '/',
+          pagePath,
           stocksOptedIn: true,
           cryptoOptedIn: true,
         }),
@@ -46,10 +53,10 @@ export function HeroSignupForm() {
       }
 
       setState('success');
-      setMessage('You are on the list. The next briefing arrives before the open.');
+      setMessage('You’re on the list. Look out for your daily Macro Bias score and market update.');
       trackClientEvent({
         eventName: 'email_signup_success',
-        metadata: { location: 'landing_hero' },
+        metadata: { location },
       });
       setEmail('');
     } catch (error) {
@@ -58,50 +65,47 @@ export function HeroSignupForm() {
       setMessage(text);
       trackClientEvent({
         eventName: 'email_signup_failure',
-        metadata: { location: 'landing_hero', message: text },
+        metadata: { location, message: text },
       });
     }
   }
 
-  if (state === 'success') {
-    return (
-      <p className="mt-8 text-sm text-emerald-300" aria-live="polite">
-        {message}
-      </p>
-    );
-  }
-
   return (
-    <form id="free-alerts" className="mt-8 w-full max-w-xl" noValidate onSubmit={handleSubmit}>
-      <div className="flex w-full flex-col gap-3 sm:flex-row">
-        <label className="sr-only" htmlFor="hero-email">
-          Email address
-        </label>
-        <input
-          id="hero-email"
-          type="email"
-          required
-          autoComplete="email"
-          inputMode="email"
-          placeholder="name@domain.com"
-          value={email}
-          aria-invalid={state === 'error'}
-          onChange={(event) => setEmail(event.target.value)}
-          className="h-12 min-w-0 flex-1 border border-zinc-800 bg-zinc-950 px-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-zinc-500"
-        />
-        <button
-          type="submit"
-          disabled={state === 'loading'}
-          className="inline-flex h-12 w-max max-w-full shrink-0 items-center justify-center whitespace-nowrap bg-white px-4 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
-        >
-          {state === 'loading' ? 'Adding...' : 'Email me the morning score.'}
-        </button>
-      </div>
-      {message ? (
-        <p className="mt-3 text-sm text-rose-300" aria-live="polite">
-          {message}
-        </p>
-      ) : null}
+    <><form id={location === 'landing_hero' ? 'free-alerts' : undefined} className={styles.form} noValidate onSubmit={handleSubmit} aria-busy={state === 'loading'}>
+      {state === 'success' ? (
+        <p className={styles.success} role="status">{message}</p>
+      ) : (
+        <>
+          <div className={styles.fields}>
+            <label className="sr-only" htmlFor={inputId}>Email address</label>
+            <input
+              id={inputId}
+              type="email"
+              required
+              autoComplete="email"
+              inputMode="email"
+              placeholder="Your email address"
+              value={email}
+              aria-invalid={state === 'error'}
+              aria-describedby={`${inputId}-helper${message ? ` ${inputId}-error` : ''}`}
+              onChange={(event) => setEmail(event.target.value)}
+              className={styles.input}
+            />
+            <button type="submit" disabled={state === 'loading'} className={styles.button}>
+              {state === 'loading' ? <LoadingIndicator compact announce={false} label="Adding your email" /> : 'Get the daily score'}
+              {state !== 'loading' ? <ArrowIcon /> : null}
+            </button>
+          </div>
+          {message ? (
+            <p id={`${inputId}-error`} className={styles.error} role="alert">{message}</p>
+          ) : null}
+        </>
+      )}
+      <p id={`${inputId}-helper`} className={styles.helper}>
+        Free stock emails on market days; crypto every day. Unsubscribe anytime.
+      </p>
     </form>
+      {state === 'loading' ? <LoadingAnnouncement label="Adding your email" /> : null}
+    </>
   );
 }

@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import { createSupabaseAdminClient } from '../supabase/admin';
 import { createSupabaseServerClient } from '../supabase/server';
 
@@ -52,7 +54,8 @@ async function getIsPro(userId: string) {
   return data?.is_pro === true;
 }
 
-export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusResult> {
+// Auth and entitlement are deduplicated only within the current server render.
+export const getUserSubscriptionStatus = cache(async (): Promise<SubscriptionStatusResult> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -67,18 +70,16 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusRes
     };
   }
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('subscription_status')
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data, error }, profileIsPro] = await Promise.all([
+    supabase.from('users').select('subscription_status').eq('id', user.id).maybeSingle(),
+    getIsPro(user.id),
+  ]);
 
   if (error) {
     throw new Error(`Failed to read subscription status: ${error.message}`);
   }
 
   const subscriptionStatus = (data?.subscription_status ?? 'inactive') as SubscriptionStatus;
-  const profileIsPro = await getIsPro(user.id);
   const isPro = profileIsPro || isSubscriptionActive(subscriptionStatus);
 
   return {
@@ -89,4 +90,4 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatusRes
     },
     subscriptionStatus,
   };
-}
+});

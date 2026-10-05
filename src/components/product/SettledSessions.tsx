@@ -1,89 +1,30 @@
-import { AssetToggle } from '@/components/AssetToggle';
+import styles from '@/components/product/MemberUI.module.css';
+import { formatScore, formatSignedPercent, formatTradeDate } from '@/lib/public-proof/format';
 import type { SettledSession } from '@/lib/track-record/settled-sessions';
 
-function formatScore(score: number) {
-  return score > 0 ? `+${score}` : `${score}`;
-}
-
-function formatPct(value: number) {
-  const rounded = Number(value.toFixed(2));
-  return `${rounded > 0 ? '+' : ''}${rounded.toFixed(2)}%`;
-}
-
-function formatDate(dateStr: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${dateStr}T00:00:00Z`));
-}
-
-export function SettledSessions({
-  asset,
-  market,
-  rows,
-  loadError = null,
-}: {
+export function SettledSessionsSection({ asset, market, rows, loadError = null }: {
   asset: string;
   market: string;
   rows: SettledSession[];
   loadError?: string | null;
 }) {
   return (
-    <main className="min-h-screen font-sans">
-      <div className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
-        <div className="flex items-center justify-between">
-          <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            [ Track record ]
-          </p>
-          <AssetToggle />
-        </div>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white">{asset}</h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
-          Settled next-session open-to-close for {market}, from scores and prices already stored.
-          This table is the latest 80 stored scores. A row appears after that next session has an
-          open and a close. Not financial advice.
-        </p>
-        {loadError ? (
-          <p className="mt-10 text-sm leading-6 text-zinc-300">{loadError}</p>
-        ) : rows.length === 0 ? (
+      <section className={styles.section} aria-labelledby="settled-results">
+        <h2 id="settled-results">Settled sessions</h2>
+        <p>Results from the latest 80 published scores. A row appears once the next session has a stored open and close.</p>
+        {loadError ? <p className={styles.notice} role="status">{loadError}</p> : rows.length === 0 ? <p className={styles.notice}>No settled next-session results have been stored yet.</p> : (
           <>
-            <p className="mt-4 font-[family:var(--font-data)] text-xs uppercase tracking-[0.24em] text-zinc-500">
-              0 settled sessions
-            </p>
-            <p className="mt-10 text-sm text-zinc-500">No settled next-session results are stored yet.</p>
-          </>
-        ) : (
-          <>
-            <p className="mt-4 font-[family:var(--font-data)] text-xs uppercase tracking-[0.24em] text-zinc-500">
-              {rows.length} settled session{rows.length === 1 ? '' : 's'}
-            </p>
-            <div className="mt-8 overflow-x-auto border border-white/10">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-white/10 text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Score date</th>
-                  <th className="px-4 py-3 font-medium">Session</th>
-                  <th className="px-4 py-3 font-medium">Score</th>
-                  <th className="px-4 py-3 font-medium">Open to close</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={`${row.scoreDate}-${row.sessionDate}`} className="border-b border-white/5 text-zinc-300">
-                    <td className="px-4 py-3 font-[family:var(--font-data)] text-xs">{formatDate(row.scoreDate)}</td>
-                    <td className="px-4 py-3 font-[family:var(--font-data)] text-xs">{formatDate(row.sessionDate)}</td>
-                    <td className="px-4 py-3 font-[family:var(--font-data)]">{formatScore(row.score)}</td>
-                    <td className="px-4 py-3 font-[family:var(--font-data)]">{formatPct(row.openToClosePct)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p>{rows.length} settled session{rows.length === 1 ? '' : 's'}.</p>
+            <div className={styles.tableWrap} style={{ maxHeight: '34rem' }} tabIndex={0} role="region" aria-label={`${asset} settled sessions`}>
+              <table className={`${styles.table} ${styles.historyTable}`} style={{ minWidth: '580px' }}>
+                <caption className="sr-only">Published score dates and their next-session {market} open-to-close returns.</caption>
+                <thead><tr><th scope="col">Score date</th><th scope="col">Session</th><th scope="col">Score</th><th scope="col">Open to close</th></tr></thead>
+                <tbody>{rows.map(row => <tr key={`${row.scoreDate}-${row.sessionDate}`}><td>{formatTradeDate(row.scoreDate)}</td><td>{formatTradeDate(row.sessionDate)}</td><td>{formatScore(row.score)}</td><td>{formatSignedPercent(row.openToClosePct)}</td></tr>)}</tbody>
+              </table>
             </div>
           </>
         )}
-      </div>
-    </main>
+        <p>Not financial advice.</p>
+      </section>
   );
 }

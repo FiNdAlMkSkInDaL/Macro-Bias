@@ -19,8 +19,9 @@ export default function TermsPage() {
           and not a managed fund.
         </p>
         <p>
-          Free alerts email that score. The paid plan shows today&apos;s score, the grade, the size hint, and the
-          morning email. Checkout is a Stripe subscription: $25 a month or $190 a year. A failed payment removes
+          Public scores and history are free. Signed-in Free accounts can read full briefings after seven calendar
+          days. Pro includes current full briefings, market workspaces, the grade, the size hint, and the morning
+          email. Pro is a subscription at $25 a month or $190 a year. A failed payment removes
           paid access.
         </p>
         <p>

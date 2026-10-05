@@ -9,6 +9,7 @@ import { createSupabaseBrowserClient } from '../lib/supabase/browser';
 type PaywallWrapperProps = {
   checkoutHref?: string;
   children: ReactNode;
+  lockedContent?: ReactNode;
   initialIsPro: boolean;
   userId: string | null;
 };
@@ -49,6 +50,7 @@ function LockIcon() {
 export function PaywallWrapper({
   checkoutHref = '/pricing',
   children,
+  lockedContent,
   initialIsPro,
   userId,
 }: PaywallWrapperProps) {
@@ -197,22 +199,26 @@ export function PaywallWrapper({
     return <>{children}</>;
   }
 
+  if (lockedContent !== undefined) {
+    return <>{lockedContent}</>;
+  }
+
   return (
     <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6 text-center sm:p-8">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white">
         <LockIcon />
       </div>
       <h2 className="mt-5 text-2xl font-bold tracking-tighter text-white">
-        Today&apos;s score is on the paid plan
+        Read the full current briefing with Pro
       </h2>
       <p className="mt-3 text-sm leading-6 text-zinc-400">
-        The previous session stays on the score page. Paid includes today&apos;s score, the grade, the size hint, and the morning email.
+        Published scores and market history are public. Pro adds the current full briefing, reliability grade, size hint, and decision context.
       </p>
       <a
         className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
         href={checkoutHref}
       >
-        {isPending ? 'Refreshing access...' : 'See pricing'}
+        {isPending ? 'Refreshing access...' : 'Explore Pro'}
       </a>
     </div>
   );

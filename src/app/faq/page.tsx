@@ -14,12 +14,12 @@ const QUESTIONS = [
   {
     question: 'What does a free account see?',
     answer:
-      "The previous session's score on the site. Today's score, the grade, the size hint, and the morning email are on the paid plan.",
+      'Public scores and market history are open. Sign in with a Free account to read full stock and crypto briefings after seven calendar days. Pro includes current full briefings, decisions, model evidence, and market workspaces.',
   },
   {
-    question: 'What does the paid plan cost?',
+    question: 'What does Pro cost?',
     answer:
-      'Checkout is a Stripe subscription: $25 a month or $190 a year. A failed payment removes paid access. There is no separate trial on that price.',
+      'Pro is $25 a month or $190 a year, with the same access on either plan. Annual billing saves $110 compared with 12 monthly payments. There is no trial. A failed payment removes paid access.',
   },
   {
     question: 'Is this financial advice?',

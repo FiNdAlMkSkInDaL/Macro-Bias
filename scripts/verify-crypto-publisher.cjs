@@ -101,6 +101,8 @@ function harness(options = {}) {
   const claim = { claimed: true, completed: false, id: 'fixture-claim', ...options.claim };
   const mocks = {
     'server-only': {}, 'twitter-api-v2': { TwitterApi: class {} },
+    // No RSC dispatcher in this VM: retain the real auth function without render memoization.
+    react: { cache: fn => fn },
     'next/server': { NextResponse: { json: (data, init = {}) => ({ data: clone(data), status: init.status ?? 200 }) } },
     '@anthropic-ai/sdk': class { constructor(config) {
       effects.aiOptions.push(clone(config));

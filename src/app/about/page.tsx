@@ -19,8 +19,9 @@ export default function AboutPage() {
           F means NO_TRADE. A dead zone around zero means FLAT.
         </p>
         <p>
-          Free shows the previous session&apos;s score on the site. The paid plan shows today&apos;s score, the grade,
-          the size hint, and the morning email. Checkout is a Stripe subscription: $25 a month or $190 a year.
+          Public scores and market history are free. Signed-in Free accounts can read full stock and crypto
+          briefings after seven calendar days. Pro includes current full briefings, market workspaces, the grade,
+          the size hint, and the morning email. Pro costs $25 a month or $190 a year.
           A failed payment removes paid access.
         </p>
         <p>

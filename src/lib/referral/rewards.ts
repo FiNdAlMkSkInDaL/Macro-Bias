@@ -111,7 +111,7 @@ async function createAndEmailStripeCoupon(referrerEmail: string, tier: number): 
 
   const appUrl = getAppUrl();
   const checkoutUrl = `${appUrl.replace(/\/$/, '')}/pricing?coupon=${encodeURIComponent(coupon.id)}`;
-  const rewardLabel = isAnnual ? 'Free Annual Subscription' : '1 Free Month of Premium';
+  const rewardLabel = isAnnual ? 'Free Annual Subscription' : '1 Free Month of Pro';
   const rewardValue = isAnnual ? '$190' : '$25';
 
   const recipientEmail = getShadowRunRecipient() ?? referrerEmail;

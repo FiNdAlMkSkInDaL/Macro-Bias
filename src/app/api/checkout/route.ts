@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { sanitizeRedirectPath } from '../../../lib/auth/continuation';
 import { checkoutAcquisition, stripeAcquisitionMetadata } from '@/lib/analytics/conversions';
 
 import {
@@ -46,6 +47,7 @@ async function buildCheckoutSession(
   const searchParams = new URL(request.url).searchParams;
   const plan = getCheckoutPlan(request);
   const coupon = searchParams.get('coupon');
+  const returnPath = sanitizeRedirectPath(searchParams.get('redirectTo'));
   const stripePriceId = getStripePriceId(plan);
   const supabase = await createSupabaseServerClient();
   const {
@@ -87,19 +89,27 @@ async function buildCheckoutSession(
     throw new Error(`Failed to initialize billing record: ${upsertError.message}`);
   }
 
-  const { subscriptionStatus } = await getUserSubscriptionStatus();
+  const { subscriptionStatus, isPro } = await getUserSubscriptionStatus();
   const appUrl = getAppUrl(new URL(request.url).origin).replace(/\/$/, '');
 
-  if (isSubscriptionActive(subscriptionStatus)) {
+  const successUrl = new URL(returnPath ?? '/', appUrl);
+  successUrl.searchParams.set('checkout', 'success');
+  const cancelUrl = new URL('/pricing', appUrl);
+  if (returnPath) cancelUrl.searchParams.set('redirectTo', returnPath);
+  if (coupon) cancelUrl.searchParams.set('coupon', coupon);
+
+  if (isPro || isSubscriptionActive(subscriptionStatus)) {
     if (mode === 'redirect') {
+      const activeUrl = new URL(returnPath ?? '/', appUrl);
+      activeUrl.searchParams.set('checkout', 'active');
       return {
-        error: NextResponse.redirect(`${appUrl}/?checkout=active`, { status: 303 }),
+        error: NextResponse.redirect(activeUrl, { status: 303 }),
       };
     }
 
     return {
       error: NextResponse.json(
-        { error: 'Subscription is already active for this account.' },
+        { error: 'Pro access is already active for this account.' },
         { status: 409 },
       ),
     };
@@ -124,7 +134,7 @@ async function buildCheckoutSession(
 
   const session = await stripe.checkout.sessions.create({
     billing_address_collection: 'auto',
-    cancel_url: `${appUrl}/pricing`,
+    cancel_url: cancelUrl.toString(),
     client_reference_id: user.id,
     customer: billingUser?.stripe_customer_id ?? undefined,
     customer_email: billingUser?.stripe_customer_id ? undefined : user.email,
@@ -150,7 +160,7 @@ async function buildCheckoutSession(
         supabaseUserId: user.id,
       },
     },
-    success_url: `${appUrl}/?checkout=success`,
+    success_url: successUrl.toString(),
   });
 
   if (!session.url) {

@@ -1,0 +1,26 @@
+.reload{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px 24px;margin-bottom:26px}
+.reload>span{font-family:var(--font-data),monospace;font-size:13px;color:var(--member-muted);overflow-wrap:anywhere}
+.lookup{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px 16px;margin-bottom:30px}
+.lookup label{display:block;margin-bottom:8px;font-size:14px;color:var(--member-muted)}
+.lookup input{width:100%;min-width:0;min-height:46px;padding:11px 14px;border:1px solid var(--member-border);border-radius:4px;background:var(--member-surface);color:var(--member-text);font-family:var(--font-data),monospace;font-size:14px}
+.lookup input::placeholder{color:var(--member-muted)}
+.lookup p{grid-column:1/-1;margin:0;color:var(--member-muted);font-size:13px;line-height:1.5}
+.feedback{color:var(--member-muted);font-size:14px;margin:16px 0}
+.share{margin-top:26px}
+.linkRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px}
+.linkRow code{display:flex;align-items:center;min-width:0;padding:13px 16px;border:1px solid var(--member-border);border-radius:4px;background:var(--member-surface);font-family:var(--font-data),monospace;font-size:13px;line-height:1.65;overflow-wrap:anywhere}
+.invitation{width:100%;margin-top:14px}
+.shareActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.share>p,.explainer>p{margin:16px 0 0;font-size:14px;line-height:1.65;color:var(--member-muted)}
+.countSection{margin-top:26px}
+.counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;border:1px solid var(--member-border);border-radius:4px}
+.counts>div{padding:20px;border-right:1px solid var(--member-border)}
+.counts>div:last-child{border-right:0}
+.counts dt{color:var(--member-muted);font-size:14px}
+.counts dd{margin:7px 0 0;font-family:var(--font-data),monospace;font-size:28px;line-height:1.2}
+.rewardsTable{min-width:460px}
+.rewardsTable td:first-child{white-space:normal;min-width:220px}
+.recentTable{min-width:480px}
+.empty{margin-top:20px;min-height:100px;display:flex;align-items:center;justify-content:center;font-family:var(--font-data),monospace;font-size:13px}
+.explainer{border-top:1px solid var(--member-border);padding-top:26px}
+@media(max-width:600px){.lookup{grid-template-columns:1fr;align-items:stretch}.lookup input{min-height:48px}.linkRow{grid-template-columns:1fr}.linkRow code{padding:14px}.shareActions{gap:10px}.shareActions a{padding:10px}.counts>div{padding:16px 12px}.counts dd{font-size:25px}.counts dt{font-size:13px}.reload{align-items:flex-start;flex-direction:column}.rewardsTable{min-width:0;table-layout:fixed}.rewardsTable td:first-child{min-width:0}.rewardsTable td{white-space:normal}}

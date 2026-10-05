@@ -89,7 +89,7 @@ export function ScoreCard({
       )}
       {score.delayed && !missingSessionDate && (
         <p className="mt-4 text-sm leading-6 text-zinc-400">
-          Previous session. Today&apos;s score, grade, and size hint are on the paid plan.
+          Previous session. Pro adds the current full briefing, reliability grade, and size hint.
         </p>
       )}
       {score.paid && score.permission && (
@@ -119,7 +119,7 @@ export function ScoreCard({
       )}
       {score.delayed && !missingSessionDate && (
         <Link href="/pricing" className="mt-6 inline-flex text-sm font-medium text-white underline underline-offset-4">
-          Unlock today on /pricing
+          Explore Pro
         </Link>
       )}
     </section>

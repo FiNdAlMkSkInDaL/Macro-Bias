@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import styles from '@/components/product/MemberUI.module.css';
 
 type ManagePlanProps = {
   hasStripeCustomer: boolean;
@@ -13,20 +14,15 @@ export function ManagePlan({ hasStripeCustomer, isPro }: ManagePlanProps) {
   if (hasStripeCustomer) {
     return (
       <a
-        className="text-xs text-zinc-500 underline underline-offset-4 hover:text-white"
+        className={styles.textLink}
         href="/api/stripe/portal"
       >
-        Manage Subscription
+        Manage billing
       </a>
     );
   }
 
   return (
-    <p className="max-w-xs text-xs leading-5 text-zinc-500 md:text-right">
-      This plan is comped.{' '}
-      <Link className="underline underline-offset-4 hover:text-white" href="/account">
-        Account
-      </Link>
-    </p>
+    <Link className={styles.textLink} href="/account">Account & plan</Link>
   );
 }

@@ -3,6 +3,8 @@ import "server-only";
 import { cache } from "react";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { briefingAccess, canReadBriefing } from "@/lib/product/briefing-access";
+import { getBriefingMetadata, getBriefingViewer, loadPaidBriefingArchive } from "@/lib/product/paid-briefing-data";
 
 export type PublicBriefingRow = {
   id: string;
@@ -21,6 +23,7 @@ export type BriefingListItem = {
   briefing_date: string;
   quant_score: number;
   bias_label: string;
+  is_override_active: boolean;
 };
 
 const BRIEFING_COLUMNS =
@@ -102,6 +105,8 @@ function withStoredStockScore<T extends { briefing_date: string; quant_score: nu
 }
 
 export const getBriefingByDate = cache(async (date: string): Promise<PublicBriefingRow | null> => {
+  const [metadata, viewer] = await Promise.all([getBriefingMetadata('stocks', date), getBriefingViewer()]);
+  if (!metadata || !canReadBriefing(briefingAccess(viewer, metadata.publishedAt))) return null;
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("daily_market_briefings")
@@ -125,33 +130,15 @@ export const getBriefingByDate = cache(async (date: string): Promise<PublicBrief
 });
 
 export const getLatestBriefing = cache(async (): Promise<PublicBriefingRow | null> => {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("daily_market_briefings")
-    .select(BRIEFING_COLUMNS)
-    .order("briefing_date", { ascending: false })
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load latest briefing: ${error.message}`);
-  }
-
-  const row = (data as PublicBriefingRow | null) ?? null;
-  if (!row) {
-    return null;
-  }
-
-  const stored = await storedScoresByTradeDate([row.briefing_date]);
-  return withStoredStockScore(row, stored.get(row.briefing_date));
+  const archive = await loadPaidBriefingArchive('stocks');
+  return archive.items[0] ? getBriefingByDate(archive.items[0].date) : null;
 });
 
 export async function getAllBriefingDates(): Promise<BriefingListItem[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("daily_market_briefings")
-    .select("briefing_date, quant_score, bias_label")
+    .select("briefing_date, quant_score, bias_label, is_override_active")
     .order("briefing_date", { ascending: false });
 
   if (error) {

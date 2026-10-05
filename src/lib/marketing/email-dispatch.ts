@@ -637,12 +637,12 @@ function buildDashboardCtaHtml(dashboardUrl: string) {
 
 function buildFreeTierPaywallHtml(upgradeUrl: string) {
   return `<div style="border: 1px solid #38bdf8; border-radius: 22px; padding: 24px 22px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(15, 23, 42, 0.96) 58%, rgba(2, 6, 23, 1) 100%); box-shadow: 0 18px 48px rgba(14, 165, 233, 0.2);">
-    <div style="color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Premium Access Required</div>
+    <div style="color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Pro Access Required</div>
     <p style="margin: 14px 0 0; color: #f8fafc; -webkit-text-fill-color: #f8fafc; font-size: 20px; font-weight: 700; line-height: 1.5;">${escapeHtml(FREE_TIER_PAYWALL_MESSAGE)}</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top: 22px; border-collapse: separate;">
       <tr>
         <td bgcolor="#0ea5e9" style="border: 1px solid #7dd3fc; border-radius: 14px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); box-shadow: 0 12px 32px rgba(56, 189, 248, 0.22);">
-          <a href="${upgradeUrl}" style="display: inline-block; padding: 16px 26px; color: #f8fafc; text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; mso-padding-alt: 16px 26px 16px 26px;">START 7-DAY FREE TRIAL</a>
+          <a href="${upgradeUrl}" style="display: inline-block; padding: 16px 26px; color: #f8fafc; text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; mso-padding-alt: 16px 26px 16px 26px;">EXPLORE PRO</a>
         </td>
       </tr>
     </table>
@@ -707,7 +707,7 @@ function renderNewsletterCopyHtml(
       tier === 'premium' ? 'Desk Read' : 'Free Preview',
       tier === 'premium'
         ? renderParagraphsHtml(newsletterCopy)
-        : renderParagraphsHtml('Unlock premium to view the full desk note.'),
+        : renderParagraphsHtml('Pro includes the current full desk note.'),
       {
         marginTop: 0,
         titleColor: '#94a3b8',
@@ -944,7 +944,7 @@ function buildWeeklyRecapSectionHtml(digest: WeeklyDigestData, tier: QuantBriefi
           <div style="color: #7dd3fc; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;">Regime Commentary</div>
           <p style="margin: 8px 0 0; color: #dbe4ee; font-size: 14px; line-height: 1.6;">${buildWeeklyCommentary(digest)}</p>
         </div>`
-      : `<div style="margin-top: 18px; color: #475569; font-size: 12px; font-style: italic;">🔒 Weekly regime commentary and pattern analysis available for premium subscribers.</div>`;
+      : `<div style="margin-top: 18px; color: #475569; font-size: 12px; font-style: italic;">🔒 Weekly regime commentary and pattern analysis available for Pro subscribers.</div>`;
 
   return `<div style="margin-top: 36px; padding-top: 28px; border-top: 2px solid #1e293b;">
     <div style="color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;">Last Week in Review</div>
@@ -1031,7 +1031,7 @@ function buildEmailHtml(
     tier === 'free'
       ? `<div style="margin-top: 32px; padding: 16px 20px; border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; background: rgba(56,189,248,0.04); text-align: center;">
                   <p style="margin: 0; color: #7dd3fc; -webkit-text-fill-color: #7dd3fc; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;">Refer &amp; Earn</p>
-                  <p style="margin: 6px 0 0; color: #e2e8f0; -webkit-text-fill-color: #e2e8f0; font-size: 14px; line-height: 1.65;">Invite 3 traders and unlock 7 days of Premium free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
+                  <p style="margin: 6px 0 0; color: #e2e8f0; -webkit-text-fill-color: #e2e8f0; font-size: 14px; line-height: 1.65;">Invite 3 traders and unlock 7 days of Pro free. Hit 7 referrals for a free month. Hit 15 for a free annual plan.</p>
                   <a href="${referralPageUrl}" style="display: inline-block; margin-top: 10px; color: #38bdf8; -webkit-text-fill-color: #38bdf8; font-size: 12px; font-weight: 600; text-decoration: underline;">Get your referral link & rewards &rarr;</a>
                 </div>
                 <div style="margin-top: 12px; text-align: center;">
@@ -1098,7 +1098,7 @@ function buildEmailText(
   const bodyCopy = tier === 'free' ? buildFreeTierNewsletterCopyText(newsletterCopy) : newsletterCopy;
   const footerCallToAction =
     tier === 'free'
-      ? `${FREE_TIER_PAYWALL_MESSAGE}\nStart 7-Day Free Trial: ${upgradeUrl}`
+      ? `${FREE_TIER_PAYWALL_MESSAGE}\nExplore Pro: ${upgradeUrl}`
       : `Live Terminal: ${dashboardUrl}`;
   const strippedBodyCopy = stripMarkdownBold(bodyCopy).trim();
   const weeklyRecapText =
@@ -1108,7 +1108,7 @@ function buildEmailText(
   const referralText =
     tier === 'free'
       ? [
-          `Refer & Earn: 3 verified referrals unlock 7 days of Premium. 7 unlock a free month. 15 unlock a free annual plan.`,
+          `Refer & Earn: 3 verified referrals unlock 7 days of Pro. 7 unlock a free month. 15 unlock a free annual plan.`,
           `Get your referral link and rewards: ${referralPageUrl}`,
           `Also available: Daily Crypto Regime Briefing: ${cryptoBriefingUrl}`,
         ]

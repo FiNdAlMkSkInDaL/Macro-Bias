@@ -1,0 +1,24 @@
+.header{background:#090b0a;border-bottom:1px solid #2a342c;color:#f1f5ef;font-family:var(--font-heading),sans-serif}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:28px;height:70px;max-width:1320px;padding:0 40px;margin:0 auto}
+.homeBar{max-width:1480px}
+.brand{flex-shrink:0;white-space:nowrap;font-size:18px;line-height:1.4;font-weight:600;letter-spacing:.18em;text-transform:uppercase;padding:10px 0}
+.desktop{display:flex;align-items:center;justify-content:flex-end;gap:24px;margin-left:auto}
+.desktop a,.utility a,.utility button,.mobile a,.mobile button{display:inline-flex;align-items:center;min-height:44px;font-family:var(--font-heading),sans-serif;font-size:13px;font-weight:500;color:#acb6ad;transition:color .15s;background:transparent}
+.desktop a{border-bottom:2px solid transparent;padding-top:2px;white-space:nowrap}
+.desktop a[aria-current=page]{color:#c9f58a;border-color:#c9f58a}
+.utility{display:flex;align-items:center;gap:22px;padding-left:24px;margin-left:4px;border-left:1px solid #2a342c}
+.utility a[aria-current=page]{color:#c9f58a}
+.utility button{border:0;padding:0;white-space:nowrap}
+.desktop a:hover,.utility a:hover,.utility button:hover,.mobile a:hover,.mobile button:hover{color:#c9f58a}
+.utility .menuButton{display:none;justify-content:center;min-width:44px}
+.mobile{display:none}
+.header :is(a,button):focus-visible{outline:2px solid #c9f58a;outline-offset:4px}
+.linkLabel{display:inline-flex;align-items:center;gap:7px}
+.header a:has([data-pending=true]){color:#c9f58a}
+.desktop a:has([data-pending=true]){border-color:#c9f58a}
+.pendingDot{width:9px;height:9px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:nav-pending .7s linear infinite}
+.screenReaderStatus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@keyframes nav-pending{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.pendingDot{animation:none}}
+@media(max-width:1100px){.bar{padding:0 24px}.desktop,.utility .signOut{display:none}.utility{margin-left:auto;border-left:0;padding-left:0;gap:14px}.utility .menuButton{display:inline-flex}.mobile{display:flex;flex-direction:column;padding:12px 24px 20px;border-top:1px solid #2a342c}.mobile a,.mobile button{min-height:46px;align-self:stretch;border:0;border-bottom:1px solid #1b241d;text-align:left}.mobile a[aria-current=page]{color:#c9f58a}.mobile button{margin-top:10px}}
+@media(max-width:600px){.bar{padding:0 20px;gap:14px}.brand{font-size:16px}.mobile{padding:10px 20px 18px}.utility{gap:8px}}
