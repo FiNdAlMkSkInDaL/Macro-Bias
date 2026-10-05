@@ -31,6 +31,16 @@ for(const bad of [payload('SPY',['2026-10-01','2026-10-02']),payload('GLD',['202
 response=payload('GLD',['2026-10-01','2026-10-02']);response.chart.result[0].meta.exchangeTimezoneName='UTC';assert.equal((await quotes.getSupplementalQuotes([['GLD','GLD']])).length,0);
 response=payload('BTC-USD',['2026-10-03','2026-10-04','2026-10-05'],[100,105,999]);const btc=await quotes.getSupplementalQuotes([['BTC-USD','BTC-USD']]);assert.equal(btc[0].tradeDate,'2026-10-04');assert.equal(btc[0].currentPrice,105);
 });
+await check('premarket forecast distinguishes an unfinished session from a missing completed candle',async()=>{
+const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,'src/components/product/MacroMarketChart.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const mocks={react:React,'react/jsx-runtime':require('react/jsx-runtime'),'@/lib/market-data/completed-price-bars':prices,'@/lib/product/market-chart':load('src/lib/product/market-chart.ts'),'@/lib/public-proof/format':{formatBiasLabel:x=>x,formatScore:String,formatTradeDate:x=>x,formatUsd:String},'./MacroMarketChart.module.css':{default:new Proxy({}, {get:(_,name)=>String(name)})}};
+vm.runInNewContext(code,{module,exports:module.exports,require:name=>{assert.ok(name in mocks,name);return mocks[name];},Date:ClockDate,Intl,Map});
+const candle={tradeDate:'2026-10-02',open:770.58,high:772.65,low:767.15,close:769.64},forecast={tradeDate:'2026-10-05',score:5,biasLabel:'NEUTRAL'};
+const pending=renderToStaticMarkup(React.createElement(module.exports.MacroMarketChart,{candles:[candle],marks:[forecast],latest:forecast,notice:null}));
+assert.match(pending,/data-selected-date="2026-10-05"/);assert.match(pending,/This session has not completed/);assert.match(pending,/769.64/);assert.doesNotMatch(pending,/Some market data is unavailable|Price data isn’t available for this session/);
+const old={tradeDate:'2026-10-02',score:5,biasLabel:'NEUTRAL'};
+const missing=renderToStaticMarkup(React.createElement(module.exports.MacroMarketChart,{candles:[],marks:[old],latest:old,notice:'Completed SPY close pending'}));assert.match(missing,/Price data isn’t available for this session/);assert.doesNotMatch(missing,/This session has not completed/);
+});
 console.log(passed+' market freshness release scenario groups passed; zero external calls.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
-

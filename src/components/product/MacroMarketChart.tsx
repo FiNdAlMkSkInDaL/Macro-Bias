@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
+import { latestCompletedPriceDate } from '@/lib/market-data/completed-price-bars';
 import { buildMarketChartSeries, marketChartPriceBounds, windowMarketChartSeries, type MarketChartCandle, type MarketChartScore } from '@/lib/product/market-chart';
 import { formatBiasLabel, formatScore, formatTradeDate, formatUsd } from '@/lib/public-proof/format';
 import styles from './MacroMarketChart.module.css';
@@ -73,6 +74,7 @@ export function MacroMarketChart({
   const defaultIndex = sessions.length - 1;
   const selectedIndex = (activeDate ? dateIndices.get(activeDate) : undefined) ?? (pinnedDate ? dateIndices.get(pinnedDate) : undefined) ?? defaultIndex;
   const selectedSession = sessions[selectedIndex] ?? null;
+  const awaitingClose = Boolean(selectedSession && selectedSession.tradeDate > latestCompletedPriceDate(instrument === 'BTC' ? 'BTC-USD' : 'SPY'));
   const isLatestSession = Boolean(selectedSession) && selectedSession?.tradeDate === sessions[defaultIndex]?.tradeDate;
   const slot = PLOT_WIDTH / Math.max(sessions.length, 1);
   const markerPosition = latestMark ? (latestMark.score + 100) / 2 : null;
@@ -216,7 +218,7 @@ export function MacroMarketChart({
           ) : (
             <div className={styles['macro-missing-price']} data-price-unavailable>
               <p>{instrument} price</p>
-              <p>{selectedSession ? 'Price data isn’t available for this session.' : 'Price data isn’t available.'}</p>
+              <p>{awaitingClose ? 'This session has not completed. Its daily close will appear after completion.' : selectedSession ? 'Price data isn’t available for this session.' : 'Price data isn’t available.'}</p>
             </div>
           )}
         </div>
