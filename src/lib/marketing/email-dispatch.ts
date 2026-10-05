@@ -860,15 +860,17 @@ function renderWeeklyDayRowHtml(briefing: WeeklyBriefingRow) {
   const score = formatSignedNumber(briefing.quant_score);
   const accent = getAccentColor(briefing.bias_label);
   const override = briefing.is_override_active
-    ? '<span style="color: #fca5a5; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; margin-left: 6px;">⚠ OVERRIDE</span>'
+    ? '&#32;<span style="display: inline-block; padding-left: 6px; white-space: nowrap; color: #fca5a5; font-size: 10px; font-weight: 700; letter-spacing: 0.1em;">⚠ OVERRIDE</span>'
     : '';
 
   return `<tr>
     <td style="padding: 10px 0; border-bottom: 1px solid #1e293b;">
-      <div style="display: flex; align-items: baseline; gap: 8px;">
-        <span style="color: #e2e8f0; font-size: 13px; font-weight: 600; font-family: monospace, 'Courier New', Courier;">${escapeHtml(formatWeeklyShortDate(briefing.briefing_date))}</span>
-        <span style="color: ${accent}; font-size: 13px; font-weight: 700; font-family: monospace, 'Courier New', Courier;">${escapeHtml(label)} (${escapeHtml(score)})</span>${override}
-      </div>
+      <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+        <tr>
+          <td style="padding-right: 8px; vertical-align: top; white-space: nowrap;"><span style="color: #e2e8f0; font-size: 13px; font-weight: 600; font-family: monospace, 'Courier New', Courier;">${escapeHtml(formatWeeklyShortDate(briefing.briefing_date))}</span></td>
+          <td style="vertical-align: top;"><span style="white-space: nowrap; color: ${accent}; font-size: 13px; font-weight: 700; font-family: monospace, 'Courier New', Courier;">${escapeHtml(label)} (${escapeHtml(score)})</span>${override}</td>
+        </tr>
+      </table>
       <div style="margin-top: 6px;">${renderWeeklyScoreBarHtml(briefing.quant_score)}</div>
     </td>
   </tr>`;
