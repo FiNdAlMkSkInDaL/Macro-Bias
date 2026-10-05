@@ -135,7 +135,7 @@ check('known search and Gmail app sources normalize without recasting explicit h
 check('Unknown source is coverage, never a zero-percent source benchmark', () => {
   const value = report({ events: [{ id: 'legacy-identified-unknown', event_name: 'page_view', created_at: createdAt, anonymous_id: visitor, session_id: session, page_path: '/' }], subscribers: [{ entityKey: subscriberKey, createdAt }], accounts: [] });
   assert.equal(value.overview.visitors, 1);
-  assert.equal(value.overview.subscriberRate, 0);
+  assert.equal(value.overview.subscriberRate, null);
   assert.equal(value.sourceRows[0].source, 'unknown');
   assert.equal(value.sourceRows[0].subscriberRate, null);
 });
@@ -157,6 +157,8 @@ check('visitor conversion rates require the same filtered observed visitor', () 
   assert.equal(value.overview.newSubscribers, 1);
   assert.equal(value.overview.subscriberRate, 0);
   assert.equal(value.funnel[1].value, 0);
+  assert.equal(value.funnel.find(row => row.key === 'account').rate, 0);
+  assert.equal(value.funnel.find(row => row.key === 'paid').rate, null);
 });
 check('linked outcome counts distinguish multiple entities from one visitor and explicit unlinked totals', () => {
   const input = base();
@@ -266,6 +268,30 @@ check('legacy inactive membership remains Unknown with explicit eligibility fall
   assert.equal(value.sourceRows[0].source, 'unknown');
   assert.ok(value.coverage.warnings.some(warning => warning.includes('original newsletter eligibility cannot be retrospectively proven')));
 });
+check('post-capture inactive zero-interest records need initial opt-in proof while older fallback and confirmed churn remain counted', () => {
+  const captureAt = fs.readFileSync('src/lib/analytics/conversions.ts', 'utf8').match(/export const ACQUISITION_CAPTURE_STARTED_AT = '([^']+)'/)[1];
+  const reportCaptureAt = fs.readFileSync('src/lib/analytics/acquisition-data.ts', 'utf8').match(/const ACQUISITION_CAPTURE_STARTED_AT = "([^"]+)"/)[1];
+  assert.equal(reportCaptureAt, captureAt, 'Read policy must use the same cutoff as confirmed conversion capture.');
+  const beforeCapture = new Date(Date.parse(captureAt) - 1).toISOString();
+  const afterCapture = new Date(Date.parse(captureAt) + 60_000).toISOString();
+  const churnKey = key('subscriber', 'post-capture-churn@example.net');
+  const value = report({
+    events: [view('post-capture-visit'), conversion('post-capture-eligible-signup', 'email_subscribed', churnKey, { created_at: afterCapture })],
+    accounts: [],
+    subscribers: [
+      { entityKey: key('subscriber', 'legacy-opt-out@example.net'), createdAt: beforeCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+      { entityKey: key('subscriber', 'all-alerts-off@example.net'), createdAt: captureAt, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+      { entityKey: key('subscriber', 'referral-later-disabled@example.net'), createdAt: afterCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+      { entityKey: churnKey, createdAt: afterCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+    ],
+  });
+  assert.equal(value.overview.newSubscribers, 2);
+  assert.equal(value.coverage.excludedReferralOnlyRows, 2);
+  assert.equal(value.coverage.knownSubscriberSources, 1);
+  assert.equal(value.coverage.unknownSubscriberSources, 1);
+  assert.equal(value.sourceRows.find(row => row.source === 'google').newSubscribers, 1);
+  assert.ok(value.coverage.warnings.some(warning => warning.includes('original newsletter eligibility cannot be retrospectively proven')));
+});
 check('entity attribution cannot retroactively enrich an earlier creation', () => {
   const input = base(); input.events[2] = { ...input.events[2], created_at: '2026-10-04T13:00:00.000Z' };
   const value = report(input);
@@ -345,6 +371,36 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
   assert.equal(factoryCalls, 1, 'An explicit isolated client must not create another client or change legacy defaults.');
   isolatedAdminFactory = null;
   passed++;
+  const historicalViews = [
+    view('historical-google', { metadata: {}, utm_source: 'google', utm_medium: 'referral' }),
+    view('historical-reddit', { anonymous_id: visitor2, metadata: {}, utm_source: 'reddit', utm_medium: 'referral' }),
+  ];
+  const historicalSubscribers = Array.from({ length: 6 }, (_, index) => ({ email: `historical-${index}@example.net`, created_at: createdAt, status: 'active', stocks_opted_in: true, crypto_opted_in: false }));
+  const historical = await load({ preset: '7d' }, fakeAdmin({ events: historicalViews, subscribers: historicalSubscribers }), NOW);
+  const serializedHistorical = JSON.parse(JSON.stringify(historical));
+  assert.equal(serializedHistorical.overview.newSubscribers, 6);
+  assert.equal(serializedHistorical.coverage.knownSubscriberSources, 0);
+  assert.equal(serializedHistorical.coverage.unknownSubscriberSources, 6);
+  assert.equal(serializedHistorical.overview.visitors, 2);
+  assert.equal(serializedHistorical.overview.subscriberRate, null);
+  assert.ok(serializedHistorical.funnel.every(row => row.rate === null));
+  for (const rows of [serializedHistorical.sourceRows, serializedHistorical.campaignRows, serializedHistorical.landingRows, serializedHistorical.contentRows, serializedHistorical.dailySeries]) {
+    assert.ok(rows.every(row => row.subscriberRate === null));
+  }
+  assert.equal(serializedHistorical.sourceRows.find(row => row.source === 'unknown').newSubscribers, 6);
+  assert.equal(serializedHistorical.sourceRows.find(row => row.source === 'google').newSubscribers, 0);
+  for (const view of ['sources', 'campaigns', 'landings', 'content']) {
+    const lines = csv(historical, view).split('\r\n');
+    assert.match(lines[0], /linked_visitor_signup_rate_pct/);
+    assert.match(lines[0], /"datasets_complete"/);
+    assert.match(lines[0], /"tracked_visitors","recorded_sessions"/);
+    assert.ok(lines.slice(1).every(line => line.endsWith(',""')), 'Historical source coverage must export blank rates, never an invented zero percent.');
+  }
+  const beforeFirstSignup = await load({ preset: '7d' }, fakeAdmin({ events: historicalViews }), NOW);
+  assert.equal(beforeFirstSignup.overview.newSubscribers, 0);
+  assert.equal(beforeFirstSignup.coverage.knownSubscriberSources, 0);
+  assert.equal(beforeFirstSignup.overview.subscriberRate, null);
+  passed++;
   const events = Array.from({ length: 501 }, (_, i) => view(`event-${String(i).padStart(5,'0')}`, { anonymous_id: null, session_id: null, metadata: { event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: last } }));
   events.push({ id: 'private-ledger', event_name: 'crypto_publication', created_at: createdAt, metadata: { huge_private_body: 'must never be loaded' } });
   const subscribers = Array.from({ length: 501 }, (_, i) => ({ email: `person-${String(i).padStart(5,'0')}@example.net`, created_at: createdAt, status: 'active', stocks_opted_in: true, crypto_opted_in: false }));
@@ -378,5 +434,5 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
   assert.deepEqual(Array.from(capped.coverage.truncatedDatasets), ['events']);
   assert.equal(capped.coverage.datasets[0].total, 25001);
   passed++;
-  console.log(JSON.stringify({ passed, checks: 'UTC filtering, first/latest attribution, authoritative entity dedup, linked rates/outcome counts, consent-marker correlation, Unknown history, immutable signup after churn, Reddit app/search aliases with recorded media preserved, actual private-route exclusion, private ledger allowlist, aggregate CSV safety, bounded default report transport, keyset pagination beyond 500 rows and partial-data disclosure.' }));
+  console.log(JSON.stringify({ passed, checks: 'UTC filtering, first/latest attribution, authoritative entity dedup, linked rates/outcome counts, consent-marker correlation, Unknown history with null JSON/blank CSV rates, immutable signup after churn, Reddit app/search aliases with recorded media preserved, actual private-route exclusion, private ledger allowlist, aggregate CSV safety, bounded default report transport, keyset pagination beyond 500 rows and partial-data disclosure.' }));
 })().catch(error => { console.error(error); process.exitCode = 1; });
