@@ -357,7 +357,7 @@ export async function persistCryptoBriefing(
   briefContent: string,
   isOverrideActive: boolean,
 ) {
-  const supabase = createSupabaseAdminClient();
+  const supabase = createSupabaseAdminClient({ timeoutMs: 5_000 });
 
   const { error } = await supabase.from("crypto_daily_briefings").upsert(
     {

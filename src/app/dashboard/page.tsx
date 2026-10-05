@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
 
 const CROSS_ASSET_TICKERS = ["SPY", "QQQ", "XLP", "TLT", "GLD", "IWM", "HYG", "VIX", "UUP", "USO"] as const;
 const SUPPLEMENTAL_TICKERS = [
+  ["SPY", "SPY"], ["QQQ", "QQQ"], ["XLP", "XLP"], ["TLT", "TLT"], ["GLD", "GLD"],
   ["IWM", "IWM"], ["HYG", "HYG"], ["^VIX", "VIX"], ["UUP", "UUP"], ["USO", "USO"],
 ] as const;
 function storedQuotes(tape: WorkspaceMarketTape): ProAssetQuote[] {
@@ -32,10 +33,12 @@ function storedQuotes(tape: WorkspaceMarketTape): ProAssetQuote[] {
 }
 
 async function StockMarketPrices({ assets, tape }: { assets: ProAssetQuote[]; tape: WorkspaceMarketTape }) {
-  const missing = SUPPLEMENTAL_TICKERS.filter(([, ticker]) => !assets.some((quote) => quote.ticker === ticker && quote.currentPrice != null));
-  const supplemental = await getSupplementalQuotes(missing);
+  const supplemental = await getSupplementalQuotes(SUPPLEMENTAL_TICKERS);
   const byTicker = new Map(supplemental.map((quote) => [quote.ticker, quote]));
-  const complete = assets.map((quote) => quote.currentPrice != null ? quote : byTicker.get(quote.ticker as typeof SUPPLEMENTAL_TICKERS[number][1]) ?? quote);
+  const complete = assets.map((quote) => {
+    const latest = byTicker.get(quote.ticker as typeof SUPPLEMENTAL_TICKERS[number][1]);
+    return latest && (!quote.tradeDate || latest.tradeDate >= quote.tradeDate) ? latest : quote;
+  });
   return <ProMarketPrices assets={complete} tape={tape} />;
 }
 

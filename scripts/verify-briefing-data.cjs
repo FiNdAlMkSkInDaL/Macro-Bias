@@ -321,7 +321,7 @@ async function main() {
       const db = database({ users: [{ id: 'viewer', subscription_status: subscriptionStatus }], profiles: [{ id: 'viewer', is_pro: profileIsPro }] });
       const server = { ...db.client, auth: { getUser: async () => ({ data: { user: { id: 'viewer', email: 'test@example.com' } }, error: null }) } };
       const billing = loadModule('src/lib/billing/subscription.ts', {
-        'server-only': {}, '../supabase/admin': { createSupabaseAdminClient: () => db.client },
+        'server-only': {}, react: { cache: fn => fn }, '../supabase/admin': { createSupabaseAdminClient: () => db.client },
         '../supabase/server': { createSupabaseServerClient: async () => server },
       });
       assert.equal((await billing.getUserSubscriptionStatus()).isPro, expected, `${subscriptionStatus} / profile ${profileIsPro}`);

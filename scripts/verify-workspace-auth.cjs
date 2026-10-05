@@ -44,6 +44,7 @@ function subscription(authResult, profileIsPro = false) {
   const userQuery = { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: { subscription_status: 'inactive' }, error: null }; } };
   const profileQuery = { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: { is_pro: profileIsPro }, error: null }; } };
   const actual = load('src/lib/billing/subscription.ts', {
+    react: { cache: fn => fn },
     'server-only': {},
     '../supabase/server': { createSupabaseServerClient: async () => ({ auth: { getUser: async () => { authCalls++; return authResult; } }, from() { dataCalls++; return userQuery; } }) },
     '../supabase/admin': { createSupabaseAdminClient: () => ({ from() { dataCalls++; return profileQuery; } }) },
@@ -63,6 +64,11 @@ function dashboard(asset, status) {
   const data = { active: { score: null }, tape: {} };
   const sentinel = new Error('Authenticated Pro branch reached');
   const mocks = {
+    react: { Suspense: 'Suspense' },
+    '@/components/ui/LoadingIndicator': { LoadingIndicator: 'LoadingIndicator' },
+    '@/lib/product/supplemental-quotes': { getSupplementalQuotes: async () => { extraDataCalls++; return []; } },
+    '@/lib/market-data/derive-historical-analogs': { deriveHistoricalAnalogs: () => null },
+    '@/components/product/pro-context-observations': { buildProContextObservations: () => [] },
     'react/jsx-runtime': jsx,
     'next/cache': { unstable_noStore() {} },
     'next/headers': { headers: async () => ({ get: () => null }) },
@@ -71,7 +77,7 @@ function dashboard(asset, status) {
     '@/components/product/ProWorkspace': { ProWorkspace: 'ProWorkspace', ProBriefingActions: 'ProBriefingActions' },
     '@/components/product/pro-model-settings': {},
     '@/lib/product/workspace-auth': guard,
-    '@/lib/product/workspace-data': { loadWorkspaceData: async (market, viewer) => {
+    '@/lib/product/workspace-data': { loadWorkspaceSnapshot: async () => null, loadWorkspaceData: async (market, viewer) => {
       workspaceCalls++;
       assert.equal(market, asset);
       assert.equal(viewer.user?.id, status.user?.id);
@@ -174,6 +180,7 @@ function api(status) {
       '../supabase/admin': { createSupabaseAdminClient: count },
       './public-daily-data': { loadPublicDailyData: count },
       './score-access': { getViewerScore: count },
+      './workspace-snapshot': { readPaidWorkspaceSelection: count },
     });
     for (const asset of ['stocks', 'crypto']) {
       await assert.rejects(loader.loadWorkspaceData(asset, anonymous), /Sign in/);
@@ -227,6 +234,7 @@ function api(status) {
     const action = load('src/app/api/account/alerts/route.ts', {
       'next/server': { NextResponse: response },
       '@/lib/account/alert-preferences': { saveAlertPreferences: async () => { saves++; } },
+      '@/lib/analytics/conversions': { recordSubscriberAcquisition: async () => { throw new Error('Recorded unauthorized acquisition'); } },
       '@/lib/supabase/server': { createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: free.user }, error: { message: 'Invalid JWT' } }) } }) },
     });
     const result = await action.POST({ json: () => { throw new Error('Parsed unauthorized request'); } });
@@ -237,18 +245,24 @@ function api(status) {
     let dataCalls = 0;
     const route = load('src/app/api/analytics/dashboard/route.ts', {
       'next/server': { NextResponse: response },
-      '@/lib/analytics/dashboard-data': { getAnalyticsAdminUser: async () => null, getAnalyticsDashboardData: async () => { dataCalls++; } },
+      '@/lib/analytics/admin-access': { getAnalyticsAdminUser: async () => null },
+      '@/lib/analytics/acquisition-data': { getAcquisitionReport: async () => { dataCalls++; } },
+      '@/lib/analytics/filters': { parseAcquisitionFilters: () => { throw new Error('Parsed unauthorized filters'); } },
     });
     assert.equal((await route.GET()).status, 403);
     assert.equal(dataCalls, 0);
   });
   await check('analytics verifier rejects stale admin identity with an auth error', async () => {
     let result;
+    const admin = load('src/lib/analytics/admin-access.ts', {
+      'server-only': {}, react: { cache: fn => fn },
+      '@/lib/supabase/server': { createSupabaseServerClient: async () => ({ auth: { getUser: async () => result } }) },
+    });
     const actual = load('src/lib/analytics/dashboard-data.ts', {
       'server-only': {},
       '@/lib/paper-trading/get-paper-trading-dashboard-data': {},
       '@/lib/supabase/admin': { createSupabaseAdminClient: () => { throw new Error('Read unauthorized admin data'); } },
-      '@/lib/supabase/server': { createSupabaseServerClient: async () => ({ auth: { getUser: async () => result } }) },
+      '@/lib/analytics/admin-access': admin,
     });
     result = { data: { user: { ...free.user, email: actual.ANALYTICS_ADMIN_EMAIL } }, error: { message: 'JWT expired' } };
     assert.equal(await actual.getAnalyticsAdminUser(), null);

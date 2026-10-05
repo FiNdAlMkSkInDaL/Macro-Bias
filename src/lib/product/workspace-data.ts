@@ -92,6 +92,8 @@ function projectScore(score: ViewerScore): ViewerScore {
     asset: score.asset, paid: score.paid, delayed: score.delayed,
     tradeDate: score.tradeDate, score: score.score, label: score.label,
     updatedAt: typeof score.updatedAt === 'string' ? score.updatedAt : null,
+    publishedAt: typeof score.publishedAt === 'string' ? score.publishedAt : null,
+    sourceTradeDate: validDate(score.sourceTradeDate) ? score.sourceTradeDate : null,
     permission: score.paid && score.permission && PERMISSIONS.has(score.permission) ? score.permission : null,
     grade: score.paid && score.grade && GRADES.has(score.grade as ReliabilityGrade) ? score.grade : null,
     sizePct: score.paid && typeof score.sizePct === 'number' && Number.isFinite(score.sizePct) && score.sizePct >= 0 && score.sizePct <= 100 ? score.sizePct : null,

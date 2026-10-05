@@ -1,75 +1,64 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { logMarketingEvent } from '@/lib/analytics/server';
+import { isKnownTestTraffic } from '@/lib/analytics/attribution';
+import { normalizePublicCapture } from '@/lib/analytics/public-capture';
 
-import { logMarketingEvent } from "@/lib/analytics/server";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+const MAX_BODY_BYTES = 8192;
 
-const EVENT_NAME_PATTERN = /^[a-zA-Z0-9:_-]{2,64}$/;
-
-type TrackAnalyticsRequestBody = {
-  anonymousId?: unknown;
-  eventName?: unknown;
-  metadata?: unknown;
-  pagePath?: unknown;
-  referrer?: unknown;
-  sessionId?: unknown;
-  subscriberEmail?: unknown;
-  utmCampaign?: unknown;
-  utmMedium?: unknown;
-  utmSource?: unknown;
-};
-
-function normalizeText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizeOptionalText(value: unknown) {
-  const normalizedValue = normalizeText(value);
-  return normalizedValue || null;
-}
-
-function normalizeMetadata(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  return value as Record<string, unknown>;
+async function readPayload(request: Request): Promise<unknown> {
+  if (!request.body) throw new Error('Missing body.');
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > MAX_BODY_BYTES) { await reader.cancel(); throw new RangeError('Body too large.'); }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 export async function POST(request: Request) {
-  let payload: TrackAnalyticsRequestBody;
-
+  const requestUrl = new URL(request.url);
+  const origin = request.headers.get('origin');
+  if (origin !== requestUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
+    return NextResponse.json({ error: 'Same-origin capture required.' }, { status: 403 });
+  }
+  if (isKnownTestTraffic(requestUrl.hostname, request.headers.get('user-agent') ?? '')) {
+    return NextResponse.json({ ok: true, skipped: true }, { status: 202 });
+  }
+  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
+    return NextResponse.json({ error: 'JSON content required.' }, { status: 415 });
+  }
+  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
+  }
+  let payload: unknown;
   try {
-    payload = (await request.json()) as TrackAnalyticsRequestBody;
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    payload = await readPayload(request);
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid or oversized JSON.' }, { status: error instanceof RangeError ? 413 : 400 });
   }
-
-  const eventName = normalizeText(payload.eventName);
-  const pagePath = normalizeText(payload.pagePath);
-
-  if (!EVENT_NAME_PATTERN.test(eventName)) {
-    return NextResponse.json({ error: "Invalid event name." }, { status: 400 });
-  }
-
-  if (!pagePath.startsWith("/")) {
-    return NextResponse.json({ error: "Invalid page path." }, { status: 400 });
-  }
-
-  await logMarketingEvent({
-    anonymousId: normalizeOptionalText(payload.anonymousId),
-    eventName,
-    metadata: normalizeMetadata(payload.metadata),
-    pagePath,
-    referrer: normalizeOptionalText(payload.referrer),
-    sessionId: normalizeOptionalText(payload.sessionId),
-    subscriberEmail: normalizeOptionalText(payload.subscriberEmail),
-    utmCampaign: normalizeOptionalText(payload.utmCampaign),
-    utmMedium: normalizeOptionalText(payload.utmMedium),
-    utmSource: normalizeOptionalText(payload.utmSource),
+  const normalized = normalizePublicCapture(payload, {
+    cookieHeader: request.headers.get('cookie'), dnt: request.headers.get('dnt'), gpc: request.headers.get('sec-gpc'),
   });
-
+  if (normalized.error) return NextResponse.json({ error: normalized.error }, { status: 400 });
+  if (!normalized.event) return NextResponse.json({ ok: true, skipped: true }, { status: 202 });
+  try {
+    // Existing PK makes repeated beacon/fetch delivery of one navigation a no-op.
+    await logMarketingEvent(normalized.event);
+  } catch {
+    return NextResponse.json({ error: 'Capture unavailable.' }, { status: 503 });
+  }
   return NextResponse.json({ ok: true }, { status: 202 });
 }

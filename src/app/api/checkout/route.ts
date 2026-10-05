@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { sanitizeRedirectPath } from '../../../lib/auth/continuation';
+import { checkoutAcquisition, stripeAcquisitionMetadata } from '@/lib/analytics/conversions';
+
 import {
   getUserSubscriptionStatus,
   isSubscriptionActive,
@@ -123,6 +125,13 @@ async function buildCheckoutSession(
     throw new Error(`Failed to load billing profile: ${billingUserError.message}`);
   }
 
+  let acquisitionMetadata: Record<string, string> = {};
+  try {
+    acquisitionMetadata = stripeAcquisitionMetadata(await checkoutAcquisition(user, request.headers));
+  } catch {
+    console.warn('[checkout] Acquisition attribution was unavailable.');
+  }
+
   const session = await stripe.checkout.sessions.create({
     billing_address_collection: 'auto',
     cancel_url: cancelUrl.toString(),
@@ -137,6 +146,7 @@ async function buildCheckoutSession(
     ],
     ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
     metadata: {
+      ...acquisitionMetadata,
       billingPlan: plan,
       supabaseUUID: user.id,
       supabaseUserId: user.id,
@@ -144,6 +154,7 @@ async function buildCheckoutSession(
     mode: 'subscription',
     subscription_data: {
       metadata: {
+        ...acquisitionMetadata,
         billingPlan: plan,
         supabaseUUID: user.id,
         supabaseUserId: user.id,

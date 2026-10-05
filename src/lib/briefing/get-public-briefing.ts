@@ -23,6 +23,7 @@ export type BriefingListItem = {
   briefing_date: string;
   quant_score: number;
   bias_label: string;
+  is_override_active: boolean;
 };
 
 const BRIEFING_COLUMNS =
@@ -137,7 +138,7 @@ export async function getAllBriefingDates(): Promise<BriefingListItem[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("daily_market_briefings")
-    .select("briefing_date, quant_score, bias_label")
+    .select("briefing_date, quant_score, bias_label, is_override_active")
     .order("briefing_date", { ascending: false });
 
   if (error) {

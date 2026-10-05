@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { saveAlertPreferences } from '@/lib/account/alert-preferences';
+import { recordSubscriberAcquisition } from '@/lib/analytics/conversions';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -31,10 +32,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    await saveAlertPreferences(user.email, {
-      cryptoOptedIn: readFlag(payload.cryptoOptedIn),
-      stocksOptedIn: readFlag(payload.stocksOptedIn),
-    });
+    const preferences = {
+      cryptoOptedIn: readFlag(payload.cryptoOptedIn), stocksOptedIn: readFlag(payload.stocksOptedIn),
+    };
+    const result = await saveAlertPreferences(user.email, preferences);
+    if (result?.createdAt && (preferences.cryptoOptedIn || preferences.stocksOptedIn)) {
+      try {
+        await recordSubscriberAcquisition({
+          email: user.email, ...result, ...preferences, headers: request.headers, pagePath: '/account',
+        });
+      } catch {
+        console.warn('[alerts] Subscriber acquisition was not recorded.');
+      }
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to save email alerts.';
     return NextResponse.json({ error: message }, { status: 500 });

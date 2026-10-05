@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'Stock Briefing Archive | Macro Bias',
   description: 'Public dated stock readings and full briefings. Pro includes immediate access; signed-in Free accounts can read full articles seven calendar days after publication.',
   alternates: { canonical: '/briefings' },
+  keywords: ['stock market briefing', 'daily macro reading', 'stock briefing archive'],
+  openGraph: { type: 'website', siteName: 'Macro Bias', title: 'Stock Briefing Archive | Macro Bias', description: 'Public dated stock readings and full briefings. Pro includes immediate access; signed-in Free accounts can read full articles seven calendar days after publication.', url: '/briefings' },
+  twitter: { card: 'summary_large_image', title: 'Stock Briefing Archive | Macro Bias', description: 'Public stock readings, with full articles immediately for Pro and after seven days for signed-in Free accounts.' },
 };
 export default async function BriefingsPage() {
   const [data, viewer] = await Promise.all([loadPaidBriefingArchive('stocks'), getBriefingViewer()]);

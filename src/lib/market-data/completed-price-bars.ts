@@ -1,7 +1,8 @@
 export type ChartPriceTicker = 'SPY' | 'BTC-USD';
+export type CompletedPriceTicker = ChartPriceTicker | 'ETH-USD' | 'SOL-USD' | 'QQQ' | 'XLP' | 'TLT' | 'GLD' | 'IWM' | 'HYG' | '^VIX' | 'UUP' | 'USO';
 
 export type CompletedPriceRow = {
-  ticker: ChartPriceTicker;
+  ticker: CompletedPriceTicker;
   trade_date: string;
   open: number;
   high: number;
@@ -68,8 +69,8 @@ function nyseHoliday(tradeDate: string) {
 }
 
 /** A bound, not an invented session: provider rows determine holidays and gaps. */
-export function completedPriceDateCutoff(ticker: ChartPriceTicker, now = new Date()) {
-  if (ticker === 'BTC-USD') return previousCalendarDate(now.toISOString().slice(0, 10));
+export function completedPriceDateCutoff(ticker: CompletedPriceTicker, now = new Date()) {
+  if (ticker.endsWith('-USD')) return previousCalendarDate(now.toISOString().slice(0, 10));
   const date = isoDate(now, 'America/New_York');
   const parts = new Map(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).formatToParts(now).map((part) => [part.type, part.value]));
   // Conservative finality buffer also safely covers early-close sessions.
@@ -77,30 +78,30 @@ export function completedPriceDateCutoff(ticker: ChartPriceTicker, now = new Dat
   return minutes >= 16 * 60 + 15 ? date : previousCalendarDate(date);
 }
 
-export function isCompletedPriceDate(ticker: ChartPriceTicker, tradeDate: string, now = new Date()) {
+export function isCompletedPriceDate(ticker: CompletedPriceTicker, tradeDate: string, now = new Date()) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tradeDate)) return false;
   const date = new Date(`${tradeDate}T00:00:00Z`);
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== tradeDate) return false;
-  if (ticker === 'SPY' && (date.getUTCDay() === 0 || date.getUTCDay() === 6 || nyseHoliday(tradeDate))) return false;
+  if (!ticker.endsWith('-USD') && (date.getUTCDay() === 0 || date.getUTCDay() === 6 || nyseHoliday(tradeDate))) return false;
   return tradeDate <= completedPriceDateCutoff(ticker, now);
 }
 
-export function latestCompletedPriceDate(ticker: ChartPriceTicker, now = new Date()) {
+export function latestCompletedPriceDate(ticker: CompletedPriceTicker, now = new Date()) {
   let candidate = completedPriceDateCutoff(ticker, now);
   while (!isCompletedPriceDate(ticker, candidate, now)) candidate = previousCalendarDate(candidate);
   return candidate;
 }
 
 /** Preserve Yahoo's quoted OHLC and separate adjusted close; never synthesize a bar. */
-export function parseCompletedYahooPrices(ticker: ChartPriceTicker, payload: YahooChartPayload, now = new Date()): CompletedPriceRow[] {
+export function parseCompletedYahooPrices(ticker: CompletedPriceTicker, payload: YahooChartPayload, now = new Date()): CompletedPriceRow[] {
   const result = payload.chart?.result?.[0];
   const quote = result?.indicators?.quote?.[0];
   const adjusted = result?.indicators?.adjclose?.[0]?.adjclose;
-  const zone = ticker === 'SPY' ? 'America/New_York' : 'UTC';
+  const zone = ticker.endsWith('-USD') ? 'UTC' : 'America/New_York';
   if (!quote || result?.meta?.symbol !== ticker || result.meta.exchangeTimezoneName !== zone) {
     throw new Error(payload.chart?.error?.description || `Invalid Yahoo daily source for ${ticker}.`);
   }
-  return (result.timestamp ?? []).flatMap((timestamp, index) => {
+  const rows = (result.timestamp ?? []).flatMap((timestamp, index) => {
     if (!Number.isFinite(timestamp)) return [];
     const trade_date = isoDate(new Date(timestamp * 1000), zone);
     if (!isCompletedPriceDate(ticker, trade_date, now)) return [];
@@ -111,9 +112,16 @@ export function parseCompletedYahooPrices(ticker: ChartPriceTicker, payload: Yah
     if (high < Math.max(open, close) || low > Math.min(open, close) || high < low || !Number.isSafeInteger(volume) || volume! < 0) return [];
     return [{ ticker, trade_date, open, high, low, close, adjusted_close, volume: volume!, source: 'yahoo-chart-api' as const }];
   }).sort((left, right) => left.trade_date.localeCompare(right.trade_date));
+  const unique = new Map<string, CompletedPriceRow>();
+  for (const row of rows) {
+    const previous = unique.get(row.trade_date);
+    if (previous && JSON.stringify(previous) !== JSON.stringify(row)) throw new Error(`Conflicting daily source rows for ${ticker}.`);
+    unique.set(row.trade_date, row);
+  }
+  return [...unique.values()];
 }
 
-export async function fetchCompletedYahooPrices(ticker: ChartPriceTicker, now = new Date()) {
+export async function fetchCompletedYahooPrices(ticker: CompletedPriceTicker, now = new Date(), options: { deadlineAt?: number } = {}) {
   const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`);
   url.searchParams.set('interval', '1d');
   url.searchParams.set('includeAdjustedClose', 'true');
@@ -122,15 +130,19 @@ export async function fetchCompletedYahooPrices(ticker: ChartPriceTicker, now = 
   url.searchParams.set('period2', String(Math.floor(now.getTime() / 1000)));
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
+      const remaining = options.deadlineAt ? options.deadlineAt - Date.now() : 20_000;
+      if (remaining <= 0) throw new Error('Completed-price sync time budget exceeded.');
       const response = await fetch(url, {
         headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36' },
-        cache: 'no-store', signal: AbortSignal.timeout(20_000),
+        cache: 'no-store', signal: AbortSignal.timeout(Math.max(1, Math.min(20_000, remaining))),
       });
       if (!response.ok) throw new Error(`Yahoo completed-price request failed for ${ticker}: ${response.status}.`);
-      return parseCompletedYahooPrices(ticker, await response.json(), now);
+      const minimumDate = new Date(now.getTime() - 10 * 86_400_000).toISOString().slice(0, 10);
+      return parseCompletedYahooPrices(ticker, await response.json(), now).filter(row => row.trade_date >= minimumDate);
     } catch (error) {
-      if (attempt === 2) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1_500 * 2 ** attempt));
+      const delay = 1_500 * 2 ** attempt;
+      if (attempt === 2 || (options.deadlineAt && options.deadlineAt - Date.now() <= delay)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   return [];

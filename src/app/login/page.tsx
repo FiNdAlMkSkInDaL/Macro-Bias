@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { LoadingAnnouncement, LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { continuationFromSearchParams } from '@/lib/auth/continuation';
+import { getAcquisitionAttribution } from '@/lib/analytics/client';
 import {
   createSupabaseBrowserClient,
   getSupabaseBrowserClientConfigError,
@@ -31,6 +32,11 @@ export default function LoginPage() {
     window.location.assign(path);
   }
 
+  async function confirmAccount() {
+    try { await fetch('/api/analytics/account', { method: 'POST', signal: AbortSignal.timeout(3000) }); }
+    catch { /* Authentication succeeds even when attribution is unavailable. */ }
+  }
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'signup') setAuthMode('signup');
@@ -50,7 +56,7 @@ export default function LoginPage() {
 
     // A plain visit from the header has no return path. Keep the form on screen
     // even when this browser already has a session.
-    if (!supabase || !explicitContinuation || params.get('passwordReset') === 'success') {
+    if (!supabase || !explicitContinuation || authError || params.get('passwordReset') === 'success') {
       return;
     }
 
@@ -98,16 +104,20 @@ export default function LoginPage() {
           throw new Error('Sign-in did not keep a session. Submit again.');
         }
 
+        await confirmAccount();
         continueAfterSignIn(redirectPath);
         return;
       }
 
       const emailRedirectUrl = new URL('/auth/callback', window.location.origin);
       emailRedirectUrl.searchParams.set('redirectTo', redirectPath);
+      const acquisition = getAcquisitionAttribution();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: emailRedirectUrl.toString() },
+        options: { emailRedirectTo: emailRedirectUrl.toString(),
+          ...(acquisition ? { data: { acquisition_v2: acquisition } } : {}),
+        },
       });
 
       if (error) {
@@ -115,6 +125,7 @@ export default function LoginPage() {
       }
 
       if (data.session?.user) {
+        await confirmAccount();
         continueAfterSignIn(redirectPath);
         return;
       }

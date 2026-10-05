@@ -156,7 +156,7 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
   result.availability.windowEnd = end;
 
   try {
-    const supabase = createSupabaseAdminClient();
+    const supabase = createSupabaseAdminClient({ timeoutMs: 8_000 });
     const scoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
     const [history, prices] = await Promise.allSettled([
       scoreEnd ? supabase.from(scoreTable)

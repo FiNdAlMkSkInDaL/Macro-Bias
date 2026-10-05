@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createSupabaseBrowserClient, getSupabaseBrowserClientConfigError } from '@/lib/supabase/browser';
 import styles from './SiteNav.module.css';
 
-const ADMIN_EMAIL = 'finphillips21@gmail.com';
+const ADMIN_EMAILS = new Set(['finphillips21@gmail.com', 'finlayp32@gmail.com']);
 const PUBLIC_LINKS = [
   { href: '/today', label: 'Today' },
   { href: '/track-record', label: 'Track Record' },
@@ -56,13 +56,13 @@ export function SiteNav() {
       if (!mounted) return;
       authRevision += 1;
       setSignedIn(Boolean(session?.user));
-      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
+      setIsAdmin(Boolean(session?.user?.email_confirmed_at && ADMIN_EMAILS.has(session.user.email?.toLowerCase() ?? '')));
     });
     const initialRevision = authRevision;
     void supabase.auth.getUser().then(({ data: { user } }) => {
       if (!mounted || authRevision !== initialRevision) return;
       setSignedIn(Boolean(user));
-      setIsAdmin(user?.email === ADMIN_EMAIL);
+      setIsAdmin(Boolean(user?.email_confirmed_at && ADMIN_EMAILS.has(user.email?.toLowerCase() ?? '')));
     });
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);

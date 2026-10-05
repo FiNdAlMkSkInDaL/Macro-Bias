@@ -16,9 +16,10 @@ export async function briefingPageMetadata(asset: ProductAsset, date: string): P
   const title = `${market} briefing — ${date}`;
   const reading = item?.score != null ? ` Public reading: ${item.score > 0 ? '+' : ''}${item.score} (${item.biasLabel.replace(/_/g, ' ')}).` : '';
   const description = `Published ${market.toLowerCase()} briefing for ${date}.${reading} Pro includes immediate full access; signed-in Free accounts can read the full article seven calendar days after publication.`;
+  const images = asset === 'stocks' ? [{ url: `${getAppUrl().replace(/\/$/, '')}/api/og?date=${date}`, width: 1200, height: 630, alt: title }] : undefined;
   return {
     title, description, alternates: { canonical },
-    openGraph: { type: 'article', title, description, url: canonical, ...(item?.publishedAt ? { publishedTime: item.publishedAt } : {}) },
-    twitter: { card: 'summary', title, description },
+    openGraph: { type: 'article', title, description, url: canonical, ...(images ? { images } : {}), ...(item?.publishedAt ? { publishedTime: item.publishedAt } : {}) },
+    twitter: { card: images ? 'summary_large_image' : 'summary', title, description, ...(images ? { images: images.map(image => image.url) } : {}) },
   };
 }

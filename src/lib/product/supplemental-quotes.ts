@@ -1,4 +1,5 @@
 import 'server-only';
+import { latestCompletedPriceDate, parseCompletedYahooPrices, type CompletedPriceTicker } from '../market-data/completed-price-bars';
 
 export type SupplementalQuote<Ticker extends string = string> = {
   currentPrice: number;
@@ -9,25 +10,22 @@ export type SupplementalQuote<Ticker extends string = string> = {
 };
 
 const QUOTE_TIMEOUT_MS = 2_000;
-const QUOTE_REVALIDATE_SECONDS = 300;
-
-type YahooChartResponse = {
-  chart?: { result?: Array<{
-    timestamp?: number[];
-    indicators?: { quote?: Array<{ close?: Array<number | null> }> };
-  }> };
-};
+const SOURCE_TICKERS = new Set<CompletedPriceTicker>(['SPY', 'QQQ', 'XLP', 'TLT', 'GLD', 'IWM', 'HYG', '^VIX', 'UUP', 'USO', 'BTC-USD', 'ETH-USD', 'SOL-USD']);
 
 function quoteUrl(ticker: string) {
   const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`);
-  // A stable, public-only URL lets both workspaces reuse the same short cache.
+  // Public price data only; never use a cached forming candle as a daily close.
   url.searchParams.set('range', '1mo');
   url.searchParams.set('interval', '1d');
-  url.searchParams.set('includeAdjustedClose', 'false');
+  url.searchParams.set('includeAdjustedClose', 'true');
+  url.searchParams.set('includePrePost', 'false');
   return url;
 }
 
 async function getSupplementalQuote<Ticker extends string>(sourceTicker: string, ticker: Ticker): Promise<SupplementalQuote<Ticker> | null> {
+  if (!SOURCE_TICKERS.has(sourceTicker as CompletedPriceTicker)) return null;
+  const source = sourceTicker as CompletedPriceTicker;
+  const now = new Date();
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const expired = new Promise<null>((resolve) => {
@@ -39,35 +37,26 @@ async function getSupplementalQuote<Ticker extends string>(sourceTicker: string,
   const request = (async (): Promise<SupplementalQuote<Ticker> | null> => {
     try {
       const response = await fetch(quoteUrl(sourceTicker), {
-        cache: 'force-cache',
-        next: { revalidate: QUOTE_REVALIDATE_SECONDS },
-        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+        headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36' },
         signal: controller.signal,
       });
       if (!response.ok) return null;
-      const payload = await response.json() as YahooChartResponse;
-      const result = payload.chart?.result?.[0];
-      const timestamps = result?.timestamp ?? [];
-      const closes = result?.indicators?.quote?.[0]?.close ?? [];
-      const distinct = new Map<number, number>();
-      for (const [index, timestamp] of timestamps.entries()) {
-        const close = closes[index];
-        if (Number.isFinite(timestamp) && timestamp > 0 && typeof close === 'number' && Number.isFinite(close) && close > 0) {
-          distinct.set(timestamp, close);
-        }
-      }
-      const points = [...distinct].sort(([left], [right]) => left - right);
+      const payload = await response.json() as Parameters<typeof parseCompletedYahooPrices>[1];
+      const rows = parseCompletedYahooPrices(source, payload, now);
+      const points = [...new Map(rows.map(row => [row.trade_date, row])).values()];
       if (points.length < 2) return null;
-      const [timestamp, latest] = points.at(-1)!;
-      const previous = points.at(-2)![1];
-      const date = new Date(timestamp * 1000);
+      const latestRow = points.at(-1)!;
+      if (latestRow.trade_date !== latestCompletedPriceDate(source, now)) return null;
+      const latest = latestRow.close;
+      const previous = points.at(-2)!.close;
       const change = ((latest - previous) / previous) * 100;
-      if (!Number.isFinite(date.getTime()) || !Number.isFinite(change)) return null;
+      if (!Number.isFinite(change)) return null;
       return {
         currentPrice: Number(latest.toFixed(2)),
         dailyChangePercent: Number(change.toFixed(2)),
         ticker,
-        tradeDate: date.toISOString().slice(0, 10),
+        tradeDate: latestRow.trade_date,
         dateSource: 'supplemental',
       };
     } catch {

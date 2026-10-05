@@ -56,6 +56,9 @@ const CROSS_ASSET_TICKERS: readonly CrossAssetTicker[] = [
 ];
 
 const SUPPLEMENTAL_TICKERS: readonly (readonly [string, CrossAssetTicker])[] = [
+  ["BTC-USD", "BTC-USD"],
+  ["ETH-USD", "ETH-USD"],
+  ["SOL-USD", "SOL-USD"],
   ["GLD", "GLD"],
   ["TLT", "TLT"],
   ["UUP", "UUP"],
@@ -92,9 +95,11 @@ function storedCrossAssets(snapshot: CryptoBiasScoreRow | null): CrossAssetMapAs
 }
 
 async function CryptoMarketPrices({ assets, tape }: { assets: CrossAssetMapAsset[]; tape: WorkspaceMarketTape }) {
-  const missing = SUPPLEMENTAL_TICKERS.filter(([, ticker]) => !assets.some((asset) => asset.ticker === ticker && asset.currentPrice !== null));
-  const supplemental = await getSupplementalQuotes(missing);
-  return <ProMarketPrices assets={assets.map((asset) => asset.currentPrice === null ? supplemental.find((quote) => quote.ticker === asset.ticker) ?? asset : asset)} tape={tape} />;
+  const supplemental = await getSupplementalQuotes(SUPPLEMENTAL_TICKERS);
+  return <ProMarketPrices assets={assets.map((asset) => {
+    const latest = supplemental.find((quote) => quote.ticker === asset.ticker);
+    return latest && (!asset.tradeDate || latest.tradeDate >= asset.tradeDate) ? latest : asset;
+  })} tape={tape} />;
 }
 
 async function CryptoPlanActions({ userId, isPro }: { userId: string; isPro: boolean }) {

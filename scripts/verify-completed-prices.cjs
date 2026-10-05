@@ -59,22 +59,22 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
   await check('price-only sync catches up absent completed bars, finalizes latest row, preserves existing history and is idempotent', async () => {
     const rows = new Map(); const writes = []; const queried = [];
     const admin = { from(table) { queried.push(table); assert.equal(table, 'etf_daily_prices'); let ticker, date;
-      return { select() { return this; }, eq(key, value) { if (key === 'ticker') ticker = value; else date = value; return this; }, gte() { return this; }, lte() { return this; },
+      return { select() { return this; }, eq(key, value) { if (key === 'ticker') ticker = value; else date = value; return this; }, gte() { return this; }, lte() { return this; }, abortSignal(signal) { assert.ok(signal instanceof AbortSignal); return this; },
         then(resolve) { return Promise.resolve({ data: [...rows.values()].filter((row) => row.ticker === ticker), error: null }).then(resolve); },
         upsert(values, options) { assert.equal(options.onConflict, 'ticker,trade_date'); const inserted = [];
           for (const row of Array.isArray(values) ? values : [values]) { assert.equal('technical_indicators' in row, false); assert.equal('created_at' in row, false);
             const key = `${row.ticker}:${row.trade_date}`; if (options.ignoreDuplicates && rows.has(key)) continue;
             writes.push(row); rows.set(key, { ...rows.get(key), ...row }); inserted.push(row); }
-          const result = { data: inserted, error: null }; return { then(resolve) { return Promise.resolve(result).then(resolve); }, select() { return Promise.resolve(result); } }; },
+          const result = { data: inserted, error: null }; return { then(resolve) { return Promise.resolve(result).then(resolve); }, select() { return this; }, abortSignal(signal) { assert.ok(signal instanceof AbortSignal); return this; } }; },
       }; } };
     rows.set('BTC-USD:2026-10-01', { ticker: 'BTC-USD', trade_date: '2026-10-01', technical_indicators: { untouched: true }, created_at: 'original', close: 1 });
-    for (const ticker of ['SPY', 'BTC-USD']) rows.set(`${ticker}:2026-09-29`, { ticker, trade_date: '2026-09-29', close: 12345 });
+    for (const ticker of ['SPY', 'BTC-USD', 'ETH-USD', 'SOL-USD']) rows.set(`${ticker}:2026-09-29`, { ticker, trade_date: '2026-09-29', close: 12345 });
     const sync = load('src/lib/market-data/sync-completed-market-prices.ts', { '../supabase/admin': { createSupabaseAdminClient: () => admin }, './completed-price-bars': { latestCompletedPriceDate: prices.latestCompletedPriceDate,
       fetchCompletedYahooPrices: async (ticker, now) => ['2026-09-29', '2026-09-30', '2026-10-01'].flatMap((date) => prices.parseCompletedYahooPrices(ticker, payload(ticker, date), now)) } });
     const now = new Date('2026-10-02T12:00:00Z');
     const first = await sync.syncCompletedMarketPrices(now);
-    assert.equal(first.ok, true); assert.equal(writes.length, 4); assert.ok(first.results.every((result) => result.writes.length === 2));
-    assert.equal((await sync.syncCompletedMarketPrices(now)).results.every((result) => !result.changed), true); assert.equal(writes.length, 4);
+    assert.equal(first.ok, true); assert.equal(writes.length, 8); assert.ok(first.results.every((result) => result.writes.length === 2));
+    assert.equal((await sync.syncCompletedMarketPrices(now)).results.every((result) => !result.changed), true); assert.equal(writes.length, 8);
     assert.equal(rows.get('BTC-USD:2026-10-01').technical_indicators.untouched, true); assert.equal(rows.get('BTC-USD:2026-10-01').created_at, 'original');
     assert.ok(queried.every((table) => table === 'etf_daily_prices'));
     assert.equal(rows.get('SPY:2026-09-29').close, 12345); assert.equal(rows.get('BTC-USD:2026-09-29').close, 12345);
@@ -88,7 +88,7 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     const now = new Date('2026-09-07T21:00:00Z');
     let stale = false;
     const source = (ticker) => prices.parseCompletedYahooPrices(ticker, payload(ticker, ticker === 'SPY' ? stale ? '2026-09-03' : '2026-09-04' : '2026-09-06'), now);
-    const admin = { from() { let ticker; return { select() { return this; }, eq(key, value) { ticker = value; return this; }, gte() { return this; }, lte() { return this; }, then(resolve) { return Promise.resolve({ data: source(ticker), error: null }).then(resolve); } }; } };
+    const admin = { from() { let ticker; return { select() { return this; }, eq(key, value) { ticker = value; return this; }, gte() { return this; }, lte() { return this; }, abortSignal() { return this; }, then(resolve) { return Promise.resolve({ data: source(ticker), error: null }).then(resolve); } }; } };
     const sync = load('src/lib/market-data/sync-completed-market-prices.ts', { '../supabase/admin': { createSupabaseAdminClient: () => admin }, './completed-price-bars': { latestCompletedPriceDate: prices.latestCompletedPriceDate, fetchCompletedYahooPrices: async (ticker) => source(ticker) } });
     const holiday = await sync.syncCompletedMarketPrices(now);
     assert.equal(holiday.ok, true); assert.equal(holiday.results[0].tradeDate, '2026-09-04');

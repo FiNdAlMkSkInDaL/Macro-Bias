@@ -22,8 +22,18 @@ export default function PrivacyPage() {
           numbers stay with Stripe.
         </p>
         <p>
-          The site records page views and alert signups, including the page, the referrer, and campaign parameters
-          when those are present.
+          We keep anonymous page totals and campaign labels to understand which marketing works. Full query
+          strings, password reset links, payment details, and private account pages are excluded from this tracking.
+        </p>
+        <p>
+          If you accept optional analytics, a random visitor id and a session id connect your visits with confirmed
+          signups and subscriptions. We remember your first discovery and latest marketing source for up to 90 days,
+          using a cookie and local browser storage. Sessions restart after 30 minutes without activity. This is not
+          fingerprinting and does not store your IP address in our marketing analytics.
+        </p>
+        <p>
+          Choose Essential only to keep page totals anonymous. You can change this choice using Analytics preferences
+          on this page. We remember your preference for one year and honor Do Not Track and Global Privacy Control.
         </p>
         <p>
           Marketing email includes an unsubscribe link. Unsubscribing stops the free alerts for that address.

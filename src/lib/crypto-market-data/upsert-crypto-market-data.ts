@@ -573,7 +573,7 @@ export async function upsertCryptoMarketData(
   options: CryptoSyncOptions = {},
 ): Promise<CryptoDailyBiasResult> {
   log("Entering upsertCryptoMarketData().");
-  const supabase = createSupabaseAdminClient();
+  const supabase = createSupabaseAdminClient({ timeoutMs: 5_000 });
   const asOfDate = options.asOfDate ?? new Date();
   const writeFullHistory = options.writeFullHistory ?? false;
   const requestedLookbackDays = Math.max(

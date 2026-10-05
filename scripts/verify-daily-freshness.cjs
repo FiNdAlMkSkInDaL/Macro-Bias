@@ -90,7 +90,12 @@ function fixture(asset, dates = ['2026-10-01', '2026-09-30']) {
 }
 function loaders(tables, fail) {
   const db = database(tables, fail);
+  const snapshot = load('src/lib/product/workspace-snapshot.ts', {
+    'server-only': {}, react: { cache: fn => fn }, '../market-data/stock-session': session,
+    '../supabase/admin': { createSupabaseAdminClient: () => db.client },
+  });
   const scores = load('src/lib/product/score-access.ts', {
+    react: { cache: fn => fn }, './workspace-snapshot': snapshot,
     'server-only': {}, '../briefing/daily-briefing-config': { DAILY_BRIEFING_SECTION_HEADERS: { bottomLine: 'BOTTOM LINE' } },
     '../billing/subscription': { getUserSubscriptionStatus: async () => ({ user: null, isPro: false }) },
     '../market-data/stock-session': session,
