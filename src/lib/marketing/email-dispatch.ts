@@ -1164,22 +1164,24 @@ function createOptimisedQuantBriefingEmailContent(
   const playbookItems = parseBulletListItems(playbook);
   const visiblePlaybook = tier === 'premium' ? playbookItems : playbookItems.slice(0, 1);
   const baseScore = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest) ?? '';
-  const confirmation = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? '';
+  const confirmationCopy = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? '';
   const history = cleanDailyEmailCopy(context.historicalContext || sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) || '');
   const coverage = cleanDailyEmailCopy(context.coverageNote || '');
+  const confirmation = /news/i.test(coverage) && /^News wasn['’]t available for this note\.?$/i.test(confirmationCopy.trim())
+    ? '' : confirmationCopy;
   const dashboardUrl = new URL('/dashboard', getAppUrl()).toString();
   const upgradeUrl = buildUpgradeUrl();
   const referralPageUrl = new URL('/refer', getAppUrl()).toString();
   const lockedLine = tier === 'free' && (playbookItems.length > 1 || !playbookItems.length) ? FREE_TIER_LOCKED_PLAYBOOK_LINE : '';
   const bodyHtml = [
     tier === 'premium' ? dailyEmailEvidenceHtml(context) : '',
-    tier === 'premium' && baseScore && !context.evidence?.length ? dailyEmailSectionHtml('Inputs behind the reading', dailyEmailParagraphHtml(baseScore)) : '',
+    tier === 'premium' && baseScore && !context.evidence?.length && !context.historicalContext ? dailyEmailSectionHtml('What the model sees', dailyEmailParagraphHtml(baseScore)) : '',
     visiblePlaybook.length ? dailyEmailSectionHtml('Today’s setup', dailyEmailMarketRowsHtml(visiblePlaybook), getAccentColor(label)) : '',
     lockedLine ? dailyEmailParagraphHtml(lockedLine) : '',
-    tier === 'premium' && confirmation ? dailyEmailSectionHtml('Confirmation to watch', dailyEmailParagraphHtml(confirmation), '#fdba74') : '',
-    tier === 'premium' && history ? dailyEmailSectionHtml('Historical context', dailyEmailParagraphHtml(history), '#6ee7b7') : '',
+    tier === 'premium' && confirmation ? dailyEmailSectionHtml('What to watch', dailyEmailParagraphHtml(confirmation), '#fdba74') : '',
+    tier === 'premium' && history ? dailyEmailSectionHtml('Past sessions', dailyEmailParagraphHtml(history), '#6ee7b7') : '',
     tier === 'premium' && sections.length === 0 ? dailyEmailSectionHtml('Daily read', dailyEmailParagraphHtml(cleanCopy)) : '',
-    coverage ? dailyEmailSectionHtml('Coverage', dailyEmailParagraphHtml(coverage), '#a1a1aa') : '',
+    coverage ? dailyEmailSectionHtml('What this covers', dailyEmailParagraphHtml(coverage), '#a1a1aa') : '',
     weeklyDigest && weeklyDigest.sessionCount > 0
       ? buildWeeklyRecapSectionHtml(weeklyDigest, tier).replaceAll('font-size: 13px', 'font-size: 16px').replaceAll('font-size: 14px', 'font-size: 16px')
         .replace('high conviction.', 'stable scores.').replace('selective rotation.', 'moderate score variation.') : '',
@@ -1198,14 +1200,14 @@ function createOptimisedQuantBriefingEmailContent(
     delta,
     interpretation,
     reliability,
-    evidence.length ? `INPUTS BEHIND THE READING\n${evidence.map((line) => `- ${line}`).join('\n')}`
-      : tier === 'premium' && baseScore ? `INPUTS BEHIND THE READING\n${baseScore}` : '',
+    evidence.length ? `What the model sees\n${evidence.map((line) => `- ${line}`).join('\n')}`
+      : tier === 'premium' && baseScore && !context.historicalContext ? `What the model sees\n${baseScore}` : '',
     visiblePlaybook.length ? `TODAY’S SETUP\n${visiblePlaybook.map((line) => `- ${line}`).join('\n')}` : '',
     lockedLine,
-    tier === 'premium' && confirmation ? `CONFIRMATION TO WATCH\n${confirmation}` : '',
-    tier === 'premium' && history ? `HISTORICAL CONTEXT\n${history}` : '',
+    tier === 'premium' && confirmation ? `What to watch\n${confirmation}` : '',
+    tier === 'premium' && history ? `Past sessions\n${history}` : '',
     tier === 'premium' && sections.length === 0 ? cleanCopy : '',
-    coverage ? `COVERAGE\n${coverage}` : '',
+    coverage ? `What this covers\n${coverage}` : '',
     weeklyDigest && weeklyDigest.sessionCount > 0 ? buildWeeklyRecapSectionText(weeklyDigest, tier).replace('High conviction.', 'Stable scores.').replace('Moderate rotation.', 'Moderate score variation.') : '',
     tier === 'free' ? `${FREE_TIER_PAYWALL_MESSAGE}\nExplore Pro: ${upgradeUrl}` : '',
     `View dashboard: ${dashboardUrl}`,

@@ -9,6 +9,7 @@ import {
 import { fetchMorningNews } from "@/lib/market-data/fetch-morning-news";
 import { getRequiredServerEnv } from "@/lib/server-env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { dailyEmailImprovementsEnabled } from "@/lib/marketing/daily-email-context";
 
 import {
   DAILY_BRIEFING_MACRO_HEADER_TYPO,
@@ -18,6 +19,7 @@ import {
   DAILY_BRIEFING_MODEL,
   DAILY_BRIEFING_RESPONSE_SCHEMA,
   DAILY_BRIEFING_SECTION_HEADERS,
+  EDITORIAL_STOCK_BRIEFING_SYSTEM_PROMPT,
   INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT,
   LLM_RETRY_OPTIONS,
   NEWS_RETRY_OPTIONS,
@@ -482,7 +484,7 @@ function splitNewsletterSections(newsletterCopy: string) {
   };
 }
 
-function validateNewsletterCopy(newsletterCopy: string) {
+function validateNewsletterCopy(newsletterCopy: string, editorialEnabled = false) {
   if (/\b(?:NO_TRADE|Permission\s*:|Reliability\s+[A-F]\b|rel\s+[A-F]\b|Size\s+\d+%)/i.test(newsletterCopy)) {
     throw new Error("Anthropic daily briefing exposed model control fields.");
   }
@@ -508,8 +510,15 @@ function validateNewsletterCopy(newsletterCopy: string) {
   const whyItMatters = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? "";
   const modelContext = parsed.sections.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) ?? "";
 
-  if (countSentences(regimeStatus) !== 1) {
-    throw new Error("Anthropic daily briefing regime status must be exactly 1 sentence.");
+  const boundedSentences = (content: string, legacyCount: number) => {
+    const count = countSentences(content);
+    return editorialEnabled ? count >= 1 && count <= 3 : count === legacyCount;
+  };
+
+  if (!boundedSentences(regimeStatus, 1)) {
+    throw new Error(editorialEnabled
+      ? "Anthropic daily briefing regime status must contain 1 to 3 sentences."
+      : "Anthropic daily briefing regime status must be exactly 1 sentence.");
   }
 
   const tradingImplicationLines = tradingImplication
@@ -529,12 +538,16 @@ function validateNewsletterCopy(newsletterCopy: string) {
     }
   });
 
-  if (countSentences(baseScore) !== 1) {
-    throw new Error("Anthropic daily briefing base score section must be exactly 1 sentence.");
+  if (!boundedSentences(baseScore, 1)) {
+    throw new Error(editorialEnabled
+      ? "Anthropic daily briefing base score section must contain 1 to 3 sentences."
+      : "Anthropic daily briefing base score section must be exactly 1 sentence.");
   }
 
-  if (countSentences(whyItMatters) !== 2) {
-    throw new Error("Anthropic daily briefing why it matters section must be exactly 2 sentences.");
+  if (!boundedSentences(whyItMatters, 2)) {
+    throw new Error(editorialEnabled
+      ? "Anthropic daily briefing why it matters section must contain 1 to 3 sentences."
+      : "Anthropic daily briefing why it matters section must be exactly 2 sentences.");
   }
 
   const modelContextLines = modelContext
@@ -544,8 +557,10 @@ function validateNewsletterCopy(newsletterCopy: string) {
 
   const diagnosticIndex = modelContextLines.findIndex((line) => line.startsWith("Model Diagnostics:"));
   const narrativeLines = diagnosticIndex === -1 ? modelContextLines : modelContextLines.slice(0, diagnosticIndex);
-  if (countSentences(narrativeLines.join(" ")) !== 2) {
-    throw new Error("Anthropic daily briefing model context must begin with exactly 2 sentences.");
+  if (!boundedSentences(narrativeLines.join(" "), 2)) {
+    throw new Error(editorialEnabled
+      ? "Anthropic daily briefing model context must begin with 1 to 3 sentences."
+      : "Anthropic daily briefing model context must begin with exactly 2 sentences.");
   }
 
   if (diagnosticIndex !== -1 && diagnosticIndex !== modelContextLines.length - 1) {
@@ -618,12 +633,12 @@ function inferOverrideFromNewsletterCopy(newsletterCopy: string) {
   return /\bOverride ACTIVE\b/i.test(normalized);
 }
 
-function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMResponse {
+function parseDailyBriefingResponse(rawResponse: string, editorialEnabled = false): DailyBriefingLLMResponse {
   const parsedResponse = tryParseDailyBriefingJson(rawResponse);
 
   if (parsedResponse) {
     const normalizedNewsletterCopy = normalizeNewsletterCopy(parsedResponse.newsletter_copy).trim();
-    validateNewsletterCopy(normalizedNewsletterCopy);
+    validateNewsletterCopy(normalizedNewsletterCopy, editorialEnabled);
 
     return {
       is_override_active: parsedResponse.is_override_active,
@@ -636,7 +651,7 @@ function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMRespon
 
   if (parsedEmbeddedResponse) {
     const normalizedNewsletterCopy = normalizeNewsletterCopy(parsedEmbeddedResponse.newsletter_copy).trim();
-    validateNewsletterCopy(normalizedNewsletterCopy);
+    validateNewsletterCopy(normalizedNewsletterCopy, editorialEnabled);
 
     return {
       is_override_active: parsedEmbeddedResponse.is_override_active,
@@ -647,14 +662,14 @@ function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMRespon
   const pseudoJsonResponse = tryParsePseudoJsonDailyBriefing(rawResponse);
 
   if (pseudoJsonResponse) {
-    validateNewsletterCopy(pseudoJsonResponse.newsletter_copy);
+    validateNewsletterCopy(pseudoJsonResponse.newsletter_copy, editorialEnabled);
     return pseudoJsonResponse;
   }
 
   const normalizedNewsletter = normalizeNewsletterCopy(rawResponse).trim();
 
   if (looksLikeNewsletterCopy(normalizedNewsletter)) {
-    validateNewsletterCopy(normalizedNewsletter);
+    validateNewsletterCopy(normalizedNewsletter, editorialEnabled);
     return {
       is_override_active: inferOverrideFromNewsletterCopy(normalizedNewsletter),
       newsletter_copy: normalizedNewsletter,
@@ -664,13 +679,51 @@ function parseDailyBriefingResponse(rawResponse: string): DailyBriefingLLMRespon
   throw new Error("Anthropic daily briefing response was not valid JSON.");
 }
 
+function assertEditorialStockClaims(
+  newsletterCopy: string,
+  quant: DailyBriefingQuantContext,
+  news: DailyBriefingNewsResult,
+  context: ReturnType<typeof getStrategyContext>,
+) {
+  const sections = splitNewsletterSections(newsletterCopy)?.sections;
+  // Base score and historical context are replaced with recorded facts below.
+  const narrative = [
+    sections?.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine),
+    sections?.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook),
+    sections?.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus),
+  ].filter(Boolean).join("\n");
+  const personalAuthor = /\bI(?:['’](?:m|ve|d|ll))?\b|\b(?:my|mine)\b/i;
+  const personalTeamExperience = /\bwe(?:['’](?:ve|d|re))?\s+(?:(?:have|had|were|are|personally)\s+)?(?:bought|buy(?:ing)?|sold|sell(?:ing)?|trad(?:e|ed|ing)|felt|feel(?:ing)?|spoke|speak(?:ing)?|met|meet(?:ing)?|watch(?:ed|ing)?)\b|\bour\s+(?:(?:own|personal|live|current|long|short)\s+)?(?:positions?|trades?|portfolios?)\b/i;
+  if (personalAuthor.test(narrative) || personalTeamExperience.test(narrative)) {
+    throw new Error("Anthropic daily briefing invented a personal author perspective.");
+  }
+  const numericClaims = (value: string) => [...value.matchAll(
+    /(\$?)\s*([+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)(\s*(?:%|percent(?:age points)?))?/gi,
+  )].map((match) => {
+    const unit = match[1] ? "$" : match[3] ? "%" : "number";
+    return `${unit}:${Number(match[2].replaceAll(",", ""))}`;
+  });
+  const recordedPercentages = [
+    quant.publishedScoreContext?.averageForward1DayReturn,
+    quant.publishedScoreContext?.averageForward3DayReturn,
+    ...quant.analogs.flatMap((match) => [match.intradayNet, match.overnightGap, match.sessionRange]),
+  ].filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .map((value) => `${value.toFixed(2)}%`).join(" ");
+  const source = JSON.stringify(buildPromptPayload(quant, news, context.playbook, context.stressTest));
+  const allowed = new Set(numericClaims(`${source} ${recordedPercentages} ${quant.score.toFixed(0)} 0 1 3 100`));
+  if (numericClaims(narrative).some((claim) => !allowed.has(claim))) {
+    throw new Error("Anthropic daily briefing added a numerical claim absent from the supplied inputs.");
+  }
+}
+
 function getStrategyContext(
   quant: DailyBriefingQuantContext,
   news: DailyBriefingNewsResult,
+  editorialEnabled = dailyEmailImprovementsEnabled(),
 ) {
   const catalyst = detectOverrideCatalyst(news.headlines);
   const suggestedOverrideActive = catalyst !== null && news.status === "available";
-  const strategy = getDailyBriefingStrategy(news);
+  const strategy = getDailyBriefingStrategy(news, editorialEnabled);
   const researchBrief = buildResearchBrief({
     catalyst,
     news,
@@ -692,18 +745,19 @@ function getStrategyContext(
 async function generateAnthropicBriefing(
   quant: DailyBriefingQuantContext,
   news: DailyBriefingNewsResult,
+  editorialEnabled = dailyEmailImprovementsEnabled(),
 ) {
   const anthropic = new Anthropic({
     apiKey: getRequiredServerEnv("ANTHROPIC_API_KEY"),
   });
-  const strategyContext = getStrategyContext(quant, news);
+  const strategyContext = getStrategyContext(quant, news, editorialEnabled);
 
   const response = await withExponentialBackoff(
     () =>
       anthropic.messages.create({
         model: DAILY_BRIEFING_MODEL,
         max_tokens: DAILY_BRIEFING_MAX_TOKENS,
-        system: INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT,
+        system: editorialEnabled ? EDITORIAL_STOCK_BRIEFING_SYSTEM_PROMPT : INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT,
         messages: [
           {
             role: "user",
@@ -725,10 +779,15 @@ async function generateAnthropicBriefing(
     throw new Error("Anthropic daily briefing response did not include text content.");
   }
 
-  const parsed = parseDailyBriefingResponse(rawResponse);
+  const parsed = parseDailyBriefingResponse(rawResponse, editorialEnabled);
+  if (editorialEnabled) assertEditorialStockClaims(parsed.newsletter_copy, quant, news, strategyContext);
+  // A missing news feed cannot support a newly generated event override.
+  const overrideActive = editorialEnabled
+    ? parsed.is_override_active && news.status === "available" && news.headlines.length > 0
+    : parsed.is_override_active;
   const factualFallback = strategyContext.strategy.buildFallbackBriefing({
     ...strategyContext,
-    suggestedOverrideActive: parsed.is_override_active,
+    suggestedOverrideActive: overrideActive,
   });
   const factualDiagnostics = factualFallback.match(/^Model Diagnostics:.*$/m)?.[0];
   let newsletterCopy = factualDiagnostics
@@ -743,13 +802,18 @@ async function generateAnthropicBriefing(
   }
   // These averages describe the analog set, never the single closest session.
   // Keep AI interpretation elsewhere while grounding the compact factual section.
-  if (quant.publishedScoreContext?.averageForward1DayReturn != null &&
-      quant.publishedScoreContext?.averageForward3DayReturn != null) {
+  if (editorialEnabled || (quant.publishedScoreContext?.averageForward1DayReturn != null &&
+      quant.publishedScoreContext?.averageForward3DayReturn != null)) {
     const modelContext = factualFallback.slice(factualFallback.indexOf(DAILY_BRIEFING_SECTION_HEADERS.quantCorner));
     newsletterCopy = newsletterCopy.replace(/^MODEL CONTEXT[ \t]*(?::[^\n]*)?[\s\S]*$/m, modelContext);
   }
+  if (editorialEnabled && (quant.signal?.noTrade || parsed.is_override_active !== overrideActive)) {
+    // Do not leave an enthusiastic playbook or invented event narrative beneath a cautious lead.
+    newsletterCopy = factualFallback;
+  }
   return {
     ...parsed,
+    is_override_active: overrideActive,
     newsletter_copy: newsletterCopy,
   };
 }
@@ -759,10 +823,11 @@ async function synthesizeDailyBriefingFromContext(
   news: DailyBriefingNewsResult,
   warnings: string[],
 ): Promise<DailyBriefingResult> {
-  const strategyContext = getStrategyContext(quant, news);
+  const editorialEnabled = dailyEmailImprovementsEnabled();
+  const strategyContext = getStrategyContext(quant, news, editorialEnabled);
 
   try {
-    const response = await generateAnthropicBriefing(quant, news);
+    const response = await generateAnthropicBriefing(quant, news, editorialEnabled);
 
     return {
       generatedBy: "anthropic",

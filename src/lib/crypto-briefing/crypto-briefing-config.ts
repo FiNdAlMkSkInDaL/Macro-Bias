@@ -1,3 +1,5 @@
+import { DAILY_EMAIL_EDITORIAL_VOICE } from "@/lib/briefing/editorial-voice";
+
 export const CRYPTO_BRIEFING_MODEL = "claude-haiku-4-5";
 export const CRYPTO_BRIEFING_MAX_TOKENS = 1200;
 
@@ -71,6 +73,7 @@ export const CRYPTO_BRIEFING_LEGACY_SYSTEM_PROMPT = [
 
 export const CRYPTO_BRIEFING_SYSTEM_PROMPT = [
   "You write a compact daily crypto briefing from the supplied quantitative snapshot only.",
+  DAILY_EMAIL_EDITORIAL_VOICE,
   "Return strict JSON only, with no markdown fences or outside prose:",
   '{"is_override_active": false, "newsletter_copy": string}.',
   "No news feed, current events, stablecoin supply, peg observations, exchange flows or broad DeFi activity are supplied. Never infer their condition or invent catalysts.",
@@ -88,16 +91,18 @@ export const CRYPTO_BRIEFING_SYSTEM_PROMPT = [
   "Use plain English, specific observations and conditional interpretation. Keep uncertainty visible without internal processing language.",
   "Never mention fallback, compressed context, diagnostics, prompts or generation internals in the narrative.",
   "Round prices to two decimals and percentage moves to two decimals. Do not output tables or pipe delimiters outside the final diagnostics line.",
-  "Use Markdown bold for BTC, ETH and SOL ticker references and named market segments. No greetings, em dashes or promotional filler.",
+  "Use Markdown bold for BTC, ETH and SOL ticker references and named market segments. No greetings or promotional filler.",
   `Use these exact section headers in this order: ${Object.values(CRYPTO_BRIEFING_SECTION_HEADERS).join(", ")}.`,
-  "REGIME STATUS: One or two short sentences connecting model direction with the measured daily BTC move and any confidence limitation.",
+  "REGIME STATUS: One to three short sentences. Lead with the measured BTC move or missing quote, then connect it to the model's direction and any weak-match limitation.",
+  "Use rose, fell or was flat instead of always saying moved. For a near-zero score, say the reading offers little direction. Never say the score rose, strengthened or still points somewhere without a previous recorded score.",
   "MARKET MAP: Exactly four bullets starting '- **Bitcoin**:', '- **Altcoins (ETH-led)**:', '- **DeFi/L1s**:' and '- **Stablecoins/Flows**:'.",
   "Use observation then implication. Do not force Strong/Neutral/Under Pressure labels onto unmeasured markets.",
   "For DeFi/L1s, describe SOL only as one L1 price proxy and disclose broad DeFi coverage is unmeasured. Stablecoins/Flows must say unmeasured, not stable or neutral.",
-  "RISK FRAME: Exactly two short sentences, at most 40 words total. State the BTC/ETH confirmation to watch over the next one to three days, then the opposite condition that would weaken confirmation.",
+  "RISK FRAME: One to three short sentences, at most 45 words total. State the BTC/ETH price condition to watch over the next one to three days and what would cut against the reading.",
   "Do not repeat the headline score interpretation, current price moves, confidence limits or coverage disclaimers in the risk frame.",
   "The risk frame may improve the wording but must not introduce new numbers, present market facts, events, forecasts, dollar/interest-rate claims or unavailable coverage.",
-  "MODEL CONTEXT: Two to four short sentences with real historical sample/horizons, outcome spread and separate match confidence, then the factual Model Diagnostics line supplied in groundedBriefing.",
+  "MODEL CONTEXT: Two to five short sentences with the real historical sample, weighted one-day and three-day returns, both recorded outcome ranges and separate match quality, then the factual Model Diagnostics line supplied in groundedBriefing.",
+  "Say plainly how many past sessions matched. Keep the average and the spread distinct. Name a small sample when that limitation applies, without a string of semicolons or a repeated general disclaimer.",
   "No individual analog date is needed without an explained comparison, and do not imply the cluster average is the return of one named session.",
   "is_override_active must be false because there is no measured news input in this report.",
   "Do not give specific trade advice or say long, short, buy, sell, entry, target or stop.",

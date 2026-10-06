@@ -92,8 +92,10 @@ function validateCryptoNewsletterCopy(newsletterCopy: string, optimised = false)
   const riskFrame = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.riskCheck) ?? "";
   const modelContext = sections.get(CRYPTO_BRIEFING_SECTION_HEADERS.modelNotes) ?? "";
 
-  if (countSentences(regimeStatus) < 1 || countSentences(regimeStatus) > (optimised ? 2 : 1)) {
-    throw new Error("Anthropic crypto briefing regime status must contain 1 or 2 sentences.");
+  if (countSentences(regimeStatus) < 1 || countSentences(regimeStatus) > (optimised ? 3 : 1)) {
+    throw new Error(optimised
+      ? "Anthropic crypto briefing regime status must contain 1 to 3 sentences."
+      : "Anthropic crypto briefing regime status must contain 1 or 2 sentences.");
   }
 
   const marketLines = marketMap
@@ -118,8 +120,11 @@ function validateCryptoNewsletterCopy(newsletterCopy: string, optimised = false)
     }
   });
 
-  if (countSentences(riskFrame) !== 2) {
-    throw new Error("Anthropic crypto briefing risk frame must be exactly 2 sentences.");
+  const riskSentences = countSentences(riskFrame);
+  if (optimised ? riskSentences < 1 || riskSentences > 3 : riskSentences !== 2) {
+    throw new Error(optimised
+      ? "Anthropic crypto briefing risk frame must contain 1 to 3 sentences."
+      : "Anthropic crypto briefing risk frame must be exactly 2 sentences.");
   }
 
   const modelContextLines = modelContext
@@ -132,8 +137,10 @@ function validateCryptoNewsletterCopy(newsletterCopy: string, optimised = false)
     throw new Error("Anthropic crypto briefing diagnostics line is malformed.");
   }
   const contextSentences = countSentences(modelContextLines.slice(0, diagnosticIndex).join(" "));
-  if (contextSentences < 2 || contextSentences > (optimised ? 4 : 2)) {
-    throw new Error("Anthropic crypto briefing model context must begin with 2 to 4 sentences.");
+  if (contextSentences < 2 || contextSentences > (optimised ? 5 : 2)) {
+    throw new Error(optimised
+      ? "Anthropic crypto briefing model context must begin with 2 to 5 sentences."
+      : "Anthropic crypto briefing model context must begin with 2 to 4 sentences.");
   }
 
 }
@@ -206,7 +213,7 @@ function buildPromptPayload(biasResult: CryptoDailyBiasResult, optimised = false
     averageForward1DayReturn: firstComponent?.averageForward1DayReturn ?? null,
     averageForward3DayReturn: firstComponent?.averageForward3DayReturn ?? null,
     historicalContext: buildHistoricalContext(biasResult),
-    groundedBriefing: buildFallbackBriefing(biasResult, false),
+    groundedBriefing: buildFallbackBriefing(biasResult),
     coverage: { defiSector: false, stablecoinSupply: false, exchangeFlows: false, news: false },
     tradableSignal: signal
       ? {
@@ -298,6 +305,12 @@ function formatPrice(value: number) {
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function dailyMove(ticker: "BTC" | "ETH" | "SOL", percentChange: number) {
+  if (percentChange === 0) return `**${ticker}** was flat on the day`;
+  if (Math.abs(percentChange) < 0.005) return `**${ticker}** changed less than 0.01%`;
+  return `**${ticker}** ${percentChange > 0 ? "rose" : "fell"} ${Math.abs(percentChange).toFixed(2)}%`;
+}
+
 function ordinal(value: number) {
   const rounded = Math.round(value);
   const suffix = rounded % 100 >= 11 && rounded % 100 <= 13 ? "th"
@@ -355,54 +368,62 @@ function buildHistoricalContext(biasResult: CryptoDailyBiasResult): CryptoHistor
 
 function confidenceSummary(biasResult: CryptoDailyBiasResult) {
   const signal = measuredSignal(biasResult);
-  if (!signal) return "Model confidence is unavailable for this saved reading; score strength alone does not establish reliability.";
-  if (signal.noTrade) return "Confidence is limited because the historical match is too weak to support a directional reading today.";
-  const confidence = signal.reliability === "A" || signal.reliability === "B" ? "higher"
-    : signal.reliability === "C" ? "moderate" : "low";
+  if (!signal) return "Historical-match confidence is unavailable for this saved reading.";
+  if (signal.noTrade) return "The historical match is too weak to rely on this reading.";
+  const fit = signal.reliability === "A" ? "strong" : signal.reliability === "B" ? "good"
+    : signal.reliability === "C" ? "mixed" : "weak";
   const agreement = finiteNumber(signal.neighborAgreement) && signal.neighborAgreement >= 0 && signal.neighborAgreement <= 1 && biasResult.score !== 0
     ? `, with ${Math.round(signal.neighborAgreement * 100)}% of matched sessions agreeing with the score's direction`
     : "";
-  return `Historical-match confidence is ${confidence}${agreement}; this is not a probability of tomorrow's outcome.`;
+  return `Historical fit is ${fit}${agreement}.`;
 }
 
 function historicalSummary(biasResult: CryptoDailyBiasResult, includeConfidence = true) {
   const history = buildHistoricalContext(biasResult);
-  const sample = history.sampleSize === null ? "Recorded similar sessions"
-    : `The ${history.sampleSize} matched historical session${history.sampleSize === 1 ? "" : "s"}`;
+  const sampleSentence = history.sampleSize === null
+    ? "The saved reading doesn't include the number of matched sessions."
+    : `${history.sampleSize} past session${history.sampleSize === 1 ? "" : "s"} matched this setup.`;
   const averages: string[] = [];
   if (history.averageForward1DayReturn !== null) averages.push(`${formatSignedPercent(history.averageForward1DayReturn)} after one day`);
   if (history.averageForward3DayReturn !== null) averages.push(`${formatSignedPercent(history.averageForward3DayReturn)} after three days`);
   const averageSentence = averages.length
-    ? `${sample}: weighted **BTC** returns averaged ${averages.join(" and ")}.`
-    : "Historical return averages are unavailable for this reading.";
+    ? `Weighted **BTC** returns averaged ${averages.join(" and ")}.`
+    : "The historical return averages are unavailable.";
   const ranges: string[] = [];
-  if (history.range1Day) ranges.push(`one-day range ${formatSignedPercent(history.range1Day.min)} to ${formatSignedPercent(history.range1Day.max)}${history.range1Day.sampleSize !== history.sampleSize ? ` (${history.range1Day.sampleSize} recorded outcomes)` : ""}`);
-  if (history.range3Day) ranges.push(`three-day range ${formatSignedPercent(history.range3Day.min)} to ${formatSignedPercent(history.range3Day.max)}${history.range3Day.sampleSize !== history.sampleSize ? ` (${history.range3Day.sampleSize} recorded outcomes)` : ""}`);
+  if (history.range1Day) ranges.push(`${formatSignedPercent(history.range1Day.min)} to ${formatSignedPercent(history.range1Day.max)} over one day${history.range1Day.sampleSize !== history.sampleSize ? ` (${history.range1Day.sampleSize} recorded outcomes)` : ""}`);
+  if (history.range3Day) ranges.push(`${formatSignedPercent(history.range3Day.min)} to ${formatSignedPercent(history.range3Day.max)} over three days${history.range3Day.sampleSize !== history.sampleSize ? ` (${history.range3Day.sampleSize} recorded outcomes)` : ""}`);
   const rangeSentence = ranges.length
-    ? `Observed ${ranges.join("; ")}; past outcomes, not forecast bounds.`
-    : "Outcome ranges are unavailable; averages alone do not show the spread of results.";
-  return [averageSentence, rangeSentence, ...(includeConfidence ? [confidenceSummary(biasResult)] : [])].join(" ");
+    ? `Actual returns ranged from ${ranges.join(" and ")}.`
+    : "The saved reading doesn't include an outcome range.";
+  if (!averages.length && !ranges.length) {
+    return [history.sampleSize !== null ? sampleSentence : "The historical sample size is unavailable.",
+      "The return averages and outcome ranges aren't stored for this reading.",
+      ...(includeConfidence ? [confidenceSummary(biasResult)] : [])].join(" ");
+  }
+  const limitSentence = history.sampleSize !== null && history.sampleSize <= 10
+    ? "That's a small sample of past results, not a forecast range."
+    : "These are past results, not a forecast range.";
+  return [sampleSentence, averageSentence, rangeSentence, limitSentence,
+    ...(includeConfidence ? [confidenceSummary(biasResult)] : [])].join(" ");
 }
 
 function interpretation(biasResult: CryptoDailyBiasResult) {
   const btc = recordedPrice(biasResult, "BTC-USD");
-  const lean = biasResult.score > 0 ? "positive" : biasResult.score < 0 ? "negative" : "balanced";
-  const strength = Math.abs(biasResult.score) >= 70 ? "strongly " : Math.abs(biasResult.score) < 20 ? "slightly " : "";
-  const reading = biasResult.score === 0 ? "The historical model is balanced"
-    : `The historical model leans ${strength}${lean}`;
-  let confirmation = "daily price confirmation is unavailable";
-  if (btc) {
-    const move = `**BTC** moved ${formatSignedPercent(btc.percentChange)}`;
-    confirmation = biasResult.score === 0 ? `${move}, while the score has no directional lean`
-      : btc.percentChange === 0 ? `${move}, offering no daily price confirmation`
-      : Math.sign(biasResult.score) === Math.sign(btc.percentChange)
-        ? `${move}, in the same direction as the model lean`
-        : `${move}, opposite to the model lean`;
-  }
+  const direction = biasResult.score > 0 ? "up" : "down";
+  const reading = biasResult.score === 0 ? "The score is flat and offers no directional lean."
+    : Math.abs(biasResult.score) < 20 ? "There is very little direction in this score."
+      : !btc ? `The model points ${direction}.`
+        : Math.abs(btc.percentChange) < 0.005
+          ? `The model points ${direction}, with no support from the daily move.`
+          : Math.sign(biasResult.score) === Math.sign(btc.percentChange)
+            ? `The model points ${direction}, in line with the daily move.`
+            : `The model points ${direction}, so the daily move goes against the reading.`;
+  const priceSentence = btc ? `${dailyMove("BTC", btc.percentChange)}.`
+    : "**BTC** price data is unavailable for this date.";
   const limit = measuredSignal(biasResult)?.noTrade
     ? " The historical match is too weak to give the score much weight today."
     : "";
-  return `${reading}; ${confirmation}.${limit}`;
+  return `${priceSentence} ${reading}${limit}`;
 }
 
 function relativeMove(biasResult: CryptoDailyBiasResult, ticker: "ETH-USD" | "SOL-USD") {
@@ -410,11 +431,11 @@ function relativeMove(biasResult: CryptoDailyBiasResult, ticker: "ETH-USD" | "SO
   const btc = recordedPrice(biasResult, "BTC-USD");
   if (!snapshot) return null;
   const name = ticker === "ETH-USD" ? "ETH" : "SOL";
-  if (!btc) return `**${name}** moved ${formatSignedPercent(snapshot.percentChange)}; the **BTC** comparison is unavailable`;
+  if (!btc) return `${dailyMove(name, snapshot.percentChange)}. The **BTC** comparison is unavailable`;
   const difference = snapshot.percentChange - btc.percentChange;
-  const relative = Math.abs(difference) < 0.005 ? "matched **BTC**'s daily move"
-    : `${difference > 0 ? "outperformed" : "underperformed"} **BTC** by ${Math.abs(difference).toFixed(2)} percentage points`;
-  return `**${name}** moved ${formatSignedPercent(snapshot.percentChange)} and ${relative}`;
+  const relative = Math.abs(difference) < 0.005 ? "roughly matching **BTC**'s daily move"
+    : `${difference > 0 ? "outperforming" : "underperforming"} **BTC** by ${Math.abs(difference).toFixed(2)} percentage points`;
+  return `${dailyMove(name, snapshot.percentChange)}, ${relative}`;
 }
 
 function inputEvidence(biasResult: CryptoDailyBiasResult) {
@@ -423,23 +444,21 @@ function inputEvidence(biasResult: CryptoDailyBiasResult) {
   const rsi = summaries.match(/BTC RSI is (\d+(?:\.\d+)?)/);
   if (rsi && Number(rsi[1]) >= 0 && Number(rsi[1]) <= 100) {
     const value = Number(rsi[1]);
-    facts.push(`Momentum: **BTC** RSI ${value.toFixed(1)}, ${value >= 60 ? "stronger recent momentum" : value <= 40 ? "weaker recent momentum" : "a neutral reading"}.`);
+    facts.push(`**BTC** RSI was ${value.toFixed(1)}, ${value > 50 ? "above" : value < 50 ? "below" : "at"} its midpoint.`);
   }
   const ethRank = summaries.match(/ETH\/BTC percentile is (\d+(?:\.\d+)?)/);
   if (ethRank && Number(ethRank[1]) >= 0 && Number(ethRank[1]) <= 100) {
     const value = Number(ethRank[1]);
-    facts.push(`Relative strength: **ETH/BTC** at the ${ordinal(value)} percentile of recent history.`);
+    facts.push(`**ETH/BTC** was at the ${ordinal(value)} percentile of its recent history.`);
   }
   const dollar = summaries.match(/DXY momentum is ([+-]?[\d.]+)%/);
-  if (dollar && finiteNumber(Number(dollar[1]))) facts.push(`Dollar backdrop: **DXY** momentum ${formatSignedPercent(Number(dollar[1]))} over five sessions.`);
-  if (!facts.length) {
-    const history = buildHistoricalContext(biasResult);
-    if (history.averageForward1DayReturn !== null && history.averageForward3DayReturn !== null) {
-      facts.push(`The score combines historical **BTC** return averages of ${formatSignedPercent(history.averageForward1DayReturn)} after one day and ${formatSignedPercent(history.averageForward3DayReturn)} after three days.`);
-    }
+  if (dollar && finiteNumber(Number(dollar[1]))) {
+    const change = Number(dollar[1]);
+    const move = change === 0 ? "was unchanged"
+      : Math.abs(change) < 0.005 ? "changed less than 0.01%"
+        : `${change > 0 ? "rose" : "fell"} ${Math.abs(change).toFixed(2)}%`;
+    facts.push(`The dollar index (**DXY**) ${move} over five sessions.`);
   }
-  const relative = relativeMove(biasResult, "ETH-USD");
-  if (relative) facts.push(`Price confirmation: ${relative}.`);
   return facts.slice(0, 3);
 }
 
@@ -448,7 +467,7 @@ export function buildCryptoEmailEvidence(biasResult: CryptoDailyBiasResult): Pic
     interpretation: interpretation(biasResult),
     evidence: inputEvidence(biasResult),
     historicalContext: historicalSummary(biasResult, false),
-    coverageNote: "Quantitative coverage only; no news assessment. Broad DeFi activity, stablecoin supply, pegs and exchange flows are not measured.",
+    coverageNote: "This note uses price and model data. We don't assess news, broad DeFi activity, stablecoin supply, pegs or exchange flows.",
   };
 }
 
@@ -456,10 +475,13 @@ function marketMap(biasResult: CryptoDailyBiasResult) {
   const btc = recordedPrice(biasResult, "BTC-USD");
   const eth = relativeMove(biasResult, "ETH-USD");
   const sol = relativeMove(biasResult, "SOL-USD");
+  const btcMove = !btc ? "" : btc.percentChange === 0 ? "unchanged on the day"
+    : Math.abs(btc.percentChange) < 0.005 ? "with a change of less than 0.01%"
+      : `${btc.percentChange > 0 ? "up" : "down"} ${Math.abs(btc.percentChange).toFixed(2)}% on the day`;
   return [
-    `- **Bitcoin**: ${btc ? `**BTC** close $${formatPrice(btc.close)}; daily move ${formatSignedPercent(btc.percentChange)}.` : "Price data is unavailable for this date."}`,
-    `- **Altcoins (ETH-led)**: ${eth ? `${eth}.` : "**ETH** price data is unavailable; relative performance cannot be assessed."}`,
-    `- **DeFi/L1s**: ${sol ? `${sol} (one L1 price proxy).` : "**SOL** price data is unavailable."}`,
+    `- **Bitcoin**: ${btc ? `**BTC** closed at $${formatPrice(btc.close)}, ${btcMove}.` : "Price data is unavailable for this date."}`,
+    `- **Altcoins (ETH-led)**: ${eth ? `${eth}.` : "**ETH** price data is unavailable for this date."}`,
+    `- **DeFi/L1s**: ${sol ? `${sol}. This covers one L1 token.` : "**SOL** price data is unavailable."}`,
     "- **Stablecoins/Flows**: Not measured.",
   ].join("\n");
 }
@@ -468,13 +490,14 @@ function riskFrame(biasResult: CryptoDailyBiasResult) {
   const signal = measuredSignal(biasResult);
   const btc = recordedPrice(biasResult, "BTC-USD");
   const eth = recordedPrice(biasResult, "ETH-USD");
-  if (!btc || !eth) return "Daily price confirmation is unavailable with the current coverage. Reassess **BTC** and **ETH** relative performance when both completed daily candles are available.";
-  if (signal?.noTrade) return "Watch whether **BTC** and **ETH** develop a consistent direction over the next one to three days. A single day's move provides limited confirmation.";
+  if (signal?.noTrade) return "The score needs a better historical match before it carries much weight. A move in **BTC** or **ETH** alone won't fix that.";
+  if (!btc || !eth) return "We need both **BTC** and **ETH** completed daily closes before comparing their moves.";
+  if (Math.abs(biasResult.score) < 20) return "Watch for a consistent direction in **BTC** and **ETH** over the next one to three days. A mixed move would offer little direction.";
   return biasResult.score > 0
-    ? "Watch for **BTC** gains and **ETH** outperformance over the next one to three days. **BTC** losses with **ETH** underperformance would weaken price confirmation."
+    ? "Over the next one to three days, **BTC** gains with **ETH** outperforming it would support the upward reading. **BTC** losses with **ETH** lagging would cut against it."
     : biasResult.score < 0
-      ? "Watch for **BTC** losses and **ETH** underperformance over the next one to three days. **BTC** gains with **ETH** outperformance would weaken price confirmation."
-      : "Watch **BTC** and **ETH** for consistent direction over the next one to three days. That would help establish whether the balanced reading is changing.";
+      ? "Over the next one to three days, **BTC** losses with **ETH** lagging would support the downward reading. **BTC** gains with **ETH** outperforming it would cut against it."
+      : "Watch **BTC** and **ETH** for a consistent direction over the next one to three days.";
 }
 
 function factualDiagnostics(biasResult: CryptoDailyBiasResult) {
@@ -484,13 +507,12 @@ function factualDiagnostics(biasResult: CryptoDailyBiasResult) {
   return `Model Diagnostics: BTC Close ${btc ? `$${formatPrice(btc.close)}` : "unavailable"} | BTC Daily Change ${btc ? formatSignedPercent(btc.percentChange) : "unavailable"} | Score ${score} | Historical sample ${history.sampleSize ?? "unavailable"}.`;
 }
 
-function buildFallbackBriefing(biasResult: CryptoDailyBiasResult, quantitativeOnlyNotice = true): string {
+function buildFallbackBriefing(biasResult: CryptoDailyBiasResult): string {
   return [
     `${CRYPTO_BRIEFING_SECTION_HEADERS.bottomLine}:`, interpretation(biasResult), "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.marketBreakdown}:`, marketMap(biasResult), "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.riskCheck}:`, riskFrame(biasResult), "",
     `${CRYPTO_BRIEFING_SECTION_HEADERS.modelNotes}:`, historicalSummary(biasResult),
-    ...(quantitativeOnlyNotice ? ["Quantitative summary only today; no news assessment is included."] : []),
     factualDiagnostics(biasResult),
   ].join("\n");
 }
@@ -526,12 +548,18 @@ function groundCryptoBriefing(response: CryptoBriefingLLMResponse, biasResult: C
   // AI can add readable interpretation of the supplied quantitative inputs. Facts, unknown
   // coverage and confidence always come from the recorded snapshot. Keep the risk frame
   // only when it is conditional and contains no new figures or unmeasured event claims.
-  const unsupported = /\d|stablecoin|\bDeFi\b|\bflows?\b|exchange|hack|regulat|depeg|\bETF|liquidat|on.chain|news|catalyst|\bDXY\b|dollar|yields?|rates?|treasur|inflation|\bfed\b|policy|lagging|rallying|falling|rising|surging|compressed|fallback|diagnostic|no.trade|\blong\b|\bshort\b|\bbuy\b|\bsell\b|entry|target|stop/i;
+  const unsupported = /\d|stablecoin|\bDeFi\b|\bflows?\b|exchange|hack|regulat|depeg|\bETF|liquidat|on.chain|news|catalyst|\bDXY\b|dollar|yields?|rates?|treasur|inflation|\bfed\b|policy|surging|soar|explode|crash|guarantee|certain|inevitable|\bwill\b|compressed|fallback|diagnostic|no.trade|\blong\b|\bshort\b|\bbuy\b|\bsell\b|entry|target|stop|\b(?:I|my|me|mine)\b/i;
+  const riskSentences = risk.split(/(?<=[.!?])\s+/).filter((sentence) => sentence.trim().length > 0);
+  const presentClaim = /\b(?:is|are|was|were|has|have|had|rose|fell|closed|gained|lost|outperformed|underperformed|today|currently|yesterday|already|now|still|continues?|remains?)\b/i;
+  const conditionalOnly = riskSentences.every((sentence) =>
+    /\bif\b|\bwould\b|\bwatch\b|\bnext\b/i.test(sentence) && !presentClaim.test(sentence),
+  );
+  const personalExperience = /\b(?:we|our)\s+(?:(?:own|personal)\s+)?(?:positions?|portfolios?|trades?|books?|bought|sold|watched|saw|heard|felt|spoke|talked|discussed|met|called)\b/i;
   const ungroundedConfidence = /\b(?:high|higher|strong|low|weak|poor|good|moderate|reliable|unreliable)\s+(?:confidence|conviction|match)|(?:confidence|conviction|match)\s+(?:is|remains|looks)\s+(?:high|higher|strong|low|weak|poor|good|moderate|reliable|unreliable)/i;
   const incompatibleDirection = biasResult.score > 0 ? /negative|bearish|risk.off/i.test(risk)
     : biasResult.score < 0 ? /positive|bullish|risk.on/i.test(risk)
       : /positive|negative|bullish|bearish|risk.on|risk.off/i.test(risk);
-  const validRisk = risk.length > 0 && risk.split(/\s+/).length <= 40 && !unsupported.test(risk) &&
+  const validRisk = risk.length > 0 && risk.split(/\s+/).length <= 45 && !unsupported.test(risk) && conditionalOnly && !personalExperience.test(risk) &&
     !ungroundedConfidence.test(risk) && !incompatibleDirection &&
     !measuredSignal(biasResult)?.noTrade && !!recordedPrice(biasResult, "BTC-USD") && !!recordedPrice(biasResult, "ETH-USD") &&
     /\bBTC\b/i.test(risk) && /\bETH\b/i.test(risk) &&
