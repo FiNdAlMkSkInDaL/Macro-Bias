@@ -14,6 +14,25 @@ export async function GET(request: Request) {
   if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const result = await syncCompletedMarketPrices();
-  return NextResponse.json(result, { status: result.ok ? 200 : 502, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const result = await syncCompletedMarketPrices();
+    const summary = {
+      observedAt: result.observedAt,
+      ok: result.ok,
+      results: result.results.map((entry) => ({
+        ticker: entry.ticker,
+        tradeDate: entry.tradeDate,
+        expectedDate: 'expectedDate' in entry ? entry.expectedDate : null,
+        changed: entry.changed,
+        writes: entry.writes,
+        error: entry.error,
+      })),
+    };
+    console[result.ok ? 'info' : 'error'](`[prices-cron] ${JSON.stringify(summary)}`);
+    return NextResponse.json(result, { status: result.ok ? 200 : 502, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Completed-price sync failed.';
+    console.error(`[prices-cron] ${message}`);
+    return NextResponse.json({ ok: false, error: message }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
+  }
 }
