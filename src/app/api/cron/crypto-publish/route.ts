@@ -6,6 +6,7 @@ import { TwitterApi } from "twitter-api-v2";
 
 import {
   generateCryptoDailyBriefing,
+  buildCryptoEmailEvidence,
   persistCryptoBriefing,
 } from "@/lib/crypto-briefing/crypto-brief-generator";
 import { upsertCryptoMarketData } from "@/lib/crypto-market-data/upsert-crypto-market-data";
@@ -16,6 +17,10 @@ import {
   type SubscriptionStatus,
 } from "@/lib/billing/subscription";
 import { filterSubscribedEmailRecipients } from '@/lib/marketing/email-preferences';
+import { createCryptoBriefingEmailContent } from '@/lib/marketing/crypto-email-content';
+import { dailyEmailImprovementsEnabled, type DailyEmailContext } from '@/lib/marketing/daily-email-context';
+import { extractTradableSignal } from '@/lib/signal/format-tradable-signal';
+import type { TradableSignal } from '@/lib/signal/types';
 import {
   formatAddressList,
   isUnverifiedTestSender,
@@ -152,6 +157,21 @@ async function getCryptoBriefingForDate(tradeDate: string, deadlineAt: number) {
 
   if (error) throw new Error(`Failed to check existing crypto briefing: ${error.message}`);
   return data;
+}
+
+async function getPreviousCryptoEmailScore(tradeDate: string, deadlineAt: number) {
+  try {
+    const { data, error } = await createCryptoAdminClient(deadlineAt)
+      .from('crypto_bias_scores').select('trade_date, score')
+      .lt('trade_date', tradeDate).order('trade_date', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    return data && typeof data.trade_date === 'string' && data.trade_date < tradeDate
+      && typeof data.score === 'number' && Number.isFinite(data.score) ? data : null;
+  } catch {
+    // A missing comparison must not stop the already-grounded current reading.
+    console.warn('[crypto-publish] Previous published score comparison is unavailable.');
+    return null;
+  }
 }
 
 function snapshotToBiasResult(row: CryptoBiasScoreRow): CryptoDailyBiasResult {
@@ -485,6 +505,8 @@ async function dispatchCryptoBriefingEmails(
   label: BiasLabel,
   tradeDate: string,
   deadlineAt: number,
+  context?: DailyEmailContext,
+  signal?: TradableSignal | null,
 ) {
   ensureCryptoRuntimeBudget(deadlineAt);
   const resendApiKey = getOptionalServerEnv("RESEND_API_KEY");
@@ -585,12 +607,15 @@ async function dispatchCryptoBriefingEmails(
   const resend = new Resend(resendApiKey);
 
   const signedLabel = score > 0 ? `+${score}` : `${score}`;
-  const subject = `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel}) — ${tradeDate} UTC`;
+  const legacySubject = `Crypto Bias: ${label.replace(/_/g, " ")} (${signedLabel}) — ${tradeDate} UTC`;
   const dateContext = `Based on the completed ${tradeDate} UTC daily candle. Bitcoin trades every day.`;
-  const premiumHtml = buildCryptoBriefingEmailHtml(newsletterCopy, score, label).replace('<!-- Footer -->', `<p style="color:#94a3b8;font-size:12px;line-height:1.6;">${escapeHtml(dateContext)}</p><!-- Footer -->`);
-  const freeHtml = buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label).replace('<!-- Footer -->', `<p style="color:#94a3b8;font-size:12px;line-height:1.6;">${escapeHtml(dateContext)}</p><!-- Footer -->`);
-  const premiumText = `${dateContext}\n\n${buildCryptoBriefingEmailText(newsletterCopy, score, label, "premium")}`;
-  const freeText = `${dateContext}\n\n${buildCryptoBriefingEmailText(newsletterCopy, score, label, "free")}`;
+  const premiumContent = context ? createCryptoBriefingEmailContent(newsletterCopy, score, label, 'premium', context, signal) : null;
+  const freeContent = context ? createCryptoBriefingEmailContent(newsletterCopy, score, label, 'free', context, signal) : null;
+  const subject = premiumContent?.subject ?? legacySubject;
+  const premiumHtml = premiumContent?.html ?? buildCryptoBriefingEmailHtml(newsletterCopy, score, label).replace('<!-- Footer -->', `<p style="color:#94a3b8;font-size:12px;line-height:1.6;">${escapeHtml(dateContext)}</p><!-- Footer -->`);
+  const freeHtml = freeContent?.html ?? buildFreeTierCryptoBriefingEmailHtml(newsletterCopy, score, label).replace('<!-- Footer -->', `<p style="color:#94a3b8;font-size:12px;line-height:1.6;">${escapeHtml(dateContext)}</p><!-- Footer -->`);
+  const premiumText = premiumContent?.text ?? `${dateContext}\n\n${buildCryptoBriefingEmailText(newsletterCopy, score, label, "premium")}`;
+  const freeText = freeContent?.text ?? `${dateContext}\n\n${buildCryptoBriefingEmailText(newsletterCopy, score, label, "free")}`;
   const fromAddress = getCryptoFromAddress();
   const deliverableAddresses = [...premiumList, ...freeList];
 
@@ -794,6 +819,7 @@ async function handleCryptoPublish(request: NextRequest) {
     }
 
     const runStartedAt = Date.now();
+    const optimisedEmails = dailyEmailImprovementsEnabled(new Date(runStartedAt));
     const deliveryDeadlineAt = runStartedAt + DELIVERY_BUDGET_MS;
     if (getOptionalServerEnv("SHADOW_RUN_EMAIL")) {
       throw new Error("Shadow email routing must be disabled before running the crypto service.");
@@ -838,7 +864,7 @@ async function handleCryptoPublish(request: NextRequest) {
     let briefingGeneratedBy = "stored";
     if (!storedBriefing) {
       ensureCryptoRuntimeBudget(deliveryDeadlineAt);
-      const generated = await generateCryptoDailyBriefing(biasResult);
+      const generated = await generateCryptoDailyBriefing(biasResult, { optimised: optimisedEmails });
       briefingGeneratedBy = generated.generatedBy;
       warnings.push(...generated.warnings);
       console.log(
@@ -899,12 +925,25 @@ async function handleCryptoPublish(request: NextRequest) {
     } else if (emailBlockedReason) {
       warnings.push(emailBlockedReason);
     } else {
+      const previousEmailScore = optimisedEmails
+        ? await getPreviousCryptoEmailScore(expectedTradeDate, deliveryDeadlineAt) : null;
+      const emailContext: DailyEmailContext | undefined = optimisedEmails ? {
+        ...buildCryptoEmailEvidence(biasResult),
+        scoreDate: latestSnapshot.trade_date,
+        marketDataDate: expectedTradeDate,
+        generatedAt: typeof storedBriefing.created_at === 'string' ? storedBriefing.created_at : undefined,
+        previousScore: previousEmailScore?.score ?? null,
+        previousScoreDate: previousEmailScore?.trade_date ?? null,
+        isOverrideActive: storedBriefing.is_override_active === true,
+      } : undefined;
       emailResult = await dispatchCryptoBriefingEmails(
         storedBriefing.brief_content,
         latestSnapshot.score,
         latestSnapshot.bias_label,
         expectedTradeDate,
         deliveryDeadlineAt,
+        emailContext,
+        extractTradableSignal(latestSnapshot.engine_inputs),
       );
       if (emailResult.failure) {
         warnings.push(emailResult.failure);

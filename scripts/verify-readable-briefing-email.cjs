@@ -17,28 +17,44 @@ function harness(options = {}) {
   const writes = [];
   const logs = [];
   const env = { CRON_SECRET: 'fixture-cron-secret', RESEND_API_KEY: 'fixture-send-key', ...options.env };
+  const fixtureNow = options.now ?? '2026-10-02T12:45:00Z';
   class FixtureDate extends Date {
-    constructor(...args) { args.length ? super(...args) : super('2026-10-02T12:45:00Z'); }
-    static now() { return Date.parse('2026-10-02T12:45:00Z'); }
+    constructor(...args) { args.length ? super(...args) : super(fixtureNow); }
+    static now() { return Date.parse(fixtureNow); }
   }
   const tables = options.tables ?? {};
   const database = { from(table) {
-    const state = { filters: [], offset: 0, end: Infinity, single: false };
+    const state = { filters: [], offset: 0, end: Infinity, single: false, order: null };
     const query = {
-      select() { return query; }, order() { return query; }, limit(n) { state.end = n - 1; return query; },
+      select() { return query; },
+      order(key, config = {}) { state.order = { key, ascending: config.ascending !== false }; return query; },
+      limit(n) { state.end = n - 1; return query; },
       eq(k, v) { state.filters.push(row => row[k] === v); return query; },
       in(k, v) { state.filters.push(row => v.includes(row[k])); return query; },
       not(k, op, v) { state.filters.push(row => row[k] !== v); return query; },
       gte(k, v) { state.filters.push(row => row[k] >= v); return query; },
       lte(k, v) { state.filters.push(row => row[k] <= v); return query; },
+      lt(k, v) { state.filters.push(row => row[k] < v); return query; },
       range(start, end) { state.offset = start; state.end = end; return query; },
       maybeSingle() { state.single = true; return query; },
       insert(rows) { writes.push({ table, rows }); return query; },
-      upsert(rows) { writes.push({ table, rows }); return query; },
+      upsert(values, config = {}) {
+        const rows = Array.isArray(values) ? values : [values];
+        writes.push({ table, rows: values });
+        tables[table] ??= [];
+        const keys = (config.onConflict ?? 'id').split(',');
+        for (const row of rows) {
+          const existing = tables[table].find(item => keys.every(key => item[key] === row[key]));
+          if (existing && !config.ignoreDuplicates) Object.assign(existing, row);
+          else if (!existing) tables[table].push({ id: 'fixture-persisted', ...row });
+        }
+        return query;
+      },
       update(rows) { writes.push({ table, rows }); return query; },
       then(resolve, reject) {
-        const rows = (tables[table] ?? []).filter(row => state.filters.every(filter => filter(row)))
-          .slice(state.offset, state.end + 1);
+        let rows = (tables[table] ?? []).filter(row => state.filters.every(filter => filter(row)));
+        if (state.order) rows = [...rows].sort((a, b) => String(a[state.order.key]).localeCompare(String(b[state.order.key])) * (state.order.ascending ? 1 : -1));
+        rows = rows.slice(state.offset, state.end + 1);
         return Promise.resolve({ data: state.single ? rows[0] ?? null : rows, error: null }).then(resolve, reject);
       },
     };
@@ -62,6 +78,8 @@ function harness(options = {}) {
   }
   const mocks = {
     'server-only': {}, '@anthropic-ai/sdk': Anthropic, resend: { Resend },
+    react: { cache: fn => fn },
+    '@supabase/supabase-js': { createClient: () => database },
     'twitter-api-v2': { TwitterApi: class {} },
     'next/server': { NextResponse: { json: (data, init = {}) => ({ data, status: init.status ?? 200 }) } },
     'src/lib/server-env.ts': { getAppUrl: () => 'https://www.macro-bias.com', getRequiredServerEnv: () => 'fixture-key' },
@@ -72,6 +90,11 @@ function harness(options = {}) {
     'src/lib/market-data/fetch-morning-news.ts': { fetchMorningNews: async () => options.headlines ?? [] },
     'src/lib/market-data/upsert-daily-market-data.ts': { upsertDailyMarketData: async () => ({ tradeDate: '2026-10-01' }) },
     'src/lib/crypto-market-data/upsert-crypto-market-data.ts': { upsertCryptoMarketData: async () => ({ tradeDate: '2026-10-01' }) },
+    'src/lib/crypto-briefing/crypto-delivery.ts': {
+      claimCryptoPublication: async () => ({ claimed: true, completed: false, id: 'fixture-claim' }),
+      finishCryptoPublication: async () => {},
+      sendCryptoEmailOnce: async ({ payload }) => { sends.push(payload); return { status: 'accepted' }; },
+    },
     'src/lib/marketing/email-preferences.ts': { filterSubscribedEmailRecipients: async (_, emails) => ({ deliverableEmails: emails, unsubscribedEmails: [] }) },
     'src/lib/referral/premium-unlock.ts': { partitionUnlockedSubscribers: async (_, emails) => ({ unlockedEmails: [], regularFreeEmails: emails }) },
     'src/lib/referral/verify-referrals.ts': { verifyPendingReferrals: async () => {} },
@@ -104,7 +127,7 @@ function harness(options = {}) {
       throw new Error(`Unmocked external dependency: ${name}`);
     };
     vm.runInNewContext(`(function(exports, require, module) {${compiled}\n})`, {
-      Date: FixtureDate, Error, Intl, Buffer, URL, process: { env }, console: { log() {}, warn: (...args) => logs.push(args.map(String).join(' ')), error: (...args) => logs.push(args.map(String).join(' ')) },
+      Date: FixtureDate, Error, Intl, Buffer, URL, AbortSignal, process: { env }, console: { log() {}, warn: (...args) => logs.push(args.map(String).join(' ')), error: (...args) => logs.push(args.map(String).join(' ')) },
       setTimeout: fn => { fn(); return 0; }, clearTimeout() {},
     }, { filename })(module.exports, localRequire, module);
     return module.exports;
@@ -285,7 +308,7 @@ async function run() {
     assert.equal(result.status, 200, JSON.stringify({ data: result.data, logs: h.logs })); assert.equal(result.data.emailSent, true);
     assert.equal(h.sends.length, 2); assert.equal(h.writes.length, 1, 'only fixture briefing persistence expected');
     for (const message of h.sends) {
-      assert.equal(message.subject, asset === 'stock' ? 'NEUTRAL (+5)' : 'Crypto Bias: NEUTRAL (-10)');
+      assert.equal(message.subject, asset === 'stock' ? 'NEUTRAL (+5)' : 'Crypto Bias: NEUTRAL (-10) — 2026-10-01 UTC');
       readable(message.subject); readable(message.html); readable(message.text);
       assert.ok(message.html.includes('Unsubscribe')); assert.ok(message.text.includes('Unsubscribe: https://'));
       assert.equal(message.headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');

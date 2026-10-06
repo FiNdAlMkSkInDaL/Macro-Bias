@@ -15,6 +15,7 @@ import type {
   StoredBiasSnapshot,
 } from '../../../../lib/briefing/types';
 import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch';
+import { buildStockEmailContext, dailyEmailImprovementsEnabled } from '../../../../lib/marketing/daily-email-context';
 import { filterSubscribedEmailRecipients } from '../../../../lib/marketing/email-preferences';
 import {
   formatAddressList,
@@ -803,6 +804,7 @@ async function handlePublish(request: NextRequest) {
 
     let dailyBriefing: Awaited<ReturnType<typeof generateDailyBriefing>>;
     let latestSnapshot: StoredBiasSnapshot;
+    let previousEmailSnapshot: StoredBiasSnapshot | null = null;
     const warnings: string[] = [];
 
     if (briefingAlreadyGenerated) {
@@ -838,6 +840,7 @@ async function handlePublish(request: NextRequest) {
       }
 
       latestSnapshot = snapshots[latestSnapshotIndex];
+      previousEmailSnapshot = snapshots.find((snapshot) => snapshot.trade_date < latestSnapshot.trade_date && isValidSnapshot(snapshot)) ?? null;
 
       // Re-generate the briefing from context so we have all the data needed for publishing
       dailyBriefing = await generateDailyBriefing(latestSnapshot, snapshots);
@@ -892,6 +895,7 @@ async function handlePublish(request: NextRequest) {
       }
 
       latestSnapshot = snapshots[latestSnapshotIndex];
+      previousEmailSnapshot = snapshots.find((snapshot) => snapshot.trade_date < latestSnapshot.trade_date && isValidSnapshot(snapshot)) ?? null;
       console.log('[publish-cron] Starting generateDailyBriefing()');
       dailyBriefing = await generateDailyBriefing(latestSnapshot, snapshots);
       console.log(
@@ -984,6 +988,9 @@ async function handlePublish(request: NextRequest) {
           );
 
           const briefingSignal = dailyBriefing.quant.signal;
+          const emailContext = dailyEmailImprovementsEnabled()
+            ? buildStockEmailContext(dailyBriefing, latestSnapshot, previousEmailSnapshot)
+            : undefined;
           let totalRecipientCount = 0;
 
           if (premiumList.length > 0) {
@@ -997,6 +1004,7 @@ async function handlePublish(request: NextRequest) {
                 tier: 'premium',
                 weeklyDigest,
                 signal: briefingSignal,
+                context: emailContext,
               },
             );
 
@@ -1023,6 +1031,7 @@ async function handlePublish(request: NextRequest) {
                 tier: 'free',
                 weeklyDigest,
                 signal: briefingSignal,
+                context: emailContext,
               },
             );
 

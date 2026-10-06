@@ -6,6 +6,21 @@ import { DAILY_BRIEFING_SECTION_HEADERS } from '../briefing/daily-briefing-confi
 import type { WeeklyDigestData, WeeklyBriefingRow } from '../briefing/weekly-digest-data';
 import { getAppUrl, getRequiredServerEnv } from '../server-env';
 import type { TradableSignal } from '../signal';
+import type { DailyEmailContext } from './daily-email-context';
+import {
+  cleanDailyEmailCopy,
+  dailyEmailDeltaText,
+  dailyEmailDisplayDate,
+  dailyEmailEvidenceHtml,
+  dailyEmailHeaderHtml,
+  dailyEmailInterpretation,
+  dailyEmailMarketRowsHtml,
+  dailyEmailMetadataText,
+  dailyEmailParagraphHtml,
+  dailyEmailReliabilityText,
+  dailyEmailSectionHtml,
+  dailyEmailShellHtml,
+} from './daily-email-template';
 import {
   formatAddressList,
   isResendTestRestrictionMessage,
@@ -60,6 +75,7 @@ type DispatchQuantBriefingOptions = {
   weeklyDigest?: WeeklyDigestData | null;
   /** Retained for callers; model controls are explained in the narrative. */
   signal?: TradableSignal | null;
+  context?: DailyEmailContext;
 };
 
 function getConfiguredFromAddress() {
@@ -1129,6 +1145,87 @@ function buildEmailText(
     .join('\n\n');
 }
 
+function createOptimisedQuantBriefingEmailContent(
+  newsletterCopy: string,
+  score: number,
+  label: string,
+  isOverrideActive: boolean,
+  tier: QuantBriefingTier,
+  context: DailyEmailContext,
+  weeklyDigest?: WeeklyDigestData | null,
+  signal?: TradableSignal | null,
+): QuantBriefingEmailContent {
+  const cleanCopy = cleanDailyEmailCopy(newsletterCopy);
+  const sections = parseNewsletterSections(cleanCopy);
+  const sectionMap = new Map(sections.map((section) => [section.title, section.content]));
+  const regime = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.bottomLine) ?? '';
+  const interpretation = dailyEmailInterpretation(score, label, regime, context, signal, isOverrideActive);
+  const playbook = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook) ?? '';
+  const playbookItems = parseBulletListItems(playbook);
+  const visiblePlaybook = tier === 'premium' ? playbookItems : playbookItems.slice(0, 1);
+  const baseScore = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest) ?? '';
+  const confirmation = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? '';
+  const history = cleanDailyEmailCopy(context.historicalContext || sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) || '');
+  const coverage = cleanDailyEmailCopy(context.coverageNote || '');
+  const dashboardUrl = new URL('/dashboard', getAppUrl()).toString();
+  const upgradeUrl = buildUpgradeUrl();
+  const referralPageUrl = new URL('/refer', getAppUrl()).toString();
+  const lockedLine = tier === 'free' && (playbookItems.length > 1 || !playbookItems.length) ? FREE_TIER_LOCKED_PLAYBOOK_LINE : '';
+  const bodyHtml = [
+    tier === 'premium' ? dailyEmailEvidenceHtml(context) : '',
+    tier === 'premium' && baseScore && !context.evidence?.length ? dailyEmailSectionHtml('Inputs behind the reading', dailyEmailParagraphHtml(baseScore)) : '',
+    visiblePlaybook.length ? dailyEmailSectionHtml('Today’s setup', dailyEmailMarketRowsHtml(visiblePlaybook), getAccentColor(label)) : '',
+    lockedLine ? dailyEmailParagraphHtml(lockedLine) : '',
+    tier === 'premium' && confirmation ? dailyEmailSectionHtml('Confirmation to watch', dailyEmailParagraphHtml(confirmation), '#fdba74') : '',
+    tier === 'premium' && history ? dailyEmailSectionHtml('Historical context', dailyEmailParagraphHtml(history), '#6ee7b7') : '',
+    tier === 'premium' && sections.length === 0 ? dailyEmailSectionHtml('Daily read', dailyEmailParagraphHtml(cleanCopy)) : '',
+    coverage ? dailyEmailSectionHtml('Coverage', dailyEmailParagraphHtml(coverage), '#a1a1aa') : '',
+    weeklyDigest && weeklyDigest.sessionCount > 0
+      ? buildWeeklyRecapSectionHtml(weeklyDigest, tier).replaceAll('font-size: 13px', 'font-size: 16px').replaceAll('font-size: 14px', 'font-size: 16px')
+        .replace('high conviction.', 'stable scores.').replace('selective rotation.', 'moderate score variation.') : '',
+    tier === 'free' ? dailyEmailSectionHtml('Free preview', `${dailyEmailParagraphHtml(FREE_TIER_PAYWALL_MESSAGE)}<p style="margin:0;font-size:16px;line-height:1.65;"><a href="${escapeHtml(upgradeUrl)}" style="color:#7dd3fc;text-decoration:underline;">Explore Pro</a></p>`) : '',
+  ].join('');
+  const evidence = tier === 'premium' ? (context.evidence ?? []).map(cleanDailyEmailCopy).filter(Boolean).slice(0, 3) : [];
+  const date = dailyEmailDisplayDate(context.scoreDate);
+  const delta = dailyEmailDeltaText(score, context);
+  const reliability = dailyEmailReliabilityText(signal);
+  const weeklyTag = weeklyDigest && weeklyDigest.sessionCount > 0 ? ` + Weekly Recap ${getTrendEmoji(weeklyDigest.trendDirection)}` : '';
+  const subject = `${isOverrideActive ? 'Override Active | ' : 'Stock Bias: '}${formatDisplayLabel(label)} (${formatSignedNumber(score)})${date ? ` | ${date}` : ''}${weeklyTag}`;
+  const text = [
+    'Daily Macro Bias',
+    dailyEmailMetadataText(context, 'stocks'),
+    buildHeaderSummary(score, label, isOverrideActive),
+    delta,
+    interpretation,
+    reliability,
+    evidence.length ? `INPUTS BEHIND THE READING\n${evidence.map((line) => `- ${line}`).join('\n')}`
+      : tier === 'premium' && baseScore ? `INPUTS BEHIND THE READING\n${baseScore}` : '',
+    visiblePlaybook.length ? `TODAY’S SETUP\n${visiblePlaybook.map((line) => `- ${line}`).join('\n')}` : '',
+    lockedLine,
+    tier === 'premium' && confirmation ? `CONFIRMATION TO WATCH\n${confirmation}` : '',
+    tier === 'premium' && history ? `HISTORICAL CONTEXT\n${history}` : '',
+    tier === 'premium' && sections.length === 0 ? cleanCopy : '',
+    coverage ? `COVERAGE\n${coverage}` : '',
+    weeklyDigest && weeklyDigest.sessionCount > 0 ? buildWeeklyRecapSectionText(weeklyDigest, tier).replace('High conviction.', 'Stable scores.').replace('Moderate rotation.', 'Moderate score variation.') : '',
+    tier === 'free' ? `${FREE_TIER_PAYWALL_MESSAGE}\nExplore Pro: ${upgradeUrl}` : '',
+    `View dashboard: ${dashboardUrl}`,
+    tier === 'free' ? `Refer & earn Pro access: ${referralPageUrl}` : '',
+    `Unsubscribe: ${UNSUBSCRIBE_PLACEHOLDER}`,
+  ].filter(Boolean).map(stripMarkdownBold).join('\n\n');
+  return {
+    subject,
+    text,
+    html: dailyEmailShellHtml({
+      preheader: [interpretation, delta, date ? `Session: ${date}.` : ''].filter(Boolean).join(' '),
+      headerHtml: dailyEmailHeaderHtml({ title: 'Daily Macro Bias', score, label, interpretation, accent: getAccentColor(label), context, signal, isOverrideActive, market: 'stocks' }),
+      bodyHtml,
+      dashboardUrl,
+      footerHtml: tier === 'free' ? `<p style="margin:22px 0 0;color:#a1a1aa;font-size:14px;line-height:1.6;"><a href="${escapeHtml(referralPageUrl)}" style="color:#7dd3fc;text-decoration:underline;">Refer &amp; earn Pro access</a></p>` : '',
+      subscriptionLabel: 'Macro Bias daily stock emails',
+    }),
+  };
+}
+
 export function createQuantBriefingEmailContent(
   newsletterCopy: string,
   score: number,
@@ -1137,7 +1234,9 @@ export function createQuantBriefingEmailContent(
   tier: QuantBriefingTier = 'premium',
   weeklyDigest?: WeeklyDigestData | null,
   signal?: TradableSignal | null,
+  context?: DailyEmailContext,
 ): QuantBriefingEmailContent {
+  if (context) return createOptimisedQuantBriefingEmailContent(newsletterCopy, score, label, isOverrideActive, tier, context, weeklyDigest, signal);
   const weeklyTag =
     weeklyDigest && weeklyDigest.sessionCount > 0
       ? ` + Weekly Recap ${getTrendEmoji(weeklyDigest.trendDirection)}`
@@ -1229,6 +1328,7 @@ export async function dispatchQuantBriefing(
     tier,
     options.weeklyDigest,
     options.signal,
+    options.context,
   );
   const emailIds: string[] = [];
   const recipientBatches = chunkValues(deliverable, EMAIL_BATCH_SIZE);
