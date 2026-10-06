@@ -128,6 +128,7 @@ export async function fetchCompletedYahooPrices(ticker: CompletedPriceTicker, no
   url.searchParams.set('includePrePost', 'false');
   url.searchParams.set('period1', String(Math.floor((now.getTime() - 10 * 86_400_000) / 1000)));
   url.searchParams.set('period2', String(Math.floor(now.getTime() / 1000)));
+  let validFallbackRows: CompletedPriceRow[] | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const remaining = options.deadlineAt ? options.deadlineAt - Date.now() : 20_000;
@@ -138,10 +139,24 @@ export async function fetchCompletedYahooPrices(ticker: CompletedPriceTicker, no
       });
       if (!response.ok) throw new Error(`Yahoo completed-price request failed for ${ticker}: ${response.status}.`);
       const minimumDate = new Date(now.getTime() - 10 * 86_400_000).toISOString().slice(0, 10);
-      return parseCompletedYahooPrices(ticker, await response.json(), now).filter(row => row.trade_date >= minimumDate);
+      const rows = parseCompletedYahooPrices(ticker, await response.json(), now).filter(row => row.trade_date >= minimumDate);
+      if (rows.length) validFallbackRows = rows;
+      const latestDate = rows.at(-1)?.trade_date;
+      const expectedDate = latestCompletedPriceDate(ticker, now);
+      // Yahoo can answer successfully before publishing the newest final bar.
+      // Give that response the same retries as a transport failure. On the last
+      // attempt retain genuine older bars for catch-up; storage reports stale
+      // coverage and will not overwrite existing candles from this response.
+      if (attempt < 2 && (!latestDate || latestDate < expectedDate)) {
+        throw new Error(`Yahoo's latest completed ${ticker} bar is ${latestDate ?? 'unavailable'}; expected ${expectedDate}.`);
+      }
+      return rows.length ? rows : validFallbackRows ?? rows;
     } catch (error) {
       const delay = 1_500 * 2 ** attempt;
-      if (attempt === 2 || (options.deadlineAt && options.deadlineAt - Date.now() <= delay)) throw error;
+      if (attempt === 2 || (options.deadlineAt && options.deadlineAt - Date.now() <= delay)) {
+        if (validFallbackRows) return validFallbackRows;
+        throw error;
+      }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }

@@ -99,14 +99,15 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     assert.match(old.results[0].error, /2026-09-03.*2026-09-04/); assert.equal(old.results[0].changed, false);
   });
   await check('cron fails closed on missing/empty/invalid credentials before any provider or storage access', async () => {
-    let calls = 0; const env = {};
-    const route = load('src/app/api/cron/prices/route.ts', { 'node:crypto': require('node:crypto'), 'next/server': { NextResponse: { json: (body, options = {}) => ({ body, ...options }) } }, '@/lib/market-data/sync-completed-market-prices': { syncCompletedMarketPrices: async () => { calls++; return { ok: true }; } } }, { process: { env } });
+    let calls = 0; const env = {}; const logs = [];
+    const route = load('src/app/api/cron/prices/route.ts', { 'node:crypto': require('node:crypto'), 'next/server': { NextResponse: { json: (body, options = {}) => ({ body, ...options }) } }, '@/lib/market-data/sync-completed-market-prices': { syncCompletedMarketPrices: async () => { calls++; return { ok: true, observedAt: '2026-10-06T06:15:00Z', results: [] }; } } }, { process: { env }, console: { info: value => logs.push(value), error: value => logs.push(value) } });
     assert.equal((await route.GET(new Request('https://example.test/api/cron/prices'))).status, 503);
     env.CRON_SECRET = 'isolated-test-secret';
     for (const header of ['', 'Bearer wrong', 'Bearer isolated-test-secret-extra']) assert.equal((await route.GET(new Request('https://example.test/api/cron/prices', { headers: { authorization: header } }))).status, 401);
     assert.equal(calls, 0);
     const valid = await route.GET(new Request('https://example.test/api/cron/prices', { headers: { authorization: 'Bearer isolated-test-secret' } }));
     assert.equal(valid.status, 200); assert.equal(valid.headers['Cache-Control'], 'no-store'); assert.equal(calls, 1);
+    assert.equal(logs.length, 1); assert.match(logs[0], /prices-cron/); assert.ok(!logs[0].includes(env.CRON_SECRET));
   });
   const crons = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')).crons;
   assert.ok(crons.some((cron) => cron.path === '/api/cron/prices' && cron.schedule === '15 0 * * *'));

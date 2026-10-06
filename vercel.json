@@ -5,6 +5,14 @@
       "schedule": "15 0 * * *"
     },
     {
+      "path": "/api/cron/prices/recovery",
+      "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/cron/prices/after-close",
+      "schedule": "15 22 * * 1-5"
+    },
+    {
       "path": "/api/cron/publish",
       "schedule": "30 12 * * 1-5"
     },
