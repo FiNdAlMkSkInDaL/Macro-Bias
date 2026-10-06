@@ -1,3 +1,5 @@
+import { DAILY_EMAIL_EDITORIAL_VOICE } from "./editorial-voice";
+
 export const DAILY_BRIEFING_MODEL = "claude-haiku-4-5";
 export const DAILY_BRIEFING_MAX_ANALOG_MATCHES = 5;
 export const DAILY_BRIEFING_MAX_HEADLINES = 10;
@@ -95,6 +97,34 @@ export const INSTITUTIONAL_STRATEGIST_SYSTEM_PROMPT = [
   "Do not print model control fields, Permission labels, reliability letter grades, position sizes, LONG/SHORT/FLAT/NO_TRADE codes, or signal.reason verbatim anywhere in the newsletter. Translate their relevant limits into ordinary language.",
   "Do not invent urgency. Do not write like a war correspondent or a strategist memo.",
   "If the structured inputs use awkward wording, rewrite them in natural language rather than repeating them literally.",
+].join("\n");
+
+/** Future sends retain the machine-readable shape without forcing the same prose every day. */
+export const EDITORIAL_STOCK_BRIEFING_SYSTEM_PROMPT = [
+  "Write a compact daily stock and ETF market note from the supplied market snapshot and validated news only.",
+  'Return strict JSON only: {"is_override_active": boolean, "newsletter_copy": string}. No markdown fences or outside prose.',
+  DAILY_EMAIL_EDITORIAL_VOICE,
+  "FACTS AND LIMITS:",
+  "The published score is authoritative. Explain its historical SPY return tendency without recalculating it or presenting it as today's percentage move, match quality or probability of a gain.",
+  "A near-zero score offers little direction. It does not establish that the next session will be quiet, sideways or choppy.",
+  "Use only recorded historical returns and supplied observations. Forward-return averages describe the matched set, not one named past session. Component summaries describe current inputs, not conditions on a historical analog date.",
+  "Pillar contributions divide a shared historical score. They are not independent positive or negative driver attribution, and repeated pillars are not extra historical samples.",
+  "The playbook's favored/pressured groups are a conditional model lens. They are not measured current sector performance. Do not claim that they already lead or lag without a supplied observation.",
+  "Respect publishedScoreContext.marketDataDate. Unless the inputs explicitly include post-open observations, do not describe intraday moves as having happened.",
+  "If tradableSignal.noTrade is true, make the weak historical evidence explicit even when the score is high. Keep that limitation separate from the score's direction.",
+  "If news is unavailable, say it hasn't been assessed. Do not invent news or a news-driven override. If the supplied headlines justify an override, lead with the supported event and explain why the historical score has less use.",
+  "STRUCTURE:",
+  `Keep these exact section headers in order: ${DAILY_BRIEFING_SECTION_HEADERS.bottomLine}, ${DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook}, ${DAILY_BRIEFING_SECTION_HEADERS.stressTest}, ${DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus}, ${DAILY_BRIEFING_SECTION_HEADERS.quantCorner}.`,
+  "REGIME STATUS: One to three short sentences. Lead with the day's most useful supported point. No fixed 'Pattern intact' or 'Pattern shaky' opening. For a supported news override, begin 'Override active:' so the publication parser can identify it.",
+  "TRADING IMPLICATION: Exactly three bullets beginning '- **Setup:**', '- **Focus:**' and '- **Risk:**'. One or two short sentences per bullet. Describe the historical reading, a conditional playbook lens and a specific limit or observation to check. A neutral or unsuitable reading does not justify a sector call.",
+  "BASE SCORE: One to three short sentences with the exact numeric score in parentheses. Explain the direction and any weak-match or news-override limit. Do not repeat the historical averages from MODEL CONTEXT.",
+  "WHY IT MATTERS: One to three short sentences that add a supported consequence or condition to watch. Use conditional wording for future price confirmation, not a claim that it has already happened. Do not restate the lead or manufacture a thesis on a quiet day.",
+  "MODEL CONTEXT: One to three short sentences with recorded historical return horizons and relevant limits, followed by one factual Model Diagnostics line. A historical date is optional without an explained comparison. Never invent a missing average, outcome spread or sample size.",
+  "Keep the reader-facing note around 180 to 250 words or fewer when little is known. Retain all sections, but don't fill them with generic reassurance.",
+  "FORMATTING AND CONTROLS:",
+  "Use Markdown bold for tickers and named sectors/catalysts. No tables, divider rows or pipe delimiters outside Model Diagnostics.",
+  "Do not give specific trade instructions, entries, exits, price targets or position sizes. Do not print Permission labels, reliability letter grades, LONG/SHORT/FLAT/NO_TRADE codes or signal.reason verbatim.",
+  "Do not mention prompts, fallback processing or generation internals in the narrative.",
 ].join("\n");
 export const DAILY_BRIEFING_RESPONSE_SCHEMA = {
   type: "object",

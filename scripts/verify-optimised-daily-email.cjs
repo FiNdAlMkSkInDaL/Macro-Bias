@@ -101,13 +101,13 @@ async function run() {
     const build = harness().load('src/lib/crypto-briefing/crypto-brief-generator.ts').buildCryptoEmailEvidence;
     const repeated = { ...crypto, componentScores: crypto.componentScores.map(item => ({ ...item, analogMatches: [...matches, matches[0]] })) };
     const evidence = build(repeated);
-    assert.ok(evidence.historicalContext.includes('3 matched historical sessions'));
-    assert.ok(!evidence.historicalContext.includes('12 matched'));
+    assert.match(evidence.historicalContext, /^3\b[^.]*\bsessions\b/, 'deduplicated sample must contain three historical sessions');
+    assert.ok(!/\b12\b[^.]*\bsessions\b/.test(evidence.historicalContext), 'shared pillar neighbours must not be counted four times');
     assert.ok(evidence.historicalContext.includes('+1.80% after one day'));
     assert.ok(evidence.historicalContext.includes('+3.00% after three days'));
     assert.ok(evidence.historicalContext.includes('-1.00% to +3.40%'));
     assert.ok(evidence.historicalContext.includes('-2.00% to +6.00%'));
-    assert.ok(evidence.historicalContext.includes('past outcomes, not forecast bounds'));
+    assert.match(evidence.historicalContext, /past (?:outcomes|results)[^.]*not[^.]*(?:forecast|predict)/i);
     assert.ok(!evidence.evidence.join(' ').includes('contribution'));
   });
   await check('valid AI copy cannot invent price/flow facts, confidence, historical outcomes or a news override', async () => {
@@ -119,7 +119,7 @@ async function run() {
     assert.equal(generated.generatedBy, 'anthropic');
     assert.equal(generated.isOverrideActive, false);
     assert.ok(generated.newsletterCopy.includes('85,786.59'));
-    assert.ok(generated.newsletterCopy.includes('3 matched historical sessions'));
+    assert.match(generated.newsletterCopy, /\b3\b[^.\n]*\bsessions\b/, 'AI prose must retain the deduplicated stored sample');
     assert.ok(!generated.newsletterCopy.includes('guaranteed'));
     assert.ok(!generated.newsletterCopy.includes('invented event'));
     assert.ok(!generated.newsletterCopy.includes('fixture has no flow disruption'));
@@ -159,7 +159,7 @@ async function run() {
     assert.ok(!generated.newsletterCopy.includes('still deserves weight'));
     const create = h.load('src/lib/marketing/crypto-email-content.ts').createCryptoBriefingEmailContent;
     const mail = create(generated.newsletterCopy, weak.score, weak.label, 'premium', { ...context, interpretation: 'High conviction today.' }, weak.signal);
-    assert.ok(mail.text.includes('too weak to rely on the score'));
+    assert.match(mail.text, /historical (?:evidence|match)[^.]*too weak[^.]*(?:rely|trust)/i);
     assert.ok(!mail.text.includes('High conviction today'));
     assert.ok(mail.text.includes('Insufficient historical fit'));
     customerReadable(mail);

@@ -69,10 +69,10 @@ export function createCryptoBriefingEmailContent(
   const freePreview = 'Pro includes the full market map, confirmation to watch, and historical context.';
   const bodyHtml = [
     tier === 'premium' ? dailyEmailEvidenceHtml(context) : '',
-    visibleRows.length ? dailyEmailSectionHtml('Market map', dailyEmailMarketRowsHtml(visibleRows), '#c4b5fd') : '',
-    tier === 'premium' && risk ? dailyEmailSectionHtml('Confirmation to watch', dailyEmailParagraphHtml(risk), '#fdba74') : '',
-    tier === 'premium' && history ? dailyEmailSectionHtml('Historical context', dailyEmailParagraphHtml(history), '#6ee7b7') : '',
-    coverage ? dailyEmailSectionHtml('Coverage', dailyEmailParagraphHtml(coverage), '#a1a1aa') : '',
+    visibleRows.length ? dailyEmailSectionHtml('The latest prices', dailyEmailMarketRowsHtml(visibleRows), '#c4b5fd') : '',
+    tier === 'premium' && risk ? dailyEmailSectionHtml('What to watch', dailyEmailParagraphHtml(risk), '#fdba74') : '',
+    tier === 'premium' && history ? dailyEmailSectionHtml('Past sessions', dailyEmailParagraphHtml(history), '#6ee7b7') : '',
+    coverage ? dailyEmailSectionHtml('What this covers', dailyEmailParagraphHtml(coverage), '#a1a1aa') : '',
     tier === 'free' ? dailyEmailSectionHtml('Free preview', `${dailyEmailParagraphHtml(freePreview)}<p style="margin:0;font-size:16px;line-height:1.65;"><a href="${escapeDailyEmailHtml(upgradeUrl)}" style="color:#7dd3fc;text-decoration:underline;">Explore Pro</a></p>`) : '',
   ].join('');
   const footerHtml = tier === 'free'
@@ -91,11 +91,11 @@ export function createCryptoBriefingEmailContent(
     delta,
     interpretation,
     reliability,
-    evidence.length ? `INPUTS BEHIND THE READING\n${evidence.map((line) => `- ${line}`).join('\n')}` : '',
-    visibleRows.length ? `MARKET MAP\n${visibleRows.join('\n')}` : '',
-    tier === 'premium' && risk ? `CONFIRMATION TO WATCH\n${risk}` : '',
-    tier === 'premium' && history ? `HISTORICAL CONTEXT\n${history}` : '',
-    coverage ? `COVERAGE\n${coverage}` : '',
+    evidence.length ? `What the model sees\n${evidence.map((line) => `- ${line}`).join('\n')}` : '',
+    visibleRows.length ? `The latest prices\n${visibleRows.join('\n')}` : '',
+    tier === 'premium' && risk ? `What to watch\n${risk}` : '',
+    tier === 'premium' && history ? `Past sessions\n${history}` : '',
+    coverage ? `What this covers\n${coverage}` : '',
     tier === 'free' ? `${freePreview}\nExplore Pro: ${upgradeUrl}` : '',
     `View dashboard: ${dashboardUrl}`,
     tier === 'free' ? `Refer & earn Pro access: ${referralUrl}` : '',

@@ -58,13 +58,13 @@ export function dailyEmailInterpretation(
   if (isOverrideActive) {
     const interpretation = cleanDailyEmailCopy(context?.interpretation || fallback);
     return /^override active\b/i.test(dailyEmailPlainText(interpretation))
-      ? interpretation : 'Override active: current headlines reduce the weight of the historical score today.';
+      ? interpretation : 'Override active: treat the model reading as background context today.';
   }
   if (signal?.noTrade) {
     const lean = score === 0 ? 'no directional lean' : label === 'NEUTRAL'
       ? score > 0 ? 'only a small positive lean' : 'only a small negative lean'
       : score > 0 ? 'a positive lean' : 'a negative lean';
-    return `The model shows ${lean}, but the historical evidence is too weak to rely on the score today.`;
+    return `There is ${lean} in the score. The historical match is too weak to rely on it today.`;
   }
   return cleanDailyEmailCopy(context?.interpretation || fallback);
 }
@@ -98,17 +98,17 @@ export function dailyEmailDeltaText(score: number, context?: DailyEmailContext) 
 }
 
 export function dailyEmailReliabilityText(signal?: TradableSignal | null) {
-  if (signal && (/legacy score without tradable signal metadata/i.test(signal.reason ?? '')
+  if (!signal || (/legacy score without tradable signal metadata/i.test(signal.reason ?? '')
     || !Number.isFinite(signal.distanceQuality) || signal.distanceQuality <= 0 || signal.distanceQuality > 1
     || !Number.isFinite(signal.meanNeighborDistance) || signal.meanNeighborDistance < 0
     || !Number.isFinite(signal.neighborAgreement) || signal.neighborAgreement < 0 || signal.neighborAgreement > 1)) {
-    return 'Historical match quality: Unavailable for this stored score.';
+    return 'Past matches: Unavailable for this stored score.';
   }
   const label = reliabilityLabel(signal);
-  if (!label) return '';
+  if (!label) return 'Past matches: Unavailable for this stored score.';
   const agreement = signal && Number.isFinite(signal.neighborAgreement) && signal.neighborAgreement >= 0 && signal.neighborAgreement <= 1
-    ? `; recorded historical agreement ${Math.round(signal.neighborAgreement * 100)}%` : '';
-  return `Historical match quality: ${label}${agreement}. Historical fit is not a probability of a gain.`;
+    ? ` Directional agreement in the matched set: ${Math.round(signal.neighborAgreement * 100)}%.` : '';
+  return `Past matches: ${label}.${agreement} Historical fit is not a probability of a gain.`;
 }
 
 export function dailyEmailHeaderHtml(options: {
@@ -132,7 +132,7 @@ export function dailyEmailHeaderHtml(options: {
 export function dailyEmailSectionHtml(title: string, body: string, color = '#7dd3fc') {
   if (!body) return '';
   return `<div style="margin-top:24px;padding-top:20px;border-top:1px solid #323238;">
-    <h2 style="margin:0 0 12px;color:${color};-webkit-text-fill-color:${color};font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">${escapeDailyEmailHtml(title)}</h2>${body}</div>`;
+    <h2 style="margin:0 0 12px;color:${color};-webkit-text-fill-color:${color};font-size:16px;font-weight:700;">${escapeDailyEmailHtml(title)}</h2>${body}</div>`;
 }
 
 export function dailyEmailParagraphHtml(content: string) {
@@ -155,7 +155,7 @@ export function dailyEmailMarketRowsHtml(lines: readonly string[]) {
 export function dailyEmailEvidenceHtml(context?: DailyEmailContext) {
   const evidence = context?.evidence?.map(cleanDailyEmailCopy).filter(Boolean).slice(0, 3) ?? [];
   if (!evidence.length) return '';
-  return dailyEmailSectionHtml('Inputs behind the reading',
+  return dailyEmailSectionHtml('What the model sees',
     `<ul style="margin:0;padding-left:20px;">${evidence.map((line) => `<li style="margin:0 0 10px;color:#dbe4ee;font-size:16px;line-height:1.65;">${dailyEmailInlineHtml(line)}</li>`).join('')}</ul>`);
 }
 
