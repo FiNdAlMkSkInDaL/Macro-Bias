@@ -160,4 +160,3 @@ export function analyticsExclusionEventId(eventId: string) {
   const prefix = ((parseInt(eventId.slice(0, 8), 16) ^ 0x6d626578) >>> 0).toString(16).padStart(8, "0");
   return `${prefix}${eventId.slice(8)}`;
 }
-
