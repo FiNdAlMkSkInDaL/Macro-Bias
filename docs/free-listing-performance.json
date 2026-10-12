@@ -1,0 +1,27 @@
+{
+  "campaign": "mb_free_listings",
+  "trackingStartedAt": "2026-10-12",
+  "primaryAttribution": "first",
+  "reportTimezone": "UTC",
+  "evaluation": "Assess each directory after fourteen days observed live; approval alone does not establish publication.",
+  "snapshots": [
+    {
+      "checkedAt": "2026-10-12T20:17:18.524Z",
+      "startDate": "2026-10-12",
+      "endDate": "2026-10-12",
+      "complete": true,
+      "overview": {
+        "pageViews": 0,
+        "visitors": 0,
+        "sessions": 0,
+        "newSubscribers": 0,
+        "newAccounts": 0,
+        "paidConversions": 0,
+        "subscriberVisitors": 0,
+        "subscriberRate": null
+      },
+      "sourceRows": [],
+      "note": "No eligible campaign-attributed activity recorded at baseline. This does not prove zero actual visitors: consent and attribution gaps remain possible. Subscriber counts are deduplicated records, not evidence of verification or engagement. Bot, internal, test and unverified legacy activity use the existing acquisition report exclusions."
+    }
+  ]
+}
