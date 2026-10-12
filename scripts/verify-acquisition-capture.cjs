@@ -34,9 +34,11 @@ function harness(options = {}) {
     const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
     const context = vm.createContext({ module, exports: module.exports, Date: Clock, URL, URLSearchParams,
       Uint8Array, TextDecoder, Blob, Request, Response, Event, crypto: webcrypto, window: browser, document, navigator,
+      process: { env: { NODE_ENV: options.environment ?? 'production', VERCEL_ENV: options.vercelEnvironment ?? 'production' } },
       fetch: async (_url, request) => { transmitted.push(new Blob([request.body])); return new Response('{}'); },
       require(specifier) {
         if (specifier === 'next/server') return { NextResponse: { json: (body, options) => Response.json(body, options) } };
+        if (specifier === '@/lib/supabase/server') return { createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: options.user ?? null }, error: options.authError ?? null }) } }) };
         if (specifier === '@/lib/analytics/server') return { logMarketingEvent: async event => {
           effects.databaseWrites++; if (!rows.has(event.id)) rows.set(event.id, structuredClone(event)); effects.storedRows = rows.size;
         } };
@@ -56,7 +58,7 @@ function harness(options = {}) {
     messages: async () => Promise.all(transmitted.map(async blob => JSON.parse(await blob.text()))),
     request: (body, headers = {}, url = 'https://www.macro-bias.com/api/analytics/track') => new Request(url, { method: 'POST', headers: {
       origin: new URL(url).origin, 'content-type': 'application/json', 'user-agent': navigator.userAgent,
-      cookie: document.cookie, ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) }),
+      cookie: document.cookie, ...headers }, body: typeof body === 'string' ? body : JSON.stringify({ automation: false, ...body }) }),
   };
 }
 
@@ -69,6 +71,7 @@ async function check(name, run) { await run(); count++; console.log(`PASS ${name
     const [event] = await h.messages();
     assert.equal(event.anonymousId, null); assert.equal(event.sessionId, null); assert.equal(event.metadata.tracking_mode, 'aggregate');
     assert.equal(event.metadata.aggregate_touch.source, 'x'); assert.equal(event.metadata.aggregate_touch.medium, 'social');
+    assert.equal(event.automation, false);
     assert.equal(h.storage.size, 0); assert.equal(h.cookies.size, 0);
     assert(!JSON.stringify(event).includes('private+email')); assert.equal(event.pagePath, '/today');
   });
@@ -238,6 +241,72 @@ async function check(name, run) { await run(); count++; console.log(`PASS ${name
     const h = harness(); h.client.setAnalyticsConsent('granted'); const body = (await h.messages())[0];
     await h.route.POST(h.request(body)); await h.route.POST(h.request(body)); assert.equal(h.effects.storedRows, 1);
     const invalid = { ...body, eventId: nav }; assert.equal((await h.route.POST(h.request(invalid))).status, 400);
+  });
+  await check('webdriver browsers cannot send aggregate or consented views and establish only an exclusion preference', async () => {
+    const h = harness(); h.navigator.webdriver = true;
+    h.client.trackClientEvent({ eventName: 'page_view' }); h.client.setAnalyticsConsent('granted');
+    assert.equal((await h.messages()).length, 0); assert.equal(h.client.getAnonymousId(), null);
+    assert.equal(h.storage.size, 0); assert.equal(h.cookies.get('mb_analytics_internal'), '1');
+  });
+  await check('explicit internal opt-out persists across navigation without an analytics identity', async () => {
+    const h = harness({ url: 'https://www.macro-bias.com/today?analytics=off' });
+    h.client.trackClientEvent({ eventName: 'page_view' }); h.location('https://www.macro-bias.com/crypto');
+    h.client.trackClientEvent({ eventName: 'page_view' }); h.client.setAnalyticsConsent('granted');
+    assert.equal((await h.messages()).length, 0); assert.equal(h.storage.size, 0);
+    const response = await h.route.POST(h.request({ eventId: nav, eventName: 'page_view', pagePath: '/today' }));
+    assert.equal(response.status, 202); assert.equal(h.effects.databaseWrites, 0);
+  });
+  await check('the server adds bounded collection provenance after checks and ignores forged client context', async () => {
+    const h = harness();
+    await h.route.POST(h.request({ eventId: nav, eventName: 'page_view', pagePath: '/today', metadata: {
+      capture_context: { environment: 'fake', user_agent: 'PRIVATE', authenticated_email: 'private@example.com' },
+    } }));
+    const event = h.rows.get(nav), context = event.metadata.capture_context;
+    assert.equal(context.version, 1); assert.equal(context.environment, 'production');
+    assert.equal(context.collector, 'public_api'); assert.equal(context.automation_checked, true);
+    assert(!JSON.stringify(event).includes('PRIVATE')); assert(!JSON.stringify(event).includes('private@example.com'));
+    const suppressed = harness();
+    await suppressed.route.POST(suppressed.request({ eventId: nav, eventName: 'page_view', pagePath: '/today', automation: true }));
+    assert.equal(suppressed.effects.databaseWrites, 0);
+  });
+  await check('cached or malformed collectors without explicit automation false cannot acquire corrected provenance', async () => {
+    for (const automation of [undefined, null, 'false', 0, true]) {
+      const h = harness();
+      const body = { eventId: nav, eventName: 'page_view', pagePath: '/today', automation,
+        metadata: { event_version: 2, traffic_type: 'human', capture_context: {
+          version: 1, environment: 'production', collector: 'public_api', automation_checked: true,
+        } } };
+      const response = await h.route.POST(h.request(JSON.stringify(body)));
+      assert.equal(response.status, 202); assert.equal((await response.json()).skipped, true);
+      assert.equal(h.effects.databaseWrites, 0);
+    }
+    for (const signal of ['dnt', 'sec-gpc']) {
+      const h = harness();
+      await h.route.POST(h.request({ eventId: nav, eventName: 'page_view', pagePath: '/today', automation: false }, { [signal]: '1' }));
+      const event = h.rows.get(nav); assert.equal(event.anonymousId, null); assert.equal(event.sessionId, null);
+      assert.equal(event.metadata.tracking_mode, 'aggregate'); assert.equal(event.metadata.capture_context.automation_checked, true);
+    }
+  });
+  await check('verified internal accounts quarantine consented earlier visits without retaining an email', async () => {
+    for (const email of ['finphillips21@gmail.com', 'finlayp32+qa@gmail.com']) {
+      const h = harness({ user: { email } }); h.client.setAnalyticsConsent('granted');
+      const body = { eventId: nav, eventName: 'page_view', pagePath: '/today' };
+      const response = await h.route.POST(h.request(body, { cookie: `${h.document.cookie}; sb-fixture-auth-token=fixture` }));
+      assert.equal((await response.json()).skipped, true); assert.match(response.headers.get('set-cookie'), /mb_analytics_internal=1/);
+      const [marker] = h.rows.values(); assert.equal(marker.eventName, 'analytics_excluded');
+      assert.equal(marker.metadata.traffic_type, 'internal'); assert(marker.anonymousId);
+      assert(!JSON.stringify(marker).includes(email)); assert.equal(h.effects.storedRows, 1);
+    }
+    const external = harness({ user: { email: 'test.trader@gmail.com' } });
+    await external.route.POST(external.request({ eventId: nav, eventName: 'page_view', pagePath: '/today' }, { cookie: 'sb-fixture-auth-token=fixture' }));
+    assert.equal(external.rows.get(nav).eventName, 'page_view');
+  });
+  await check('development, preview and unreadable authenticated sessions never receive growth provenance', async () => {
+    for (const options of [{ environment: 'development' }, { vercelEnvironment: 'preview' }, { authError: new Error('Unavailable') }]) {
+      const h = harness(options);
+      await h.route.POST(h.request({ eventId: nav, eventName: 'page_view', pagePath: '/today' }, { cookie: 'sb-fixture-auth-token=fixture' }));
+      assert.equal(h.effects.databaseWrites, 0);
+    }
   });
   console.log(`Acquisition capture: ${count} scenario groups passed; no external services or credentials used.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

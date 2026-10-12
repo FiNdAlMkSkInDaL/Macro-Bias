@@ -8,11 +8,17 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/analytics/attribu
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, attributionContext);
 
+const policyContext = { exports: {}, Date, URL, Set, Map };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/analytics/traffic-policy.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, policyContext);
+
 let isolatedAdminFactory = null;
 const context = { exports: {}, Date, Map, Set, URL, AbortSignal, setTimeout, clearTimeout, require(name) {
   if (name === 'server-only') return {};
   if (name === 'node:crypto') return crypto;
   if (name === '@/lib/analytics/attribution') return attributionContext.exports;
+  if (name === '@/lib/analytics/traffic-policy') return policyContext.exports;
   if (name === '@/lib/supabase/admin') return { createSupabaseAdminClient(options) {
     if (!isolatedAdminFactory) throw new Error('A test must provide its isolated fake client.');
     return isolatedAdminFactory(options);
@@ -30,13 +36,14 @@ const visitor2 = '00000000-0000-4000-8000-000000000002';
 const session = '00000000-0000-4000-8000-000000000003';
 const nav = '00000000-0000-4000-8000-000000000004';
 const key = (kind, value) => `${kind}:${crypto.createHash('sha256').update(value.toLowerCase()).digest('hex')}`;
-const subscriberKey = key('subscriber', 'real-person@example.net');
+const subscriberKey = key('subscriber', 'real-person@reader.net');
 const accountKey = key('account', 'actual-auth-uuid');
 const paidKey = key('paid', 'actual-auth-uuid');
 const first = { source: 'reddit', medium: 'social', campaign: 'daily_launch', content: 'post_a', referrerDomain: 'reddit.com', landingPath: '/crypto/today', capturedAt: '2026-10-02T08:00:00.000Z' };
 const last = { source: 'google.com', medium: 'organic', campaign: null, content: null, referrerDomain: 'google.com', landingPath: '/today', capturedAt: '2026-10-04T10:00:00.000Z' };
 const attribution = { version: 2, visitorId: visitor, sessionId: session, firstTouch: first, latestTouch: last };
-const view = (id, patch = {}) => ({ id, event_name: 'page_view', created_at: '2026-10-04T10:00:00.000Z', page_path: '/crypto/today', anonymous_id: visitor, session_id: session, metadata: { event_version: 2, tracking_mode: 'consented', traffic_type: 'human', content_group: 'crypto', attribution }, ...patch });
+const checkedCapture = { version: 1, environment: 'production', collector: 'public_api', automation_checked: true };
+const view = (id, patch = {}) => ({ id, event_name: 'page_view', created_at: '2026-10-04T10:00:00.000Z', page_path: '/crypto/today', anonymous_id: visitor, session_id: session, metadata: { capture_context: checkedCapture, event_version: 2, tracking_mode: 'consented', traffic_type: 'human', content_group: 'crypto', attribution }, ...patch });
 const conversion = (id, event, entityKey, patch = {}) => ({ id, event_name: event, created_at: createdAt, page_path: '/today', metadata: {
   event_version: 2, tracking_mode: 'consented', traffic_type: 'human', attribution, confirmed: true, entity_key: entityKey,
   conversion_kind: event === 'email_subscribed' ? 'new_subscriber' : event === 'account_created' ? 'new_account' : 'first_paid_upgrade',
@@ -47,7 +54,10 @@ const conversion = (id, event, entityKey, patch = {}) => ({ id, event_name: even
 const subscriber = { entityKey: subscriberKey, createdAt, status: 'active', stocksOptedIn: true, cryptoOptedIn: true };
 const account = { entityKey: accountKey, createdAt };
 const base = () => ({ events: [view('view-1'), view('view-2'), conversion('sub-1', 'email_subscribed', subscriberKey), conversion('account-1', 'account_created', accountKey), conversion('paid-1', 'paid_conversion', paidKey)], subscribers: [subscriber], accounts: [account] });
-const report = (input = base(), filters = {}) => build(input, filters, NOW);
+const report = (input = base(), filters = {}) => build({ ...input, events: input.events.map(event => event.metadata?.event_version === 2 ? { ...event, metadata: { capture_context: checkedCapture, ...event.metadata } } : event) }, filters, NOW);
+const checkedAggregate = fields => ({ ...fields, metadata: { capture_context: checkedCapture, event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: {
+  source: attributionContext.exports.normalizeSource(fields.utm_source || (fields.referrer ? new URL(fields.referrer).hostname : 'unknown')), medium: fields.utm_medium || 'unknown', campaign: fields.utm_campaign || '(none)', landingPath: fields.page_path || '/',
+} } });
 let passed = 0;
 function check(name, fn) { fn(); passed++; }
 
@@ -75,14 +85,14 @@ check('distinct visitors and sessions do not count repeated views', () => {
 check('replayed conversions and unsafe legacy successes never inflate entities', () => {
   const input = base();
   input.events.push(input.events[0], input.events[2], { ...input.events[2], id: 'repeated-entity' }, { id: 'client-success', event_name: 'email_signup_success', created_at: createdAt }, { id: 'legacy-server-success', event_name: 'email_subscribed', created_at: createdAt, metadata: {} });
-  input.subscribers.push(subscriber, { entityKey: key('subscriber', 'historical@example.net'), createdAt });
+  input.subscribers.push(subscriber, { entityKey: key('subscriber', 'historical@reader.net'), createdAt });
   const value = report(input);
   assert.equal(value.overview.newSubscribers, 2);
   assert.equal(value.coverage.knownSubscriberSources, 1);
   assert.equal(value.coverage.unknownSubscriberSources, 1);
   assert.equal(value.overview.subscriberRate, 100);
 });
-check('recorded historical sources retained while missing sources stay Unknown', () => {
+check('historical visits are quarantined rather than counted as organic traffic', () => {
   const value = report({ subscribers: [], accounts: [], events: [
     { id: 'legacy-known', event_name: 'page_view', created_at: createdAt, utm_source: 'newsletter', page_path: '/' },
     { id: 'legacy-unknown', event_name: 'page_view', created_at: createdAt, page_path: '/' },
@@ -91,7 +101,9 @@ check('recorded historical sources retained while missing sources stay Unknown',
   assert.equal(value.overview.visitors, 0);
   assert.equal(value.overview.sessions, 0);
   assert.equal(value.overview.subscriberRate, null);
-  assert.deepEqual(Array.from(value.options.sources), ['newsletter', 'reddit', 'unknown']);
+  assert.deepEqual(Array.from(value.options.sources), []);
+  assert.equal(value.overview.pageViews, 0);
+  assert.equal(value.coverage.unverifiedLegacyPageViews, 3);
   assert.equal(value.coverage.legacyPageViews, 3);
 });
 check('first/latest and source/campaign filters use the same occurrence range', () => {
@@ -103,7 +115,7 @@ check('first/latest and source/campaign filters use the same occurrence range', 
   assert.equal(firstReport.filters.touch, 'first');
 });
 check('canonical source aliases group historical recorded domains with new sources', () => {
-  const value = report({ events: ['twitter', 't.co', 'x.com', 'google.co.uk', 'google.com'].map((utm_source, i) => ({ id: `alias-${i}`, event_name: 'page_view', created_at: createdAt, utm_source, page_path: '/' })), subscribers: [], accounts: [] });
+  const value = report({ events: ['twitter', 't.co', 'x.com', 'google.co.uk', 'google.com'].map((utm_source, i) => checkedAggregate({ id: `alias-${i}`, event_name: 'page_view', created_at: createdAt, utm_source, page_path: '/' })), subscribers: [], accounts: [] });
   assert.equal(value.sourceRows.find(row => row.source === 'x').pageViews, 3);
   assert.equal(value.sourceRows.find(row => row.source === 'google').pageViews, 2);
 });
@@ -115,7 +127,7 @@ check('Reddit app and web views group together without replacing recorded media 
     { utm_source: null, referrer: 'android-app://com.reddit.frontpage/' },
   ].map((fields, index) => ({ id: `reddit-${index}`, event_name: 'page_view', created_at: createdAt, page_path: '/crypto', utm_medium: 'referral', utm_campaign: 'historic_weekend_post', ...fields }));
   rows.push({ id: 'reddit-paid', event_name: 'page_view', created_at: createdAt, page_path: '/crypto', utm_source: 'com.reddit.frontpage', utm_medium: 'cpc', utm_campaign: 'historic_paid_post' });
-  const value = report({ events: rows, subscribers: [], accounts: [] }, { source: 'reddit' });
+  const value = report({ events: rows.map(checkedAggregate), subscribers: [], accounts: [] }, { source: 'reddit' });
   assert.equal(value.overview.pageViews, 5);
   assert.equal(value.sourceRows.find(row => row.source === 'reddit' && row.medium === 'referral').pageViews, 4);
   assert.equal(value.sourceRows.find(row => row.source === 'reddit' && row.medium === 'cpc').pageViews, 1);
@@ -124,7 +136,7 @@ check('Reddit app and web views group together without replacing recorded media 
 });
 check('known search and Gmail app sources normalize without recasting explicit historical referral media', () => {
   const aliases = [['google.co.uk', 'google'], ['www.google.com', 'google'], ['cn.bing.com', 'bing'], ['duckduckgo.com', 'duckduckgo'], ['r.search.yahoo.com', 'yahoo'], ['search.yahoo.co.jp', 'yahoo'], ['com.google.android.gm', 'gmail']];
-  const value = report({ events: aliases.map(([domain], index) => ({ id: `search-${index}`, event_name: 'page_view', created_at: createdAt, referrer: `https://${domain}/`, utm_medium: 'referral', utm_campaign: 'historical_search_link', page_path: '/' })), subscribers: [], accounts: [] });
+  const value = report({ events: aliases.map(([domain], index) => checkedAggregate({ id: `search-${index}`, event_name: 'page_view', created_at: createdAt, referrer: `https://${domain}/`, utm_medium: 'referral', utm_campaign: 'historical_search_link', page_path: '/' })), subscribers: [], accounts: [] });
   for (const platform of ['google', 'bing', 'duckduckgo', 'yahoo', 'gmail']) {
     const row = value.sourceRows.find(item => item.source === platform);
     assert.ok(row); assert.equal(row.medium, 'referral');
@@ -134,14 +146,14 @@ check('known search and Gmail app sources normalize without recasting explicit h
 });
 check('Unknown source is coverage, never a zero-percent source benchmark', () => {
   const value = report({ events: [{ id: 'legacy-identified-unknown', event_name: 'page_view', created_at: createdAt, anonymous_id: visitor, session_id: session, page_path: '/' }], subscribers: [{ entityKey: subscriberKey, createdAt }], accounts: [] });
-  assert.equal(value.overview.visitors, 1);
+  assert.equal(value.overview.visitors, 0);
   assert.equal(value.overview.subscriberRate, null);
   assert.equal(value.sourceRows[0].source, 'unknown');
   assert.equal(value.sourceRows[0].subscriberRate, null);
 });
 check('conversion-only identities do not invent visits or funnel visitors', () => {
   const input = base(); input.events = input.events.filter(event => event.event_name !== 'page_view');
-  input.subscribers.push({ entityKey: key('subscriber', 'unknown@example.net'), createdAt });
+  input.subscribers.push({ entityKey: key('subscriber', 'unknown@reader.net'), createdAt });
   const value = report(input);
   assert.equal(value.overview.newSubscribers, 2);
   assert.equal(value.overview.visitors, 0);
@@ -162,9 +174,9 @@ check('visitor conversion rates require the same filtered observed visitor', () 
 });
 check('linked outcome counts distinguish multiple entities from one visitor and explicit unlinked totals', () => {
   const input = base();
-  const secondSubscriber = key('subscriber', 'second-real-person@example.net');
+  const secondSubscriber = key('subscriber', 'second-real-person@reader.net');
   const secondAccount = key('account', 'second-auth-id');
-  input.subscribers.push({ entityKey: secondSubscriber, createdAt }, { entityKey: key('subscriber', 'unknown-person@example.net'), createdAt });
+  input.subscribers.push({ entityKey: secondSubscriber, createdAt }, { entityKey: key('subscriber', 'unknown-person@reader.net'), createdAt });
   input.accounts.push({ entityKey: secondAccount, createdAt }, { entityKey: key('account', 'unknown-auth-id'), createdAt });
   input.events.push(conversion('second-sub', 'email_subscribed', secondSubscriber), conversion('second-account', 'account_created', secondAccount), conversion('second-paid', 'paid_conversion', key('paid', 'second-auth-id')));
   const unlinkedPaid = conversion('unlinked-paid', 'paid_conversion', key('paid', 'unobserved-auth-id'));
@@ -206,7 +218,7 @@ check('paid upgrades need verified first live payment proof, not active flags', 
 });
 check('bots/private views/diagnostics/crypto ledger remain outside totals', () => {
   const input = base();
-  input.events.push(view('bot', { metadata: { traffic_type: 'bot' } }), view('qa', { utm_source: 'qa-smoke' }), view('private', { page_path: '/analytics?all=true' }), view('local', { referrer: 'http://localhost:3000/' }), { id: 'ledger', event_name: 'crypto_email_delivery', created_at: createdAt, metadata: { secret_provider_payload: 'never-read' } }, { id: 'reset', event_name: 'auth_reset_requested', created_at: createdAt });
+  input.events.push(view('bot', { anonymous_id: visitor2, session_id: nav, metadata: { traffic_type: 'bot' } }), view('qa', { anonymous_id: visitor2, session_id: nav, utm_source: 'qa-smoke' }), view('private', { anonymous_id: visitor2, session_id: nav, page_path: '/analytics?all=true' }), view('local', { anonymous_id: visitor2, session_id: nav, referrer: 'http://localhost:3000/' }), { id: 'ledger', event_name: 'crypto_email_delivery', created_at: createdAt, metadata: { secret_provider_payload: 'never-read' } }, { id: 'reset', event_name: 'auth_reset_requested', created_at: createdAt });
   assert.equal(report(input).overview.pageViews, 2);
   assert.equal(report(input).coverage.excludedRows, 6);
   assert.equal(names.includes('crypto_email_delivery'), false);
@@ -220,7 +232,7 @@ check('actual private alerts alias cannot overwrite acquisition while public cry
   assert.equal(value.coverage.excludedRows, 1);
 });
 check('referral-only rows excluded; real later-unsubscribed history retained', () => {
-  const input = base(); input.subscribers.push({ entityKey: key('subscriber', 'pro-referral@example.net'), createdAt, status: 'active', stocksOptedIn: false, cryptoOptedIn: false }, { entityKey: key('subscriber', 'unsubscribed@example.net'), createdAt, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false });
+  const input = base(); input.subscribers.push({ entityKey: key('subscriber', 'pro-referral@reader.net'), createdAt, status: 'active', stocksOptedIn: false, cryptoOptedIn: false }, { entityKey: key('subscriber', 'unsubscribed@reader.net'), createdAt, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false });
   assert.equal(report(input).overview.newSubscribers, 2);
   assert.equal(report(input).coverage.excludedReferralOnlyRows, 1);
 });
@@ -274,14 +286,14 @@ check('post-capture inactive zero-interest records need initial opt-in proof whi
   assert.equal(reportCaptureAt, captureAt, 'Read policy must use the same cutoff as confirmed conversion capture.');
   const beforeCapture = new Date(Date.parse(captureAt) - 1).toISOString();
   const afterCapture = new Date(Date.parse(captureAt) + 60_000).toISOString();
-  const churnKey = key('subscriber', 'post-capture-churn@example.net');
+  const churnKey = key('subscriber', 'post-capture-churn@reader.net');
   const value = report({
     events: [view('post-capture-visit'), conversion('post-capture-eligible-signup', 'email_subscribed', churnKey, { created_at: afterCapture })],
     accounts: [],
     subscribers: [
-      { entityKey: key('subscriber', 'legacy-opt-out@example.net'), createdAt: beforeCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
-      { entityKey: key('subscriber', 'all-alerts-off@example.net'), createdAt: captureAt, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
-      { entityKey: key('subscriber', 'referral-later-disabled@example.net'), createdAt: afterCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+      { entityKey: key('subscriber', 'legacy-opt-out@reader.net'), createdAt: beforeCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+      { entityKey: key('subscriber', 'all-alerts-off@reader.net'), createdAt: captureAt, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
+      { entityKey: key('subscriber', 'referral-later-disabled@reader.net'), createdAt: afterCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
       { entityKey: churnKey, createdAt: afterCapture, status: 'inactive', stocksOptedIn: false, cryptoOptedIn: false },
     ],
   });
@@ -320,10 +332,10 @@ check('range distinct visitor totals are not summed daily counts', () => {
   assert.equal(value.dailySeries.length, 30);
 });
 check('safe aggregate serialization and spreadsheet formula escaping', () => {
-  const input = base(); input.events[0] = view('hostile', { metadata: { event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: { ...last, source: 'private@example.net', campaign: '=SUM(1,2)', landingPath: '/?token_hash=secret' } } });
+  const input = base(); input.events[0] = view('hostile', { metadata: { event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: { ...last, source: 'private@reader.net', campaign: '=SUM(1,2)', landingPath: '/?token_hash=secret' } } });
   const value = report(input);
   const serialized = JSON.stringify(value);
-  for (const privateValue of ['real-person@example.net', subscriberKey, visitor, 'token_hash', 'private@example.net']) assert.equal(serialized.includes(privateValue), false);
+  for (const privateValue of ['real-person@reader.net', subscriberKey, visitor, 'token_hash', 'private@reader.net']) assert.equal(serialized.includes(privateValue), false);
   assert.equal(csv(value, 'campaigns').includes("' =SUM"), false);
   assert.match(csv(value, 'campaigns').toLowerCase(), /'=sum\(1,2\)/);
   assert.equal(csv(value).includes('entity_key'), false);
@@ -337,16 +349,51 @@ check('incomplete/unavailable datasets carry visible coverage instead of silent 
   assert.ok(value.coverage.warnings.includes('Subscriber history unavailable.'));
 });
 
+
+check('old v2 human labels do not prove browser automation or internal-traffic checks', () => {
+  const old = view('old-v2'); delete old.metadata.capture_context;
+  const value = build({ events: [old], subscribers: [], accounts: [] }, {}, NOW);
+  assert.equal(value.overview.pageViews, 0);
+  assert.equal(value.coverage.unverifiedLegacyPageViews, 1);
+  assert.equal(csv(value).includes('google'), false);
+});
+check('test conversion entities cannot reappear through canonical Unknown-source fallbacks', () => {
+  const input = base();
+  input.events[2] = { ...input.events[2], metadata: { ...input.events[2].metadata, traffic_type: 'test' } };
+  const value = report(input);
+  assert.equal(value.overview.newSubscribers, 0);
+  assert.equal(value.coverage.excludedTestSubscribers, 1);
+  assert.equal(value.overview.visitors, 0, 'The linked test browser is also quarantined.');
+});
+check('test campaign tags exclude canonical conversion fallbacks and linked visits', () => {
+  const input = base(); input.events[2].utm_source = 'qa-suite';
+  const value = report(input);
+  assert.equal(value.overview.newSubscribers, 0);
+  assert.equal(value.overview.visitors, 0);
+});
+check('historical internal identity evidence excludes later linked production visits', () => {
+  const input = base(); input.events = [view('later')]; input.subscribers = []; input.accounts = [];
+  input.identityEvents = [{ anonymous_id: visitor, subscriber_email: 'finlayp32+qa@gmail.com', page_path: '/', metadata: {} }];
+  const value = report(input);
+  assert.equal(value.overview.pageViews, 0);
+  assert.equal(value.coverage.excludedInternalRows, 1);
+});
+check('owner and reserved addresses excluded without guessing ordinary customer names', () => {
+  for (const email of ['finphillips21+testing@gmail.com','finlayp32@gmail.com','someone@example.net']) assert.equal(policyContext.exports.isExcludedAnalyticsEmail(email), true);
+  assert.equal(policyContext.exports.isExcludedAnalyticsEmail('test.trader@gmail.com'), false);
+});
+
 function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null }) {
   const reads = [];
   return { reads, from(table) {
-    const operation = { table, fields: null, count: null, names: null, start: null, end: null, cursor: null, column: null, take: 500 };
-    const query = { select(fields, options = {}) { operation.fields = fields; operation.count = options.count; return query; }, in(column, values) { assert.equal(column, 'event_name'); operation.names = values; return query; }, gte(column, value) { assert.equal(column, 'created_at'); operation.start = value; return query; }, lt(column, value) { assert.equal(column, 'created_at'); operation.end = value; return query; }, order(column) { operation.column = column; return query; }, limit(take) { operation.take = take; return query; }, gt(column, value) { assert.equal(column, operation.column); operation.cursor = value; return query; }, async abortSignal(signal) {
+    const operation = { table, fields: null, count: null, names: null, start: null, end: null, cursor: null, column: null, take: 500, exclusionFilter: null };
+    const query = { or(filter) { operation.exclusionFilter = filter; return query; }, select(fields, options = {}) { operation.fields = fields; operation.count = options.count; return query; }, in(column, values) { assert.equal(column, 'event_name'); operation.names = values; return query; }, gte(column, value) { assert.equal(column, 'created_at'); operation.start = value; return query; }, lt(column, value) { assert.equal(column, 'created_at'); operation.end = value; return query; }, order(column) { operation.column = column; return query; }, limit(take) { operation.take = take; return query; }, gt(column, value) { assert.equal(column, operation.column); operation.cursor = value; return query; }, async abortSignal(signal) {
       assert.equal(signal instanceof AbortSignal, true); reads.push({ ...operation });
       if (table === failTable) return { data: null, count: null, error: { message: 'private raw error must not escape' } };
       assert.ok(['marketing_event_log', 'free_subscribers'].includes(table));
       let data = table === 'marketing_event_log' ? events.filter(event => operation.names.includes(event.event_name)) : subscribers;
-      data = data.filter(row => row.created_at >= operation.start && row.created_at < operation.end).sort((a,b) => a[operation.column].localeCompare(b[operation.column]));
+      if (operation.exclusionFilter) data = data.filter(row => row.subscriber_email || row.event_name === 'analytics_excluded' || ['internal','test','bot'].includes(row.metadata?.traffic_type) || /localhost|vercel\.app/.test(row.referrer || '') || /^\/(analytics|test)/.test(row.page_path || ''));
+      data = data.filter(row => (!operation.start || row.created_at >= operation.start) && (!operation.end || row.created_at < operation.end)).sort((a,b) => a[operation.column].localeCompare(b[operation.column]));
       const count = data.length;
       if (operation.cursor) data = data.filter(row => row[operation.column] > operation.cursor);
       return { data: data.slice(0, operation.take), count: operation.count === 'exact' ? count : null, error: null };
@@ -366,7 +413,7 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
   const empty = await load({ preset: '7d' }, undefined, NOW);
   assert.equal(empty.coverage.complete, true);
   assert.equal(factoryCalls, 1);
-  assert.deepEqual(defaultAdmin.reads.map(read => read.table).sort(), ['auth', 'free_subscribers', 'marketing_event_log']);
+  assert.deepEqual(defaultAdmin.reads.map(read => read.table).sort(), ['auth', 'free_subscribers', 'marketing_event_log', 'marketing_event_log']);
   await load({ preset: '7d' }, fakeAdmin({}), NOW);
   assert.equal(factoryCalls, 1, 'An explicit isolated client must not create another client or change legacy defaults.');
   isolatedAdminFactory = null;
@@ -375,20 +422,21 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
     view('historical-google', { metadata: {}, utm_source: 'google', utm_medium: 'referral' }),
     view('historical-reddit', { anonymous_id: visitor2, metadata: {}, utm_source: 'reddit', utm_medium: 'referral' }),
   ];
-  const historicalSubscribers = Array.from({ length: 6 }, (_, index) => ({ email: `historical-${index}@example.net`, created_at: createdAt, status: 'active', stocks_opted_in: true, crypto_opted_in: false }));
+  const historicalSubscribers = Array.from({ length: 6 }, (_, index) => ({ email: `historical-${index}@reader.net`, created_at: createdAt, status: 'active', stocks_opted_in: true, crypto_opted_in: false }));
   const historical = await load({ preset: '7d' }, fakeAdmin({ events: historicalViews, subscribers: historicalSubscribers }), NOW);
   const serializedHistorical = JSON.parse(JSON.stringify(historical));
   assert.equal(serializedHistorical.overview.newSubscribers, 6);
   assert.equal(serializedHistorical.coverage.knownSubscriberSources, 0);
   assert.equal(serializedHistorical.coverage.unknownSubscriberSources, 6);
-  assert.equal(serializedHistorical.overview.visitors, 2);
+  assert.equal(serializedHistorical.overview.visitors, 0);
+  assert.equal(serializedHistorical.coverage.legacyPageViews, 2);
   assert.equal(serializedHistorical.overview.subscriberRate, null);
   assert.ok(serializedHistorical.funnel.every(row => row.rate === null));
   for (const rows of [serializedHistorical.sourceRows, serializedHistorical.campaignRows, serializedHistorical.landingRows, serializedHistorical.contentRows, serializedHistorical.dailySeries]) {
     assert.ok(rows.every(row => row.subscriberRate === null));
   }
   assert.equal(serializedHistorical.sourceRows.find(row => row.source === 'unknown').newSubscribers, 6);
-  assert.equal(serializedHistorical.sourceRows.find(row => row.source === 'google').newSubscribers, 0);
+  assert.equal(serializedHistorical.sourceRows.some(row => row.source === 'google'), false);
   for (const view of ['sources', 'campaigns', 'landings', 'content']) {
     const lines = csv(historical, view).split('\r\n');
     assert.match(lines[0], /linked_visitor_signup_rate_pct/);
@@ -401,12 +449,12 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
   assert.equal(beforeFirstSignup.coverage.knownSubscriberSources, 0);
   assert.equal(beforeFirstSignup.overview.subscriberRate, null);
   passed++;
-  const events = Array.from({ length: 501 }, (_, i) => view(`event-${String(i).padStart(5,'0')}`, { anonymous_id: null, session_id: null, metadata: { event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: last } }));
+  const events = Array.from({ length: 501 }, (_, i) => view(`event-${String(i).padStart(5,'0')}`, { anonymous_id: null, session_id: null, metadata: { capture_context: checkedCapture, event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: last } }));
   events.push({ id: 'private-ledger', event_name: 'crypto_publication', created_at: createdAt, metadata: { huge_private_body: 'must never be loaded' } });
-  const subscribers = Array.from({ length: 501 }, (_, i) => ({ email: `person-${String(i).padStart(5,'0')}@example.net`, created_at: createdAt, status: 'active', stocks_opted_in: true, crypto_opted_in: false }));
+  const subscribers = Array.from({ length: 501 }, (_, i) => ({ email: `person-${String(i).padStart(5,'0')}@reader.net`, created_at: createdAt, status: 'active', stocks_opted_in: true, crypto_opted_in: false }));
   subscribers.push({ email: 'codex-qa@example.invalid', created_at: createdAt, status: 'active', stocks_opted_in: true });
-  const users = Array.from({ length: 501 }, (_, i) => ({ id: `auth-${i}`, email: `account-${i}@example.net`, created_at: createdAt, email_confirmed_at: createdAt }));
-  users.push({ id: 'unconfirmed-attempt', email: 'not-yet-confirmed@example.net', created_at: createdAt });
+  const users = Array.from({ length: 501 }, (_, i) => ({ id: `auth-${i}`, email: `account-${i}@reader.net`, created_at: createdAt, email_confirmed_at: createdAt }));
+  users.push({ id: 'unconfirmed-attempt', email: 'not-yet-confirmed@reader.net', created_at: createdAt });
   const admin = fakeAdmin({ events, subscribers, users });
   const value = await load({ preset: '7d' }, admin, NOW);
   assert.equal(value.overview.pageViews, 501);
@@ -414,10 +462,10 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
   assert.equal(value.overview.newAccounts, 501);
   assert.equal(value.coverage.complete, true);
   assert.equal(value.overview.visitors, 0);
-  const eventReads = admin.reads.filter(read => read.table === 'marketing_event_log');
+  const eventReads = admin.reads.filter(read => read.table === 'marketing_event_log' && !read.exclusionFilter);
   assert.equal(eventReads.length, 2);
   assert.ok(eventReads[1].cursor);
-  assert.equal(eventReads[0].fields.includes('subscriber_email'), false);
+  assert.equal(eventReads[0].fields.includes('subscriber_email'), true, 'Private identity evidence is filtered server-side, never serialized.');
   assert.deepEqual(Array.from(eventReads[0].names), Array.from(names));
   assert.equal(JSON.stringify(value).includes('@example'), false);
   passed++;
@@ -427,7 +475,7 @@ function fakeAdmin({ events = [], subscribers = [], users = [], failTable = null
   assert.equal(JSON.stringify(failed).includes('private raw error'), false);
   assert.match(csv(failed), /subscribers_available/);
   passed++;
-  const cappedEvents = Array.from({ length: 25001 }, (_, i) => view(`cap-${String(i).padStart(6,'0')}`, { anonymous_id: null, session_id: null, metadata: { event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: last } }));
+  const cappedEvents = Array.from({ length: 25001 }, (_, i) => view(`cap-${String(i).padStart(6,'0')}`, { anonymous_id: null, session_id: null, metadata: { capture_context: checkedCapture, event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', aggregate_touch: last } }));
   const capped = await load({}, fakeAdmin({ events: cappedEvents }), NOW);
   assert.equal(capped.overview.pageViews, 25000);
   assert.equal(capped.coverage.complete, false);

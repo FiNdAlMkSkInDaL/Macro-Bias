@@ -8,6 +8,8 @@ import {
   attributionMetadata,
   ATTRIBUTION_MAX_AGE_MS,
   isKnownTestTraffic,
+  cookieValue,
+  INTERNAL_ANALYTICS_COOKIE,
   normalizeAttribution,
   normalizePagePath,
   parseAcquisitionCookie,
@@ -15,6 +17,7 @@ import {
 } from '@/lib/analytics/attribution';
 import { logMarketingEvent } from '@/lib/analytics/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { isExcludedAnalyticsEmail } from '@/lib/analytics/traffic-policy';
 
 // This version only attributes registrations created after capture was added.
 // Existing accounts remain in authoritative historical totals with Unknown source.
@@ -51,7 +54,10 @@ export function requestAcquisition(headers: Headers) {
 }
 
 function requestIsTestTraffic(headers: Headers) {
-  return isKnownTestTraffic((headers.get('host') ?? '').split(':')[0], headers.get('user-agent') ?? '');
+  return cookieValue(headers.get('cookie'), INTERNAL_ANALYTICS_COOKIE) === '1' ||
+    isKnownTestTraffic(headers.get('host') ?? '', headers.get('user-agent') ?? '') ||
+    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' ||
+    Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production');
 }
 
 function attributionExplicitlyDenied(headers: Headers) {
@@ -110,6 +116,7 @@ async function recordConversion(input: {
   createdAt?: string;
   metadata: Record<string, unknown>;
   testTraffic?: boolean;
+  internalTraffic?: boolean;
 }, budget: AcquisitionBudget) {
   const pagePath = normalizePagePath(input.pagePath) ?? '/';
   const attribution = input.attribution;
@@ -129,10 +136,21 @@ async function recordConversion(input: {
     metadata: {
       ...attributionMetadata(attribution, pagePath),
       ...input.metadata,
-      traffic_type: input.testTraffic ? 'test' : 'human',
+      traffic_type: input.internalTraffic ? 'internal' : input.testTraffic ? 'test' : 'human',
       confirmed: true,
       entity_key: input.entityKey,
     },
+  });
+}
+
+async function recordExcludedIdentity(entityKey: string, attribution: AcquisitionAttribution | null, budget: AcquisitionBudget) {
+  if (!attribution) return;
+  await logMarketingEvent({
+    id: conversionEventId('analytics_excluded', `${entityKey}:${attribution.visitorId}`),
+    timeoutMs: remainingTimeout(budget), deadlineAt: budget.deadlineAt,
+    eventName: 'analytics_excluded', pagePath: attribution.latestTouch.landingPath,
+    anonymousId: attribution.visitorId, sessionId: attribution.sessionId,
+    metadata: { event_version: 2, traffic_type: 'internal', tracking_mode: 'consented', entity_key: entityKey },
   });
 }
 
@@ -149,6 +167,8 @@ export async function recordSubscriberAcquisition(input: {
   const budget = acquisitionBudget(10_000);
   const entityKey = conversionEntityKey('subscriber', input.email);
   const attribution = requestAcquisition(input.headers);
+  const excludedIdentity = isExcludedAnalyticsEmail(input.email);
+  if (excludedIdentity) await recordExcludedIdentity(entityKey, attribution, budget);
   if ((input.newSubscriber || input.reactivated) && (input.stocksOptedIn || input.cryptoOptedIn)) {
     await recordConversion({
       eventName: input.newSubscriber ? 'email_subscribed' : 'subscriber_reactivated',
@@ -164,12 +184,13 @@ export async function recordSubscriberAcquisition(input: {
         content_group: input.stocksOptedIn && input.cryptoOptedIn ? 'both' : input.cryptoOptedIn ? 'crypto' : 'stocks',
       },
       testTraffic: requestIsTestTraffic(input.headers),
+      internalTraffic: excludedIdentity,
     }, budget);
   }
   // Public preference updates cannot prove ownership of an existing email.
   // Verified account flows bind their own email separately; only a genuinely
   // new eligible newsletter insert establishes this initial subscriber bridge.
-  if (input.newSubscriber && (input.stocksOptedIn || input.cryptoOptedIn)) {
+  if (!excludedIdentity && input.newSubscriber && (input.stocksOptedIn || input.cryptoOptedIn)) {
     await bindIdentity(entityKey, attribution, budget);
   }
 }
@@ -190,7 +211,9 @@ export async function confirmAccountAcquisition(input: {
   const budget = acquisitionBudget(10_000);
   const { user, headers, flowType } = input;
   if (flowType === 'recovery' || !user.email || !user.email_confirmed_at) return;
+  const excludedIdentity = isExcludedAnalyticsEmail(user.email);
   const current = requestAcquisition(headers);
+  if (excludedIdentity) await recordExcludedIdentity(conversionEntityKey('account', user.id), current, budget);
   const original = attributionExplicitlyDenied(headers) ? null : signupAcquisition(user);
   const createdAt = Date.parse(user.created_at);
   const isNewVersionAccount = Number.isFinite(createdAt)
@@ -206,16 +229,18 @@ export async function confirmAccountAcquisition(input: {
       createdAt: user.created_at,
       metadata: { conversion_kind: 'new_account', confirmation: 'verified_auth_user', account_created_at: user.created_at },
       testTraffic: requestIsTestTraffic(headers),
+      internalTraffic: excludedIdentity,
     }, budget);
   }
   // Account/email linking occurs only with present consent, never on reset flows.
-  if (current) {
+  if (current && !excludedIdentity) {
     await bindIdentity(conversionEntityKey('account', user.id), current, budget);
     await bindIdentity(conversionEntityKey('subscriber', user.email), current, budget);
   }
 }
 
 export async function checkoutAcquisition(user: User, headers: Headers) {
+  if (isExcludedAnalyticsEmail(user.email)) return null;
   const budget = acquisitionBudget(5_000);
   const current = requestAcquisition(headers);
   if (!current) return null;
@@ -294,6 +319,7 @@ export async function recordPaidAcquisition(input: {
   userId: string;
   customerId: string | null;
   attribution: AcquisitionAttribution | null;
+  customerEmail?: string | null;
 }) {
   const budget = acquisitionBudget(20_000);
   if (!input.customerId || !(await isFirstPaidInvoice(input.stripe, input.invoice, input.customerId, budget))) return;
@@ -303,6 +329,7 @@ export async function recordPaidAcquisition(input: {
     attribution: input.attribution,
     pagePath: input.attribution?.latestTouch.landingPath ?? '/pricing',
     createdAt: new Date(input.invoice.status_transitions.paid_at! * 1000).toISOString(),
+    internalTraffic: isExcludedAnalyticsEmail(input.customerEmail ?? input.invoice.customer_email),
     metadata: {
       conversion_kind: 'first_paid_upgrade', confirmation: 'stripe_invoice_paid', first_paid_verified: true,
       stripe_invoice_id: input.invoice.id, amount_minor: input.invoice.amount_paid, currency: input.invoice.currency,

@@ -36,6 +36,7 @@ function harness(options = {}) {
     const state = { filters: [], single: false, action: 'select', columns: null, config: {}, payload: null, limit: Infinity };
     const query = {
       select(columns) { state.columns = columns; return query; },
+      or() { state.filters.push(row => row.subscriber_email || row.event_name === 'analytics_excluded' || ['internal','test','bot'].includes(row.metadata?.traffic_type) || /localhost|vercel\.app/.test(row.referrer || '') || /^\/(analytics|test)/.test(row.page_path || '')); return query; },
       in(key, values) { state.filters.push(row => values.includes(row[key])); effects.queryReads.push({ table, allowlist: values }); return query; },
       eq(key, value) { state.filters.push(row => row[key] === value); return query; },
       gte(key, value) { state.filters.push(row => row[key] >= value); return query; },
@@ -95,6 +96,7 @@ function harness(options = {}) {
       module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX,
     } }).outputText;
     const context = vm.createContext({ module, exports: module.exports, Date: Clock, URL, URLSearchParams, Headers, Request, Response,
+      process: { env: { NODE_ENV: 'production', VERCEL_ENV: 'production' } },
       setTimeout, clearTimeout, AbortSignal, console: { warn() {} },
       window: { location: { origin: 'https://www.macro-bias.com', assign() {} } },
       fetch: async (...args) => { effects.fetches.push(args); return Response.json({ ok: true }); },
@@ -205,11 +207,15 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     const json = await (await h.json.GET(h.request())).text(), csv = await (await h.csv.GET(h.request())).text();
     for (const output of [json, csv]) for (const secret of ['private.customer@gmail.com', 'private.account@gmail.com', 'private-auth-id', 'event-private-id', 'ledger-private-id', 'SECRET_URL_TOKEN', 'SECRET_RAW_METADATA', 'SECRET_DELIVERY_BODY']) assert(!output.includes(secret), `Private value exposed: ${secret}`);
     const eventQueries = h.effects.queryReads.filter(item => item.table === 'marketing_event_log' && item.allowlist);
-    assert(eventQueries.length); for (const query of eventQueries) assert.deepEqual(clone(query.allowlist), ['page_view', 'visitor_identified', 'email_subscribed', 'account_created', 'paid_conversion']);
+    assert(eventQueries.length);
+    const acquisitionNames = ['page_view', 'visitor_identified', 'email_subscribed', 'account_created', 'paid_conversion'];
+    const exclusionNames = [...acquisitionNames, 'email_signup_success', 'acquisition_identity', 'analytics_excluded'];
+    for (const query of eventQueries) assert.deepEqual(clone(query.allowlist), query.allowlist.length === 5 ? acquisitionNames : exclusionNames);
+    assert.ok(eventQueries.every(query => !query.allowlist.includes('crypto_email_delivery')), 'Private delivery bodies never enter exclusion reads.');
     assert.equal(h.effects.writes.length, 0);
   });
   await check('CSV escapes spreadsheet formulas while retaining aggregate-only output', async () => {
-    const h = harness({ user: user('finlayp32@gmail.com'), events: [{ id: 'formula', event_name: 'page_view', created_at: '2026-10-04T20:00:00Z', page_path: '/', utm_campaign: '=SUM(1+1)' }] });
+    const h = harness({ user: user('finlayp32@gmail.com'), events: [{ id: 'formula', event_name: 'page_view', created_at: '2026-10-04T20:00:00Z', page_path: '/', utm_campaign: '=SUM(1+1)', metadata: { event_version: 2, traffic_type: 'human', tracking_mode: 'aggregate', capture_context: { version: 1, environment: 'production', collector: 'public_api', automation_checked: true }, aggregate_touch: { source: 'reddit', medium: 'social', campaign: '=SUM(1+1)', landingPath: '/' } } }] });
     const response = await h.csv.GET(h.request('?view=campaigns'));
     assert.equal(response.status, 200); const csv = await response.text(); assert(csv.includes("'=SUM(1+1)")); assert(!csv.includes('subscriber_email'));
   });

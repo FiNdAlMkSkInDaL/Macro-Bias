@@ -3,10 +3,13 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 const source = fs.readFileSync('src/lib/analytics/admin-access.ts','utf8');
+const policyContext={exports:{},Set,Map,URL};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/analytics/traffic-policy.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,policyContext);
 let user = null, authError = null;
 const context = {exports:{},Set,require(name){
  if(name==='server-only')return{};
  if(name==='react')return{cache:fn=>fn};
+ if(name==='@/lib/analytics/traffic-policy')return policyContext.exports;
  if(name==='@/lib/supabase/server')return{createSupabaseServerClient:async()=>({auth:{getUser:async()=>({data:{user},error:authError})}})};
  throw new Error('Unexpected import');
 }};

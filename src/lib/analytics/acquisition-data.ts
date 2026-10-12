@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeSource } from "@/lib/analytics/attribution";
+import { buildExcludedAnalyticsIdentities, getAnalyticsEventExclusionReason, hasEligibleAnalyticsCapture, isExcludedAnalyticsEmail, type AnalyticsTrafficEvent } from "@/lib/analytics/traffic-policy";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Keep private delivery claims, reset rate limits, email diagnostics and paper
@@ -58,6 +59,7 @@ export type AcquisitionEventRow = {
   created_at: string;
   anonymous_id?: string | null;
   session_id?: string | null;
+  subscriber_email?: string | null;
   page_path?: string | null;
   referrer?: string | null;
   utm_source?: string | null;
@@ -85,6 +87,10 @@ export type AcquisitionDatasetCoverage = {
   error?: string;
 };
 export type AcquisitionInput = {
+  identityEvents?: AnalyticsTrafficEvent[];
+  excludedEntityKeys?: string[];
+  excludedTestSubscribers?: number;
+  excludedTestAccounts?: number;
   events: AcquisitionEventRow[];
   subscribers: AcquisitionSubscriber[];
   accounts: AcquisitionAccount[];
@@ -135,6 +141,10 @@ export type AcquisitionReport = {
     unlinkedAccountCount: number;
     unlinkedPaidCount: number;
     legacyPageViews: number;
+    unverifiedLegacyPageViews: number;
+    excludedInternalRows: number;
+    excludedTestSubscribers: number;
+    excludedTestAccounts: number;
     excludedRows: number;
     excludedReferralOnlyRows: number;
     consentIdentifiedVisits: number;
@@ -331,12 +341,26 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   const range = resolveAcquisitionRange(filters, now);
   if (filters.touch && !["first", "latest"].includes(filters.touch)) throw new Error("Choose first or latest acquisition touch.");
   const selectedTouch = filters.touch ?? "latest";
+  const excludedIdentities = buildExcludedAnalyticsIdentities([...(input.identityEvents ?? []), ...input.events]);
+  const excludedEntities = new Set(input.excludedEntityKeys ?? []);
+  for (const email of excludedIdentities.emails) excludedEntities.add(entityKey("subscriber", email));
+  for (const event of [...(input.identityEvents ?? []), ...input.events]) {
+    const key = event.metadata?.entity_key;
+    if (typeof key === "string" && getAnalyticsEventExclusionReason(event, excludedIdentities)) excludedEntities.add(key);
+  }
+  const excludedAudienceEvent = (event: AcquisitionEventRow) => excluded(event) ||
+    Boolean(getAnalyticsEventExclusionReason(event, excludedIdentities)) ||
+    (typeof event.metadata?.entity_key === "string" && excludedEntities.has(event.metadata.entity_key));
   const inRange = (at: string) => at >= range.startInclusive && at < range.endExclusive;
   const seenEventIds = new Set<string>();
   const conversionByEntity = new Map<string, AcquisitionEventRow>();
   const identifiedNavigations = new Map<string, AcquisitionEventRow>();
   const observations: Observation[] = [];
+  let excludedTestSubscribers = input.excludedTestSubscribers ?? 0;
+  let excludedTestAccounts = input.excludedTestAccounts ?? 0;
   let excludedRows = 0;
+  let excludedInternalRows = 0;
+  let unverifiedLegacyPageViews = 0;
   let excludedReferralOnlyRows = 0;
   let subscriberRowsWithoutInitialSnapshot = 0;
   // Consent can arrive after the anonymous initial view. Correlate only that
@@ -345,7 +369,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   for (const event of input.events) {
     const navigationId = event.metadata?.navigation_id;
     const at = timestamp(event.created_at);
-    if (event.event_name !== "visitor_identified" || excluded(event) || !at || !inRange(at)
+    if (event.event_name !== "visitor_identified" || excludedAudienceEvent(event) || !hasEligibleAnalyticsCapture(event) || !at || !inRange(at)
       || typeof navigationId !== "string" || !UUID.test(navigationId)
       || event.metadata?.event_version !== 2 || event.metadata?.tracking_mode !== "consented"
       || event.metadata?.traffic_type !== "human" || !identities(event).visitor) continue;
@@ -354,7 +378,12 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   for (const event of input.events) {
     const at = timestamp(event.created_at);
     if (!at || !inRange(at)) continue;
-    if (excluded(event)) { excludedRows++; continue; }
+    if (excludedAudienceEvent(event)) { excludedRows++; excludedInternalRows++; continue; }
+    if (["page_view", "visitor_identified"].includes(event.event_name) && !hasEligibleAnalyticsCapture(event)) {
+      excludedRows++;
+      if (event.event_name === "page_view") unverifiedLegacyPageViews++;
+      continue;
+    }
     if (seenEventIds.has(event.id)) continue;
     seenEventIds.add(event.id);
     if (!["page_view", "visitor_identified"].includes(event.event_name)) {
@@ -378,6 +407,10 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   const addEntity = (item: AcquisitionSubscriber | AcquisitionAccount, kind: "subscriber" | "account") => {
     const at = timestamp(item.createdAt);
     if (!at || !inRange(at)) return;
+    if (excludedEntities.has(item.entityKey)) {
+      if (kind === "subscriber") excludedTestSubscribers++; else excludedTestAccounts++;
+      return;
+    }
     const event = conversionByEntity.get(item.entityKey);
     const confirmed = event ? conversion(event, selectedTouch) : null;
     // A conversion record may enrich only an actual newly created entity.
@@ -465,9 +498,9 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
     { name: "accounts", rows: input.accounts.length, total: input.accounts.length, available: true, complete: true },
   ];
   const identifiedPageViews = views.filter((item) => item.identified).length;
-  const legacyPageViews = views.filter((item) => item.legacy).length;
+  const legacyPageViews = unverifiedLegacyPageViews;
   const warnings = datasets.filter((item) => !item.complete).map((item) => item.error ?? `${item.name} exceeded the bounded report read; displayed counts are a partial sample.`);
-  if (legacyPageViews) warnings.push("Legacy views show only their recorded source. First/latest touch and 30-minute session timing were not recorded then.");
+  if (legacyPageViews) warnings.push(`${legacyPageViews} unverified historical page views are excluded from traffic totals, charts, source breakdowns and exports. Their browser automation and internal-traffic checks were not recorded; zero filtered visits does not prove zero real historical visitors.`);
   if (excludedReferralOnlyRows) warnings.push("Records with neither newsletter opted in and no confirmed initial signup are excluded if active or created since capture began. A confirmed eligible signup remains counted after later unsubscribe or preference changes.");
   if (subscriberRowsWithoutInitialSnapshot) warnings.push(`${subscriberRowsWithoutInitialSnapshot} subscriber records have no original opt-in snapshot. Historical totals use stored creation dates and current preferences/status; original newsletter eligibility cannot be retrospectively proven and source remains Unknown.`);
   warnings.push("Historical subscriber/account sources remain Unknown when no confirmed attribution was saved. Paid upgrades are verified first payments recorded after this tracking release; older paid conversion history is unavailable.");
@@ -498,7 +531,9 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
       unlinkedSubscriberCount: subscribers.length - linkedSubscriberCount,
       unlinkedAccountCount: accounts.length - linkedAccountCount,
       unlinkedPaidCount: paid.length - linkedPaidCount,
-      legacyPageViews, excludedRows, excludedReferralOnlyRows, paidHistoryAvailable: false,
+      legacyPageViews, unverifiedLegacyPageViews, excludedInternalRows,
+      excludedTestSubscribers, excludedTestAccounts,
+      excludedRows, excludedReferralOnlyRows, paidHistoryAvailable: false,
       consentIdentifiedVisits: filtered.filter((item) => item.kind === "identity").length,
       truncatedDatasets: datasets.filter((item) => item.available && !item.complete && !item.error).map((item) => item.name),
     },
@@ -506,7 +541,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
     options,
     definitions: [
       "All ranges use inclusive UTC calendar dates. Today's totals are still accumulating.",
-      "Views are observed page-view events, not distinct people. Visitors/sessions need an actual identified view or explicit consent marker; conversion records alone never invent visitors. An initial anonymous view can be linked in memory only to consent on the exact navigation within 30 minutes.",
+      "Views include only production captures with server-recorded internal and browser automation checks. Unverified historical views are quarantined, not reclassified as organic. Views are observed page-view events, not distinct people. Visitors/sessions need an actual identified view or explicit consent marker; conversion records alone never invent visitors. An initial anonymous view can be linked in memory only to consent on the exact navigation within 30 minutes.",
       "Visitors are distinct within each group. A visitor can use several sources/content groups, so grouped visitor/session counts are not additive.",
       "First touch is the earliest discovery saved within the 90-day attribution window. Latest touch is the last saved non-direct acquisition; direct returns and internal auth/checkout links do not overwrite it.",
       "Unidentified aggregate views show only the current visit source in either touch view; they have no persistent first/latest history or conversion linkage.",
@@ -520,7 +555,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   };
 }
 
-type ReadResult<T> = { rows: T[]; coverage: AcquisitionDatasetCoverage };
+type ReadResult<T> = { rows: T[]; coverage: AcquisitionDatasetCoverage; excludedCount?: number; excludedEntityKeys?: string[] };
 function remainingReadTime(deadline: number) {
   const remaining = deadline - Date.now();
   if (remaining <= 0) throw new Error("read_budget_exhausted");
@@ -542,7 +577,7 @@ async function readEvents(admin: SupabaseClient, range: AcquisitionRange): Promi
   try {
     while (rows.length < MAX_EVENT_ROWS) {
       let query = admin.from("marketing_event_log")
-        .select("id,event_name,created_at,anonymous_id,session_id,page_path,referrer,utm_source,utm_medium,utm_campaign,metadata", { count: cursor ? undefined : "exact" })
+        .select("id,event_name,created_at,anonymous_id,session_id,subscriber_email,page_path,referrer,utm_source,utm_medium,utm_campaign,metadata", { count: cursor ? undefined : "exact" })
         .in("event_name", [...ACQUISITION_EVENT_NAMES])
         .gte("created_at", range.startInclusive).lt("created_at", range.endExclusive)
         .order("id", { ascending: true }).limit(PAGE_SIZE);
@@ -561,9 +596,11 @@ async function readEvents(admin: SupabaseClient, range: AcquisitionRange): Promi
   }
 }
 function entityKey(kind: "subscriber" | "account", value: string) { return `${kind}:${createHash("sha256").update(value.trim().toLowerCase()).digest("hex")}`; }
-function testEmail(value: string | null | undefined) { return !value || /(?:@example\.(?:invalid|com)$|@test\.(?:com|invalid)$|^(?:codex[-+_]|qa[-+_]|test[-+_]))/i.test(value); }
+function testEmail(value: string | null | undefined) { return !value || isExcludedAnalyticsEmail(value); }
 async function readSubscribers(admin: SupabaseClient, range: AcquisitionRange): Promise<ReadResult<AcquisitionSubscriber>> {
   const rows: AcquisitionSubscriber[] = [];
+  let excludedCount = 0;
+  const excludedEntityKeys: string[] = [];
   const deadline = Date.now() + DATASET_TIMEOUT_MS;
   let scanned = 0;
   let cursor: string | null = null;
@@ -579,17 +616,22 @@ async function readSubscribers(admin: SupabaseClient, range: AcquisitionRange): 
       if (total === null && result.count !== null) total = result.count;
       const page = (result.data ?? []) as { email: string; created_at: string; status: string; stocks_opted_in: boolean; crypto_opted_in: boolean }[];
       scanned += page.length;
-      for (const item of page) if (!testEmail(item.email)) rows.push({ entityKey: entityKey("subscriber", item.email), createdAt: item.created_at, status: item.status, stocksOptedIn: item.stocks_opted_in, cryptoOptedIn: item.crypto_opted_in });
-      if (page.length < PAGE_SIZE) return { rows, coverage: { name: "subscribers", rows: scanned, total: total ?? scanned, available: true, complete: true } };
+      for (const item of page) {
+        if (testEmail(item.email)) { excludedCount++; excludedEntityKeys.push(entityKey("subscriber", item.email)); continue; }
+        rows.push({ entityKey: entityKey("subscriber", item.email), createdAt: item.created_at, status: item.status, stocksOptedIn: item.stocks_opted_in, cryptoOptedIn: item.crypto_opted_in });
+      }
+      if (page.length < PAGE_SIZE) return { rows, excludedCount, excludedEntityKeys, coverage: { name: "subscribers", rows: scanned, total: total ?? scanned, available: true, complete: true } };
       cursor = page[page.length - 1].email;
     }
-    return { rows, coverage: { name: "subscribers", rows: scanned, total, available: true, complete: total !== null && scanned >= total } };
+    return { rows, excludedCount, excludedEntityKeys, coverage: { name: "subscribers", rows: scanned, total, available: true, complete: total !== null && scanned >= total } };
   } catch {
-    return { rows, coverage: { name: "subscribers", rows: scanned, total, available: rows.length > 0, complete: false, error: "Subscriber creation history could not be fully loaded; any displayed counts are partial." } };
+    return { rows, excludedCount, excludedEntityKeys, coverage: { name: "subscribers", rows: scanned, total, available: rows.length > 0, complete: false, error: "Subscriber creation history could not be fully loaded; any displayed counts are partial." } };
   }
 }
 async function readAccounts(admin: SupabaseClient, range: AcquisitionRange): Promise<ReadResult<AcquisitionAccount>> {
   const rows: AcquisitionAccount[] = [];
+  let excludedCount = 0;
+  const excludedEntityKeys: string[] = [];
   const deadline = Date.now() + DATASET_TIMEOUT_MS;
   let scanned = 0;
   let page = 1;
@@ -603,22 +645,62 @@ async function readAccounts(admin: SupabaseClient, range: AcquisitionRange): Pro
       const users = result.data.users;
       scanned += users.length;
       for (const user of users) {
+        if (testEmail(user.email)) {
+          excludedEntityKeys.push(entityKey("account", user.id), `paid:${createHash("sha256").update(user.id.trim().toLowerCase()).digest("hex")}`);
+          if (user.created_at >= range.startInclusive && user.created_at < range.endExclusive) excludedCount++;
+          continue;
+        }
         if (!testEmail(user.email) && Boolean(user.email_confirmed_at || user.confirmed_at)
           && user.created_at >= range.startInclusive && user.created_at < range.endExclusive) rows.push({ entityKey: entityKey("account", user.id), createdAt: user.created_at });
       }
-      if (users.length < PAGE_SIZE) return { rows, coverage: { name: "accounts", rows: scanned, total: scanned, available: true, complete: true } };
+      if (users.length < PAGE_SIZE) return { rows, excludedCount, excludedEntityKeys, coverage: { name: "accounts", rows: scanned, total: scanned, available: true, complete: true } };
       page++;
     }
-    return { rows, coverage: { name: "accounts", rows: scanned, total: null, available: true, complete: false } };
+    return { rows, excludedCount, excludedEntityKeys, coverage: { name: "accounts", rows: scanned, total: null, available: true, complete: false } };
   } catch {
-    return { rows, coverage: { name: "accounts", rows: scanned, total: null, available: rows.length > 0, complete: false, error: "Actual account creation history could not be fully loaded; any displayed counts are partial." } };
+    return { rows, excludedCount, excludedEntityKeys, coverage: { name: "accounts", rows: scanned, total: null, available: rows.length > 0, complete: false, error: "Actual account creation history could not be fully loaded; any displayed counts are partial." } };
   }
+}
+
+async function readExclusionHistory(admin: SupabaseClient): Promise<{ rows: AnalyticsTrafficEvent[]; complete: boolean }> {
+  const rows: AnalyticsTrafficEvent[] = [];
+  const deadline = Date.now() + DATASET_TIMEOUT_MS;
+  let cursor: string | null = null;
+  try {
+    while (rows.length < MAX_EVENT_ROWS) {
+      let query = admin.from("marketing_event_log")
+        .select("id,anonymous_id,session_id,subscriber_email,page_path,referrer,utm_source,metadata")
+        .in("event_name", [...ACQUISITION_EVENT_NAMES, "email_signup_success", "acquisition_identity", "analytics_excluded"])
+        .or("subscriber_email.not.is.null,event_name.eq.analytics_excluded,metadata->>traffic_type.in.(internal,test,bot),referrer.ilike.*localhost*,referrer.ilike.*vercel.app*,page_path.like./analytics*,page_path.like./test*")
+        .order("id", { ascending: true }).limit(PAGE_SIZE);
+      if (cursor) query = query.gt("id", cursor);
+      const result = await query.abortSignal(AbortSignal.timeout(remainingReadTime(deadline)));
+      if (result.error) throw new Error("query_failed");
+      const page = (result.data ?? []) as (AnalyticsTrafficEvent & { id: string })[];
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) return { rows, complete: true };
+      cursor = page[page.length - 1].id;
+    }
+  } catch { return { rows, complete: false }; }
+  return { rows, complete: false };
 }
 
 export async function getAcquisitionReport(filters: AcquisitionFilters = {}, admin: SupabaseClient = createSupabaseAdminClient({ timeoutMs: QUERY_TIMEOUT_MS }), now = new Date()): Promise<AcquisitionReport> {
   const range = resolveAcquisitionRange(filters, now);
-  const [events, subscribers, accounts] = await Promise.all([readEvents(admin, range), readSubscribers(admin, range), readAccounts(admin, range)]);
-  return buildAcquisitionReport({ events: events.rows, subscribers: subscribers.rows, accounts: accounts.rows, datasets: [events.coverage, subscribers.coverage, accounts.coverage] }, filters, now);
+  const [events, subscribers, accounts, identityHistory] = await Promise.all([readEvents(admin, range), readSubscribers(admin, range), readAccounts(admin, range), readExclusionHistory(admin)]);
+  if (!identityHistory.complete) {
+    for (const dataset of [events.coverage, subscribers.coverage, accounts.coverage]) {
+      dataset.available = false;
+      dataset.complete = false;
+      dataset.error = "Internal/test identity history could not be fully checked. Audience metrics are unavailable; retry before assessing campaigns.";
+    }
+  }
+  return buildAcquisitionReport({
+    events: events.rows, identityEvents: identityHistory.rows, subscribers: subscribers.rows, accounts: accounts.rows,
+    excludedTestSubscribers: subscribers.excludedCount, excludedTestAccounts: accounts.excludedCount,
+    excludedEntityKeys: [...(subscribers.excludedEntityKeys ?? []), ...(accounts.excludedEntityKeys ?? [])],
+    datasets: [events.coverage, subscribers.coverage, accounts.coverage],
+  }, filters, now);
 }
 
 export function acquisitionCsv(report: AcquisitionReport, view: "sources" | "campaigns" | "landings" | "content" = "sources"): string {

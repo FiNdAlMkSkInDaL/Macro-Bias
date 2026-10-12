@@ -1,6 +1,6 @@
 import {
   UUID_PATTERN, contentGroup, isExcludedAnalyticsPath, normalizeDimension, normalizePagePath,
-  normalizeTouch, parseAcquisitionCookie, identifiedVisitId, type PrivacySignals,
+  normalizeTouch, parseAcquisitionCookie, identifiedVisitId, cookieValue, INTERNAL_ANALYTICS_COOKIE, type PrivacySignals,
 } from './attribution';
 
 /** Confirmed subscriptions, accounts, billing and delivery claims are server-only. */
@@ -62,11 +62,14 @@ export function normalizePublicCapture(value: unknown, context: PublicCaptureCon
   { event: PublicMarketingEvent | null; error?: string } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { event: null, error: 'Invalid event.' };
   const input = value as Record<string, unknown>;
+  if (cookieValue(context.cookieHeader, INTERNAL_ANALYTICS_COOKIE) === '1') return { event: null };
   if (typeof input.eventName !== 'string' || !PUBLIC_ANALYTICS_EVENTS.has(input.eventName)) return { event: null, error: 'This event must be recorded by the server.' };
   if (typeof input.eventId !== 'string' || !UUID_PATTERN.test(input.eventId)) return { event: null, error: 'Invalid event identity.' };
   const pagePath = normalizePagePath(input.pagePath);
   if (!pagePath) return { event: null, error: 'Invalid page path.' };
   if (isExcludedAnalyticsPath(pagePath)) return { event: null };
+  // Older cached collectors did not check webdriver. Never grant them corrected-capture provenance.
+  if (input.automation !== false) return { event: null };
   const attribution = parseAcquisitionCookie(context.cookieHeader, context, context.now);
   if (!attribution && input.eventName !== 'page_view') return { event: null };
   const inputMetadata = input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
