@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-10-12",
+  "campaign": "mb_free_listings",
+  "budgetSpent": 0,
+  "brand": "Macro Bias — Stocks & Crypto",
+  "description": "Short daily notes on US stocks and crypto, with the evidence behind each model reading and its limits. Free email updates; paid reports go deeper.",
+  "subscriberCount": { "activeNonTestUnique": 45, "stocks": 44, "crypto": 31, "note": "Opt-ins overlap. These are active records, not a claim of verified or engaged readership." },
+  "listings": [
+    { "name": "Fintech Newsletters", "url": "https://www.fintechnewsletters.com/", "cost": 0, "status": "form_prepared", "blocker": "Requires a public contact email; requested from owner. Not submitted.", "source": "fintechnewsletters", "category": "Capital Markets; Crypto & Web3; News & Analysis" },
+    { "name": "Letterlist", "url": "https://letterlist.com/submit/", "cost": 0, "status": "form_prepared", "blocker": "Requires a public contact email; requested from owner. Not submitted.", "source": "letterlist", "category": "Individual newsletter" },
+    { "name": "GoLetter", "url": "https://directory.goletter.co/submit-newsletter", "cost": 0, "status": "form_prepared", "blocker": "Requires a public contact email; requested from owner. Not submitted.", "source": "goletter", "category": "Finance & Investing", "pricing": "Freemium" },
+    { "name": "BlogHub", "url": "https://bloghub.app/submit-your-newsletter", "cost": 0, "status": "account_required", "blocker": "Submission opens Google sign-in. Owner sign-in required; no account created." },
+    { "name": "InboxReads", "url": "https://inboxreads.co/submit/", "cost": 0, "status": "account_required", "blocker": "Submission form is disabled until signed in. Owner sign-in required; no account created." },
+    { "name": "Epirus", "url": "https://www.epirus.vc/newsletter-directory/submit-your-newsletter", "cost": 0, "status": "eligible_to_prepare", "note": "Official page states free listings for business/finance newsletters. Requires contact details. Not submitted." },
+    { "name": "FindStox", "url": "https://www.findstox.com/submit", "status": "deferred", "reason": "Free tier requires proof of promoting FindStox to our readers. Paid alternatives are outside the approved scope." },
+    { "name": "Hecto", "url": "https://www.hecto.io/", "status": "skipped", "reason": "Current site did not provide a suitable free newsletter directory submission." },
+    { "name": "Awesome Newsletters", "url": "https://github.com/linsa-io/newsletters", "status": "deferred", "reason": "Last push 9 July 2025; prioritise active finance/newsletter directories. No promotional PR created." }
+  ]
+}
