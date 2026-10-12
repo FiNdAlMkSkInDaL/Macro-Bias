@@ -155,6 +155,43 @@ async function check(name, test) { await test(); checks.push(name); }
     assert.equal(events[0].subscriber_email, null); assert.ok(!JSON.stringify(events[0]).includes('fixture@'));
     assert.match(events[0].metadata.entity_key, /^subscriber:[a-f0-9]{64}$/);
   });
+  await check('documented owner aliases and reserved test addresses cannot become human subscriber acquisitions', async () => {
+    for (const email of ['finphillips21+qa@gmail.com', 'finlayp32@gmail.com', 'codex@example.invalid']) {
+      const h = harness(); const c = h.load('src/lib/analytics/conversions.ts');
+      await c.recordSubscriberAcquisition(subscriberInput({ email }));
+      const conversion = h.tables.marketing_event_log.find(row => row.event_name === 'email_subscribed');
+      assert.equal(conversion.metadata.traffic_type, 'internal');
+      assert(h.tables.marketing_event_log.some(row => row.event_name === 'analytics_excluded' && row.anonymous_id));
+      assert.equal(h.tables.marketing_event_log.filter(row => row.event_name === 'acquisition_identity').length, 0);
+      assert(!JSON.stringify(h.tables.marketing_event_log).includes(email));
+    }
+  });
+  await check('old internal accounts quarantine current consented visits without inventing a new account', async () => {
+    const h = harness(); const c = h.load('src/lib/analytics/conversions.ts');
+    await c.confirmAccountAcquisition({ user: user({ email: 'finlayp32@gmail.com', created_at: '2026-01-01T00:00:00Z' }), headers: headers() });
+    assert.equal(h.tables.marketing_event_log.length, 1);
+    assert.equal(h.tables.marketing_event_log[0].event_name, 'analytics_excluded');
+    assert.equal(h.tables.marketing_event_log[0].metadata.traffic_type, 'internal');
+    assert.equal(await c.checkoutAcquisition(user({ email: 'finlayp32+qa@gmail.com' }), headers()), null);
+    const secondBrowser = attribution(); secondBrowser.visitorId = 'c0b87a50-c1e7-42fb-a937-c0324dc5f2dd';
+    await c.confirmAccountAcquisition({ user: user({ email: 'finlayp32@gmail.com', created_at: '2026-01-01T00:00:00Z' }), headers: headers(secondBrowser) });
+    assert.equal(h.tables.marketing_event_log.length, 2, 'Each internal browser identity needs its own replay-safe quarantine marker');
+  });
+  await check('automation exclusion preference marks conversions as test and prevents identity linking', async () => {
+    const h = harness(); const c = h.load('src/lib/analytics/conversions.ts');
+    const requestHeaders = headers(); requestHeaders.set('cookie', `${requestHeaders.get('cookie')}; mb_analytics_internal=1`);
+    await c.recordSubscriberAcquisition(subscriberInput({ headers: requestHeaders }));
+    assert.equal(h.tables.marketing_event_log.length, 1);
+    assert.equal(h.tables.marketing_event_log[0].metadata.traffic_type, 'test');
+    assert.equal(h.tables.marketing_event_log[0].metadata.attribution, null);
+  });
+  await check('live paid invoices belonging to internal addresses remain excluded from acquisition', async () => {
+    const h = harness({ invoices: async () => ({ data: [invoice()], has_more: false }) }); const c = h.load('src/lib/analytics/conversions.ts');
+    await c.recordPaidAcquisition({ stripe: h.stripe, invoice: invoice({ customer_email: 'finlayp32@gmail.com' }), userId: user().id, customerId: 'cus_fixture', attribution: attribution() });
+    assert.equal(h.tables.marketing_event_log[0].event_name, 'paid_conversion');
+    assert.equal(h.tables.marketing_event_log[0].metadata.traffic_type, 'internal');
+    assert.equal(h.tables.marketing_event_log[0].subscriber_email, null);
+  });
   await check('returning signup and reactivation are not new subscriptions', async () => {
     const h = harness(); const c = h.load('src/lib/analytics/conversions.ts');
     await c.recordSubscriberAcquisition(subscriberInput({ newSubscriber: false }));

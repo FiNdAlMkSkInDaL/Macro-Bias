@@ -1,6 +1,8 @@
 /** Shared, deliberately small attribution format. Never store complete URLs or query strings. */
 export const ACQUISITION_COOKIE = 'mb_acquisition_v2';
 export const ANALYTICS_CONSENT_COOKIE = 'mb_analytics_consent';
+/** A suppression preference only: it contains no tracking identity. */
+export const INTERNAL_ANALYTICS_COOKIE = 'mb_analytics_internal';
 export const ATTRIBUTION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 export const SESSION_IDLE_MS = 30 * 60 * 1000;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -107,8 +109,10 @@ export function privacyOptOut(signals: PrivacySignals): boolean {
 }
 
 export function isKnownTestTraffic(hostname: string, userAgent: string): boolean {
-  return /(^|\.)(localhost|127\.0\.0\.1|vercel\.app)$/.test(hostname.split(':')[0].toLowerCase())
-    || /bot\b|crawler|spider|headless|playwright|puppeteer|lighthouse|pagespeed|pingdom|uptimerobot|curl\b|wget\b|python-requests|node-fetch|^node$/i.test(userAgent);
+  const normalized = hostname.toLowerCase().replace(/^\[([^\]]+)\](?::\d+)?$/, '$1');
+  const host = normalized.includes('::') ? normalized : normalized.split(':')[0];
+  return host === '::1' || host === '0.0.0.0' || /^127\./.test(host) || /(^|\.)(localhost|vercel\.app)$/.test(host)
+    || /bot\b|crawler|spider|headless|playwright|puppeteer|selenium|phantomjs|lighthouse|pagespeed|pingdom|uptimerobot|curl\b|wget\b|python-requests|python-httpx|node-fetch|undici|facebookexternalhit|googleimageproxy|^node$/i.test(userAgent);
 }
 
 /** A direct visit is an observed source, never a retroactive explanation for older data. */
@@ -170,7 +174,7 @@ export function cookieValue(header: string | null, name: string): string | null 
 }
 
 export function parseAcquisitionCookie(header: string | null, signals: PrivacySignals = {}, now = Date.now()): AcquisitionAttribution | null {
-  if (privacyOptOut(signals) || cookieValue(header, ANALYTICS_CONSENT_COOKIE) !== 'granted') return null;
+  if (privacyOptOut(signals) || cookieValue(header, INTERNAL_ANALYTICS_COOKIE) === '1' || cookieValue(header, ANALYTICS_CONSENT_COOKIE) !== 'granted') return null;
   const value = cookieValue(header, ACQUISITION_COOKIE);
   if (!value || value.length > 3000) return null;
   try { return normalizeAttribution(JSON.parse(value), now); } catch { return null; }

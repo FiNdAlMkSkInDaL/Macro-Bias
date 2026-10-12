@@ -53,6 +53,7 @@ export function AnalyticsProvider() {
       getAcquisitionAttribution();
     }
     function handleClick(event: MouseEvent) {
+      if (!event.isTrusted) return;
       refreshActivity();
       const target = event.target;
 

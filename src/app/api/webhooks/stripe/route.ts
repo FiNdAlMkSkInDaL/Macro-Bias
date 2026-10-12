@@ -334,6 +334,7 @@ export async function POST(request: Request) {
           invoice,
           userId,
           customerId: input.customerId,
+          customerEmail: input.email,
           attribution: attributionFromStripeMetadata(input.acquisitionMetadata),
         });
         break;

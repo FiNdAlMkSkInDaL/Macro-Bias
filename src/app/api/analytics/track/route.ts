@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { logMarketingEvent } from '@/lib/analytics/server';
 import { isKnownTestTraffic } from '@/lib/analytics/attribution';
 import { normalizePublicCapture } from '@/lib/analytics/public-capture';
+import { analyticsExclusionEventId, isExcludedAnalyticsEmail } from '@/lib/analytics/traffic-policy';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +36,9 @@ export async function POST(request: Request) {
   if (origin !== requestUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
     return NextResponse.json({ error: 'Same-origin capture required.' }, { status: 403 });
   }
-  if (isKnownTestTraffic(requestUrl.hostname, request.headers.get('user-agent') ?? '')) {
+  if (isKnownTestTraffic(requestUrl.hostname, request.headers.get('user-agent') ?? '') ||
+    (typeof process !== 'undefined' && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' ||
+      (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production')))) {
     return NextResponse.json({ ok: true, skipped: true }, { status: 202 });
   }
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
@@ -55,6 +59,27 @@ export async function POST(request: Request) {
   if (normalized.error) return NextResponse.json({ error: normalized.error }, { status: 400 });
   if (!normalized.event) return NextResponse.json({ ok: true, skipped: true }, { status: 202 });
   try {
+    if (/(?:^|;\s*)sb-[^=]+=/.test(request.headers.get('cookie') ?? '')) {
+      const supabase = await createSupabaseServerClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) return NextResponse.json({ ok: true, skipped: true }, { status: 202 });
+      if (isExcludedAnalyticsEmail(user?.email)) {
+        const event = normalized.event;
+        if (event.anonymousId || event.sessionId) {
+          await logMarketingEvent({
+            id: analyticsExclusionEventId(event.id), eventName: 'analytics_excluded', pagePath: event.pagePath,
+            anonymousId: event.anonymousId, sessionId: event.sessionId,
+            metadata: { event_version: 2, traffic_type: 'internal', tracking_mode: 'consented' },
+          });
+        }
+        const response = NextResponse.json({ ok: true, skipped: true }, { status: 202 });
+        response.headers.set('Set-Cookie', 'mb_analytics_internal=1; Path=/; SameSite=Lax; Max-Age=31536000; Secure');
+        return response;
+      }
+    }
+    normalized.event.metadata.capture_context = {
+      version: 1, environment: 'production', collector: 'public_api', automation_checked: true,
+    };
     // Existing PK makes repeated beacon/fetch delivery of one navigation a no-op.
     await logMarketingEvent(normalized.event);
   } catch {

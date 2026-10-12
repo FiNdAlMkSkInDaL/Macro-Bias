@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ACQUISITION_COOKIE, ANALYTICS_CONSENT_COOKIE, ATTRIBUTION_MAX_AGE_MS, SESSION_IDLE_MS,
+  ACQUISITION_COOKIE, ANALYTICS_CONSENT_COOKIE, INTERNAL_ANALYTICS_COOKIE, ATTRIBUTION_MAX_AGE_MS, SESSION_IDLE_MS,
   UUID_PATTERN, cookieValue, deriveAcquisitionTouch, isExcludedAnalyticsPath, isKnownTestTraffic,
   normalizeAttribution, normalizePagePath, normalizeTouch, privacyOptOut, contentGroup, identifiedVisitId, parseAcquisitionCookie,
   type AcquisitionAttribution, type AcquisitionTouch,
@@ -65,6 +65,17 @@ function clearAcquisition() {
   try { writeCookie(ACQUISITION_COOKIE, '', 0); } catch { /* No tracking is essential. */ }
 }
 
+function excludedBrowserTraffic() {
+  const detected = navigator.webdriver === true || isKnownTestTraffic(window.location.hostname, navigator.userAgent) ||
+    (typeof process !== 'undefined' && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' ||
+      (process.env.NEXT_PUBLIC_VERCEL_ENV && process.env.NEXT_PUBLIC_VERCEL_ENV !== 'production')));
+  if (detected || new URLSearchParams(window.location.search).get('analytics') === 'off') {
+    try { writeCookie(INTERNAL_ANALYTICS_COOKIE, '1', 365 * 24 * 60 * 60); } catch { /* Suppression still applies to this page. */ }
+    return true;
+  }
+  return cookieValue(document.cookie, INTERNAL_ANALYTICS_COOKIE) === '1';
+}
+
 export function getAnalyticsConsent(): 'granted' | 'denied' | 'pending' {
   if (typeof window === 'undefined') return 'pending';
   if (browserPrivacyOptOut()) { clearAcquisition(); return 'denied'; }
@@ -89,7 +100,9 @@ export function setAnalyticsConsent(consent: 'granted' | 'denied') {
 
 /** Only explicit consent permits persistent identities and conversion linkage. */
 export function getAcquisitionAttribution(): AcquisitionAttribution | null {
-  if (typeof window === 'undefined' || getAnalyticsConsent() !== 'granted') return null;
+  if (typeof window === 'undefined') return null;
+  if (excludedBrowserTraffic()) { clearAcquisition(); return null; }
+  if (getAnalyticsConsent() !== 'granted') return null;
   const now = Date.now();
   const location = window.location.href;
   initialLocation ??= location;
@@ -145,6 +158,7 @@ export function getSessionId() { return getAcquisitionAttribution()?.sessionId ?
 export function trackClientEvent(event: ClientAnalyticsEvent) {
   if (typeof window === 'undefined') return;
   try {
+    if (excludedBrowserTraffic()) { clearAcquisition(); return; }
     const pagePath = normalizePagePath(event.pagePath ?? window.location.pathname);
     const currentTouch = deriveAcquisitionTouch({ url: window.location.href,
       referrer: initialLocation === null || initialLocation === window.location.href ? document.referrer : null });
@@ -162,6 +176,7 @@ export function trackClientEvent(event: ClientAnalyticsEvent) {
     const touch = attribution?.latestTouch ?? currentTouch;
     const payload = JSON.stringify({
       eventId: event.eventName === 'page_view' ? navigationId : event.eventName === 'visitor_identified' ? identifiedVisitId(navigationId!) : createAnalyticsId(), eventName: event.eventName,
+      automation: navigator.webdriver === true,
       anonymousId: attribution?.visitorId ?? null, sessionId: attribution?.sessionId ?? null,
       pagePath, referrer: touch.referrerDomain, utmSource: touch.source, utmMedium: touch.medium, utmCampaign: touch.campaign,
       metadata: { ...sanitizePublicMetadata(event.metadata), navigation_id: navigationId, event_version: 2, traffic_type: 'human', tracking_mode: attribution ? 'consented' : 'aggregate',
