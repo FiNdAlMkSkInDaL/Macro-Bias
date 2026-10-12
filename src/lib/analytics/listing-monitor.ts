@@ -10,7 +10,7 @@ const START = '2026-10-12';
 const CAMPAIGN = 'mb_free_listings';
 const LIMIT = 900_000;
 export const LISTING_TARGETS = [
-  { source: 'letterlist', url: 'https://letterlist.com/' },
+  { source: 'letterlist', url: 'https://letterlist.com/newsletters/' },
   { source: 'fintechnewsletters', url: 'https://www.fintechnewsletters.com/' },
   { source: 'epirus', url: 'https://www.epirus.vc/newsletter-directory' },
   { source: 'inboxreads', url: 'https://inboxreads.co/new' },
