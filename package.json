@@ -19,7 +19,8 @@
     "verify:model": "tsx scripts/verify-signal-and-paper-ledger.ts && tsx scripts/verify-percentiles.ts && tsx scripts/verify-live-score-eval.ts && tsx scripts/verify-trend-veto.ts",
     "macro-bias:sync": "tsx src/scripts/run-daily-macro-bias-sync.ts",
     "social:arm-queue": "tsx src/scripts/arm-scheduled-social-queue.ts",
-    "verify:analytics": "node scripts/verify-acquisition-report.cjs && node scripts/verify-acquisition-capture.cjs && node scripts/verify-acquisition-conversions.cjs && node scripts/verify-acquisition-access.cjs && node scripts/verify-analytics-admin.cjs"
+    "verify:analytics": "node scripts/verify-acquisition-report.cjs && node scripts/verify-acquisition-capture.cjs && node scripts/verify-acquisition-conversions.cjs && node scripts/verify-acquisition-access.cjs && node scripts/verify-analytics-admin.cjs",
+    "verify:distribution": "node scripts/verify-distribution.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.85.0",
