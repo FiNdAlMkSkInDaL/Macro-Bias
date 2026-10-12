@@ -121,6 +121,7 @@ export type AcquisitionReport = {
   campaignRows: AcquisitionBreakdown[];
   landingRows: AcquisitionBreakdown[];
   contentRows: AcquisitionBreakdown[];
+  newsletterSignups: { stocks: number; crypto: number; both: number; unknown: number };
   dailySeries: (AcquisitionMetrics & { date: string })[];
   funnel: { key: string; label: string; value: number; denominator: number | null; rate: number | null; note: string }[];
   coverage: {
@@ -285,6 +286,7 @@ type Observation = {
   contentGroup: string;
   identified: boolean;
   legacy: boolean;
+  newsletters?: { stocks: boolean; crypto: boolean };
 };
 type Bucket = {
   pageViews: number; visitors: Set<string>; sessions: Set<string>;
@@ -333,7 +335,8 @@ function conversion(event: AcquisitionEventRow, touch: "first" | "latest"): Obse
   if (kind === "paid" && (metadata.conversion_kind !== "first_paid_upgrade" || metadata.first_paid_verified !== true || metadata.confirmation !== "stripe_invoice_paid" || !(Number(metadata.amount_minor) > 0))) return null;
   const selected = attributionFor(event, touch, true);
   const ids = identities(event);
-  return { kind, at: event.created_at, touch: selected, ...ids, contentGroup: contentGroup(metadata.content_group, selected.landingPath), identified: !!ids.visitor, legacy: false };
+  return { kind, at: event.created_at, touch: selected, ...ids, contentGroup: contentGroup(metadata.content_group, selected.landingPath), identified: !!ids.visitor, legacy: false,
+    ...(kind === 'subscriber' ? { newsletters: { stocks: metadata.stocks_opted_in === true, crypto: metadata.crypto_opted_in === true } } : {}) };
 }
 function latest(values: string[]) { return values.sort().at(-1) ?? null; }
 
@@ -483,6 +486,12 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   const overview = metrics(total, hasSubscriberAttribution);
   const views = filtered.filter((item) => item.kind === "view");
   const subscribers = filtered.filter((item) => item.kind === "subscriber");
+  const newsletterSignups = {
+    stocks: subscribers.filter(item => item.newsletters?.stocks).length,
+    crypto: subscribers.filter(item => item.newsletters?.crypto).length,
+    both: subscribers.filter(item => item.newsletters?.stocks && item.newsletters?.crypto).length,
+    unknown: subscribers.filter(item => !item.newsletters).length,
+  };
   const accounts = filtered.filter((item) => item.kind === "account");
   const knownAccountSources = accounts.filter((item) => item.touch.source !== "unknown").length;
   const paid = filtered.filter((item) => item.kind === "paid");
@@ -507,7 +516,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   if (overview.pageViews - identifiedPageViews > 0) warnings.push("Aggregate views without consent are counted as views only; distinct visitors, sessions and linked conversion rates cover identified traffic.");
   return {
     range, filters: { preset: filters.preset ?? "30d", source: filterSource, campaign: filterCampaign, touch: selectedTouch },
-    overview, sourceRows: rows(sources), campaignRows: rows(campaigns), landingRows: rows(landings), contentRows: rows(content),
+    overview, sourceRows: rows(sources), campaignRows: rows(campaigns), landingRows: rows(landings), contentRows: rows(content), newsletterSignups,
     dailySeries: [...daily].map(([date, item]) => ({ date, ...metrics(item, hasSubscriberAttribution) })),
     funnel: [
       { key: "visitors", label: "Identified visitors", value: overview.visitors, denominator: null, rate: null, note: "Distinct IDs with identified views or explicit consent on a public visit in this period." },

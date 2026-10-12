@@ -40,7 +40,7 @@ export function isThreadsConfigured() {
   );
 }
 
-export async function publishToThreads(text: string): Promise<string | null> {
+export async function publishToThreads(text: string, image?: { url: string; alt: string }): Promise<string | null> {
   const accessToken = getRequiredThreadsEnv('THREADS_ACCESS_TOKEN');
   const userId = getRequiredThreadsEnv('THREADS_USER_ID');
 
@@ -51,10 +51,12 @@ export async function publishToThreads(text: string): Promise<string | null> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      media_type: 'TEXT',
+      media_type: image ? 'IMAGE' : 'TEXT',
+      ...(image ? { image_url: image.url, alt_text: image.alt } : {}),
       text,
       access_token: accessToken,
     }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!createResponse.ok) {
@@ -79,6 +81,7 @@ export async function publishToThreads(text: string): Promise<string | null> {
       creation_id: containerId,
       access_token: accessToken,
     }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!publishResponse.ok) {

@@ -2,10 +2,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { runDistribution, distributionDeliveryHealth } from '@/lib/social/distribution';
 import type { DistributionChannel } from '@/lib/social/distribution-content';
+import { recordDistributionGrowth } from '@/lib/social/distribution-growth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function GET(request: NextRequest) {
   const expected = process.env.CRON_SECRET?.trim();
@@ -24,10 +25,11 @@ export async function GET(request: NextRequest) {
       previewBoth, channels: channels as DistributionChannel[],
     });
     const deliveries = await distributionDeliveryHealth();
+    const growth = result.mode === 'live' ? await recordDistributionGrowth() : null;
     const ok = result.ok && !deliveries.some(item => item.status === 'needs_review');
-    console.info('[distribution]', { mode: result.mode, scheduledMarket: result.scheduledMarket, ok,
+    console.info('[distribution]', { mode: result.mode, scheduledMarkets: result.scheduledMarkets, ok,
       results: result.results.map(({ market, channel, date, status, reason }) => ({ market, channel, date, status, reason })) });
-    return NextResponse.json({ ...result, ok, deliveries }, { status: ok ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ ...result, ok, deliveries, growth }, { status: ok ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Distribution unavailable' }, { status: 503 });
   }

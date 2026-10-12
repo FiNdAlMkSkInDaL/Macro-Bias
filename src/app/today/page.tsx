@@ -9,9 +9,11 @@ import { loadPaidBriefingLink } from '@/lib/product/paid-briefing-link';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Stock score — Macro Bias',
+  title: 'Free stock market newsletter and daily score',
   description:
-    'Explore the latest published stock score, SPY price history and the market signals behind Macro Bias. Get free daily stock and crypto updates by email.',
+    'See the latest published stock market score and SPY history. Get the score and a short market update free by email on market days. No account needed.',
+  alternates: { canonical: '/today' },
+  openGraph: { title: 'A wider view of the stock market — Macro Bias', description: 'The published stock score and a short market update, free by email on market days.', url: '/today' },
 };
 
 export default async function TodayPage() {

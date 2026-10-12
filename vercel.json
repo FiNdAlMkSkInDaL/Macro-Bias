@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/distribution",
-      "schedule": "15 14 * * 2,5"
+      "schedule": "15 14 * * 1-5"
     },
     {
       "path": "/api/cron/listings",

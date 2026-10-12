@@ -9,9 +9,11 @@ import { loadPaidBriefingLink } from '@/lib/product/paid-briefing-link';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Crypto score — Macro Bias',
+  title: 'Free crypto newsletter and daily market score',
   description:
-    'Explore the latest published crypto score, Bitcoin price history and the wider market backdrop. Get free daily stock and crypto updates by email.',
+    'See the latest published crypto market score and Bitcoin history. Get the score and a short market update free by email every day. No account needed.',
+  alternates: { canonical: '/crypto' },
+  openGraph: { title: 'A wider view of crypto — Macro Bias', description: 'The published crypto score and a short market update, free by email every day.', url: '/crypto' },
 };
 
 export default async function CryptoPage() {

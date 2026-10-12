@@ -127,14 +127,20 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           ) : null}
         </section>
         <div className={styles.signup}>
-          <p className={styles.signupLabel}>Free daily stock + crypto scores and market updates.</p>
+          <p className={styles.signupLabel}>The {data.asset === 'stocks' ? 'stock market update, every market day' : 'crypto market update, every day'}. Free by email.</p>
           <HeroSignupForm location={market.signupHero} pagePath={market.path} />
+          <p className={styles.signupDetails}>The published score and a short explanation of the market around it. Read the latest score here before deciding.</p>
+          <div className={styles.discoveryLinks}>
+            <Link href={data.asset === 'stocks' ? '/briefings' : '/crypto/briefings'}>Browse past readings <ArrowIcon /></Link>
+            <Link href={market.trackRecord}>Check the track record <ArrowIcon /></Link>
+          </div>
         </div>
       </section>
 
       <section className={styles.history} aria-labelledby="history-heading">
         <h2 id="history-heading">Put the reading in perspective.</h2>
         <p>{market.chartName} price and daily {data.asset === 'crypto' ? 'crypto ' : ''}Macro Bias.</p>
+        {score ? <a className={styles.textLink} href={`/charts/${data.asset}/${score.tradeDate}`} target="_blank" rel="noreferrer">Open the shareable score chart <ArrowIcon /></a> : null}
         <MacroMarketChart
           variant="history"
           instrument={market.instrument}
@@ -178,10 +184,13 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
       <section className={styles.closing} aria-labelledby="closing-heading">
         <h2 id="closing-heading">Keep the bigger picture<br className={styles.desktopBreak} /> in your inbox.</h2>
         <div>
-          <p>Get the daily stock and crypto scores with a short market update, free by email.</p>
+          <p>{data.asset === 'stocks' ? 'A stock score and short market update on market days.' : 'A crypto score and short market update every day.'} Choose either newsletter or both.</p>
           <HeroSignupForm location={market.signupFooter} pagePath={market.path} />
         </div>
       </section>
+      <nav className={styles.discoveryLinks} aria-label="Learn about market regimes">
+        <Link href="/regime/risk-on">What risk-on means</Link><Link href="/regime/risk-off">What risk-off means</Link><Link href="/regime/neutral">When the reading is neutral</Link>
+      </nav>
     </main>
   );
 }
