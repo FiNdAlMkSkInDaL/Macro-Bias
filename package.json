@@ -20,7 +20,7 @@
     "macro-bias:sync": "tsx src/scripts/run-daily-macro-bias-sync.ts",
     "social:arm-queue": "tsx src/scripts/arm-scheduled-social-queue.ts",
     "verify:analytics": "node scripts/verify-acquisition-report.cjs && node scripts/verify-acquisition-capture.cjs && node scripts/verify-acquisition-conversions.cjs && node scripts/verify-acquisition-access.cjs && node scripts/verify-analytics-admin.cjs",
-    "verify:distribution": "node scripts/verify-distribution.cjs"
+    "verify:distribution": "node scripts/verify-distribution.cjs && node scripts/verify-chart-discovery.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.85.0",

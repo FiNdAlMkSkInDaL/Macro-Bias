@@ -39,7 +39,7 @@ export const getBriefingViewer = cache(async (): Promise<BriefingViewer> => {
 // Metadata is separate from body/news/model columns. React cache deduplicates
 // within a request; it is never a cross-user persistent authorization cache.
 const loadMetadata = cache(async (asset: ProductAsset): Promise<BriefingMetadata[]> => {
-  const admin = createSupabaseAdminClient();
+  const admin = createSupabaseAdminClient({ timeoutMs: 5_000 });
   const stock = asset === 'stocks';
   const table = stock ? 'daily_market_briefings' : 'crypto_daily_briefings';
   const columns = stock

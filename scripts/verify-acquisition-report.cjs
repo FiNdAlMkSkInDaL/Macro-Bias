@@ -29,6 +29,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/analytics/acquisi
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, context);
 const { buildAcquisitionReport: build, resolveAcquisitionRange: range, getAcquisitionReport: load, acquisitionCsv: csv, ACQUISITION_EVENT_NAMES: names } = context.exports;
+assert.equal(names.includes('distribution_growth_snapshot'), false);
 const NOW = new Date('2026-10-04T20:30:00.000Z');
 const createdAt = '2026-10-04T12:00:00.000Z';
 const visitor = '00000000-0000-4000-8000-000000000001';
@@ -81,6 +82,19 @@ check('distinct visitors and sessions do not count repeated views', () => {
   assert.equal(value.overview.newAccounts, 1);
   assert.equal(value.overview.paidConversions, 1);
   assert.equal(value.overview.subscriberRate, 100);
+});
+check('newsletter choices retain original signup and respect campaign filters without doubling people', () => {
+  const input = base();
+  input.subscribers.push({ entityKey: 'subscriber:legacy', createdAt, stocksOptedIn: true, cryptoOptedIn: false });
+  input.subscribers[0] = { ...subscriber, stocksOptedIn: false, cryptoOptedIn: false, status: 'inactive' };
+  input.events.push(input.events.find(event => event.event_name === 'email_subscribed'));
+  const value = report(input);
+  assert.equal(value.overview.newSubscribers, 2);
+  assert.equal(value.newsletterSignups.stocks, 1); assert.equal(value.newsletterSignups.crypto, 1);
+  assert.equal(value.newsletterSignups.both, 1); assert.equal(value.newsletterSignups.unknown, 1);
+  const filtered = report(input, { campaign: 'daily_launch', touch: 'first' });
+  assert.equal(filtered.overview.newSubscribers, 1); assert.equal(filtered.newsletterSignups.both, 1); assert.equal(filtered.newsletterSignups.unknown, 0);
+  assert.equal(report(input, { campaign: 'unseen_campaign' }).newsletterSignups.stocks, 0);
 });
 check('replayed conversions and unsafe legacy successes never inflate entities', () => {
   const input = base();

@@ -73,6 +73,8 @@ export function PaidBriefingDetail({ asset, date, data }: { asset: ProductAsset;
         <div><dt>Source session</dt><dd><time dateTime={metadata.tradeDate}>{briefingDate(metadata.tradeDate)}</time></dd></div>
         <div><dt>First published</dt><dd>{metadata.publishedAt ? releaseTime(metadata.publishedAt) : 'Unavailable'}</dd></div>
       </dl>
+      {metadata.score !== null ? <p className={shared.muted}>This is a published model reading, not a prediction of the next move. {metadata.overrideActive ? 'A news override was active; the chart shows the base model. ' : ''}<a className={shared.textLink} href={`/charts/${asset}/${date}`}>Open score history chart<ArrowIcon /></a></p> : null}
+      <p className={shared.muted}>Get the score and a short market update by email, free. <Link className={shared.textLink} href={dailyPath}>Choose your {asset === 'stocks' ? 'stock' : 'crypto'} emails<ArrowIcon /></Link></p>
       <section className={styles.gate} aria-labelledby="briefing-access-title" data-briefing-gate={access.kind}>
         <h2 id="briefing-access-title">{access.kind === 'sign-in' ? 'Sign in to read this briefing' : 'Get the full market read'}</h2>
         <p>{access.kind === 'sign-in' ? 'The full briefing is included with a Free account. Sign in to read the published market context, model notes and risk check.' : 'Pro includes this full briefing now, with the published market context, model notes and risk check. Scores and dated readings are public.'}</p>

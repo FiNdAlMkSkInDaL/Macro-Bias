@@ -67,6 +67,10 @@ export async function POST(request: Request) {
 
   const rejection = customerEmailRejection(email);
 
+  if (!stocksOptedIn && !cryptoOptedIn) {
+    return NextResponse.json({ error: 'Choose at least one newsletter.' }, { status: 400 });
+  }
+
   if (rejection) {
     return NextResponse.json({ error: rejection }, { status: 400 });
   }

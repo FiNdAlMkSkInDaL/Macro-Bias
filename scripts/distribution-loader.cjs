@@ -10,7 +10,7 @@ module.exports = function distributionLoader(overrides = {}, env = process.env) 
   const cache = new Map();
   function load(relative) {
     let file = path.resolve(root, relative);
-    if (!path.extname(file)) file += '.ts';
+    if (!path.extname(file)) file += fs.existsSync(`${file}.ts`) ? '.ts' : '.tsx';
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} };
     cache.set(file, module);
@@ -24,11 +24,11 @@ module.exports = function distributionLoader(overrides = {}, env = process.env) 
       return localRequire(name);
     }
     const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true },
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
       fileName: file,
     }).outputText;
     const context = vm.createContext({ module, exports: module.exports, require: requireSource,
-      process: { env }, Buffer, URL, Date, Intl, console, AbortSignal, fetch, Headers, Request, Response, setTimeout, clearTimeout });
+      process: { env, cwd: () => root }, Buffer, Uint8Array, URL, URLSearchParams, Date, Intl, console, AbortSignal, fetch, Headers, Request, Response, setTimeout, clearTimeout });
     new vm.Script(source, { filename: file }).runInContext(context);
     return module.exports;
   }

@@ -32,7 +32,7 @@ const localDateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month
 const sourceLabels: Record<string, string> = { x: 'X', twitter: 'X', reddit: 'Reddit', google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo', yahoo: 'Yahoo', gmail: 'Gmail app', threads: 'Threads', bluesky: 'Bluesky', direct: 'Direct', unknown: 'Unknown' };
 
 function displaySource(value = 'unknown') { return sourceLabels[value] ?? value; }
-function displayCampaign(value?: string) { return !value || value === '(none)' ? 'No campaign recorded' : value; }
+function displayCampaign(value?: string) { return !value || value === '(none)' ? 'No campaign recorded' : value === 'mb_chart_distribution_v1' ? 'Published chart posts' : value === 'mb_briefing_feed_v1' ? 'Briefing feeds' : value === 'mb_distribution_v1' ? 'Briefing notes' : value === 'mb_free_listings' ? 'Free listings' : value; }
 function count(value: number, available = true) { return available ? numberFormat.format(value) : 'N/A'; }
 function percent(value: number | null, available = true) { return available && value !== null ? `${value.toFixed(1)}%` : 'N/A'; }
 function metricAvailable(key: Metric, available: Availability) {
@@ -245,7 +245,7 @@ export default function AnalyticsDashboard({ report, initialView }: { report: Ac
   exportParams.set('view', view === 'overview' ? 'sources' : view);
   const dateRangeLabel = `${dateFormat.format(new Date(`${report.range.startDate}T00:00:00Z`))} — ${longDateFormat.format(new Date(`${report.range.endDate}T00:00:00Z`))} · UTC`;
   const sourceOptions = [...new Set([...report.options.sources, ...(report.filters.source ? [report.filters.source] : [])])];
-  const campaignOptions = [...new Set([...report.options.campaigns, ...(report.filters.campaign ? [report.filters.campaign] : [])])];
+  const campaignOptions = [...new Set(['mb_chart_distribution_v1', ...report.options.campaigns, ...(report.filters.campaign ? [report.filters.campaign] : [])])];
   const sourceControl = <SelectControl label="Filter by source" value={report.filters.source || 'all'} disabled={isPending} onChange={source => updateFilters({ source: source === 'all' ? null : source })}><option value="all">All sources</option>{sourceOptions.map(source => <option key={source} value={source}>{displaySource(source)}</option>)}</SelectControl>;
   const campaignControl = <SelectControl label="Filter by campaign" value={report.filters.campaign || 'all'} disabled={isPending} onChange={campaign => updateFilters({ campaign: campaign === 'all' ? null : campaign })}><option value="all">All campaigns</option>{campaignOptions.map(campaign => <option key={campaign} value={campaign}>{displayCampaign(campaign)}</option>)}</SelectControl>;
   const sourceDrill = (row: AcquisitionBreakdown) => updateFilters({ source: row.source === report.filters.source ? null : row.source ?? null });
@@ -262,6 +262,12 @@ export default function AnalyticsDashboard({ report, initialView }: { report: Ac
       {report.filters.source || report.filters.campaign ? <div className={styles.activeFilters}><span>Showing {report.filters.source ? displaySource(report.filters.source) : 'all sources'}{report.filters.campaign ? ` · ${displayCampaign(report.filters.campaign)}` : ''}</span><button type="button" onClick={() => updateFilters({ source: null, campaign: null })} disabled={isPending}>Clear filters</button></div> : null}
       {!report.coverage.complete ? <p className={styles.partialNotice} role="status">Some data could not be loaded. Available counts are partial; unavailable figures show N/A. Refresh to try again.</p> : null}
       <Kpis report={report} available={available} />
+      <section className={styles.expandedSection} aria-labelledby="newsletter-growth-title">
+        <div className={styles.sectionHeading}><h2 id="newsletter-growth-title">Which newsletter are people choosing?</h2><button className={styles.outlineButton} type="button" disabled={isPending} onClick={() => updateFilters({ campaign: 'mb_chart_distribution_v1', source: null, view: null })}>View chart campaign</button></div>
+        <p className={styles.sectionSubtitle}>New subscribers in this period and these filters, using their saved signup choices.</p>
+        <div className={styles.tableScroll}><table className={styles.dataTable}><thead><tr><th>Stocks</th><th>Crypto</th><th>Chose both</th><th>Original choice unknown</th></tr></thead><tbody><tr><td>{count(report.newsletterSignups.stocks, available.subscribers && available.events)}</td><td>{count(report.newsletterSignups.crypto, available.subscribers && available.events)}</td><td>{count(report.newsletterSignups.both, available.subscribers && available.events)}</td><td>{count(report.newsletterSignups.unknown, available.subscribers && available.events)}</td></tr></tbody></table></div>
+        <p className={styles.tableNote}>Someone choosing both appears in each newsletter column and once in the overall subscriber total. Historical choices without a signup snapshot stay unknown. Attribution requires analytics consent; unlinked sources stay unknown.</p>
+      </section>
       <p className={styles.historyNotice}><strong>Growth filters active.</strong> Known internal/test activity and unverified historical traffic are excluded.
         {report.coverage.legacyPageViews > 0 ? <> <strong>{count(report.coverage.legacyPageViews)} historical page views are kept out of traffic totals.</strong>{report.coverage.unverifiedLegacyPageViews > 0 ? <> {count(report.coverage.unverifiedLegacyPageViews)} have no reliable traffic context, so their human or bot origin is unknown.</> : null}</> : null}
         {available.events && report.overview.visitors === 0 && report.coverage.legacyPageViews > 0 ? <> Zero tracked visitors does not establish that no real people visited historically.</> : null}

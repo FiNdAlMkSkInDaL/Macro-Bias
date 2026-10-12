@@ -26,7 +26,13 @@ export function isBlueskyConfigured() {
 }
 
 async function createBlueskyAgent() {
-  const agent = new AtpAgent({ service: 'https://bsky.social' });
+  const deadlineAt = Date.now() + 20_000;
+  const agent = new AtpAgent({ service: 'https://bsky.social', fetch: (input, init) => {
+    const remaining = deadlineAt - Date.now();
+    if (remaining <= 0) throw new Error('Bluesky request budget exhausted');
+    const timeout = AbortSignal.timeout(Math.min(12_000, remaining));
+    return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+  } });
 
   await agent.login({
     identifier: getRequiredBlueskyEnv('BLUESKY_IDENTIFIER'),
@@ -62,7 +68,9 @@ function truncateToGraphemeLimit(text: string, maxGraphemes: number): string {
   return graphemes.slice(0, maxGraphemes - 1).join('') + '\u2026';
 }
 
-export async function publishToBluesky(content: string): Promise<string | null> {
+export type SocialImage = { data: Uint8Array; alt: string; url: string };
+
+export async function publishToBluesky(content: string, image?: SocialImage): Promise<string | null> {
   const agent = await createBlueskyAgent();
 
   const preliminary = new RichText({ text: content });
@@ -82,11 +90,14 @@ export async function publishToBluesky(content: string): Promise<string | null> 
   const richText = new RichText({ text: finalText });
   await richText.detectFacets(agent);
 
+  if (image && (finalText !== content || image.data.byteLength > 2_000_000)) throw new Error('Chart post exceeds provider limits');
+  const blob = image ? (await agent.uploadBlob(image.data, { encoding: 'image/png' })).data.blob : null;
   const response = await agent.post({
     text: richText.text,
     facets: richText.facets,
     langs: ['en'],
     createdAt: new Date().toISOString(),
+    ...(blob && image ? { embed: { $type: 'app.bsky.embed.images' as const, images: [{ image: blob, alt: image.alt, aspectRatio: { width: 1200, height: 630 } }] } } : {}),
   });
 
   return response.uri ?? null;

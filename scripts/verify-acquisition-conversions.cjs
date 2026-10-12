@@ -235,6 +235,18 @@ async function check(name, test) { await test(); checks.push(name); }
     assert.equal(h.tables.marketing_event_log.filter(row => row.event_name === 'email_subscribed').length, 0);
     assert.equal(h.tables.marketing_event_log.filter(row => row.event_name === 'subscriber_reactivated').length, 1);
   });
+  await check('stock-only and crypto-only signup choices reach storage and immutable acquisition', async () => {
+    for (const market of ['stocks', 'crypto']) {
+      const h = harness(); const route = h.load('src/app/api/subscribe/route.ts');
+      const response = await route.POST(new Request('https://www.macro-bias.com/api/subscribe', { method: 'POST', headers: headers(), body: JSON.stringify({ email: 'fixture@fixture-mail.net', pagePath: market === 'stocks' ? '/today' : '/crypto', stocksOptedIn: market === 'stocks', cryptoOptedIn: market === 'crypto' }) }));
+      assert.equal(response.status, 200);
+      assert.equal(h.tables.free_subscribers[0].stocks_opted_in, market === 'stocks');
+      assert.equal(h.tables.free_subscribers[0].crypto_opted_in, market === 'crypto');
+      const event = h.tables.marketing_event_log.find(row => row.event_name === 'email_subscribed');
+      assert.equal(event.metadata.stocks_opted_in, market === 'stocks'); assert.equal(event.metadata.crypto_opted_in, market === 'crypto');
+      assert.equal(event.metadata.content_group, market);
+    }
+  });
   await check('account alerts confirm actual insertion without duplicate subscriptions or unwanted welcome mail', async () => {
     const h = harness({ user: user() }); const route = h.load('src/app/api/account/alerts/route.ts');
     const request = () => new Request('https://www.macro-bias.com/api/account/alerts', { method: 'POST', headers: headers(), body: JSON.stringify({ stocksOptedIn: true, cryptoOptedIn: true }) });

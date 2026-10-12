@@ -9,7 +9,7 @@ const crypto = { trade_date: '2026-10-12', score: 19, bias_label: 'NEUTRAL', cre
 const clone = value => JSON.parse(JSON.stringify(value));
 
 function harness(options = {}) {
-  const tables = { daily_market_briefings: [clone({ ...stock, ...options.stock })], crypto_daily_briefings: [clone({ ...crypto, ...options.crypto })],
+  const tables = { daily_market_briefings: [clone({ ...stock, ...options.stock })], crypto_daily_briefings: options.crypto || options.includeCrypto ? [clone({ ...crypto, ...options.crypto })] : [],
     macro_bias_scores: [{ score: 0, bias_label: 'NEUTRAL', trade_date: '2026-10-13', ...options.score }],
     crypto_bias_scores: [{ score: 19, bias_label: 'NEUTRAL', trade_date: '2026-10-12', ...options.cryptoScore }], marketing_event_log: clone(options.deliveries ?? []) };
   const effects = { writes: 0, published: [], reads: [] };
@@ -39,7 +39,15 @@ function harness(options = {}) {
   } };
   const load = loader();
   const module = load('src/lib/social/distribution.ts');
-  const dependencies = { admin, configured: channel => options.missing !== channel, publish: async (channel, text) => {
+  const dependencies = { admin, configured: channel => options.missing !== channel,
+    chart: async (market, date) => {
+      if (options.failChart) throw new Error('SECRET_CHART_ERROR');
+      const source = tables[market === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores'][0];
+      return { market, date, score: options.chartMismatch ? 77 : source.score, label: source.bias_label, overrideActive: false,
+        data: new Uint8Array([137, 80, 78, 71]), alt: 'Real published readings', url: `https://www.macro-bias.com/charts/${market}/${date}`,
+        points: [{ date: '2026-10-01', score: -5 }, { date, score: source.score }] };
+    }, publish: async (channel, text, image) => {
+    assert.ok(image.data.byteLength); assert.match(image.url, /\/charts\//);
     effects.published.push({ channel, text });
     if (options.failPublish === channel) throw new Error('SECRET_PROVIDER_TOKEN');
     return options.nullPublish ? null : `remote:${channel}`;
@@ -57,9 +65,8 @@ function harness(options = {}) {
     assert.equal(url.origin, 'https://www.macro-bias.com'); assert.equal(url.searchParams.get('utm_source'), channel);
     assert.equal(url.pathname, '/crypto'); assert.equal(url.searchParams.get('utm_content'), 'crypto_2026-10-12');
   }
-  assert.equal(content.scheduledDistributionMarket(new Date('2026-10-12T14:15:00Z')), null);
-  assert.equal(content.scheduledDistributionMarket(NOW), 'stocks');
-  assert.equal(content.scheduledDistributionMarket(new Date('2026-10-16T14:15:00Z')), 'crypto');
+  for (let day = 12; day <= 16; day++) assert.equal(Array.from(content.scheduledDistributionMarkets(new Date(`2026-10-${day}T14:15:00Z`))).join(','), 'stocks,crypto');
+  assert.equal(content.scheduledDistributionMarkets(new Date('2026-10-17T14:15:00Z')).length, 0);
   const post = content.buildDistributionPost({ market: 'crypto', channel: 'bluesky', date: '2026-10-12', score: 19, label: 'NEUTRAL', content: crypto.brief_content });
   assert.match(post, /12 Oct close/); assert.match(post, /Model: neutral \(\+19\)/);
   assert.ok(!post.includes('PAID BODY')); assert.ok(!post.includes('**'));
@@ -83,7 +90,7 @@ function harness(options = {}) {
 
   h = harness({ crypto: { trade_date: '2026-10-15', created_at: '2026-10-16T12:40:00Z' }, cryptoScore: { trade_date: '2026-10-15' } });
   result = await h.run({ now: new Date('2026-10-16T14:20:00Z') });
-  assert.equal(result.results[0].market, 'crypto'); assert.equal(result.results[0].status, 'published');
+  assert.equal(result.results.find(item => item.market === 'crypto').status, 'published');
   h = harness(); result = await h.run({ now: new Date('2026-10-17T14:20:00Z') });
   assert.equal(result.results.length, 0); assert.equal(h.effects.reads.length, 0);
 
@@ -116,19 +123,37 @@ function harness(options = {}) {
   result = await h.run(); assert.equal(result.results[0].status, 'needs_review'); assert.equal(h.effects.published.length, 0);
   console.log('PASS stale/future/session/score checks, repetition and crash recovery');
 
+  h = harness({ includeCrypto: true }); result = await h.run();
+  assert.equal(h.effects.published.length, 2);
+  assert.ok(result.results.every(item => item.chartUrl && item.status === 'published'));
+  assert.ok(h.tables.marketing_event_log.every(row => row.utm_campaign === 'mb_chart_distribution_v1' && row.metadata.chart_url));
+  for (const options of [{ failChart: true }, { chartMismatch: true }]) {
+    h = harness(options); await h.run(); assert.equal(h.effects.writes, 0); assert.equal(h.effects.published.length, 0);
+  }
+  const compact = content.buildDistributionPost({ market: 'stocks', channel: 'bluesky', date: '2026-10-13', score: 0, label: 'NEUTRAL',
+    content: `REGIME STATUS: ${'A long observation. '.repeat(40)}`, chart: true, previous: { date: '2026-10-12', score: -12 }, overrideActive: true });
+  assert.match(compact, /from -12 \(12 Oct\) to 0/); assert.match(compact, /News override active/); assert.match(compact, /\/go\/chart\//);
+  assert.equal(content.distributionDestination('bluesky', 'stocks', '2026-10-13', true).pathname, '/today');
+  assert.equal(content.distributionDestination('bluesky', 'stocks', '2026-10-13', true).searchParams.get('utm_campaign'), 'mb_chart_distribution_v1');
+  console.log('PASS equal chart allocation, real images, source mismatch and safe long-copy alternative');
+
   const calls = [];
   const NextResponse = { json: (body, init = {}) => ({ body, status: init.status ?? 200, headers: init.headers }), redirect: (url, init) => ({ url, ...init }) };
-  const mocks = { 'next/server': { NextResponse }, '@/lib/social/distribution': {
-    runDistribution: async options => { calls.push(options); return { ok: true, results: [], mode: options.live ? 'live' : 'preview', scheduledMarket: 'stocks' }; }, distributionDeliveryHealth: async () => [],
+  const growthCalls = [];
+  const mocks = { 'next/server': { NextResponse }, '@/lib/social/distribution-growth': { recordDistributionGrowth: async () => { growthCalls.push(true); return { complete: true }; } }, '@/lib/social/distribution': {
+    runDistribution: async options => { calls.push(options); return { ok: true, results: [], mode: options.live && !options.previewBoth ? 'live' : 'preview', scheduledMarkets: ['stocks', 'crypto'] }; }, distributionDeliveryHealth: async () => [],
   } };
   const request = (token, search = '') => ({ headers: new Headers(token ? { authorization: `Bearer ${token}` } : {}), nextUrl: new URL(`https://www.macro-bias.com/api/cron/distribution${search}`) });
   const route = loader(mocks, { CRON_SECRET: 'a-secret', VERCEL_ENV: 'production', DISTRIBUTION_MODE: 'live' })('src/app/api/cron/distribution/route.ts');
   assert.equal((await route.GET(request(null))).status, 401); assert.equal((await route.GET(request('bad'))).status, 401); assert.equal(calls.length, 0);
   await route.GET(request('a-secret', '?preview=1')); assert.equal(calls.at(-1).previewBoth, true);
+  assert.equal(growthCalls.length, 0);
+  await route.GET(request('a-secret')); assert.equal(growthCalls.length, 1);
   const previewRoute = loader(mocks, { CRON_SECRET: 'a-secret', VERCEL_ENV: 'preview', DISTRIBUTION_MODE: 'live' })('src/app/api/cron/distribution/route.ts');
   await previewRoute.GET(request('a-secret')); assert.equal(calls.at(-1).live, false);
   const disabled = loader(mocks, { CRON_SECRET: 'a-secret', VERCEL_ENV: 'production' })('src/app/api/cron/distribution/route.ts');
   await disabled.GET(request('a-secret')); assert.equal(calls.at(-1).live, false);
+  assert.equal(growthCalls.length, 1);
   const redirect = loader(mocks)('src/app/go/[channel]/[market]/[date]/route.ts');
   const response = await redirect.GET({}, { params: Promise.resolve({ channel: 'bluesky', market: 'stocks', date: '2026-10-13' }) });
   assert.equal(response.status, 307); assert.equal(response.headers['X-Robots-Tag'], 'noindex');

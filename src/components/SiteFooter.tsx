@@ -3,6 +3,8 @@ import Link from "next/link";
 const FOOTER_LINKS = [
   { href: "/today", label: "Stocks" },
   { href: "/crypto", label: "Crypto" },
+  { href: "/briefings", label: "Stock archive" },
+  { href: "/crypto/briefings", label: "Crypto archive" },
   { href: "/track-record", label: "Track Record" },
   { href: "/pricing", label: "Pricing" },
   { href: "/refer", label: "Refer" },
