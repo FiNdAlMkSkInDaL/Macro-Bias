@@ -1162,18 +1162,23 @@ function createOptimisedQuantBriefingEmailContent(
   const interpretation = dailyEmailInterpretation(score, label, regime, context, signal, isOverrideActive);
   const playbook = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.regimePlaybook) ?? '';
   const playbookItems = parseBulletListItems(playbook);
-  const visiblePlaybook = tier === 'premium' ? playbookItems : playbookItems.slice(0, 1);
+  const marketRows = context.stockFacts?.marketRows ?? [];
+  const visibleMarketRows = tier === 'premium' ? marketRows : marketRows.filter((line) => /^\*\*SPY:\*\*/.test(line));
+  // The current stock publisher supplies factual rows. Legacy callers keep their original layout.
+  const visiblePlaybook = context.stockFacts ? [] : tier === 'premium' ? playbookItems : playbookItems.slice(0, 1);
   const baseScore = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.stressTest) ?? '';
   const confirmationCopy = sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.macroOverrideStatus) ?? '';
   const history = cleanDailyEmailCopy(context.historicalContext || sectionMap.get(DAILY_BRIEFING_SECTION_HEADERS.quantCorner) || '');
   const coverage = cleanDailyEmailCopy(context.coverageNote || '');
-  const confirmation = /news/i.test(coverage) && /^News wasn['’]t available for this note\.?$/i.test(confirmationCopy.trim())
-    ? '' : confirmationCopy;
+  const watchPoints = context.stockFacts?.watchPoints ?? [];
+  const confirmation = context.stockFacts ? watchPoints.join('\n\n')
+    : /news/i.test(coverage) && /^News wasn['’]t available for this note\.?$/i.test(confirmationCopy.trim()) ? '' : confirmationCopy;
   const dashboardUrl = new URL('/dashboard', getAppUrl()).toString();
   const upgradeUrl = buildUpgradeUrl();
   const referralPageUrl = new URL('/refer', getAppUrl()).toString();
-  const lockedLine = tier === 'free' && (playbookItems.length > 1 || !playbookItems.length) ? FREE_TIER_LOCKED_PLAYBOOK_LINE : '';
+  const lockedLine = tier === 'free' && !context.stockFacts && (playbookItems.length > 1 || !playbookItems.length) ? FREE_TIER_LOCKED_PLAYBOOK_LINE : '';
   const bodyHtml = [
+    visibleMarketRows.length ? dailyEmailSectionHtml('The latest closes', dailyEmailMarketRowsHtml(visibleMarketRows), '#c4b5fd') : '',
     tier === 'premium' ? dailyEmailEvidenceHtml(context) : '',
     tier === 'premium' && baseScore && !context.evidence?.length && !context.historicalContext ? dailyEmailSectionHtml('What the model sees', dailyEmailParagraphHtml(baseScore)) : '',
     visiblePlaybook.length ? dailyEmailSectionHtml('Today’s setup', dailyEmailMarketRowsHtml(visiblePlaybook), getAccentColor(label)) : '',
@@ -1200,6 +1205,7 @@ function createOptimisedQuantBriefingEmailContent(
     delta,
     interpretation,
     reliability,
+    visibleMarketRows.length ? `The latest closes\n${visibleMarketRows.join('\n')}` : '',
     evidence.length ? `What the model sees\n${evidence.map((line) => `- ${line}`).join('\n')}`
       : tier === 'premium' && baseScore && !context.historicalContext ? `What the model sees\n${baseScore}` : '',
     visiblePlaybook.length ? `TODAY’S SETUP\n${visiblePlaybook.map((line) => `- ${line}`).join('\n')}` : '',

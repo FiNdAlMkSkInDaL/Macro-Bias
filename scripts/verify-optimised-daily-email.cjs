@@ -238,7 +238,10 @@ async function run() {
   await check('stock scheduled publisher uses session metadata and the shared reading layout for both tiers', async () => {
     const h = harness({ now: '2026-10-07T12:30:00Z', tables: {
       macro_bias_scores: [
-        { trade_date: '2026-10-06', score: 10, bias_label: 'NEUTRAL', component_scores: [], engine_inputs: { tradableSignal: signal, tradeWindow: { latestTradeDate: '2026-10-06' } }, technical_indicators: {} },
+        { trade_date: '2026-10-06', score: 10, bias_label: 'NEUTRAL', component_scores: [],
+          engine_inputs: { tradableSignal: signal, tradeWindow: { latestTradeDate: '2026-10-06' }, coreTickerChanges: {
+            SPY: { ticker: 'SPY', tradeDate: '2026-10-06', close: 605, previousClose: 600, percentChange: 0.83 },
+          } }, technical_indicators: {} },
         { trade_date: '2026-10-05', score: 5, bias_label: 'NEUTRAL', component_scores: [], engine_inputs: { tradableSignal: signal }, technical_indicators: {} },
       ], daily_market_briefings: [],
       users: [{ email: 'paid@macro-bias.com', subscription_status: 'active' }],
@@ -254,6 +257,8 @@ async function run() {
       assert.ok(mail.text.includes('Session: 6 Oct 2026'));
       assert.ok(mail.text.includes('Price data through: 6 Oct 2026'));
       assert.ok(mail.text.includes('Change: +5 points since 5 Oct 2026 (+5)'));
+      assert.ok(mail.text.includes('SPY: $605.00, +0.83%'), 'scheduled free and paid sends must include actual closing data even on fallback');
+      assert.ok(!mail.text.includes('TODAY’S SETUP'), 'scheduled sends must replace the generic setup with factual market rows');
       assert.ok(mail.html.includes('View dashboard'));
       assert.ok(mail.html.includes('font-size:16px'));
       assert.ok(!mail.text.includes('{{UNSUBSCRIBE_URL}}'));
