@@ -1,4 +1,5 @@
 import type { DailyBriefingResult, StoredBiasSnapshot } from '../briefing/types';
+import { buildStockMarketSnapshot } from '../briefing/stock-market-snapshot';
 
 /** Facts supplied by the publisher, independent of generated newsletter copy. */
 export type DailyEmailContext = {
@@ -12,6 +13,8 @@ export type DailyEmailContext = {
   historicalContext?: string | null;
   coverageNote?: string | null;
   isOverrideActive?: boolean;
+  /** Dated stock facts supplied independently of AI prose, including fallback sends. */
+  stockFacts?: { marketRows: string[]; watchPoints: string[] };
 };
 
 export const DAILY_EMAIL_IMPROVEMENTS_START_DATE = '2026-10-07';
@@ -57,25 +60,22 @@ export function buildStockEmailContext(
   const returns: string[] = [];
   if (finite(historical?.averageForward1DayReturn)) returns.push(`${percent(historical.averageForward1DayReturn)} after one session`);
   if (finite(historical?.averageForward3DayReturn)) returns.push(`${percent(historical.averageForward3DayReturn)} after three sessions`);
-  const range = matches.map((match) => match.spyForward1DayReturn).filter(finite);
-  const rangeText = range.length === 1
-    ? ` There is one recorded one-session return: ${percent(range[0])}.`
-    : range.length > 1
-      ? ` Observed one-session returns ran from ${percent(Math.min(...range))} to ${percent(Math.max(...range))}${range.length !== matches.length ? ` (${range.length} recorded outcomes)` : ''}.`
-      : ' The recorded return range is unavailable.';
+  const rangeText = [['spyForward1DayReturn', 'one-session'], ['spyForward3DayReturn', 'three-session']].map(([key, horizon]) => {
+    const range = matches.map((match) => match[key]).filter(finite);
+    return range.length === 1 ? ` One recorded ${horizon} return: ${percent(range[0])}.`
+      : range.length > 1 ? ` Observed ${horizon} returns ran from ${percent(Math.min(...range))} to ${percent(Math.max(...range))}${range.length !== matches.length ? ` (${range.length} recorded outcomes)` : ''}.` : '';
+  }).join('');
   const history = returns.length
     ? `${matches.length ? `${matches.length} past session${matches.length === 1 ? '' : 's'} matched this setup.` : 'The number of past matches is unavailable.'} SPY's weighted average return was ${returns.join(' and ')}.${rangeText}${matches.length > 0 && matches.length < 10 ? ' That is a small sample.' : ''} These are past outcomes, not forecast bounds.`
     : null;
   const summaries = components.flatMap((component) => typeof component.summary === 'string' ? [component.summary] : []).join(' ');
-  const evidence: string[] = [];
+  const market = buildStockMarketSnapshot(snapshot);
+  const evidence: string[] = [...market.evidence];
   const rsi = summaries.match(/SPY RSI is ([\d.]+)/);
-  if (rsi && Number(rsi[1]) >= 0 && Number(rsi[1]) <= 100) evidence.push(`SPY RSI is ${Number(rsi[1]).toFixed(1)}.`);
+  if (!evidence.length && rsi && Number(rsi[1]) >= 0 && Number(rsi[1]) <= 100) evidence.push(`SPY RSI is ${Number(rsi[1]).toFixed(1)}.`);
   const credit = summaries.match(/HYG\/TLT percentile is ([\d.]+)/);
-  if (credit && Number(credit[1]) >= 0 && Number(credit[1]) <= 100) evidence.push(`HYG versus TLT is at the ${ordinal(Number(credit[1]))} percentile of its recent history.`);
-  const engine = record(snapshot.engine_inputs);
-  const tradeWindow = record(engine.tradeWindow);
-  const marketDataDate = typeof tradeWindow.latestTradeDate === 'string' ? tradeWindow.latestTradeDate
-    : briefing.quant.publishedScoreContext?.marketDataDate ?? undefined;
+  if (credit && Number(credit[1]) >= 0 && Number(credit[1]) <= 100) evidence.push(`The HYG/TLT price ratio is at the ${ordinal(Number(credit[1]))} percentile of its recent history. This compares high-yield credit with long Treasuries, not today's return.`);
+  const marketDataDate = market.marketDataDate ?? undefined;
   return {
     scoreDate: snapshot.trade_date,
     marketDataDate,
@@ -84,7 +84,8 @@ export function buildStockEmailContext(
     previousScoreDate: previous?.trade_date,
     evidence,
     historicalContext: history,
-    coverageNote: briefing.news.status === 'unavailable' ? 'The news feed is unavailable. This reading does not assess current headlines.' : null,
+    stockFacts: { marketRows: market.marketRows, watchPoints: market.watchPoints },
+    coverageNote: [market.coverageNote, briefing.news.status === 'unavailable' ? 'The news feed is unavailable. This reading does not assess current headlines.' : null].filter(Boolean).join(' ') || null,
     isOverrideActive: briefing.isOverrideActive,
   };
 }

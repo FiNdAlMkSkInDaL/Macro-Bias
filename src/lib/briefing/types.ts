@@ -1,6 +1,7 @@
 import type { HistoricalAnalogsPayload } from "@/lib/market-data/derive-historical-analogs";
 import type { BiasLabel } from "@/lib/macro-bias/types";
 import type { TradableSignal } from "@/lib/signal";
+import type { StockMarketSnapshot } from './stock-market-snapshot';
 
 export type StoredBiasSnapshot = {
   trade_date: string;
@@ -55,6 +56,7 @@ export type DailyBriefingQuantContext = {
     blendedForwardReturn: number | null;
     componentSummaries: string[];
     marketDataDate: string | null;
+    marketSnapshot?: StockMarketSnapshot;
   };
 };
 

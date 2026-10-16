@@ -40,6 +40,7 @@ import { extractTradableSignal } from "@/lib/signal/format-tradable-signal";
 
 import { getDailyBriefingStrategy } from "./daily-briefing-strategies";
 import { withExponentialBackoff } from "./retry";
+import { buildStockMarketSnapshot } from './stock-market-snapshot';
 
 const HISTORICAL_ANALOG_PAGE_SIZE = 500;
 const MAX_ANALOG_LOOKBACK_YEARS = 10;
@@ -116,13 +117,15 @@ function summarizeHeadlines(headlines: string[]) {
   return headlines.slice(0, 3).join(" | ");
 }
 
-function detectOverrideCatalyst(headlines: string[]) {
+export function detectOverrideCatalyst(headlines: string[]) {
   // Only match genuine macro shocks — not routine data releases or scheduled events.
   // Words like "fed", "rate", "policy", "treasury", "inflation", "cpi", "payrolls"
   // appear in financial headlines every single day and must NOT trigger an override.
   const overridePatterns = [
     // Military / geopolitical escalation
-    /\b(war|invasion|nuclear|missile.{0,8}strike)\b/i,
+    /\b(?:declares?|declared|launch(?:es|ed)?|begins?|began|starts?|started|expands?|expanded)\b.{0,35}\b(?:war|invasion|military (?:attack|strike)s?)\b/i,
+    /\b(?:war|conflict|invasion)\b.{0,25}\b(?:erupts?|begins?|began|escalates?|escalated|expands?|expanded)\b/i,
+    /\b(?:missile|nuclear).{0,8}strike\b/i,
     // Financial system failure
     /\b(bank.{0,8}(collapse|fail|run)|flash.{0,5}crash|circuit.{0,3}breaker|market.{0,8}(halt|suspend|close))\b/i,
     // Unscheduled / emergency policy action (not scheduled meetings)
@@ -315,6 +318,7 @@ function getPublishedScoreContext(snapshot: StoredBiasSnapshot) {
     blendedForwardReturn: finiteNumber(engine.blendedForwardReturn),
     componentSummaries: components.flatMap((component) => typeof component.summary === "string" ? [component.summary] : []).slice(0, 4),
     marketDataDate: typeof tradeWindow.latestTradeDate === "string" ? tradeWindow.latestTradeDate : null,
+    marketSnapshot: buildStockMarketSnapshot(snapshot),
   };
 }
 
@@ -783,7 +787,7 @@ async function generateAnthropicBriefing(
   if (editorialEnabled) assertEditorialStockClaims(parsed.newsletter_copy, quant, news, strategyContext);
   // A missing news feed cannot support a newly generated event override.
   const overrideActive = editorialEnabled
-    ? parsed.is_override_active && news.status === "available" && news.headlines.length > 0
+    ? parsed.is_override_active && strategyContext.suggestedOverrideActive
     : parsed.is_override_active;
   const factualFallback = strategyContext.strategy.buildFallbackBriefing({
     ...strategyContext,

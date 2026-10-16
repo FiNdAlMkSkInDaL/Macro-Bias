@@ -240,37 +240,40 @@ function editorialNewsLead(context: DailyBriefingStrategyContext) {
 
 /** Factual fallback uses the same house voice as synthesis, without inventing sector observations. */
 function buildEditorialFallback(context: DailyBriefingStrategyContext) {
+  const market = context.quant.publishedScoreContext?.marketSnapshot;
+  const spy = market?.quotes.SPY;
+  const spyObservation = spy ? `**SPY** ${spy.percentChange === 0 ? 'was unchanged' : `${spy.percentChange > 0 ? 'rose' : 'fell'} ${Math.abs(spy.percentChange).toFixed(2)}%`} in the latest completed session.` : null;
   const direction = editorialDirection(context);
   const weakMatch = context.quant.signal?.noTrade === true;
   const neutral = context.quant.label === "NEUTRAL" || context.quant.score === 0;
   const lead = context.suggestedOverrideActive ? editorialNewsLead(context)
     : weakMatch ? `${direction}, but the historical match is too weak to rely on the score today.`
-      : `${direction}.`;
-  const setup = context.suggestedOverrideActive
-    ? "The published score still describes the historical comparison."
+      : [spyObservation, `${direction}.`].filter(Boolean).join(' ');
+  const setup = market?.marketRows[0] ?? (context.suggestedOverrideActive
+    ? "The score is price-based and does not measure the event in the headline."
     : weakMatch ? "This historical match isn't strong enough for a directional call."
       : neutral ? "There is very little direction in the historical returns."
-        : "The score reflects returns from similar past sessions.";
-  const focus = context.suggestedOverrideActive
-    ? "The supplied event is the main reason to reassess the index view."
+        : "The score reflects returns from similar past sessions.");
+  const focus = market?.marketRows[1] ?? (context.suggestedOverrideActive
+    ? `The headline to check is: ${context.catalyst ?? context.news.headlines[0] ?? 'News details are unavailable'}.`
     : weakMatch || neutral ? "This score gives little reason to favour one sector."
-      : `On this reading, the model playbook favours ${summarizeFocus(context.playbook.favoredGroups)} over ${summarizeFocus(context.playbook.pressuredGroups)}.`;
-  const risk = context.suggestedOverrideActive
-    ? "Further developments in the supplied event could change the outlook again."
+      : `On this reading, the model playbook favours ${summarizeFocus(context.playbook.favoredGroups)} over ${summarizeFocus(context.playbook.pressuredGroups)}.`);
+  const risk = market?.watchPoints[0] ?? (context.suggestedOverrideActive
+    ? "The model contains no estimate of this event's impact on stock returns."
     : weakMatch || neutral ? "The next-session **SPY** close is the useful check."
-        : `A ${context.quant.score > 0 ? "lower" : "higher"} next-session **SPY** close would run against the ${context.quant.score > 0 ? "positive" : "negative"} reading.`;
+        : `A ${context.quant.score > 0 ? "lower" : "higher"} next-session **SPY** close would run against the ${context.quant.score > 0 ? "positive" : "negative"} reading.`);
   const scoreText = `${formatBiasLabel(context.quant.label)} (${context.quant.score > 0 ? "+" : ""}${context.quant.score.toFixed(0)})`;
   const meaning = context.quant.score === 0 ? "There isn't a directional lean."
     : neutral ? `There's only a small ${context.quant.score > 0 ? "positive" : "negative"} lean.`
       : `It describes a ${context.quant.score > 0 ? "positive" : "negative"} historical return tendency for **SPY**.`;
   const scoreLimit = context.suggestedOverrideActive ? " Today's headlines take priority."
     : weakMatch ? " The weak historical match limits its use." : "";
-  const consequence = context.news.status === "unavailable"
+  const consequence = market?.watchPoints[1] ?? market?.watchPoints[0] ?? (context.news.status === "unavailable"
     ? "News wasn't available for this note."
-    : context.suggestedOverrideActive ? "Watch how **SPY** closes as the supplied event develops."
+    : context.suggestedOverrideActive ? "The headline alone does not establish a move in **SPY**, oil or volatility. Check the next completed prices before describing a market reaction."
       : weakMatch ? "One day's return can agree with the score even when the historical match is weak."
         : neutral ? "A neutral reading still leaves room for a large move."
-          : `A ${context.quant.score > 0 ? "gain" : "decline"} over the next one to three sessions would agree with the ${context.quant.score > 0 ? "positive" : "negative"} reading. A move the other way would go against it.`;
+          : `A ${context.quant.score > 0 ? "gain" : "decline"} over the next one to three sessions would agree with the ${context.quant.score > 0 ? "positive" : "negative"} reading. A move the other way would go against it.`);
   const published = context.quant.publishedScoreContext;
   const recordedReturns: string[] = [];
   if (typeof published?.averageForward1DayReturn === "number" && Number.isFinite(published.averageForward1DayReturn)) {
