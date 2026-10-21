@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { loadPaidBriefingArchive, type PaidBriefingArchiveItem } from '@/lib/product/paid-briefing-data';
 import { buildPublishedChart } from './chart-content';
 import type { DistributionMarket } from './distribution-content';
+import { buildGrokXCommentary, type GrokXMarketFacts } from './grok-x-commentary';
 
 export const GROK_X_END = '2026-10-27T00:00:00.000Z';
 export const GROK_X_EVENT = 'grok_x_delivery';
@@ -12,6 +13,7 @@ type Admin = ReturnType<typeof createSupabaseAdminClient>;
 export type GrokXDependencies = {
   admin: Admin;
   archive: (market: DistributionMarket) => Promise<{ items: PaidBriefingArchiveItem[]; loadError: string | null }>;
+  facts: (market: DistributionMarket, sourceDate: string) => Promise<GrokXMarketFacts | null>;
   publish: (text: string) => Promise<string>;
 };
 export class GrokXError extends Error {
@@ -40,6 +42,14 @@ function dependencies(): GrokXDependencies {
   return {
     admin: createSupabaseAdminClient({ timeoutMs: 8_000 }),
     archive: loadPaidBriefingArchive,
+    facts: async (market, sourceDate) => {
+      const { data, error } = await createSupabaseAdminClient({ timeoutMs: 8_000 })
+        .from(market === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores')
+        .select(market === 'stocks' ? 'trade_date,ticker_changes,window:engine_inputs->tradeWindow,technical_indicators' : 'trade_date,ticker_changes')
+        .eq('trade_date', sourceDate).maybeSingle();
+      if (error) throw new GrokXError('market_facts_read_unavailable');
+      return data as unknown as GrokXMarketFacts | null;
+    },
     publish: async text => {
       const names = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'] as const;
       if (names.some(name => !process.env[name]?.trim())) throw new GrokXError('x_not_configured');
@@ -55,9 +65,9 @@ function dependencies(): GrokXDependencies {
     },
   };
 }
-/** Only public numeric metadata can become a post. No caller text, paid prose,
+/** Only verified market facts can become a post. No caller text, paid prose,
  * arbitrary destination, mentions, replies, private analytics or account actions. */
-export function buildGrokXPost(market: DistributionMarket, items: PaidBriefingArchiveItem[], now: Date) {
+export function buildGrokXPost(market: DistributionMarket, items: PaidBriefingArchiveItem[], now: Date, facts: GrokXMarketFacts | null) {
   const today = now.toISOString().slice(0, 10);
   const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
   const latest = [...items].sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -73,12 +83,14 @@ export function buildGrokXPost(market: DistributionMarket, items: PaidBriefingAr
   const contentId = `grok_${market}_${today.replace(/-/g, '')}`;
   const url = new URL(market === 'stocks' ? 'https://www.macro-bias.com/today' : 'https://www.macro-bias.com/crypto');
   url.search = new URLSearchParams({ utm_source: 'x', utm_medium: 'organic_social', utm_campaign: campaign, utm_content: contentId }).toString();
-  const score = (value: number) => value > 0 ? `+${value}` : String(value);
-  const text = `${market === 'stocks' ? 'Stocks' : 'Crypto composite'} model readings: ${score(previous.score)} (${previous.date}) to ${score(chart.score)} (${chart.date}), ${chart.label.replace(/_/g, ' ').toLowerCase()}.\n${chart.overrideActive ? 'News override active; these are base-model readings.' : market === 'crypto' ? 'Context across markets, not a BTC price target.' : 'A change in backdrop, not a buy or sell signal.'}\n${url}`;
+  const commentary = facts?.trade_date === latest.date ? buildGrokXCommentary(market, facts, now) : null;
+  if (!commentary) throw new GrokXError('useful_market_context_unavailable', 409);
+  const text = `${commentary.text}\n${url}`;
   // The controlled copy is ASCII, so X's only length substitution is its 23-char
   // URL. No truncation can remove a date or the limitation.
   if (!/^[\x00-\x7f]*$/.test(text) || text.length - url.href.length + 23 > 280) throw new GrokXError('post_length_invalid', 409);
   return { market, sourceDate: chart.date, previousDate: previous.date, publishedAt: latest.publishedAt,
+    marketDataDate: commentary.marketDataDate, editorialVersion: 'market_context_v2',
     text, trackedUrl: url.href, campaign, contentId, fingerprint: createHash('sha256').update(text).digest('hex') };
 }
 export async function previewGrokX(market: DistributionMarket, now = new Date(), deps?: GrokXDependencies) {
@@ -86,7 +98,9 @@ export async function previewGrokX(market: DistributionMarket, now = new Date(),
   const d = deps ?? dependencies();
   const archive = await d.archive(market);
   if (archive.loadError) throw new GrokXError('publication_read_unavailable');
-  return { ...buildGrokXPost(market, archive.items, now), slotOpen: grokXSlot(market, now), endsAt: GROK_X_END };
+  const sourceDate = [...archive.items].sort((a, b) => b.date.localeCompare(a.date))[0]?.date;
+  const facts = sourceDate ? await d.facts(market, sourceDate) : null;
+  return { ...buildGrokXPost(market, archive.items, now, facts), slotOpen: grokXSlot(market, now), endsAt: GROK_X_END };
 }
 /** One atomic claim per market/week caps the entire publisher at two posts a
  * week, even across callers, concurrency, fresh source dates and retries. */
