@@ -53,7 +53,9 @@ export function buildGrokXCommentary(market: DistributionMarket, facts: GrokXMar
     if (technical.tradeDate === marketDataDate && positive(technical.sma20)) {
       watch = spy.close < technical.sma20
         ? `${bothUp ? 'But SPY' : 'SPY'} is below its 20-day average (${money(technical.sma20)}). Watch whether it can reclaim that line.`
-        : `SPY is above its 20-day average (${money(technical.sma20)}). Watch whether it holds that line.`;
+        : spy.close > technical.sma20
+          ? `SPY is above its 20-day average (${money(technical.sma20)}). Watch whether it holds that line.`
+          : `SPY is at its 20-day average (${money(technical.sma20)}). Watch whether it moves above or below that line.`;
     }
     return { marketDataDate, text: `${hook}\nNasdaq ETF QQQ ${pct(qqq.percentChange)}; S&P 500 ETF SPY ${pct(spy.percentChange)} (${date} close).\n${watch}` };
   }
