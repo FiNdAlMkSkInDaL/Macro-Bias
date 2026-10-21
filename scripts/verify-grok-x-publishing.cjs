@@ -77,6 +77,8 @@ function harness(options = {}) {
   // Direction and relative performance must not be confused: rising less is
   // not falling; falling less is not a rally. Exercise every editorial branch.
   const commentary = loader()('src/lib/social/grok-x-commentary.ts');
+  assert.match(commentary.buildGrokXCommentary('stocks', { ...facts,
+    technical_indicators: { SPY: { tradeDate: '2026-10-20', sma20: 100.42 } } }, now).text, /SPY is at its 20-day average/);
   for (const a of [-2, 0, 2]) for (const b of [-3, 0, 3]) {
     for (const market of ['stocks', 'crypto']) {
       const cryptoMarket = market === 'crypto';
