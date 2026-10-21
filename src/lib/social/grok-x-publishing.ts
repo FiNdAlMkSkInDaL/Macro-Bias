@@ -108,8 +108,10 @@ export async function publishGrokX(market: DistributionMarket, fingerprint: stri
   if (preview.fingerprint !== fingerprint) throw new GrokXError('preview_changed', 409);
   const { slotOpen: _slot, endsAt: _ends, ...post } = preview;
   const metadata = { ...post, traffic_type: 'internal', channel: 'x', status: 'claimed', claimed_at: now.toISOString() };
+  // Per-post content is already in metadata.contentId and trackedUrl. The
+  // existing event-log schema has no top-level utm_content column.
   const claim = await d.admin.from('marketing_event_log').insert({ id, event_name: GROK_X_EVENT,
-    page_path: '/api/marketing/grok-x', utm_source: 'x', utm_medium: 'organic_social', utm_campaign: post.campaign, utm_content: post.contentId, metadata });
+    page_path: '/api/marketing/grok-x', utm_source: 'x', utm_medium: 'organic_social', utm_campaign: post.campaign, metadata });
   if (claim.error) throw new GrokXError(claim.error.code === '23505' ? 'weekly_claim_exists' : 'claim_unavailable', 409);
   let remoteId: string | null = null;
   try { remoteId = await d.publish(post.text); } catch { /* Provider errors may contain secrets; never return them. */ }

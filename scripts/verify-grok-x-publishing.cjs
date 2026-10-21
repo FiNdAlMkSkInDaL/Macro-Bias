@@ -1,6 +1,13 @@
 /** Offline only: no network, real credentials, account changes or live posts. */
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const loader = require('./distribution-loader.cjs');
+// Validate payloads against the real table definition, rather than letting an
+// unconstrained mock accept columns PostgREST will reject before a send.
+const schema = fs.readFileSync(path.join(__dirname, '../supabase/migrations/202604130001_create_marketing_analytics_and_drips.sql'), 'utf8');
+const eventTable = schema.match(/create table if not exists public\.marketing_event_log \(([\s\S]*?)\r?\n\);/)[1];
+const eventColumns = new Set([...eventTable.matchAll(/^\s+([a-z_]+)\s/gm)].map(match => match[1]));
 const api = loader()('src/lib/social/grok-x-publishing.ts');
 const now = new Date('2026-10-21T11:00:00Z');
 const item = (date, score) => ({ date, tradeDate: date, score, biasLabel: 'NEUTRAL', overrideActive: false,
@@ -17,6 +24,7 @@ function harness(options = {}) {
         let error = null, data = rows.filter(row => filters.every(f => f(row)))[0] ?? null;
         if (action === 'read') { effects.reads++; if (options.failRead) error = { code: 'SECRET_DB_ERROR' }; }
         if (action === 'insert') {
+          for (const key of Object.keys(payload)) assert(eventColumns.has(key), `Unknown marketing_event_log column: ${key}`);
           if (options.failClaim) error = { code: 'DB_FAILURE' };
           else if (rows.some(row => row.id === payload.id)) error = { code: '23505' };
           else { rows.push(JSON.parse(JSON.stringify(payload))); effects.writes++; }
@@ -62,6 +70,8 @@ function harness(options = {}) {
   assert.equal(outcomes.filter(r => r.status === 'fulfilled').length, 1); assert.equal(h.effects.sends, 1);
   assert.equal(h.rows.length, 1); assert.equal(h.rows[0].metadata.traffic_type, 'internal');
   assert.equal(h.rows[0].event_name, 'grok_x_delivery'); assert.equal(h.rows[0].metadata.status, 'published');
+  assert.equal(h.rows[0].metadata.contentId, 'grok_stocks_20261021');
+  assert.equal(new URL(h.rows[0].metadata.trackedUrl).searchParams.get('utm_content'), 'grok_stocks_20261021');
   assert.equal((await api.publishGrokX('stocks', post.fingerprint, now, h.deps)).status, 'already_published');
   assert.equal(h.effects.sends, 1);
   for (const options of [{ failPublish: true }, { failFinish: true }]) {
