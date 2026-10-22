@@ -9,6 +9,8 @@ export type DailyEmailContext = {
   previousScore?: number | null;
   previousScoreDate?: string | null;
   interpretation?: string | null;
+  /** Supported price observation, safe to retain even when the model withholds a call. */
+  marketObservation?: string | null;
   evidence?: string[];
   historicalContext?: string | null;
   coverageNote?: string | null;
@@ -83,6 +85,9 @@ export function buildStockEmailContext(
     previousScore: previous && previous.trade_date < snapshot.trade_date && finite(previous.score) ? previous.score : null,
     previousScoreDate: previous?.trade_date,
     evidence,
+    marketObservation: market.quotes.SPY ? `The S&P 500 ETF SPY ${market.quotes.SPY.percentChange === 0 ? 'was unchanged'
+      : Math.abs(market.quotes.SPY.percentChange) < 0.005 ? 'changed less than 0.01%'
+      : `${market.quotes.SPY.percentChange > 0 ? 'rose' : 'fell'} ${Math.abs(market.quotes.SPY.percentChange).toFixed(2)}%`} in the latest completed session.` : null,
     historicalContext: history,
     stockFacts: { marketRows: market.marketRows, watchPoints: market.watchPoints },
     coverageNote: [market.coverageNote, briefing.news.status === 'unavailable' ? 'The news feed is unavailable. This reading does not assess current headlines.' : null].filter(Boolean).join(' ') || null,

@@ -21,6 +21,8 @@ export type TradableSignal = {
   noTrade: boolean;
   /** Short plain-English reason for the permission. */
   reason: string;
+  /** Audit context only. Does not change score, permission or risk size. */
+  scoreContext?: { rawScore: number; suppressedBy: Array<'low_variation' | 'monday' | 'overnight_conflict'> };
 };
 
 export type StrategyRules = {

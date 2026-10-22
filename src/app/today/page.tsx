@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TodayPage() {
-  const viewer = await getViewerScore('stocks', undefined, 'latest-publication');
+  const viewer = await getViewerScore('stocks', undefined, 'latest-publication', { includeExplanation: true });
 
   if (!viewer.signedIn && !viewer.paid) {
     return <PublicDailyPage data={await loadPublicDailyData('stocks', viewer)} />;

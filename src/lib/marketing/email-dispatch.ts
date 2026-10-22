@@ -18,6 +18,7 @@ import {
   dailyEmailMetadataText,
   dailyEmailParagraphHtml,
   dailyEmailReliabilityText,
+  dailyEmailReadingLabel,
   dailyEmailSectionHtml,
   dailyEmailShellHtml,
 } from './daily-email-template';
@@ -1195,13 +1196,14 @@ function createOptimisedQuantBriefingEmailContent(
   const evidence = tier === 'premium' ? (context.evidence ?? []).map(cleanDailyEmailCopy).filter(Boolean).slice(0, 3) : [];
   const date = dailyEmailDisplayDate(context.scoreDate);
   const delta = dailyEmailDeltaText(score, context);
-  const reliability = dailyEmailReliabilityText(signal);
+  const reliability = dailyEmailReliabilityText(signal, score);
   const weeklyTag = weeklyDigest && weeklyDigest.sessionCount > 0 ? ` + Weekly Recap ${getTrendEmoji(weeklyDigest.trendDirection)}` : '';
-  const subject = `${isOverrideActive ? 'Override Active | ' : 'Stock Bias: '}${formatDisplayLabel(label)} (${formatSignedNumber(score)})${date ? ` | ${date}` : ''}${weeklyTag}`;
+  const readingLabel = dailyEmailReadingLabel(score, formatDisplayLabel(label), signal);
+  const subject = `${isOverrideActive ? 'Override Active | ' : 'Stock Bias: '}${readingLabel} (${formatSignedNumber(score)})${date ? ` | ${date}` : ''}${weeklyTag}`;
   const text = [
     'Daily Macro Bias',
     dailyEmailMetadataText(context, 'stocks'),
-    buildHeaderSummary(score, label, isOverrideActive),
+    `BASE SCORE: ${readingLabel} (${formatSignedNumber(score)})${isOverrideActive ? '\nOVERRIDE ACTIVE' : ''}`,
     delta,
     interpretation,
     reliability,

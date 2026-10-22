@@ -1,5 +1,6 @@
 import type { BiasLabel } from "@/lib/macro-bias/types";
 import { dailyEmailImprovementsEnabled } from "@/lib/marketing/daily-email-context";
+import { explainReading } from '../signal/reading-explanation';
 
 import { DAILY_BRIEFING_SECTION_HEADERS } from "./daily-briefing-config";
 import type {
@@ -244,10 +245,11 @@ function buildEditorialFallback(context: DailyBriefingStrategyContext) {
   const spy = market?.quotes.SPY;
   const spyObservation = spy ? `**SPY** ${spy.percentChange === 0 ? 'was unchanged' : `${spy.percentChange > 0 ? 'rose' : 'fell'} ${Math.abs(spy.percentChange).toFixed(2)}%`} in the latest completed session.` : null;
   const direction = editorialDirection(context);
+  const explanation = explainReading(context.quant.score, context.quant.signal);
   const weakMatch = context.quant.signal?.noTrade === true;
   const neutral = context.quant.label === "NEUTRAL" || context.quant.score === 0;
   const lead = context.suggestedOverrideActive ? editorialNewsLead(context)
-    : weakMatch ? `${direction}, but the historical match is too weak to rely on the score today.`
+    : explanation.status !== 'directional' ? [spyObservation, `${explanation.title}. ${explanation.reason}`].filter(Boolean).join(' ')
       : [spyObservation, `${direction}.`].filter(Boolean).join(' ');
   const setup = market?.marketRows[0] ?? (context.suggestedOverrideActive
     ? "The score is price-based and does not measure the event in the headline."
@@ -263,11 +265,11 @@ function buildEditorialFallback(context: DailyBriefingStrategyContext) {
     : weakMatch || neutral ? "The next-session **SPY** close is the useful check."
         : `A ${context.quant.score > 0 ? "lower" : "higher"} next-session **SPY** close would run against the ${context.quant.score > 0 ? "positive" : "negative"} reading.`);
   const scoreText = `${formatBiasLabel(context.quant.label)} (${context.quant.score > 0 ? "+" : ""}${context.quant.score.toFixed(0)})`;
-  const meaning = context.quant.score === 0 ? "There isn't a directional lean."
+  const meaning = explanation.status !== 'directional' ? explanation.reason
     : neutral ? `There's only a small ${context.quant.score > 0 ? "positive" : "negative"} lean.`
       : `It describes a ${context.quant.score > 0 ? "positive" : "negative"} historical return tendency for **SPY**.`;
   const scoreLimit = context.suggestedOverrideActive ? " Today's headlines take priority."
-    : weakMatch ? " The weak historical match limits its use." : "";
+    : "";
   const consequence = market?.watchPoints[1] ?? market?.watchPoints[0] ?? (context.news.status === "unavailable"
     ? "News wasn't available for this note."
     : context.suggestedOverrideActive ? "The headline alone does not establish a move in **SPY**, oil or volatility. Check the next completed prices before describing a market reaction."

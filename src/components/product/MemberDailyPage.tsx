@@ -38,12 +38,12 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
             <div className={styles.score}>
               <p>{stocks ? 'Stock' : 'Crypto'} score</p>
               <strong>{score.score > 0 ? '+' : ''}{score.score}</strong>
-              <span data-tone={regime.tone}>{regime.label}</span>
+              <span data-tone={regime.tone}>{score.explanation && score.explanation.status !== 'directional' ? score.explanation.title : regime.label}</span>
               <div className={styles.gauge} role="img" aria-label={`Score ${score.score} on a scale from minus 100 to plus 100`}><i data-tone={regime.tone} style={{ left: `${(score.score + 100) / 2}%` }} /></div>
               <div className={styles.scale}><span>−100</span><span>0</span><span>+100</span></div>
             </div>
             <div className={styles.interpretation}>
-              <h2>What this reading means</h2><p>{regime.explanation}</p>
+              <h2>What this reading means</h2><p>{score.explanation?.reason ?? regime.explanation}</p>
               <DailyPublicationNote score={score} />
               <div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link><Link className={ui.textLink} href={briefings}>Read older briefings<ArrowIcon /></Link></div>
             </div>

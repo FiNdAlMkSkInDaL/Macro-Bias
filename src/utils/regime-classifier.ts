@@ -104,7 +104,7 @@ function areThresholdsSeparated(thresholds: RegimeThresholds) {
 
 // HYG/TLT is level-sensitive across long spans, so filtering calibrates coarse
 // regime bands from the supplied history instead of relying only on static cuts.
-function resolveThresholds(options?: RegimeClassifierOptions): RegimeThresholds {
+export function resolveThresholds(options?: RegimeClassifierOptions): RegimeThresholds {
   if (options?.thresholds) {
     return options.thresholds;
   }

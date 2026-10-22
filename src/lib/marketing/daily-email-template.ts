@@ -1,5 +1,6 @@
 import type { TradableSignal } from '../signal';
 import type { DailyEmailContext } from './daily-email-context';
+import { explainReading } from '../signal/reading-explanation';
 
 export const DAILY_EMAIL_UNSUBSCRIBE_PLACEHOLDER = '{{UNSUBSCRIBE_URL}}';
 
@@ -60,13 +61,14 @@ export function dailyEmailInterpretation(
     return /^override active\b/i.test(dailyEmailPlainText(interpretation))
       ? interpretation : 'Override active: treat the model reading as background context today.';
   }
-  if (signal?.noTrade) {
-    const lean = score === 0 ? 'no directional lean' : label === 'NEUTRAL'
-      ? score > 0 ? 'only a small positive lean' : 'only a small negative lean'
-      : score > 0 ? 'a positive lean' : 'a negative lean';
-    return `There is ${lean} in the score. The historical match is too weak to rely on it today.`;
-  }
+  const explanation = explainReading(score, signal);
+  if (explanation.status !== 'directional') return [cleanDailyEmailCopy(context?.marketObservation || ''), explanation.reason].filter(Boolean).join(' ');
   return cleanDailyEmailCopy(context?.interpretation || fallback);
+}
+
+export function dailyEmailReadingLabel(score: number, label: string, signal?: TradableSignal | null) {
+  const explanation = explainReading(score, signal);
+  return explanation.status === 'directional' ? label.replaceAll('_', ' ') : explanation.title;
 }
 
 export function dailyEmailMetadataText(context?: DailyEmailContext, market: 'stocks' | 'crypto' = 'crypto') {
@@ -97,7 +99,10 @@ export function dailyEmailDeltaText(score: number, context?: DailyEmailContext) 
   return `Change: ${dailyEmailSignedNumber(delta)} points since ${previousDate} (${dailyEmailSignedNumber(context.previousScore)})`;
 }
 
-export function dailyEmailReliabilityText(signal?: TradableSignal | null) {
+export function dailyEmailReliabilityText(signal?: TradableSignal | null, score?: number) {
+  // For zero, agreement counts near-zero outcomes rather than a directional
+  // vote. Filtering can also manufacture grade F. Neither is a fit statistic.
+  if (score === 0 || signal?.scoreContext?.suppressedBy?.length || /low neighbor-vol flat|Monday (?:publish )?dampener/i.test(signal?.reason ?? '')) return '';
   if (!signal || (/legacy score without tradable signal metadata/i.test(signal.reason ?? '')
     || !Number.isFinite(signal.distanceQuality) || signal.distanceQuality <= 0 || signal.distanceQuality > 1
     || !Number.isFinite(signal.meanNeighborDistance) || signal.meanNeighborDistance < 0
@@ -118,11 +123,11 @@ export function dailyEmailHeaderHtml(options: {
   const { title, score, label, interpretation, accent, context, signal, isOverrideActive } = options;
   const metadata = dailyEmailMetadataText(context, options.market);
   const delta = dailyEmailDeltaText(score, context);
-  const reliability = dailyEmailReliabilityText(signal);
+  const reliability = dailyEmailReliabilityText(signal, score);
   return `<div style="color:#a1a1aa;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${escapeDailyEmailHtml(title)}</div>
     ${metadata ? `<div style="margin-top:10px;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeDailyEmailHtml(metadata).replaceAll('\n', '<br />')}</div>` : ''}
     <div style="margin-top:18px;color:#a1a1aa;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Base score</div>
-    <h1 style="margin:6px 0 0;color:${accent};-webkit-text-fill-color:${accent};font-size: 28px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;">${escapeDailyEmailHtml(label.replaceAll('_', ' '))} <span style="display:inline-block;font-size:24px;">(${escapeDailyEmailHtml(dailyEmailSignedNumber(score))})</span></h1>
+    <h1 style="margin:6px 0 0;color:${accent};-webkit-text-fill-color:${accent};font-size: 28px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;">${escapeDailyEmailHtml(dailyEmailReadingLabel(score, label, signal))} <span style="display:inline-block;font-size:24px;">(${escapeDailyEmailHtml(dailyEmailSignedNumber(score))})</span></h1>
     ${delta ? `<p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeDailyEmailHtml(delta)}</p>` : ''}
     ${isOverrideActive ? '<p style="margin:14px 0 0;color:#fca5a5;font-size:14px;font-weight:700;">OVERRIDE ACTIVE</p>' : ''}
     ${interpretation ? `<p style="margin:18px 0 0;color:#f1f5f9;-webkit-text-fill-color:#f1f5f9;font-size:18px;line-height:1.6;">${dailyEmailInlineHtml(interpretation)}</p>` : ''}
