@@ -159,7 +159,8 @@ async function run() {
     assert.ok(!generated.newsletterCopy.includes('still deserves weight'));
     const create = h.load('src/lib/marketing/crypto-email-content.ts').createCryptoBriefingEmailContent;
     const mail = create(generated.newsletterCopy, weak.score, weak.label, 'premium', { ...context, interpretation: 'High conviction today.' }, weak.signal);
-    assert.match(mail.text, /historical (?:evidence|match)[^.]*too weak[^.]*(?:rely|trust)/i);
+    assert.match(mail.text, /No clear directional signal/);
+    assert.match(mail.text, /matched historical outcomes do not provide enough agreement for a directional call/i);
     assert.ok(!mail.text.includes('High conviction today'));
     assert.ok(mail.text.includes('Insufficient historical fit'));
     customerReadable(mail);

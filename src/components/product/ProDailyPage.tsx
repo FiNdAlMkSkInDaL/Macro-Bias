@@ -37,7 +37,7 @@ export function ProDailyPage({ data, briefing }: {
         </div>
         {score ? (
           <div className={styles.current} data-current-session={score.tradeDate}>
-            <ProReading asset={data.asset} tradeDate={score.tradeDate} score={score.score} label={score.label} />
+            <ProReading asset={data.asset} tradeDate={score.tradeDate} score={score.score} label={score.label} explanation={score.explanation} />
           </div>
         ) : (
           <section className={ui.notice} aria-label="Published reading unavailable">

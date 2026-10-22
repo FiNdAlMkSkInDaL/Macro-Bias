@@ -256,6 +256,7 @@ function api(status) {
     let result;
     const admin = load('src/lib/analytics/admin-access.ts', {
       'server-only': {}, react: { cache: fn => fn },
+      '@/lib/analytics/traffic-policy': require('./distribution-loader.cjs')()('src/lib/analytics/traffic-policy.ts'),
       '@/lib/supabase/server': { createSupabaseServerClient: async () => ({ auth: { getUser: async () => result } }) },
     });
     const actual = load('src/lib/analytics/dashboard-data.ts', {

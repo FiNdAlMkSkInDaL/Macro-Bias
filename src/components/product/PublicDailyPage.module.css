@@ -29,7 +29,8 @@
 .neutral { color: var(--daily-text); }
 .positive { color: var(--daily-accent); }
 .negative { color: #f4a1aa; }
-.regime { margin: 0; color: var(--daily-muted); font-size: 24px; line-height: 1.2; letter-spacing: -.035em; }
+.regime { margin: 0; min-width: 0; color: var(--daily-muted); font-size: 24px; line-height: 1.2; letter-spacing: -.035em; }
+.explanation { margin: 14px 0 0; color: var(--daily-muted); font-size: 14px; line-height: 1.65; }
 .scale { margin-top: 14px; }
 .scaleTrack { position: relative; height: 1px; margin: 0 5px; background: #627164; }
 .scaleTrack::after { position: absolute; inset: -4px 0; content: ''; background: repeating-linear-gradient(90deg, #627164 0, #627164 1px, transparent 1px, transparent 7.14%); }

@@ -100,6 +100,7 @@ function loaders(tables, fail) {
     '../billing/subscription': { getUserSubscriptionStatus: async () => ({ user: null, isPro: false }) },
     '../market-data/stock-session': session,
     '../signal/format-tradable-signal': { extractTradableSignal: ({ tradableSignal }) => tradableSignal },
+    '../signal/reading-explanation': require('./distribution-loader.cjs')()('src/lib/signal/reading-explanation.ts'),
     '../supabase/admin': { createSupabaseAdminClient: () => db.client },
   });
   const data = load('src/lib/product/public-daily-data.ts', {
@@ -111,6 +112,20 @@ function loaders(tables, fail) {
 async function check(name, run) { await run(); passed++; console.log(`PASS ${name}`); }
 
 (async () => {
+  await check('public explanation is a coarse allowlisted summary, without paid model decisions or briefing text', async () => {
+    const { tables, table } = fixture('stocks');
+    tables[table][0].score = 0;
+    tables[table][0].tradableSignal = { position: 'NO_TRADE', noTrade: true, reliability: 'F', size: 0, neighborAgreement: 0,
+      reason: 'low neighbor-vol flat (dispersion 0.32 < 0.5). PRIVATE_DIAGNOSTIC', scoreContext: { rawScore: 1, suppressedBy: ['low_variation'] } };
+    const { db, scores } = loaders(tables);
+    const viewer = await scores.getViewerScore('stocks', { user: null, isPro: false }, 'latest-publication', { includeExplanation: true });
+    assert.equal(viewer.score.explanation.status, 'withheld');
+    assert.match(viewer.score.explanation.reason, /low-variation filter/);
+    for (const key of ['permission', 'grade', 'sizePct', 'sentence']) assert.equal(viewer.score[key], null);
+    assert.equal('modelDecision' in viewer.score, false);
+    assert(!JSON.stringify(viewer).includes('PRIVATE_DIAGNOSTIC')); assert(!JSON.stringify(viewer).includes('rawScore'));
+    assert(db.queries.every(q => !/briefings/.test(q.table)));
+  });
   for (const asset of ['stocks', 'crypto']) {
     await check(`${asset}: latest public reading for anonymous and Free, without private queries`, async () => {
       const { tables, table } = fixture(asset);

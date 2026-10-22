@@ -15,6 +15,7 @@ import {
   dailyEmailParagraphHtml,
   dailyEmailPlainText,
   dailyEmailReliabilityText,
+  dailyEmailReadingLabel,
   dailyEmailSectionHtml,
   dailyEmailShellHtml,
   dailyEmailSignedNumber,
@@ -78,11 +79,11 @@ export function createCryptoBriefingEmailContent(
   const footerHtml = tier === 'free'
     ? `<p style="margin:22px 0 0;color:#a1a1aa;font-size:14px;line-height:1.6;"><a href="${escapeDailyEmailHtml(referralUrl)}" style="color:#7dd3fc;text-decoration:underline;">Refer &amp; earn Pro access</a></p>` : '';
   const date = dailyEmailDisplayDate(context?.scoreDate);
-  const labelAndScore = `${label.replaceAll('_', ' ')} (${dailyEmailSignedNumber(score)})`;
+  const labelAndScore = `${dailyEmailReadingLabel(score, label, signal)} (${dailyEmailSignedNumber(score)})`;
   const subject = `Crypto Bias: ${override ? 'Override active | ' : ''}${labelAndScore}${date ? ` | ${date} UTC` : ''}`;
   const metadata = dailyEmailMetadataText(context);
   const delta = dailyEmailDeltaText(score, context);
-  const reliability = dailyEmailReliabilityText(signal);
+  const reliability = dailyEmailReliabilityText(signal, score);
   const evidence = tier === 'premium' ? (context?.evidence ?? []).map(cleanDailyEmailCopy).filter(Boolean).slice(0, 3) : [];
   const text = [
     'Daily Crypto Bias',

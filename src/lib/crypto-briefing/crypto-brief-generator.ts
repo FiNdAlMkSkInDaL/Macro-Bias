@@ -462,9 +462,10 @@ function inputEvidence(biasResult: CryptoDailyBiasResult) {
   return facts.slice(0, 3);
 }
 
-export function buildCryptoEmailEvidence(biasResult: CryptoDailyBiasResult): Pick<DailyEmailContext, "interpretation" | "evidence" | "historicalContext" | "coverageNote"> {
+export function buildCryptoEmailEvidence(biasResult: CryptoDailyBiasResult): Pick<DailyEmailContext, "interpretation" | "marketObservation" | "evidence" | "historicalContext" | "coverageNote"> {
   return {
     interpretation: interpretation(biasResult),
+    marketObservation: recordedPrice(biasResult, 'BTC-USD') ? `${dailyMove('BTC', recordedPrice(biasResult, 'BTC-USD')!.percentChange)} in the latest completed UTC session.` : null,
     evidence: inputEvidence(biasResult),
     historicalContext: historicalSummary(biasResult, false),
     coverageNote: "This note uses price and model data. We don't assess news, broad DeFi activity, stablecoin supply, pegs or exchange flows.",

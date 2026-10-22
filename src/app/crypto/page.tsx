@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CryptoPage() {
-  const viewer = await getViewerScore('crypto', undefined, 'latest-publication');
+  const viewer = await getViewerScore('crypto', undefined, 'latest-publication', { includeExplanation: true });
 
   if (!viewer.signedIn && !viewer.paid) {
     return <PublicDailyPage data={await loadPublicDailyData('crypto', viewer)} />;

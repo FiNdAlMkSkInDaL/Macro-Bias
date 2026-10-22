@@ -854,6 +854,18 @@ export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
     vetoedScore,
     signalForPublish,
   );
+  // Keep the existing trading policy intact, but save why a processed zero is
+  // different from an ordinary neutral estimate. Older rows retain their reason.
+  const suppressedBy: NonNullable<TradableSignal['scoreContext']>['suppressedBy'] = [];
+  if (ANALOG_MODEL_SETTINGS.flatLowNeighborVolEnabled && dispersion < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold && score === 0) suppressedBy.push('low_variation');
+  if (ANALOG_MODEL_SETTINGS.skipMondayScores && isUsEquityMonday(input.tradeDate)) suppressedBy.push('monday');
+  const rawScore = mapExpectancyToScore(expectancySummary);
+  // Only name the overnight veto when it actually zeroed a non-zero arm.
+  let beforeOvernight = applyLowNeighborVolFlat(rawScore, blendedNeighborReturns);
+  beforeOvernight = applyFadeBigDay(beforeOvernight, sameDayCtc);
+  beforeOvernight = applySoftOvernightAmp(beforeOvernight, overnightGap);
+  if (beforeOvernight !== 0 && applyOvernightVeto(beforeOvernight, overnightGap) === 0 && score === 0) suppressedBy.push('overnight_conflict');
+  signal.scoreContext = { rawScore, suppressedBy };
 
   // Component glass-box uses the published (possibly dampened) score so pillars match UI.
   const componentScores = buildComponentScores(

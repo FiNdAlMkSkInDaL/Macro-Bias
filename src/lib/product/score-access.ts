@@ -7,6 +7,7 @@ import { getUserSubscriptionStatus, type SubscriptionStatusResult } from '../bil
 import { selectVisibleRow, stockSessionDate } from '../market-data/stock-session';
 import { extractTradableSignal } from '../signal/format-tradable-signal';
 import type { PositionPermission, TradableSignal } from '../signal/types';
+import { explainReading, type ReadingExplanation } from '../signal/reading-explanation';
 import { createSupabaseAdminClient } from '../supabase/admin';
 import { readPaidWorkspaceSelection, readRecentScoreMetadata } from './workspace-snapshot';
 
@@ -29,6 +30,8 @@ export type ViewerScore = {
   grade: string | null;
   sizePct: number | null;
   sentence: string | null;
+  /** Public explanation only; excludes paid diagnostics and raw model inputs. */
+  explanation?: ReadingExplanation;
   /** Saved decision is exposed only after the existing paid entitlement check. */
   modelDecision?: TradableSignal | null;
 };
@@ -191,9 +194,9 @@ function toViewerScore(
     updatedAt: row.updated_at,
     publishedAt: row.created_at ?? null,
     sourceTradeDate: row.source_date ?? null,
-    permission: signal?.position ?? null,
-    grade: signal?.reliability ?? null,
-    sizePct: signal ? Math.round(signal.size * 100) : null,
+    permission: paid ? signal?.position ?? null : null,
+    grade: paid ? signal?.reliability ?? null : null,
+    sizePct: paid && signal ? Math.round(signal.size * 100) : null,
     sentence: null,
     ...(paid ? { modelDecision: signal } : {}),
   };
@@ -203,7 +206,7 @@ export async function getViewerScore(
   asset: ProductAsset,
   subscriptionStatus?: SubscriptionStatusResult,
   selection: 'entitled-session' | 'latest-publication' = 'entitled-session',
-  options: { includeSentence?: boolean; includeSnapshot?: boolean } = {},
+  options: { includeSentence?: boolean; includeSnapshot?: boolean; includeExplanation?: boolean } = {},
 ): Promise<ProductScore> {
   const table: ScoreTable = asset === 'stocks' ? 'macro_bias_scores' : 'crypto_bias_scores';
   let paid = false;
@@ -247,16 +250,17 @@ export async function getViewerScore(
     const tradeDate = selected.row.trade_date;
     let signal: TradableSignal | null = null;
     let sentence: string | null = null;
-    if (paid) {
+    if (paid || options.includeExplanation) {
       [signal, sentence] = await Promise.all([
         options.includeSnapshot
           ? Promise.resolve(extractTradableSignal('engine_inputs' in selected.row ? selected.row.engine_inputs : null))
           : loadTradableSignal(table, tradeDate),
-        options.includeSentence === false ? Promise.resolve(null)
+        !paid || options.includeSentence === false ? Promise.resolve(null)
           : asset === 'stocks' ? stockSentence(tradeDate) : cryptoSentence(tradeDate),
       ]);
     }
     const score = toViewerScore(asset, selected.row, paid, !paid && selection !== 'latest-publication', signal, tradeDate);
+    if (paid || options.includeExplanation) score.explanation = explainReading(score.score, signal);
 
     if (paid) {
       score.sentence = sentence;

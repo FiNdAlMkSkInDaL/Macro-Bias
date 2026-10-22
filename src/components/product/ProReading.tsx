@@ -1,4 +1,5 @@
 import type { ProductAsset } from '@/lib/product/score-access';
+import type { ReadingExplanation } from '@/lib/signal/reading-explanation';
 import styles from './ProReading.module.css';
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -19,8 +20,9 @@ function labelText(label: string | null) {
   return label ? label.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Regime unavailable';
 }
 
-export function ProReading({ asset, tradeDate, score, label }: {
+export function ProReading({ asset, tradeDate, score, label, explanation }: {
   asset: ProductAsset; tradeDate: string | null; score: number | null; label: string | null;
+  explanation?: ReadingExplanation | null;
 }) {
   const market = asset === 'stocks' ? 'stock' : 'crypto';
   const storedLabel = labelText(label);
@@ -33,12 +35,13 @@ export function ProReading({ asset, tradeDate, score, label }: {
         <time dateTime={tradeDate ?? undefined}>{dateLabel(tradeDate)}</time>
       </header>
       {hasScore ? <div className={styles.readingBody}>
-        <div className={styles.value}><p>{score > 0 ? '+' : ''}{score}</p><span>{storedLabel}</span></div>
+        <div className={styles.value}><p>{score > 0 ? '+' : ''}{score}</p><span>{explanation && explanation.status !== 'directional' ? explanation.title : storedLabel}</span></div>
         <div className={styles.scale} aria-label={`Published score ${score} on a scale from minus 100 to plus 100`}>
           <div className={styles.rail}><span style={{ left: `${(Math.max(-100, Math.min(100, score)) + 100) / 2}%` }} /></div>
           <div className={styles.scaleLabels}><span>−100</span><span>0</span><span>+100</span></div>
         </div>
       </div> : <p className={styles.missing}>The published reading is unavailable.</p>}
+      {hasScore && explanation ? <p className={styles.explanation}>{explanation.reason}</p> : null}
     </section>
   );
 }

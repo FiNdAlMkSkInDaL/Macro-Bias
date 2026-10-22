@@ -14,6 +14,7 @@ import { buildProContextObservations } from "@/components/product/pro-context-ob
 import { ManagePlan } from "@/components/billing/ManagePlan";
 import { getStripeCustomerId } from "@/lib/billing/stripe-customer";
 import type { MacroBiasScoreRow } from "@/lib/macro-bias/types";
+import { extractTradableSignal } from '@/lib/signal/format-tradable-signal';
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,7 @@ export default async function DashboardPage() {
       <ProWorkspace
         asset="stocks"
         published={score ? { tradeDate: score.tradeDate, score: score.score, label: score.label } : null}
+        signal={extractTradableSignal(snapshot?.engine_inputs)}
         chart={workspaceData.active}
         briefing={briefing}
         notice={workspaceData.active.loadError ?? (workspaceData.active.missingSessionDate ? "No score is published for " + workspaceData.active.missingSessionDate + "." : null)}

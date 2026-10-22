@@ -12,3 +12,4 @@
 .scaleLabels{display:flex;justify-content:space-between;margin-top:10px;font-family:var(--font-data),monospace;font-size:12px;line-height:1.5;color:#acb6ad}
 .missing{margin:16px 0 0;color:#acb6ad;font-size:15px;line-height:1.65}
 @media(max-width:600px){.reading{padding:16px}.readingHeader{gap:12px;align-items:flex-start}.reading h2{font-size:18px}.readingBody{grid-template-columns:104px minmax(0,1fr);gap:16px;margin-top:12px}.value p{font-size:42px}.value>span{font-size:14px}}
+.explanation { margin: 16px 0 0; color: #cbd5c5; font-size: 14px; line-height: 1.65; max-width: 75ch; }
