@@ -1,5 +1,5 @@
 /** Read-only check using the original stored v18 matches, not rebuilt history.
- * npx tsx scripts/audit-published-lowvol.ts <output.json> */
+ * npx tsx scripts/audit-published-lowvol.ts <output.json> [completed-cutoff-YYYY-MM-DD] */
 import { loadEnvConfig } from '@next/env';
 loadEnvConfig(process.cwd());
 import { writeFileSync } from 'node:fs';
@@ -8,7 +8,8 @@ import { ANALOG_MODEL_SETTINGS as settings, STRATEGY_RULES } from '../src/lib/ma
 import { applyFadeBigDay, applySoftOvernightAmp, applyOvernightVeto, neighborReturnDispersion } from '../src/lib/macro-bias/calculate-daily-bias';
 import { buildTradableSignal, positionFromSignal, weightedMean } from '../src/lib/signal';
 import { isUsEquityMonday } from '../src/utils/knn';
-const cutoff = '2026-10-21';
+const cutoff = process.argv[3] ?? '2026-10-21';
+if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff) || !Number.isFinite(Date.parse(`${cutoff}T00:00:00Z`))) throw Error('Supply cutoff as YYYY-MM-DD');
 async function main() {
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
   const r = await db.from('macro_bias_scores').select('trade_date,score,created_at,component:component_scores->0,spy:ticker_changes->SPY,signal:engine_inputs->tradableSignal,window:engine_inputs->tradeWindow')

@@ -1,5 +1,5 @@
 /** Read-only fixed-policy ablation; never writes scores or sends anything.
- * npx tsx scripts/evaluate-stock-lowvol-filter.ts <output.json>
+ * npx tsx scripts/evaluate-stock-lowvol-filter.ts <output.json> [completed-cutoff-YYYY-MM-DD]
  * Reconstructed history is not an out-of-sample live trading record. */
 import { loadEnvConfig } from '@next/env';
 loadEnvConfig(process.cwd());
@@ -12,7 +12,8 @@ import { classifyRegime, resolveThresholds } from '../src/utils/regime-classifie
 import { isUsEquityMonday, calculateBaseDistance } from '../src/utils/knn';
 import type { AnalogStateVector, DailyBiasInput, HistoricalAnalogVector, TickerChangeMap } from '../src/lib/macro-bias/types';
 
-const cutoff = '2026-10-21'; // Latest completed session at this investigation, not the host's clock.
+const cutoff = process.argv[3] ?? '2026-10-21'; // Explicit completed-session cutoff; never infer unfinished outcomes.
+if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff) || !Number.isFinite(Date.parse(`${cutoff}T00:00:00Z`))) throw Error('Supply cutoff as YYYY-MM-DD');
 const tickers = ['SPY', 'QQQ', 'TLT', 'GLD', 'USO', 'HYG', 'VIX', 'CPER'] as const;
 type Price = { trade_date: string; open: number; close: number };
 type Point = HistoricalAnalogVector & { index: number; close: number; open: number; ctc: number; overnight: number; outcomeDate: string | null; outcome: number | null };

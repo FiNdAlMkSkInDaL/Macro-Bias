@@ -1,0 +1,753 @@
+{
+  "capturedAt": "2026-10-27T17:46:11.396Z",
+  "scope": "Rounded original stored matched sets, current version only. This verifies score arithmetic and suppression, not historical neighbor selection, full data-feed correctness or predictive value. Stock source bars precede publication sessions; crypto bars are dated UTC. No model or publication writes.",
+  "markets": [
+    {
+      "market": "stocks",
+      "windows": [
+        {
+          "requestedReadings": 10,
+          "readings": 10,
+          "first": "2026-10-14",
+          "last": "2026-10-27",
+          "zeros": 5,
+          "neutralLabels": 9
+        },
+        {
+          "requestedReadings": 20,
+          "readings": 20,
+          "first": "2026-09-30",
+          "last": "2026-10-27",
+          "zeros": 7,
+          "neutralLabels": 19
+        },
+        {
+          "requestedReadings": 30,
+          "readings": 30,
+          "first": "2026-09-15",
+          "last": "2026-10-27",
+          "zeros": 7,
+          "neutralLabels": 27
+        },
+        {
+          "requestedReadings": 60,
+          "readings": 60,
+          "first": "2026-07-31",
+          "last": "2026-10-27",
+          "zeros": 8,
+          "neutralLabels": 53
+        }
+      ],
+      "replayCompared": 20,
+      "replayMismatches": [],
+      "recent": [
+        {
+          "date": "2026-10-27",
+          "sourceDate": "2026-10-26",
+          "score": 0,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-27T13:09:00.310406+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": -7,
+          "savedRaw": -7,
+          "dispersion": 0.88216861200113,
+          "replay": 0,
+          "replayMatches": true,
+          "reasons": [
+            "monday_source_bar"
+          ],
+          "savedReasons": [
+            "monday"
+          ],
+          "permission": "FLAT",
+          "storedReason": "Monday publish dampener. Analogs may lean, but Monday scores are withheld (measured noise)."
+        },
+        {
+          "date": "2026-10-26",
+          "sourceDate": "2026-10-23",
+          "score": -1,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-26T13:09:00.606271+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": -1,
+          "savedRaw": -1,
+          "dispersion": 0.7940014231725282,
+          "replay": -1,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": [],
+          "permission": "FLAT",
+          "storedReason": "adaptive K=5 (VIX level 78). Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-23",
+          "sourceDate": "2026-10-22",
+          "score": 12,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-23T13:09:01.811158+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": 12,
+          "savedRaw": 12,
+          "dispersion": 0.798058331201423,
+          "replay": 12,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": [],
+          "permission": "FLAT",
+          "storedReason": "adaptive K=5 (VIX level 75.6). Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-22",
+          "sourceDate": "2026-10-21",
+          "score": 0,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-22T13:09:01.060407+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": 1,
+          "savedRaw": null,
+          "dispersion": 0.31709187942929096,
+          "replay": 0,
+          "replayMatches": true,
+          "reasons": [
+            "low_variation"
+          ],
+          "savedReasons": null,
+          "permission": "NO_TRADE",
+          "storedReason": "adaptive K=5 (VIX level 42.7); low neighbor-vol flat (dispersion 0.32 < 0.5). Neighbor disagreement is high. Model refuses a directional call."
+        },
+        {
+          "date": "2026-10-21",
+          "sourceDate": "2026-10-20",
+          "score": 0,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-21T13:08:59.980761+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": 0,
+          "savedRaw": null,
+          "dispersion": 0.3136394426726333,
+          "replay": 0,
+          "replayMatches": true,
+          "reasons": [
+            "low_variation",
+            "raw_estimate_rounds_to_zero"
+          ],
+          "savedReasons": null,
+          "permission": "NO_TRADE",
+          "storedReason": "adaptive K=5 (VIX level 54.2); low neighbor-vol flat (dispersion 0.31 < 0.5). Neighbor disagreement is high. Model refuses a directional call."
+        },
+        {
+          "date": "2026-10-20",
+          "sourceDate": "2026-10-19",
+          "score": 0,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-20T13:09:00.200443+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": -1,
+          "savedRaw": null,
+          "dispersion": 0.3861258085132358,
+          "replay": 0,
+          "replayMatches": true,
+          "reasons": [
+            "low_variation",
+            "monday_source_bar"
+          ],
+          "savedReasons": null,
+          "permission": "NO_TRADE",
+          "storedReason": "Monday dampener: adaptive K=5 (VIX level 68.3); low neighbor-vol flat (dispersion 0.39 < 0.5). Neighbor disagreement is high. Model refuses a directional call."
+        },
+        {
+          "date": "2026-10-19",
+          "sourceDate": "2026-10-16",
+          "score": -28,
+          "label": "RISK_OFF",
+          "publishedAt": "2026-10-19T13:09:00.167405+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": -40,
+          "savedRaw": null,
+          "dispersion": 3.1855393012800834,
+          "replay": -28,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "SHORT",
+          "storedReason": "adaptive K=5 (VIX level 81.2). Risk-off lean with reliability C and size 15%."
+        },
+        {
+          "date": "2026-10-16",
+          "sourceDate": "2026-10-15",
+          "score": 0,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-16T13:09:00.044045+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": 2,
+          "savedRaw": null,
+          "dispersion": 0.31251063981887084,
+          "replay": 0,
+          "replayMatches": true,
+          "reasons": [
+            "low_variation"
+          ],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "adaptive K=5 (VIX level 38.9); low neighbor-vol flat (dispersion 0.31 < 0.5). Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-15",
+          "sourceDate": "2026-10-14",
+          "score": -9,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-15T13:08:59.840791+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 5,
+          "rawReplay": -9,
+          "savedRaw": null,
+          "dispersion": 0.6559944054639492,
+          "replay": -9,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "adaptive K=5 (VIX level 44). Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-14",
+          "sourceDate": "2026-10-13",
+          "score": -11,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-14T13:09:00.081421+00:00",
+          "model": "macro-model-v18-adaptive-k",
+          "originalMatches": 7,
+          "rawReplay": -11,
+          "savedRaw": null,
+          "dispersion": 0.7649110525854278,
+          "replay": -11,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "adaptive K=7 (VIX level 15.7). Score is inside the neutral dead zone. Stay in cash."
+        }
+      ]
+    },
+    {
+      "market": "crypto",
+      "windows": [
+        {
+          "requestedReadings": 10,
+          "readings": 10,
+          "first": "2026-10-17",
+          "last": "2026-10-26",
+          "zeros": 0,
+          "neutralLabels": 7
+        },
+        {
+          "requestedReadings": 20,
+          "readings": 20,
+          "first": "2026-10-07",
+          "last": "2026-10-26",
+          "zeros": 0,
+          "neutralLabels": 11
+        },
+        {
+          "requestedReadings": 30,
+          "readings": 30,
+          "first": "2026-09-27",
+          "last": "2026-10-26",
+          "zeros": 0,
+          "neutralLabels": 17
+        },
+        {
+          "requestedReadings": 60,
+          "readings": 60,
+          "first": "2026-08-28",
+          "last": "2026-10-26",
+          "zeros": 1,
+          "neutralLabels": 30
+        }
+      ],
+      "replayCompared": 26,
+      "replayMismatches": [],
+      "recent": [
+        {
+          "date": "2026-10-26",
+          "sourceDate": "2026-10-26",
+          "score": -20,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-27T12:39:27.792048+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": -20,
+          "savedRaw": null,
+          "dispersion": 1.638398535155595,
+          "replay": -20,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-25",
+          "sourceDate": "2026-10-25",
+          "score": -15,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-26T12:39:28.822885+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": -15,
+          "savedRaw": null,
+          "dispersion": 1.5145391378237805,
+          "replay": -15,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-24",
+          "sourceDate": "2026-10-24",
+          "score": 16,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-25T12:39:27.612078+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": 16,
+          "savedRaw": null,
+          "dispersion": 0.7361076008302048,
+          "replay": 16,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-23",
+          "sourceDate": "2026-10-23",
+          "score": 15,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-24T12:39:27.8464+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": 15,
+          "savedRaw": null,
+          "dispersion": 0.7361076008302047,
+          "replay": 15,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-22",
+          "sourceDate": "2026-10-22",
+          "score": 23,
+          "label": "RISK_ON",
+          "publishedAt": "2026-10-23T12:39:27.781396+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": 23,
+          "savedRaw": null,
+          "dispersion": 0.6882527442734973,
+          "replay": 23,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "LONG",
+          "storedReason": "Risk-on lean with reliability A and size 14%."
+        },
+        {
+          "date": "2026-10-21",
+          "sourceDate": "2026-10-21",
+          "score": -39,
+          "label": "RISK_OFF",
+          "publishedAt": "2026-10-22T12:39:27.964589+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": -39,
+          "savedRaw": null,
+          "dispersion": 1.1585263743221386,
+          "replay": -39,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "SHORT",
+          "storedReason": "Risk-off lean with reliability B and size 17%."
+        },
+        {
+          "date": "2026-10-20",
+          "sourceDate": "2026-10-20",
+          "score": -27,
+          "label": "RISK_OFF",
+          "publishedAt": "2026-10-21T12:39:27.811+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": -27,
+          "savedRaw": null,
+          "dispersion": 1.1510461328721797,
+          "replay": -27,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "SHORT",
+          "storedReason": "Risk-off lean with reliability C and size 9%."
+        },
+        {
+          "date": "2026-10-19",
+          "sourceDate": "2026-10-19",
+          "score": -5,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-20T12:39:27.706515+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": -5,
+          "savedRaw": null,
+          "dispersion": 0.942847941080639,
+          "replay": -5,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-18",
+          "sourceDate": "2026-10-18",
+          "score": -6,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-19T12:39:27.792514+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": -6,
+          "savedRaw": null,
+          "dispersion": 0.9761930956526992,
+          "replay": -6,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        },
+        {
+          "date": "2026-10-17",
+          "sourceDate": "2026-10-17",
+          "score": 9,
+          "label": "NEUTRAL",
+          "publishedAt": "2026-10-18T12:39:27.794303+00:00",
+          "model": "crypto-model-v4-calibrated-gates",
+          "originalMatches": 5,
+          "rawReplay": 9,
+          "savedRaw": null,
+          "dispersion": 1.248766175070417,
+          "replay": 9,
+          "replayMatches": true,
+          "reasons": [],
+          "savedReasons": null,
+          "permission": "FLAT",
+          "storedReason": "Score is inside the neutral dead zone. Stay in cash."
+        }
+      ]
+    }
+  ],
+  "liveLowVariationComparison": {
+    "cutoff": "2026-10-26",
+    "compared": 18,
+    "changedDecisions": 0,
+    "excluded": [
+      {
+        "date": "2026-09-30",
+        "reason": "Missing original inputs/outcome or score published after session open"
+      }
+    ],
+    "limitations": "Small live sample; rounded stored matches; excludes mismatches and backfilled/late rows. Not evidence of a validated long-run edge."
+  },
+  "reconstructedLowVariationComparison": {
+    "cutoff": "2026-10-26",
+    "methodology": {
+      "comparison": "Only the low-neighbor-return-dispersion filter differs; other scoring/permission rules fixed.",
+      "horizon": "Next completed SPY session open-to-close, unit directional exposure, flat overnight.",
+      "cost": "Round trip 10 basis points on every active session.",
+      "causal": "Trailing feature ranks; only matured three-session labels in calibration and neighbors; minimum calendar gap; past-only regime/stats.",
+      "caveats": [
+        "Reconstructed prices and current scoring rules, not live out-of-sample performance.",
+        "Reconstruction uses the available historical warmup/window rather than reproducing each original ten-year data fetch. Parity checks validate the engine on reconstructed inputs, not against original historical publications.",
+        "2020–2026 influenced prior model selection; yearly slices are descriptive, not untouched holdouts.",
+        "No threshold search; transaction-cost assumption excludes variable slippage/borrowing costs.",
+        "Results do not establish future returns or marketing ROI."
+      ]
+    },
+    "parityChecks": 17,
+    "overall": {
+      "on": {
+        "sessions": 1712,
+        "activeSessions": 242,
+        "cashPct": 85.86,
+        "zeroScorePct": 43.75,
+        "hitRatePct": 54.96,
+        "meanGrossActiveReturnPct": 0.1533,
+        "meanNetReturnAllSessionsPct": 0.0075,
+        "netCumulativeUnitReturnPct": 11.64,
+        "maxDrawdownPct": 16.21
+      },
+      "off": {
+        "sessions": 1712,
+        "activeSessions": 263,
+        "cashPct": 84.64,
+        "zeroScorePct": 29.44,
+        "hitRatePct": 54.75,
+        "meanGrossActiveReturnPct": 0.139,
+        "meanNetReturnAllSessionsPct": 0.006,
+        "netCumulativeUnitReturnPct": 8.58,
+        "maxDrawdownPct": 17.89
+      }
+    },
+    "blockedTrades": {
+      "count": 21,
+      "off": {
+        "sessions": 21,
+        "activeSessions": 21,
+        "cashPct": 0,
+        "zeroScorePct": 0,
+        "hitRatePct": 52.38,
+        "meanGrossActiveReturnPct": -0.0255,
+        "meanNetReturnAllSessionsPct": -0.1255,
+        "netCumulativeUnitReturnPct": -2.74,
+        "maxDrawdownPct": 6.62
+      }
+    },
+    "years": [
+      {
+        "year": "2020",
+        "on": {
+          "sessions": 252,
+          "activeSessions": 27,
+          "cashPct": 89.29,
+          "zeroScorePct": 55.95,
+          "hitRatePct": 44.44,
+          "meanGrossActiveReturnPct": -0.1349,
+          "meanNetReturnAllSessionsPct": -0.0252,
+          "netCumulativeUnitReturnPct": -6.52,
+          "maxDrawdownPct": 13.39
+        },
+        "off": {
+          "sessions": 252,
+          "activeSessions": 35,
+          "cashPct": 86.11,
+          "zeroScorePct": 34.92,
+          "hitRatePct": 48.57,
+          "meanGrossActiveReturnPct": -0.0255,
+          "meanNetReturnAllSessionsPct": -0.0174,
+          "netCumulativeUnitReturnPct": -4.75,
+          "maxDrawdownPct": 11.74
+        }
+      },
+      {
+        "year": "2021",
+        "on": {
+          "sessions": 252,
+          "activeSessions": 33,
+          "cashPct": 86.9,
+          "zeroScorePct": 46.43,
+          "hitRatePct": 48.48,
+          "meanGrossActiveReturnPct": 0.0669,
+          "meanNetReturnAllSessionsPct": -0.0043,
+          "netCumulativeUnitReturnPct": -1.15,
+          "maxDrawdownPct": 5.1
+        },
+        "off": {
+          "sessions": 252,
+          "activeSessions": 34,
+          "cashPct": 86.51,
+          "zeroScorePct": 28.97,
+          "hitRatePct": 47.06,
+          "meanGrossActiveReturnPct": 0.0301,
+          "meanNetReturnAllSessionsPct": -0.0094,
+          "netCumulativeUnitReturnPct": -2.42,
+          "maxDrawdownPct": 5.14
+        }
+      },
+      {
+        "year": "2022",
+        "on": {
+          "sessions": 251,
+          "activeSessions": 52,
+          "cashPct": 79.28,
+          "zeroScorePct": 38.65,
+          "hitRatePct": 63.46,
+          "meanGrossActiveReturnPct": 0.3566,
+          "meanNetReturnAllSessionsPct": 0.0532,
+          "netCumulativeUnitReturnPct": 13.69,
+          "maxDrawdownPct": 5.03
+        },
+        "off": {
+          "sessions": 251,
+          "activeSessions": 54,
+          "cashPct": 78.49,
+          "zeroScorePct": 35.46,
+          "hitRatePct": 61.11,
+          "meanGrossActiveReturnPct": 0.2833,
+          "meanNetReturnAllSessionsPct": 0.0394,
+          "netCumulativeUnitReturnPct": 9.81,
+          "maxDrawdownPct": 5.03
+        }
+      },
+      {
+        "year": "2023",
+        "on": {
+          "sessions": 250,
+          "activeSessions": 36,
+          "cashPct": 85.6,
+          "zeroScorePct": 36.8,
+          "hitRatePct": 58.33,
+          "meanGrossActiveReturnPct": 0.086,
+          "meanNetReturnAllSessionsPct": -0.002,
+          "netCumulativeUnitReturnPct": -0.61,
+          "maxDrawdownPct": 5.23
+        },
+        "off": {
+          "sessions": 250,
+          "activeSessions": 37,
+          "cashPct": 85.2,
+          "zeroScorePct": 28,
+          "hitRatePct": 59.46,
+          "meanGrossActiveReturnPct": 0.1124,
+          "meanNetReturnAllSessionsPct": 0.0018,
+          "netCumulativeUnitReturnPct": 0.35,
+          "maxDrawdownPct": 5.23
+        }
+      },
+      {
+        "year": "2024",
+        "on": {
+          "sessions": 252,
+          "activeSessions": 30,
+          "cashPct": 88.1,
+          "zeroScorePct": 44.05,
+          "hitRatePct": 46.67,
+          "meanGrossActiveReturnPct": -0.0225,
+          "meanNetReturnAllSessionsPct": -0.0146,
+          "netCumulativeUnitReturnPct": -3.66,
+          "maxDrawdownPct": 4
+        },
+        "off": {
+          "sessions": 252,
+          "activeSessions": 35,
+          "cashPct": 86.11,
+          "zeroScorePct": 26.59,
+          "hitRatePct": 48.57,
+          "meanGrossActiveReturnPct": -0.0507,
+          "meanNetReturnAllSessionsPct": -0.0209,
+          "netCumulativeUnitReturnPct": -5.22,
+          "maxDrawdownPct": 6.23
+        }
+      },
+      {
+        "year": "2025",
+        "on": {
+          "sessions": 250,
+          "activeSessions": 41,
+          "cashPct": 83.6,
+          "zeroScorePct": 43.2,
+          "hitRatePct": 53.66,
+          "meanGrossActiveReturnPct": 0.4029,
+          "meanNetReturnAllSessionsPct": 0.0497,
+          "netCumulativeUnitReturnPct": 12.43,
+          "maxDrawdownPct": 4.12
+        },
+        "off": {
+          "sessions": 250,
+          "activeSessions": 43,
+          "cashPct": 82.8,
+          "zeroScorePct": 26.8,
+          "hitRatePct": 53.49,
+          "meanGrossActiveReturnPct": 0.3873,
+          "meanNetReturnAllSessionsPct": 0.0494,
+          "netCumulativeUnitReturnPct": 12.35,
+          "maxDrawdownPct": 4.09
+        }
+      },
+      {
+        "year": "2026",
+        "on": {
+          "sessions": 205,
+          "activeSessions": 23,
+          "cashPct": 88.78,
+          "zeroScorePct": 40.49,
+          "hitRatePct": 65.22,
+          "meanGrossActiveReturnPct": 0.0451,
+          "meanNetReturnAllSessionsPct": -0.0062,
+          "netCumulativeUnitReturnPct": -1.27,
+          "maxDrawdownPct": 2.37
+        },
+        "off": {
+          "sessions": 205,
+          "activeSessions": 25,
+          "cashPct": 87.8,
+          "zeroScorePct": 24.39,
+          "hitRatePct": 64,
+          "meanGrossActiveReturnPct": 0.0835,
+          "meanNetReturnAllSessionsPct": -0.002,
+          "netCumulativeUnitReturnPct": -0.44,
+          "maxDrawdownPct": 2.23
+        }
+      }
+    ],
+    "recent": {
+      "on": {
+        "sessions": 454,
+        "activeSessions": 63,
+        "cashPct": 86.12,
+        "zeroScorePct": 42.07,
+        "hitRatePct": 57.14,
+        "meanGrossActiveReturnPct": 0.2659,
+        "meanNetReturnAllSessionsPct": 0.023,
+        "netCumulativeUnitReturnPct": 10.22,
+        "maxDrawdownPct": 4.4
+      },
+      "off": {
+        "sessions": 454,
+        "activeSessions": 67,
+        "cashPct": 85.24,
+        "zeroScorePct": 25.77,
+        "hitRatePct": 56.72,
+        "meanGrossActiveReturnPct": 0.2677,
+        "meanNetReturnAllSessionsPct": 0.0247,
+        "netCumulativeUnitReturnPct": 11.08,
+        "maxDrawdownPct": 4.35
+      }
+    }
+  },
+  "findings": [
+    {
+      "type": "zero_frequency",
+      "detail": "Five of ten recent stock publications are zero: four low-variation triggers, including one Monday source bar, plus one further Monday source-bar suppression. All five unfiltered estimates were within the ordinary neutral score range."
+    },
+    {
+      "type": "freshness",
+      "detail": "Latest stock publication 27 October uses completed 26 October prices; latest crypto bar 26 October was published 27 October. These match the completed-session schedule."
+    },
+    {
+      "type": "weekday_semantics",
+      "detail": "The so-called Monday publish dampener uses the completed source bar date, not the publication session date. In the before-open pipeline it therefore suppresses Tuesday publications sourced from Monday. Today raw -7 becomes 0. This matches existing research, but the stored phrase Monday publish dampener is misleading."
+    },
+    {
+      "type": "vix_units_disagreement",
+      "detail": "Adaptive K compares todayVector.vixLevel >=20, but buildTodayStateVector supplies a trailing VIX percentile. Constants and verification comments describe a raw VIX level threshold. Example: 15 October publication uses actual VIX 16.87, diagnostic percentile44, and K5. The original v18 structural research also uses stationarized percentile input, so switching to raw VIX would change the evaluated policy and requires a separate controlled comparison, not a silent hotfix."
+    },
+    {
+      "type": "validation_limit",
+      "detail": "The reconstruction modestly favors the low-variation filter in aggregate after fixed 10bp round-trip costs, but it hurts three of seven annual slices including2026. The small original live sample has no changed trading decisions. Neither result establishes a durable predictive edge or justifies claiming all neutral days are useful."
+    }
+  ],
+  "productionModelChanged": false
+}
