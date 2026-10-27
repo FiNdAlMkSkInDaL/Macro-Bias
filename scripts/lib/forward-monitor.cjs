@@ -99,7 +99,7 @@ function advanceState(report, previous, policy) {
   if (resolved.length) notifications.push({ type: 'recovery', issues: resolved });
   next.issues = report.issues;
   const now = new Date(report.checkedAt), week = now.toISOString().slice(0, 10);
-  if (now.getUTCDay() === policy.weeklyReviewDayUtc && report.issues.length === 0) {
+  if (now.getUTCDay() === policy.weeklyReviewDayUtc && now.getUTCHours() + now.getUTCMinutes() / 60 >= policy.captureGraceHourUtc && report.issues.length === 0) {
     for (const cohort of report.cohorts) for (const choice of cohort.candidates) {
       const key = `${cohort.key}:${choice.candidate}`, prior = next.reviews[key];
       if (prior?.date === week) continue;

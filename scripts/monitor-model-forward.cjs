@@ -8,7 +8,8 @@ const policy = JSON.parse(fs.readFileSync(path.join(root, 'docs/model-monitor-po
 const statePath = path.join(root, 'docs/model-forward-monitor-state.json');
 const record = process.argv.includes('--record');
 const previous = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : null;
-const { evaluateCohort, healthIssues, advanceState, unavailableState } = require('./lib/forward-monitor.cjs');
+const { advanceState, unavailableState } = require('./lib/forward-monitor.cjs');
+const { buildForwardReport } = require('./lib/build-forward-report.cjs');
 const overrides = {}, load = require('./distribution-loader.cjs')(overrides);
 overrides['../signal'] = load('src/lib/signal/strategy');
 const { readModelEvents, summarizeForward } = load('src/lib/model-forward/service');
@@ -29,27 +30,10 @@ function frozenFilesChanged() {
 }
 async function main() {
   const now = new Date(), admin = load('src/lib/supabase/admin').createSupabaseAdminClient({ timeoutMs: 15000 });
-  const events = await readModelEvents(admin), summary = summarizeForward(events);
-  const predictions = events.flatMap(row => { const saved = validSavedPrediction(row); return saved ? [{ id: row.id, ...saved }] : []; });
-  const outcomes = new Map(events.filter(r => r.event_name === MODEL_FORWARD.outcomeEvent).map(r => [String(r.metadata.predictionId), r]));
-  const completed = predictions.flatMap(({ id, ...saved }) => {
-    const row = outcomes.get(id), outcome = row ? validSavedOutcome(row, saved) : null;
-    return outcome ? [{ id, saved, outcome }] : [];
-  });
-  let stockTarget = now.toISOString().slice(0, 10);
-  while (!isCompletedPriceDate('SPY', stockTarget, new Date(stockTarget + 'T23:59:00Z')))
-    stockTarget = new Date(Date.parse(stockTarget) + 86400000).toISOString().slice(0, 10);
-  const expectedTargets = { stocks: stockTarget, crypto: new Date(now.getTime() + 86400000).toISOString().slice(0, 10) };
-  const issues = healthIssues({ now, summary, predictions, completed, expectedTargets, policy, experiment: MODEL_FORWARD });
-  if (frozenFilesChanged()) issues.push('subscriber_or_production_model_code_changed_since_freeze');
-  const report = { version: policy.version, checkedAt: now.toISOString(), completeRead: true, settlementEnd: MODEL_FORWARD.settlementEnd,
-    issues, invalidRecords: summary.invalid, latestHealthAt: summary.latestHealth?.checkedAt ?? null,
-    cohorts: summary.cohorts.map(cohort => {
-      const rows = completed.filter(r => `${r.saved.prediction.market}:${r.saved.modelHash}:${r.saved.recipeHash}` === cohort.key)
-        .sort((a, b) => a.saved.prediction.targetDate.localeCompare(b.saved.prediction.targetDate));
-      return { key: cohort.key, market: cohort.market, locked: cohort.locked, completed: cohort.completed, pending: cohort.pending,
-        candidates: evaluateCohort(rows, policy) };
-    }) };
+  const events = await readModelEvents(admin);
+  const report = buildForwardReport({ now, events, summarizeForward, validSavedPrediction, validSavedOutcome, isCompletedPriceDate,
+    experiment: MODEL_FORWARD, policy });
+  if (frozenFilesChanged()) report.issues.push('subscriber_or_production_model_code_changed_since_freeze');
   const result = advanceState(report, previous, policy); save(result.state);
   console.log(JSON.stringify({ report, notifications: result.notifications, localStateRecorded: record }, null, 2));
 }
