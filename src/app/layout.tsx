@@ -5,6 +5,7 @@ import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { getAppUrl } from '@/lib/server-env';
 
 import "./globals.css";
 
@@ -19,7 +20,7 @@ const dataFont = IBM_Plex_Mono({
   variable: "--font-data",
 });
 
-const SITE_URL = "https://macro-bias.com";
+const SITE_URL = getAppUrl().replace(/\/$/, '');
 const SITE_NAME = "Macro Bias";
 const SITE_TITLE = "Macro Bias | Macro Regime Signals for Day Traders";
 const SITE_DESCRIPTION =

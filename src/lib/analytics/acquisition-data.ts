@@ -121,6 +121,8 @@ export type AcquisitionReport = {
   campaignRows: AcquisitionBreakdown[];
   landingRows: AcquisitionBreakdown[];
   contentRows: AcquisitionBreakdown[];
+  /** First/latest-touch UTM content, separate from broad stock/crypto content groups. */
+  attributionContentRows: AcquisitionBreakdown[];
   newsletterSignups: { stocks: number; crypto: number; both: number; unknown: number };
   dailySeries: (AcquisitionMetrics & { date: string })[];
   funnel: { key: string; label: string; value: number; denominator: number | null; rate: number | null; note: string }[];
@@ -459,6 +461,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   const campaigns = new Map<string, { row: Omit<AcquisitionBreakdown, keyof AcquisitionMetrics>; bucket: Bucket }>();
   const landings = new Map<string, { row: Omit<AcquisitionBreakdown, keyof AcquisitionMetrics>; bucket: Bucket }>();
   const content = new Map<string, { row: Omit<AcquisitionBreakdown, keyof AcquisitionMetrics>; bucket: Bucket }>();
+  const attributionContent = new Map<string, { row: Omit<AcquisitionBreakdown, keyof AcquisitionMetrics>; bucket: Bucket }>();
   const daily = new Map<string, Bucket>();
   for (let time = Date.parse(range.startInclusive); time < Date.parse(range.endExclusive); time += DAY_MS) daily.set(new Date(time).toISOString().slice(0, 10), bucket());
   const group = (map: typeof sources, key: string, row: Omit<AcquisitionBreakdown, keyof AcquisitionMetrics>, item: Observation) => {
@@ -476,6 +479,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
     group(campaigns, campaignKey, { key: campaignKey, label: touch.campaign, source: touch.source, medium: touch.medium, campaign: touch.campaign }, item);
     group(landings, touch.landingPath, { key: touch.landingPath, label: touch.landingPath }, item);
     group(content, item.contentGroup, { key: item.contentGroup, label: item.contentGroup }, item);
+    group(attributionContent, touch.content, { key: touch.content, label: touch.content }, item);
   }
   const knownSubscriberSources = filtered.filter((item) => item.kind === "subscriber" && item.touch.source !== "unknown").length;
   const hasSubscriberAttribution = knownSubscriberSources > 0;
@@ -516,7 +520,7 @@ export function buildAcquisitionReport(input: AcquisitionInput, filters: Acquisi
   if (overview.pageViews - identifiedPageViews > 0) warnings.push("Aggregate views without consent are counted as views only; distinct visitors, sessions and linked conversion rates cover identified traffic.");
   return {
     range, filters: { preset: filters.preset ?? "30d", source: filterSource, campaign: filterCampaign, touch: selectedTouch },
-    overview, sourceRows: rows(sources), campaignRows: rows(campaigns), landingRows: rows(landings), contentRows: rows(content), newsletterSignups,
+    overview, sourceRows: rows(sources), campaignRows: rows(campaigns), landingRows: rows(landings), contentRows: rows(content), attributionContentRows: rows(attributionContent), newsletterSignups,
     dailySeries: [...daily].map(([date, item]) => ({ date, ...metrics(item, hasSubscriberAttribution) })),
     funnel: [
       { key: "visitors", label: "Identified visitors", value: overview.visitors, denominator: null, rate: null, note: "Distinct IDs with identified views or explicit consent on a public visit in this period." },

@@ -1,4 +1,13 @@
 .neutral{color:#f1f5ef}
+.publicSummary{max-width:880px;padding:8px 0 32px;color:#e0e6df;font-size:16px;line-height:1.7;overflow-wrap:anywhere}
+.publicSummary h2{color:#f1f5ef;font-size:clamp(25px,4vw,34px);font-weight:600;line-height:1.2;letter-spacing:-.025em;margin:10px 0 20px}
+.publicSummary h3{color:#f1f5ef;font-weight:600;font-size:18px;margin:24px 0 10px}
+.publicSummary p{margin:0 0 16px}
+.publicSummary .summaryLabel{font-family:var(--font-data),monospace;font-size:11px;color:#acb6ad}
+.summaryQuotes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0;padding:18px;border:1px solid #2a342c;background:#111512}
+.summaryQuotes dt{font-size:13px;color:#acb6ad}.summaryQuotes dd{margin:8px 0 0;font-family:var(--font-data),monospace;font-size:18px;color:#f1f5ef}.summaryQuotes dd span{display:inline-block;font-size:13px;margin-left:8px}
+.summarySignup{margin-top:28px;padding:24px;background:#111512;border:1px solid #2a342c;border-top:2px solid #c9f58a}.summarySignup h3{margin-top:0}
+@media(max-width:600px){.summaryQuotes{grid-template-columns:1fr}.summarySignup{padding:20px 16px}}
 .accessCell.accessCell{white-space:normal;min-width:190px;font-family:var(--font-heading),sans-serif;color:#c9f58a}
 .accessCell small{display:block;margin-top:6px;color:#acb6ad;font-size:12px;line-height:1.6}
 .gate{margin-top:28px;padding:32px;border:1px solid #2a342c;border-top:2px solid #c9f58a;border-radius:4px;background:#111512}

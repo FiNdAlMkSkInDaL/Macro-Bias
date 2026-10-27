@@ -66,7 +66,7 @@ export function buildGrokXCommentary(market: DistributionMarket, facts: GrokXMar
   const bothUp = btc.percentChange > 0.005 && eth.percentChange > 0.005;
   const bothDown = btc.percentChange < -0.005 && eth.percentChange < -0.005;
   const hook = Math.abs(gap) < 0.1 ? 'Bitcoin and Ethereum moved almost in step.'
-    : bothUp ? gap > 0 ? 'Ethereum led the crypto gains.' : 'Bitcoin rose faster than Ethereum.'
+    : bothUp ? gap > 0 ? 'Ethereum rose faster than Bitcoin.' : 'Bitcoin rose faster than Ethereum.'
     : bothDown ? gap < 0 ? 'Ethereum fell harder than Bitcoin.' : 'Bitcoin fell harder than Ethereum.'
     : 'Bitcoin and Ethereum are pulling in different directions.';
   const watch = bothUp ? 'Watch whether both keep rising next session; one coin rising alone is a different picture.'
