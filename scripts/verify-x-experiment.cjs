@@ -16,6 +16,7 @@ function fixture(market, now) {
       : { 'BTC-USD': quote('BTC-USD', prior, 1), 'ETH-USD': quote('ETH-USD', prior, 2) } } };
 }
 function harness(options = {}) {
+  let factReads=0;
   const rows = [], effects = { reads: 0, writes: 0, sends: 0, engagement: 0 };
   const admin = { from() {
     let filters = [], action = 'read', payload, single = false, max = 100;
@@ -45,7 +46,7 @@ function harness(options = {}) {
   const api = loader({ '@/lib/analytics/acquisition-data': { getAcquisitionReport: get } })('src/lib/social/x-experiment.ts');
   const deps = { admin, archive: async market => ({ items: [fixture(market, options.now ?? stockNow).item], loadError: options.sourceError ? 'SECRET' : null }),
     verifyAccount: async () => { if(options.failAccount) throw new api.XTestError('x_account_mismatch'); },
-    facts: async market => options.missingFacts ? null : fixture(market, options.now ?? stockNow).facts,
+    facts: async market => options.missingFacts || options.recoverInput && factReads++ === 0 ? null : fixture(market, options.now ?? stockNow).facts,
     publish: async () => { effects.sends++; if (options.failPublish) throw Error('SECRET_PROVIDER_TOKEN'); return '123456789'; },
     engagement: async ids => { effects.engagement++; if (options.noEngagement) throw Error('SECRET'); return ids.map(id => ({ id, impressions: 7, likes: 0, replies: 0, reposts: 0 })); } };
   return { api, deps, effects, rows };
@@ -81,6 +82,8 @@ function harness(options = {}) {
   h=harness(); const run=await h.api.runXTest({live:true,now:stockNow,deps:h.deps}); assert.equal(run.ok,true); assert.equal(h.effects.sends,1); assert.equal(run.growth.first.newsletters.both,1);
   await h.api.runXTest({live:true,now:new Date('2026-10-29T15:30:00Z'),deps:h.deps}); assert.equal(h.effects.sends,1); assert.equal(h.effects.engagement,1);
   const writes=h.effects.writes; await h.api.runXTest({live:true,now:new Date(h.api.X_TEST.finalCheckpointEnd),deps:h.deps}); assert.equal(h.effects.writes,writes);
+  h=harness({recoverInput:true}); const recovered=await h.api.runXTest({live:true,now:stockNow,deps:h.deps}); assert.equal(recovered.result.attempts,2); assert.equal(h.effects.sends,1); assert.equal(recovered.ok,true);
+  h=harness({failPublish:true}); const uncertain=await h.api.runXTest({live:true,now:stockNow,deps:h.deps}); assert.equal(uncertain.result.attempts,1); assert.equal(h.effects.sends,1); assert.equal(uncertain.ok,false);
   h=harness({partial:true,noEngagement:true}); const partial=await h.api.runXTest({live:true,now:stockNow,deps:h.deps});
   assert.equal(partial.ok,false); assert.equal(partial.growth.first.metrics,null); assert.equal(partial.growth.first.newsletters,null); assert.equal(partial.growth.engagement.posts,null);
   let invoked=0; const base={VERCEL_ENV:'production',X_COMMENTARY_MODE:'live',CRON_SECRET:'fixture'};

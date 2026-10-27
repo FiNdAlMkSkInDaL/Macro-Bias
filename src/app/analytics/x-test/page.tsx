@@ -11,6 +11,7 @@ const blockedReasons: Record<string, string> = {
   fresh_publication_unavailable: 'Fresh briefing unavailable', publication_read_unavailable: 'Briefing data could not be read',
   verified_market_commentary_unavailable: 'Price inputs missing or inconsistent', post_length_invalid: 'Commentary exceeds the post limit',
   x_account_mismatch: 'Connected X account is incorrect', publisher_unavailable: 'X connection needs checking',
+  x_account_verification_unavailable: 'X account verification unavailable',
   previous_outcome_needs_review: 'Previous send needs review', publication_outcome_needs_review: 'Send outcome needs review',
   delivery_read_unavailable: 'Delivery history unavailable', claim_unavailable: 'Could not reserve this post', slot_already_claimed: 'Post reserved by another run',
 };
@@ -26,7 +27,7 @@ export default async function XTestPage() {
   const live = process.env.VERCEL_ENV === 'production' && process.env.X_COMMENTARY_MODE === 'live';
   return <main className={styles.page}><div className={styles.container}>
     <header className={styles.header}><div><h1 className={styles.title}>X commentary test</h1><p className={styles.subtitle}>28 October–10 November 2026 · eight planned posts · all times UTC</p></div><Link className={styles.outlineButton} href="/analytics">Acquisition analytics</Link></header>
-    <p>{phase}. Automatic publishing is {report.phase === 'ended' ? 'stopped' : live ? 'enabled for this window' : 'disabled (preview only)'}. Stocks: Tuesday/Thursday. Crypto: Wednesday/Friday. First attempt 15:00; recovery check 15:30. Missing data is logged; uncertain sends are held for review.</p>
+    <p>{phase}. Automatic publishing is {report.phase === 'ended' ? 'stopped' : live ? 'enabled for this window' : 'disabled (preview only)'}. Stocks: Tuesday/Thursday. Crypto: Wednesday/Friday. The daily job is scheduled at 15:00 UTC; this hosting plan may start it anytime before 16:00. It retries a temporary input or account-check failure once inside that run. Uncertain sends are held for review.</p>
     {report.phase === 'before_start' ? <p className={styles.tableNote}>These are setup baseline counts. No posts from this test are scheduled before 28 October, so this is not campaign performance evidence.</p> : null}
     <div className={styles.kpis}>{[['Tracked visitors', metrics?.visitors], ['Page views', metrics?.pageViews], ['New subscribers', metrics?.newSubscribers], ['Verified first paid conversions', metrics?.paidConversions]].map(([label, value]) => <section key={label} className={styles.kpi}><h2>{label}</h2><p className={styles.kpiValue}>{value ?? 'N/A'}</p></section>)}</div>
     <p className={styles.tableNote}>Primary measure: first touch, campaign {report.experiment.id}. Stocks: {report.first.newsletters?.stocks ?? 'N/A'}; crypto: {report.first.newsletters?.crypto ?? 'N/A'}; both: {report.first.newsletters?.both ?? 'N/A'}; unknown preference: {report.first.newsletters?.unknown ?? 'N/A'}. A person choosing both counts once overall and in each newsletter column. Subscription records do not establish email verification or engagement.</p>
