@@ -1,0 +1,6 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["research-score-benchmarks.ts", "lib/scoring-research.ts", "verify-scoring-research.ts", "verify-scoring-research-replay.ts"],
+  "exclude": []
+}

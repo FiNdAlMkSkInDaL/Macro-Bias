@@ -1,4 +1,4 @@
-import { classifyRegime, type RegimeState } from "../../utils/regime-classifier";
+import { classifyRegime, resolveThresholds, type RegimeState } from "../../utils/regime-classifier";
 import { calculateBaseDistance, isUsEquityMonday } from "../../utils/knn";
 import {
   buildTradableSignal,
@@ -425,9 +425,13 @@ function filterAnalogsByRegime(
   todayVector: AnalogStateVector,
   historicalAnalogs: HistoricalAnalogVector[],
 ): { pool: HistoricalAnalogVector[]; regime: RegimeState; regimeFiltered: boolean } {
-  const regime = classifyRegime(todayVector, { calibrationDataset: historicalAnalogs });
+  // The calibration set is identical for every classification in this call.
+  // Resolve its four quantiles once rather than sorting the entire history for
+  // every historical row. Thresholds and selected neighbours are unchanged.
+  const thresholds = resolveThresholds({ calibrationDataset: historicalAnalogs });
+  const regime = classifyRegime(todayVector, { thresholds });
   const sameRegime = historicalAnalogs.filter(
-    (analog) => classifyRegime(analog.vector, { calibrationDataset: historicalAnalogs }) === regime,
+    (analog) => classifyRegime(analog.vector, { thresholds }) === regime,
   );
 
   if (sameRegime.length >= ANALOG_MODEL_SETTINGS.minimumHistoricalAnalogs) {

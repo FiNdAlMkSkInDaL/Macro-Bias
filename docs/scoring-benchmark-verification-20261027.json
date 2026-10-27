@@ -1,0 +1,30 @@
+{
+  "verifiedAt": "2026-10-27T19:00:24.663Z",
+  "earlierCutoff": "2026-06-30",
+  "extendedCutoff": "2026-10-26",
+  "fingerprints": {
+    "recipe": "fc916bb82049d5fedb69919029253dc23b52d05c8dde9483b66828d4fb68b4e3",
+    "prices": "629027ecb628a0ec80e1a500d2ee7e0c049d3e2170a6c9a5c6cdd1a2b7fa9077",
+    "code": "3c1c1caa9b80ee5ca1c96d8a4a9de18afa5136257233d63e394cd10cfb1a4685",
+    "files": {
+      "scripts/research-score-benchmarks.ts": "d8a0f631607d4f0e0c664f8d02b14b50ef2fb0ae7502a0e64cfab583d5674e1a",
+      "scripts/lib/scoring-research.ts": "c3668a98691434794cbc83f0401ea98a0092204aa1b744feecfca855029e71d1",
+      "src/lib/macro-bias/calculate-daily-bias.ts": "26bca11b1da04952e5847a90c88f250168609ec3031acad420a04b0a17cf3cc1",
+      "src/lib/macro-bias/constants.ts": "a579620fdc29a9223818b63c581c3ce333ee93f9f302dab5cffddebb6965e26e",
+      "src/lib/macro-bias/technical-analysis.ts": "b7dc68c0b5cc34bcfdf541194660f4933f55328f580b4047ccd21fda30ae86e6",
+      "src/lib/crypto-bias/calculate-crypto-bias.ts": "b9069af64064ecad021e791791d774a23d6f65456020f263927a1f36d2c33d41",
+      "src/lib/crypto-bias/constants.ts": "ec7b4a890446366a4071910e956dab37b6d3388b39b307727c717e878b642d95",
+      "src/lib/signal/strategy.ts": "b3e47b8a990d65a8d8f45a38bf3a8d4ca8a27799b0988bc772f2e57a4263e742",
+      "src/lib/signal/rolling-percentile.ts": "b11c8653aee473d9ca2f35291628848f42086b120572bd45d00420c47e6b8556",
+      "src/lib/signal/trend-veto.ts": "455e7ed89c576988aab9ac78254275dbd2b0fe945fa8f6afc619100c41e6b6b4",
+      "src/utils/knn.ts": "abf1184e31b166c31e06d03745e67042866532f957afb40b0ae57bf3f1f9d8a1",
+      "src/utils/regime-classifier.ts": "1ae3cb28d2b1f54d5c852c23a754f563faebc5e860b3e255b8ccb4ed6d596b80"
+    }
+  },
+  "comparisons": {
+    "stocks": 1631,
+    "crypto": 2373
+  },
+  "result": "PASS_EXACT_APPEND_INVARIANCE",
+  "scope": "All available earlier per-date forecasts, production raw scores/permissions, risk forecasts, feature context and training metadata are identical after appending later prices. Generation timestamps excluded. This is a leakage check, not a fresh holdout."
+}
