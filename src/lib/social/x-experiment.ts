@@ -36,7 +36,7 @@ export function xTestPlan() {
   const dates: { date: string; market: DistributionMarket; time: string }[] = [];
   for (let at = Date.parse(X_TEST.start); at < Date.parse(X_TEST.end); at += 86_400_000) {
     const now = new Date(at + 15 * 3_600_000), market = xTestMarket(now);
-    if (market) dates.push({ date: now.toISOString().slice(0, 10), market, time: '15:00 UTC (15:30 recovery)' });
+    if (market) dates.push({ date: now.toISOString().slice(0, 10), market, time: '15:00–15:59 UTC hosting window' });
   }
   return dates;
 }
@@ -107,8 +107,10 @@ export async function publishXTest(market: DistributionMarket, now: Date, d: XTe
     throw new XTestError('previous_outcome_needs_review');
   }
   const post = await prepare(market, now, d);
-  // Read-only identity failure is safe to recover at 15:30: no send/claim yet.
-  await d.verifyAccount();
+  // Read-only identity failure is safe to retry: no send/claim yet.
+  try { await d.verifyAccount(); } catch (e) {
+    throw e instanceof XTestError ? e : new XTestError('x_account_verification_unavailable');
+  }
   const metadata = { ...post, campaign: X_TEST.id, traffic_type: 'internal', status: 'claimed', claimed_at: now.toISOString() };
   const claim = await d.admin.from('marketing_event_log').insert({ id, event_name: X_TEST.deliveryEvent,
     page_path: '/api/cron/x-test', utm_source: 'x', utm_medium: 'organic_social', utm_campaign: X_TEST.id, metadata });
@@ -158,6 +160,7 @@ async function checkpoint(now: Date, d: XTestDependencies) {
   return metadata;
 }
 export async function runXTest({ live = false, preview = false, now = new Date(), deps }: { live?: boolean; preview?: boolean; now?: Date; deps?: XTestDependencies } = {}) {
+  const startedAt = Date.now();
   const d = deps ?? dependencies();
   if (!live || preview) {
     let account: { status: string; username?: string; reason?: string };
@@ -171,10 +174,20 @@ export async function runXTest({ live = false, preview = false, now = new Date()
   }
   if (now.toISOString() < X_TEST.start || now.toISOString() >= X_TEST.finalCheckpointEnd) return { mode: 'inactive', ok: true, experiment: X_TEST };
   const market = xTestMarket(now);
-  let result: { market: DistributionMarket; status: string; reason?: string; remoteId?: string } | null = null;
+  let result: { market: DistributionMarket; status: string; reason?: string; remoteId?: string; attempts?: number } | null = null;
   if (market) {
-    try { result = { market, ...await publishXTest(market, now, d) }; }
-    catch (e) { result = { market, status: 'blocked', reason: e instanceof XTestError ? e.code : 'publisher_unavailable' }; }
+    const recoverable = new Set(['fresh_publication_unavailable', 'publication_read_unavailable', 'verified_market_commentary_unavailable', 'delivery_read_unavailable', 'x_account_verification_unavailable']);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const at = new Date(now.getTime() + Date.now() - startedAt);
+      try { result = { market, ...await publishXTest(market, at, d), attempts: attempt }; break; }
+      catch (e) {
+        const reason = e instanceof XTestError ? e.code : 'publisher_unavailable';
+        result = { market, status: 'blocked', reason, attempts: attempt };
+        if (attempt === 2 || !recoverable.has(reason)) break;
+        // One bounded retry inside the daily job; never retry a send/claim.
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
     const { error } = await d.admin.from('marketing_event_log').upsert({ id: xTestId(`run:${market}:${now.toISOString().slice(0, 10)}`),
       event_name: X_TEST.runEvent, page_path: '/api/cron/x-test', metadata: { ...result, date: now.toISOString().slice(0, 10),
         checked_at: now.toISOString(), traffic_type: 'internal', campaign: X_TEST.id } }, { onConflict: 'id' });
