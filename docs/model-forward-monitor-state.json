@@ -1,0 +1,25 @@
+{
+  "version": "model-monitor-20261027-v1",
+  "issues": [],
+  "reviews": {},
+  "notified": [],
+  "lastComplete": {
+    "version": "model-monitor-20261027-v1",
+    "checkedAt": "2026-10-27T20:22:52.401Z",
+    "completeRead": true,
+    "settlementEnd": "2027-02-03T00:00:00.000Z",
+    "issues": [],
+    "invalidRecords": 0,
+    "latestHealthAt": "2026-10-27T20:00:14.320Z",
+    "cohorts": [
+      {
+        "key": "crypto:f1d1de813590b0100da42976724c992d455e0b095d8d473120611fbddb1f251a:5695cd9a0f9ecaa724277c8f427f0225541708a7c1764d91fb5fbd0dff831edd",
+        "market": "crypto",
+        "locked": 1,
+        "completed": 0,
+        "pending": 1,
+        "candidates": []
+      }
+    ]
+  }
+}

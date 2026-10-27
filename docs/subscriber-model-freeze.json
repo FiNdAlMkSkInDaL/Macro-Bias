@@ -1,0 +1,166 @@
+{
+  "baselineCommit": "c01ec5c79606c161c75a529a1ab326c64ef4c5a9",
+  "instruction": "Preserve current subscriber generation, delivery, production scores and frozen forward recipes. No research candidate is imported into subscriber runtime. Daily generated content continues normally.",
+  "files": [
+    {
+      "file": "src/app/api/cron/crypto-publish/route.ts",
+      "sha256": "219d5f9d8ffe5706ff70a47e6f5d62b15074b94cb45a92728cec37d679126cf3"
+    },
+    {
+      "file": "src/app/api/cron/publish/route.ts",
+      "sha256": "508eea7c6f2745184815e8e3870bbd0a072d41a04e9ac5fb4063c9fb1a090749"
+    },
+    {
+      "file": "src/app/emails/layout.tsx",
+      "sha256": "c379a436980cd06390aed4e7bbb9ae4a9904185e3ca200cdcae006412e9a7aa9"
+    },
+    {
+      "file": "src/app/emails/loading.tsx",
+      "sha256": "c5e0a0d1c580707010745f1477965e198bb1836525e7a914651d1136d6c560ea"
+    },
+    {
+      "file": "src/app/emails/page.tsx",
+      "sha256": "443b0280735c06233ce9bd091056befd3b951629bc1420612e895f5558f4aa28"
+    },
+    {
+      "file": "src/lib/auth/recovery-email.ts",
+      "sha256": "e3ece45d9b096ac00cd09c6a607d89b885713090b567a4998eba0636fd1d4463"
+    },
+    {
+      "file": "src/lib/crypto-bias/calculate-crypto-bias.ts",
+      "sha256": "b9069af64064ecad021e791791d774a23d6f65456020f263927a1f36d2c33d41"
+    },
+    {
+      "file": "src/lib/crypto-bias/constants.ts",
+      "sha256": "ec7b4a890446366a4071910e956dab37b6d3388b39b307727c717e878b642d95"
+    },
+    {
+      "file": "src/lib/crypto-bias/types.ts",
+      "sha256": "06dc14b0fb1c0cd699b47cd801ec663d14286273e6dcd4e9b5285cdd6a9bcc6a"
+    },
+    {
+      "file": "src/lib/macro-bias/calculate-daily-bias.ts",
+      "sha256": "26bca11b1da04952e5847a90c88f250168609ec3031acad420a04b0a17cf3cc1"
+    },
+    {
+      "file": "src/lib/macro-bias/constants.ts",
+      "sha256": "a579620fdc29a9223818b63c581c3ce333ee93f9f302dab5cffddebb6965e26e"
+    },
+    {
+      "file": "src/lib/macro-bias/mock-bias-data.ts",
+      "sha256": "c44cf2fad722392b583c6c76a3b64e6721c0cfa1bac8bd61793f30722cce174e"
+    },
+    {
+      "file": "src/lib/macro-bias/technical-analysis.ts",
+      "sha256": "b7dc68c0b5cc34bcfdf541194660f4933f55328f580b4047ccd21fda30ae86e6"
+    },
+    {
+      "file": "src/lib/macro-bias/types.ts",
+      "sha256": "7b54349d27e9bda8e736cfff03f2990b5dec0639e6b857cae7ca212aa279631b"
+    },
+    {
+      "file": "src/lib/marketing/crypto-email-content.ts",
+      "sha256": "5939c590e5ccf74a4615cc4f2a811f04a0ad05d12c1efbc8bfc22e7646849d1b"
+    },
+    {
+      "file": "src/lib/marketing/daily-email-context.ts",
+      "sha256": "a2aaabc0fd03a6941bf0c05f1798dcab377483433e8ca0e7635b48e41c5e8482"
+    },
+    {
+      "file": "src/lib/marketing/daily-email-template.ts",
+      "sha256": "f2d558d83e9733c753755872ea44c9c659fc3fda53988dcaa62ad2c325e371bb"
+    },
+    {
+      "file": "src/lib/marketing/email-dispatch.ts",
+      "sha256": "8624af15adaec4810c9d42547e67b1a118ac850720c3803915fb6e5d02fbcd3e"
+    },
+    {
+      "file": "src/lib/marketing/email-preferences.ts",
+      "sha256": "9d312f71ff0c5f854aeb28abad0b2385f2a627dd91b056cd0731deecf9355438"
+    },
+    {
+      "file": "src/lib/model-forward/features.ts",
+      "sha256": "20b0428dee65a54df5d0e627fc1a86fc497af755d28e299fef52f1fe8e33c0c3"
+    },
+    {
+      "file": "src/lib/model-forward/fingerprint.ts",
+      "sha256": "5770155f0f7830707337636594e5e38d8e9eb83d22743db099392d70b7241b0e"
+    },
+    {
+      "file": "src/lib/model-forward/math.ts",
+      "sha256": "5a2b75bc7f048d1e1bc2da1d554d9af7f6efa9702b429306a26cb4b8a704e759"
+    },
+    {
+      "file": "src/lib/model-forward/models.ts",
+      "sha256": "da07707784536ba75b319385d90b79e338351e21432e90309adba0151033dd2b"
+    },
+    {
+      "file": "src/lib/model-forward/public-risk.ts",
+      "sha256": "c0e0713ed0e9b8bd257c79a822ca3c73a6ce83dfc71297194c965eaff3e0cd79"
+    },
+    {
+      "file": "src/lib/model-forward/recipe.ts",
+      "sha256": "213e568a8a7dc4dc6306f8960277c73e703f3628ba05a65ff4b04702c00ce1cc"
+    },
+    {
+      "file": "src/lib/model-forward/records.ts",
+      "sha256": "013ac905afef66cb261a4d6bb23f6450671b110197f3cc244581c93a3a00044a"
+    },
+    {
+      "file": "src/lib/model-forward/risk.ts",
+      "sha256": "647db83b719d3ba2a4398c6c9e46439609971743f5b0e2c5d249c0e1c1298896"
+    },
+    {
+      "file": "src/lib/model-forward/service.ts",
+      "sha256": "79f964b421461ebb9c0b28229ac13592a6ae9711101e618c35758a61c313cf79"
+    },
+    {
+      "file": "src/lib/signal/format-tradable-signal.ts",
+      "sha256": "5df14f35174fb444c3747ec7a7cc527cfe40c1d454f5ec11aa0f6af8be965f97"
+    },
+    {
+      "file": "src/lib/signal/index.ts",
+      "sha256": "c237c2f445166422840962d902a2ea7e548decb815e39cc44945b775c45e1331"
+    },
+    {
+      "file": "src/lib/signal/live-score-evaluation.ts",
+      "sha256": "f77490812cf0cf29f012df7d44885656cf0bad99e5155f739249d0d7aa1fa516"
+    },
+    {
+      "file": "src/lib/signal/paper-ledger.ts",
+      "sha256": "ca8ce786943ece1e5875b032a0c78d8b859abb675fef131032be974dd3939df3"
+    },
+    {
+      "file": "src/lib/signal/publication-timing.ts",
+      "sha256": "1da372ad7e2d7245dd372edd2152dd29a34b1717d1bb03a403828bad8c64db39"
+    },
+    {
+      "file": "src/lib/signal/quality-metrics.ts",
+      "sha256": "9dc82b8cc0e877e30fd74fb90f01b8bd4913aaf9f4599fe1b96b5263f9eabe96"
+    },
+    {
+      "file": "src/lib/signal/reading-explanation.ts",
+      "sha256": "821c4aea2f1d6b0cbfc4aa54b10cc9d35b5c89bccd2120c98ea750322b0627a4"
+    },
+    {
+      "file": "src/lib/signal/rolling-percentile.ts",
+      "sha256": "b11c8653aee473d9ca2f35291628848f42086b120572bd45d00420c47e6b8556"
+    },
+    {
+      "file": "src/lib/signal/strategy.ts",
+      "sha256": "b3e47b8a990d65a8d8f45a38bf3a8d4ca8a27799b0988bc772f2e57a4263e742"
+    },
+    {
+      "file": "src/lib/signal/trend-veto.ts",
+      "sha256": "455e7ed89c576988aab9ac78254275dbd2b0fe945fa8f6afc619100c41e6b6b4"
+    },
+    {
+      "file": "src/lib/signal/types.ts",
+      "sha256": "38638bdae73ba022e819ed0ac0a9f5c67d372f75f5fe46e9a7d38bc6e13ded0a"
+    },
+    {
+      "file": "vercel.json",
+      "sha256": "0e4cc25a8bbb81d678eaa4226d3e9f989091c86ae05348978351340bff7625ec"
+    }
+  ]
+}

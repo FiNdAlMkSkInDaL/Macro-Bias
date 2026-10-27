@@ -1,0 +1,19 @@
+{
+  "version": "private-model-research-20261027-v1",
+  "historicalDesignCutoff": "2026-10-26",
+  "lastResearchAt": "2026-10-27",
+  "maximumAdditionalHypothesesBeforeForwardReview": 2,
+  "additionalHypothesesDeclared": [],
+  "completed": [
+    {
+      "id": "private-positive-score-calibration-v1",
+      "recipe": "docs/score-calibration-recipe-20261027.json",
+      "report": "docs/score-calibration-results-20261027.json",
+      "markets": ["stocks", "crypto"],
+      "decision": "DO_NOT_PROMOTE",
+      "reason": "Neither reliably beats past up frequency; tiny stock return-error changes are uncertain, crypto return error worsens."
+    }
+  ],
+  "subscriberChangesAllowed": false,
+  "productionPromotionAllowed": false
+}

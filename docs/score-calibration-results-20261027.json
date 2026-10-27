@@ -1,0 +1,748 @@
+{
+  "generatedAt": "2026-10-27T20:20:18.660Z",
+  "recipe": {
+    "id": "private-positive-score-calibration-v1",
+    "declaredAt": "2026-10-27",
+    "status": "RESEARCH_ONLY_NO_SUBSCRIBER_CHANGES",
+    "hypothesis": "A single production score may contain weak ranking information that benefits from cautious calibration rather than adding more features.",
+    "feature": "Historical causal production_raw score, divided by 100; no other predictors",
+    "trainingCalendarDays": 1095,
+    "minimumTrainingRows": 252,
+    "refit": "first eligible source date each month",
+    "trainingEligibility": "targetDate strictly before source date; training source date strictly earlier",
+    "ridgePenaltyMeanLoss": 1,
+    "featureClip": 4,
+    "slope": "nonnegative; a negative fitted slope is replaced by zero without selecting a sign reversal",
+    "priorWeight": 0.5,
+    "primaryMetric": "Brier loss against same-training historical up frequency and 50:50 on identical sessions",
+    "secondaryMetrics": [
+      "return MSE",
+      "net returns at zero/base/double costs",
+      "recent-year and annual consistency"
+    ],
+    "historicalCutoff": "2026-10-26",
+    "limitations": "Reuses previously reviewed 2020-2026 reconstructed scores and current price vintages; not an untouched holdout. Evaluation starts only after 252 mature reconstructed-score observations. No parameter search, production writes or modification to the frozen forward cohort."
+  },
+  "sourceHashes": {
+    "stocks": {
+      "evaluations": "9e78cd915ead0e9b4b7e5880f942287883ebe9511d41d590e9f131daee55268c",
+      "predictions": "c3e667ea23624e78c393b43c6f4afe1aa8a635f8e20d438b053062cdcdc9f673"
+    },
+    "crypto": {
+      "evaluations": "37e5d498192dd2ea4d6bea8ee72c72d6b2dab1710b3389060e10b68fa44462a9",
+      "predictions": "21efafd11aea2fb4291b969e475b9efea26be5f24765d37b467f5f29291305e8"
+    }
+  },
+  "codeHash": "9adacf5d503b17a8fff9fd97129f15ebc3b8d644c31bbeb69ef98c5d0d95e495",
+  "status": "PRIVATE_RESEARCH_NO_SUBSCRIBER_OR_FORWARD_COHORT_CHANGES",
+  "markets": {
+    "stocks": {
+      "overall": {
+        "sessions": 1459,
+        "firstTarget": "2021-01-05",
+        "lastTarget": "2026-10-26",
+        "candidateBrier": 0.249434,
+        "baseFrequencyBrier": 0.249411,
+        "brierMinusBase": 0.000022,
+        "brierPaired95": [
+          -0.000154,
+          0.000232
+        ],
+        "brierMinusHalf": -0.000566,
+        "halfPaired95": [
+          -0.002805,
+          0.002247
+        ],
+        "candidateReturnMse": 0.75128,
+        "baseReturnMse": 0.751703,
+        "mseMinusBase": -0.000423,
+        "msePaired95": [
+          -0.001406,
+          0.000606
+        ],
+        "active": 0,
+        "meanNetAtCostPct": [
+          {
+            "multiple": 0,
+            "mean": 0
+          },
+          {
+            "multiple": 1,
+            "mean": 0
+          },
+          {
+            "multiple": 2,
+            "mean": 0
+          }
+        ]
+      },
+      "reviewed2026": {
+        "sessions": 205,
+        "firstTarget": "2026-01-02",
+        "lastTarget": "2026-10-26",
+        "candidateBrier": 0.251809,
+        "baseFrequencyBrier": 0.2517,
+        "brierMinusBase": 0.000109,
+        "brierPaired95": [
+          -0.000108,
+          0.000351
+        ],
+        "brierMinusHalf": 0.001809,
+        "halfPaired95": [
+          -0.004141,
+          0.009146
+        ],
+        "candidateReturnMse": 0.363656,
+        "baseReturnMse": 0.363961,
+        "mseMinusBase": -0.000305,
+        "msePaired95": [
+          -0.00224,
+          0.001676
+        ],
+        "active": 0,
+        "meanNetAtCostPct": [
+          {
+            "multiple": 0,
+            "mean": 0
+          },
+          {
+            "multiple": 1,
+            "mean": 0
+          },
+          {
+            "multiple": 2,
+            "mean": 0
+          }
+        ]
+      },
+      "annual": [
+        {
+          "year": "2021",
+          "sessions": 251,
+          "firstTarget": "2021-01-05",
+          "lastTarget": "2021-12-31",
+          "candidateBrier": 0.248931,
+          "baseFrequencyBrier": 0.249027,
+          "brierMinusBase": -0.000096,
+          "brierPaired95": [
+            -0.000386,
+            0.000223
+          ],
+          "brierMinusHalf": -0.001069,
+          "halfPaired95": [
+            -0.009064,
+            0.008544
+          ],
+          "candidateReturnMse": 0.398707,
+          "baseReturnMse": 0.398406,
+          "mseMinusBase": 0.0003,
+          "msePaired95": [
+            -0.000844,
+            0.001732
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2022",
+          "sessions": 251,
+          "firstTarget": "2022-01-03",
+          "lastTarget": "2022-12-30",
+          "candidateBrier": 0.252351,
+          "baseFrequencyBrier": 0.252463,
+          "brierMinusBase": -0.000112,
+          "brierPaired95": [
+            -0.000281,
+            0.000033
+          ],
+          "brierMinusHalf": 0.002351,
+          "halfPaired95": [
+            -0.003549,
+            0.007807
+          ],
+          "candidateReturnMse": 1.597686,
+          "baseReturnMse": 1.60116,
+          "mseMinusBase": -0.003474,
+          "msePaired95": [
+            -0.007175,
+            -0.000069
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2023",
+          "sessions": 250,
+          "firstTarget": "2023-01-03",
+          "lastTarget": "2023-12-29",
+          "candidateBrier": 0.244329,
+          "baseFrequencyBrier": 0.244535,
+          "brierMinusBase": -0.000206,
+          "brierPaired95": [
+            -0.000716,
+            0.000242
+          ],
+          "brierMinusHalf": -0.005671,
+          "halfPaired95": [
+            -0.010697,
+            -0.001085
+          ],
+          "candidateReturnMse": 0.506881,
+          "baseReturnMse": 0.506763,
+          "mseMinusBase": 0.000118,
+          "msePaired95": [
+            -0.001607,
+            0.001774
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2024",
+          "sessions": 252,
+          "firstTarget": "2024-01-02",
+          "lastTarget": "2024-12-31",
+          "candidateBrier": 0.249506,
+          "baseFrequencyBrier": 0.248967,
+          "brierMinusBase": 0.000539,
+          "brierPaired95": [
+            -0.000223,
+            0.001103
+          ],
+          "brierMinusHalf": -0.000494,
+          "halfPaired95": [
+            -0.004909,
+            0.004516
+          ],
+          "candidateReturnMse": 0.372107,
+          "baseReturnMse": 0.371743,
+          "mseMinusBase": 0.000364,
+          "msePaired95": [
+            -0.00118,
+            0.001354
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2025",
+          "sessions": 250,
+          "firstTarget": "2025-01-02",
+          "lastTarget": "2025-12-31",
+          "candidateBrier": 0.250093,
+          "baseFrequencyBrier": 0.250181,
+          "brierMinusBase": -0.000088,
+          "brierPaired95": [
+            -0.000594,
+            0.000335
+          ],
+          "brierMinusHalf": 0.000093,
+          "halfPaired95": [
+            -0.005276,
+            0.004231
+          ],
+          "candidateReturnMse": 1.19993,
+          "baseReturnMse": 1.199448,
+          "mseMinusBase": 0.000481,
+          "msePaired95": [
+            -0.002097,
+            0.004961
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2026",
+          "sessions": 205,
+          "firstTarget": "2026-01-02",
+          "lastTarget": "2026-10-26",
+          "candidateBrier": 0.251809,
+          "baseFrequencyBrier": 0.2517,
+          "brierMinusBase": 0.000109,
+          "brierPaired95": [
+            -0.000108,
+            0.000351
+          ],
+          "brierMinusHalf": 0.001809,
+          "halfPaired95": [
+            -0.004141,
+            0.009146
+          ],
+          "candidateReturnMse": 0.363656,
+          "baseReturnMse": 0.363961,
+          "mseMinusBase": -0.000305,
+          "msePaired95": [
+            -0.00224,
+            0.001676
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        }
+      ],
+      "decision": "DO_NOT_PROMOTE",
+      "exploratoryChecks": {
+        "improvesBrierOverall": false,
+        "improvesHalfOverall": true,
+        "improvesBrierRecent": false,
+        "improvesHalfRecent": false,
+        "improvesReturnMseOverall": true,
+        "improvesReturnMseRecent": true,
+        "probabilityEveryYear": false,
+        "positiveDoubleCost": false,
+        "prospectiveValidationComplete": false
+      }
+    },
+    "crypto": {
+      "overall": {
+        "sessions": 2235,
+        "firstTarget": "2020-09-13",
+        "lastTarget": "2026-10-26",
+        "candidateBrier": 0.250622,
+        "baseFrequencyBrier": 0.250612,
+        "brierMinusBase": 0.00001,
+        "brierPaired95": [
+          -0.000061,
+          0.000073
+        ],
+        "brierMinusHalf": 0.000622,
+        "halfPaired95": [
+          -0.000455,
+          0.001706
+        ],
+        "candidateReturnMse": 8.852493,
+        "baseReturnMse": 8.849451,
+        "mseMinusBase": 0.003042,
+        "msePaired95": [
+          -0.019873,
+          0.024091
+        ],
+        "active": 475,
+        "meanNetAtCostPct": [
+          {
+            "multiple": 0,
+            "mean": 0.044788
+          },
+          {
+            "multiple": 1,
+            "mean": -0.01897
+          },
+          {
+            "multiple": 2,
+            "mean": -0.082729
+          }
+        ]
+      },
+      "reviewed2026": {
+        "sessions": 299,
+        "firstTarget": "2026-01-01",
+        "lastTarget": "2026-10-26",
+        "candidateBrier": 0.250526,
+        "baseFrequencyBrier": 0.250556,
+        "brierMinusBase": -0.00003,
+        "brierPaired95": [
+          -0.00014,
+          0.000049
+        ],
+        "brierMinusHalf": 0.000526,
+        "halfPaired95": [
+          -0.00026,
+          0.001275
+        ],
+        "candidateReturnMse": 5.523667,
+        "baseReturnMse": 5.521587,
+        "mseMinusBase": 0.00208,
+        "msePaired95": [
+          -0.013413,
+          0.015492
+        ],
+        "active": 0,
+        "meanNetAtCostPct": [
+          {
+            "multiple": 0,
+            "mean": 0
+          },
+          {
+            "multiple": 1,
+            "mean": 0
+          },
+          {
+            "multiple": 2,
+            "mean": 0
+          }
+        ]
+      },
+      "annual": [
+        {
+          "year": "2020",
+          "sessions": 110,
+          "firstTarget": "2020-09-13",
+          "lastTarget": "2020-12-31",
+          "candidateBrier": 0.239765,
+          "baseFrequencyBrier": 0.23935,
+          "brierMinusBase": 0.000415,
+          "brierPaired95": [
+            -0.000366,
+            0.001217
+          ],
+          "brierMinusHalf": -0.010235,
+          "halfPaired95": [
+            -0.01637,
+            -0.001879
+          ],
+          "candidateReturnMse": 8.869233,
+          "baseReturnMse": 8.888415,
+          "mseMinusBase": -0.019182,
+          "msePaired95": [
+            -0.063197,
+            0.064921
+          ],
+          "active": 55,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0.599083
+            },
+            {
+              "multiple": 1,
+              "mean": 0.449083
+            },
+            {
+              "multiple": 2,
+              "mean": 0.299083
+            }
+          ]
+        },
+        {
+          "year": "2021",
+          "sessions": 365,
+          "firstTarget": "2021-01-01",
+          "lastTarget": "2021-12-31",
+          "candidateBrier": 0.252643,
+          "baseFrequencyBrier": 0.252642,
+          "brierMinusBase": 0.000001,
+          "brierPaired95": [
+            -0.000176,
+            0.000173
+          ],
+          "brierMinusHalf": 0.002643,
+          "halfPaired95": [
+            -0.000955,
+            0.007183
+          ],
+          "candidateReturnMse": 17.846512,
+          "baseReturnMse": 17.81532,
+          "mseMinusBase": 0.031192,
+          "msePaired95": [
+            -0.079471,
+            0.173876
+          ],
+          "active": 365,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0.191884
+            },
+            {
+              "multiple": 1,
+              "mean": -0.108116
+            },
+            {
+              "multiple": 2,
+              "mean": -0.408116
+            }
+          ]
+        },
+        {
+          "year": "2022",
+          "sessions": 365,
+          "firstTarget": "2022-01-01",
+          "lastTarget": "2022-12-31",
+          "candidateBrier": 0.252235,
+          "baseFrequencyBrier": 0.252218,
+          "brierMinusBase": 0.000017,
+          "brierPaired95": [
+            -0.000153,
+            0.000196
+          ],
+          "brierMinusHalf": 0.002235,
+          "halfPaired95": [
+            -0.000083,
+            0.004019
+          ],
+          "candidateReturnMse": 11.238938,
+          "baseReturnMse": 11.241653,
+          "mseMinusBase": -0.002715,
+          "msePaired95": [
+            -0.028897,
+            0.029958
+          ],
+          "active": 55,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": -0.098179
+            },
+            {
+              "multiple": 1,
+              "mean": -0.143385
+            },
+            {
+              "multiple": 2,
+              "mean": -0.18859
+            }
+          ]
+        },
+        {
+          "year": "2023",
+          "sessions": 365,
+          "firstTarget": "2023-01-01",
+          "lastTarget": "2023-12-31",
+          "candidateBrier": 0.250707,
+          "baseFrequencyBrier": 0.25066,
+          "brierMinusBase": 0.000047,
+          "brierPaired95": [
+            -0.000155,
+            0.00025
+          ],
+          "brierMinusHalf": 0.000707,
+          "halfPaired95": [
+            -0.00001,
+            0.001813
+          ],
+          "candidateReturnMse": 5.223129,
+          "baseReturnMse": 5.213776,
+          "mseMinusBase": 0.009353,
+          "msePaired95": [
+            -0.006167,
+            0.025975
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2024",
+          "sessions": 366,
+          "firstTarget": "2024-01-01",
+          "lastTarget": "2024-12-31",
+          "candidateBrier": 0.250573,
+          "baseFrequencyBrier": 0.250643,
+          "brierMinusBase": -0.00007,
+          "brierPaired95": [
+            -0.000132,
+            0.000003
+          ],
+          "brierMinusHalf": 0.000573,
+          "halfPaired95": [
+            0.000116,
+            0.001264
+          ],
+          "candidateReturnMse": 7.857345,
+          "baseReturnMse": 7.865815,
+          "mseMinusBase": -0.00847,
+          "msePaired95": [
+            -0.016331,
+            -0.000863
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2025",
+          "sessions": 365,
+          "firstTarget": "2025-01-01",
+          "lastTarget": "2025-12-31",
+          "candidateBrier": 0.250299,
+          "baseFrequencyBrier": 0.250334,
+          "brierMinusBase": -0.000035,
+          "brierPaired95": [
+            -0.000109,
+            0.000043
+          ],
+          "brierMinusHalf": 0.000299,
+          "halfPaired95": [
+            -0.000071,
+            0.000763
+          ],
+          "candidateReturnMse": 4.821122,
+          "baseReturnMse": 4.827757,
+          "mseMinusBase": -0.006634,
+          "msePaired95": [
+            -0.014,
+            0.000065
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        },
+        {
+          "year": "2026",
+          "sessions": 299,
+          "firstTarget": "2026-01-01",
+          "lastTarget": "2026-10-26",
+          "candidateBrier": 0.250526,
+          "baseFrequencyBrier": 0.250556,
+          "brierMinusBase": -0.00003,
+          "brierPaired95": [
+            -0.00014,
+            0.000049
+          ],
+          "brierMinusHalf": 0.000526,
+          "halfPaired95": [
+            -0.00026,
+            0.001275
+          ],
+          "candidateReturnMse": 5.523667,
+          "baseReturnMse": 5.521587,
+          "mseMinusBase": 0.00208,
+          "msePaired95": [
+            -0.013413,
+            0.015492
+          ],
+          "active": 0,
+          "meanNetAtCostPct": [
+            {
+              "multiple": 0,
+              "mean": 0
+            },
+            {
+              "multiple": 1,
+              "mean": 0
+            },
+            {
+              "multiple": 2,
+              "mean": 0
+            }
+          ]
+        }
+      ],
+      "decision": "DO_NOT_PROMOTE",
+      "exploratoryChecks": {
+        "improvesBrierOverall": false,
+        "improvesHalfOverall": false,
+        "improvesBrierRecent": true,
+        "improvesHalfRecent": false,
+        "improvesReturnMseOverall": false,
+        "improvesReturnMseRecent": false,
+        "probabilityEveryYear": false,
+        "positiveDoubleCost": false,
+        "prospectiveValidationComplete": false
+      }
+    }
+  }
+}

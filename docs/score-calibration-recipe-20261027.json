@@ -1,0 +1,19 @@
+{
+  "id": "private-positive-score-calibration-v1",
+  "declaredAt": "2026-10-27",
+  "status": "RESEARCH_ONLY_NO_SUBSCRIBER_CHANGES",
+  "hypothesis": "A single production score may contain weak ranking information that benefits from cautious calibration rather than adding more features.",
+  "feature": "Historical causal production_raw score, divided by 100; no other predictors",
+  "trainingCalendarDays": 1095,
+  "minimumTrainingRows": 252,
+  "refit": "first eligible source date each month",
+  "trainingEligibility": "targetDate strictly before source date; training source date strictly earlier",
+  "ridgePenaltyMeanLoss": 1,
+  "featureClip": 4,
+  "slope": "nonnegative; a negative fitted slope is replaced by zero without selecting a sign reversal",
+  "priorWeight": 0.5,
+  "primaryMetric": "Brier loss against same-training historical up frequency and 50:50 on identical sessions",
+  "secondaryMetrics": ["return MSE", "net returns at zero/base/double costs", "recent-year and annual consistency"],
+  "historicalCutoff": "2026-10-26",
+  "limitations": "Reuses previously reviewed 2020-2026 reconstructed scores and current price vintages; not an untouched holdout. Evaluation starts only after 252 mature reconstructed-score observations. No parameter search, production writes or modification to the frozen forward cohort."
+}
