@@ -96,7 +96,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
             <>
               <div className={styles.scoreLine}>
                 <p className={`${styles.score} ${styles[regime.tone]}`}>{score.score > 0 ? '+' : ''}{score.score}</p>
-                <p className={styles.regime}>{score.explanation && score.explanation.status !== 'directional' ? score.explanation.title : regime.label}</p>
+                <p className={styles.regime}>{regime.label}</p>
               </div>
               {score.explanation ? <p className={styles.explanation}>{score.explanation.reason}</p> : null}
               <div className={styles.scale} aria-hidden="true">

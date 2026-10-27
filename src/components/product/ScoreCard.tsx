@@ -81,7 +81,7 @@ export function ScoreCard({
       <p className={`mt-2 font-[family:var(--font-data)] text-6xl font-semibold tracking-tight ${scoreColor(score.score)}`}>
         {formatScore(score.score)}
       </p>
-      <p className="mt-2 text-sm uppercase tracking-[0.28em] text-zinc-400">{score.explanation && score.explanation.status !== 'directional' ? score.explanation.title : formatLabel(score.label)}</p>
+      <p className="mt-2 text-sm uppercase tracking-[0.28em] text-zinc-400">{formatLabel(score.label)}</p>
       {score.explanation ? <p className="mt-3 text-sm leading-6 text-zinc-300">{score.explanation.reason}</p> : null}
       {score.delayed && missingSessionDate && (
         <p className="mt-4 text-sm leading-6 text-zinc-400">

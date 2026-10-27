@@ -29,12 +29,12 @@ const filtered = { ...signal, position: 'NO_TRADE', noTrade: true, reliability: 
     watchPoints: ['**SPY trend:** The close is above its 20-session average. Check the next completed close.'] } };
   const mail = h.load('src/lib/marketing/email-dispatch.ts').createQuantBriefingEmailContent('REGIME STATUS: A misleading enthusiastic lead.', 0, 'NEUTRAL', false, 'premium', null, filtered, context);
   for (const content of [mail.html, mail.text]) {
-    assert.match(content, /No clear directional signal/); assert.match(content, /low-variation filter/);
+    assert.match(content.replace(/<[^>]*>/g, ''), /NEUTRAL\s*\(0\)/); assert.match(content, /low-variation filter/);
     assert(!/Directional agreement[^<\n]*0%/.test(content)); assert(!content.includes('Insufficient historical fit'));
     assert(content.includes('$773.09')); assert(content.includes('Check the next completed close'));
     assert(!content.includes('misleading enthusiastic'));
   }
-  assert.match(mail.subject, /No clear directional signal/);
+  assert.match(mail.subject, /NEUTRAL \(0\)/);
   const generated = await h.load('src/lib/briefing/daily-brief-generator.ts').generateDailyBriefingFromContext({ ...quant, score: 0, label: 'NEUTRAL', signal: filtered }, news);
   assert.match(generated.newsletterCopy, /low-variation filter/); assert(!/historical match is too weak/.test(generated.newsletterCopy));
   const React = require('react');
@@ -44,8 +44,33 @@ const filtered = { ...signal, position: 'NO_TRADE', noTrade: true, reliability: 
   })('src/components/product/ProReading.tsx').ProReading;
   const proMarkup = renderToStaticMarkup(React.createElement(ProReading, { asset: 'stocks', tradeDate: '2026-10-22', score: 0,
     label: 'NEUTRAL', explanation: explainReading(0, filtered) }));
-  assert.match(proMarkup, /No clear directional signal/); assert.match(proMarkup, /low-variation filter/);
-  assert(!/>Neutral</.test(proMarkup));
+  assert.match(proMarkup, />Neutral</); assert.match(proMarkup, /low-variation filter/);
+  assert(!proMarkup.includes('No clear directional signal'));
+  // The stored regime and score remain the headline in both markets and tiers,
+  // including nonzero withheld readings. Caution belongs in the body.
+  const stock = h.load('src/lib/marketing/email-dispatch.ts').createQuantBriefingEmailContent;
+  const crypto = h.load('src/lib/marketing/crypto-email-content.ts').createCryptoBriefingEmailContent;
+  const regimes = [[-85, 'EXTREME_RISK_OFF'], [-40, 'RISK_OFF'], [0, 'NEUTRAL'], [40, 'RISK_ON'], [85, 'EXTREME_RISK_ON']];
+  for (const [value, label] of regimes) {
+    const signed = value > 0 ? `+${value}` : String(value);
+    const headline = `${label.replaceAll('_', ' ')} (${signed})`;
+    for (const tier of ['free', 'premium']) {
+      const messages = [stock('', value, label, false, tier, null, filtered, context), crypto('', value, label, tier, context, filtered)];
+      for (const message of messages) {
+        assert(message.subject.includes(headline), message.subject);
+        assert(message.text.includes(`BASE SCORE: ${headline}`));
+        const h1 = message.html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/)[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        assert.equal(h1, headline);
+        assert.match(message.text, /low-variation filter/);
+        assert(!message.subject.includes('No clear directional signal'));
+      }
+    }
+    const rendered = renderToStaticMarkup(React.createElement(ProReading, { asset: 'stocks', tradeDate: '2026-10-22',
+      score: value, label, explanation: explainReading(value, filtered) }));
+    assert(rendered.includes(`>${signed}</p>`));
+    assert(rendered.includes(`>${label.toLowerCase().split('_').map(word => word[0].toUpperCase() + word.slice(1)).join(' ')}</span>`));
+    assert.match(rendered, /low-variation filter/);
+  }
   assert.equal(h.sends.length, 0); assert.equal(h.writes.length, 0);
-  console.log('PASS no-signal: filtered, Monday, overnight, ordinary neutral, missing/legacy context, safe labels, factual market commentary, no misleading agreement or sends');
+  console.log('PASS reading display: all five published regimes and numbers in stock/crypto emails and Pro, filtering reasons retained, no misleading agreement or sends');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -66,9 +66,9 @@ export function dailyEmailInterpretation(
   return cleanDailyEmailCopy(context?.interpretation || fallback);
 }
 
-export function dailyEmailReadingLabel(score: number, label: string, signal?: TradableSignal | null) {
-  const explanation = explainReading(score, signal);
-  return explanation.status === 'directional' ? label.replaceAll('_', ' ') : explanation.title;
+/** Always headline the published regime; filtering context belongs in the explanation. */
+export function dailyEmailReadingLabel(_score: number, label: string, _signal?: TradableSignal | null) {
+  return label.replaceAll('_', ' ');
 }
 
 export function dailyEmailMetadataText(context?: DailyEmailContext, market: 'stocks' | 'crypto' = 'crypto') {
