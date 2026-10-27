@@ -23,5 +23,10 @@
   "canonicalLedger": "https://github.com/FiNdAlMkSkInDaL/Macro-Bias-Model-Monitor/issues/2",
   "hostedWorkflow": "https://github.com/FiNdAlMkSkInDaL/Macro-Bias-Model-Monitor/actions/workflows/private-research.yml",
   "localExecutionEnabled": false,
-  "localFieldsAreHistorical": true
+  "localFieldsAreHistorical": true,
+  "cloudResearchRevision": 2,
+  "cloudHypothesisBudget": 14,
+  "cloudRevisionReason": "Owner authorized continued weekly ideas beyond the initial two, for both markets; current forward experiment stays fixed.",
+  "cloudLastExperimentScheduledFor": "2027-01-27T11:17:00.000Z",
+  "cloudStop": "2027-02-03T00:00:00.000Z"
 }
