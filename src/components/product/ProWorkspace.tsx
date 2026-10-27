@@ -1,3 +1,4 @@
+import { StockRiskCard } from './StockRiskCard';
 import 'server-only';
 
 import Link from 'next/link';
@@ -281,6 +282,7 @@ export function ProWorkspace({ asset, published, signal, chart, observations = [
       <div className={styles.readingGrid} data-pro-reading-grid>
         <ProReading asset={asset} tradeDate={tradeDate} score={published?.score ?? null} label={published?.label ?? null} explanation={published ? explainReading(published.score, signal) : null} decision={signal} />
       </div>
+      {stocks ? <StockRiskCard state={chart.stockRisk} /> : null}
       <div className={styles.chart}>
         <MacroMarketChart
           variant="history" instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'BTC'} price & daily bias`}

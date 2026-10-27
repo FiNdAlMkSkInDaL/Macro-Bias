@@ -1,0 +1,136 @@
+{
+  "generatedAt": "2026-10-27T19:16:50.682Z",
+  "candidate": "crypto-risk-shrink-50-v1",
+  "priorWeight": 0.5,
+  "status": "SHADOW_ONLY_NO_PRODUCTION_PROMOTION",
+  "limitations": [
+    "Fixed 50/50 blend, no weight search. Reused historical data, not an untouched holdout.",
+    "Normal absolute-move conversion is an approximation. Future tail-risk performance remains unproven."
+  ],
+  "overall": {
+    "sessions": 2489,
+    "constantQlike": 3.208468,
+    "ewmaQlike": 3.242268,
+    "shrinkQlike": 3.153991,
+    "shrinkMinusConstantQlike": -0.054477,
+    "paired95": [
+      -0.084773,
+      -0.024918
+    ],
+    "shrinkAbsoluteMoveMae": 1.695494,
+    "constantAbsoluteMoveMae": 1.79813
+  },
+  "reviewed2026": {
+    "sessions": 299,
+    "constantQlike": 2.712865,
+    "ewmaQlike": 2.889534,
+    "shrinkQlike": 2.707397,
+    "shrinkMinusConstantQlike": -0.005468,
+    "paired95": [
+      -0.07375,
+      0.100126
+    ],
+    "shrinkAbsoluteMoveMae": 1.266096,
+    "constantAbsoluteMoveMae": 1.300494
+  },
+  "annual": [
+    {
+      "year": "2020",
+      "sessions": 364,
+      "constantQlike": 3.683374,
+      "ewmaQlike": 3.805538,
+      "shrinkQlike": 3.630841,
+      "shrinkMinusConstantQlike": -0.052533,
+      "paired95": [
+        -0.142797,
+        0.053937
+      ],
+      "shrinkAbsoluteMoveMae": 2.058112,
+      "constantAbsoluteMoveMae": 2.202717
+    },
+    {
+      "year": "2021",
+      "sessions": 365,
+      "constantQlike": 3.908719,
+      "ewmaQlike": 3.855775,
+      "shrinkQlike": 3.850152,
+      "shrinkMinusConstantQlike": -0.058568,
+      "paired95": [
+        -0.119332,
+        -0.001062
+      ],
+      "shrinkAbsoluteMoveMae": 2.171163,
+      "constantAbsoluteMoveMae": 2.160537
+    },
+    {
+      "year": "2022",
+      "sessions": 365,
+      "constantQlike": 3.441458,
+      "ewmaQlike": 3.597758,
+      "shrinkQlike": 3.438193,
+      "shrinkMinusConstantQlike": -0.003265,
+      "paired95": [
+        -0.071581,
+        0.118935
+      ],
+      "shrinkAbsoluteMoveMae": 1.937897,
+      "constantAbsoluteMoveMae": 2.054206
+    },
+    {
+      "year": "2023",
+      "sessions": 365,
+      "constantQlike": 2.938771,
+      "ewmaQlike": 2.80939,
+      "shrinkQlike": 2.762888,
+      "shrinkMinusConstantQlike": -0.175883,
+      "paired95": [
+        -0.234829,
+        -0.104536
+      ],
+      "shrinkAbsoluteMoveMae": 1.595996,
+      "constantAbsoluteMoveMae": 1.888495
+    },
+    {
+      "year": "2024",
+      "sessions": 366,
+      "constantQlike": 3.071632,
+      "ewmaQlike": 3.126069,
+      "shrinkQlike": 3.060504,
+      "shrinkMinusConstantQlike": -0.011128,
+      "paired95": [
+        -0.051757,
+        0.031214
+      ],
+      "shrinkAbsoluteMoveMae": 1.53801,
+      "constantAbsoluteMoveMae": 1.579581
+    },
+    {
+      "year": "2025",
+      "sessions": 365,
+      "constantQlike": 2.614515,
+      "ewmaQlike": 2.549894,
+      "shrinkQlike": 2.548772,
+      "shrinkMinusConstantQlike": -0.065743,
+      "paired95": [
+        -0.121891,
+        -0.004009
+      ],
+      "shrinkAbsoluteMoveMae": 1.224964,
+      "constantAbsoluteMoveMae": 1.312603
+    },
+    {
+      "year": "2026",
+      "sessions": 299,
+      "constantQlike": 2.712865,
+      "ewmaQlike": 2.889534,
+      "shrinkQlike": 2.707397,
+      "shrinkMinusConstantQlike": -0.005468,
+      "paired95": [
+        -0.07375,
+        0.100126
+      ],
+      "shrinkAbsoluteMoveMae": 1.266096,
+      "constantAbsoluteMoveMae": 1.300494
+    }
+  ]
+}

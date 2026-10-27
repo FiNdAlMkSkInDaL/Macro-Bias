@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/generate-forward-fingerprint.cjs",
     "build": "next build",
     "start": "next start",
     "security:audit": "tsx scripts/audit-supabase-security.ts",
@@ -16,6 +17,7 @@
     "measure:quality": "tsx scripts/measure-model-quality.ts",
     "verify:quality": "tsx scripts/verify-quality-improvement.ts",
     "verify:trend-veto": "tsx scripts/verify-trend-veto.ts",
+    "verify:forward-models": "node scripts/generate-forward-fingerprint.cjs --check && node scripts/verify-model-forward.cjs && node scripts/verify-model-forward-content.cjs",
     "verify:model": "tsx scripts/verify-signal-and-paper-ledger.ts && tsx scripts/verify-percentiles.ts && tsx scripts/verify-live-score-eval.ts && tsx scripts/verify-trend-veto.ts",
     "macro-bias:sync": "tsx src/scripts/run-daily-macro-bias-sync.ts",
     "social:arm-queue": "tsx src/scripts/arm-scheduled-social-queue.ts",

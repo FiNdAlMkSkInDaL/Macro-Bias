@@ -1,4 +1,5 @@
 import 'server-only';
+import { stockRiskText } from '../model-forward/risk';
 
 import { Resend } from 'resend';
 
@@ -1179,7 +1180,9 @@ function createOptimisedQuantBriefingEmailContent(
   const upgradeUrl = buildUpgradeUrl();
   const referralPageUrl = new URL('/refer', getAppUrl()).toString();
   const lockedLine = tier === 'free' && !context.stockFacts && (playbookItems.length > 1 || !playbookItems.length) ? FREE_TIER_LOCKED_PLAYBOOK_LINE : '';
+  const riskText = stockRiskText(context.stockRisk);
   const bodyHtml = [
+    riskText ? dailyEmailSectionHtml('Session risk', dailyEmailParagraphHtml(riskText), '#a7d6be') : '',
     visibleMarketRows.length ? dailyEmailSectionHtml('The latest closes', dailyEmailMarketRowsHtml(visibleMarketRows), '#c4b5fd') : '',
     tier === 'premium' ? dailyEmailEvidenceHtml(context) : '',
     tier === 'premium' && baseScore && !context.evidence?.length && !context.historicalContext ? dailyEmailSectionHtml('What the model sees', dailyEmailParagraphHtml(baseScore)) : '',
@@ -1209,6 +1212,7 @@ function createOptimisedQuantBriefingEmailContent(
     interpretation,
     reliability,
     dailyEmailTradingText(signal, score),
+    riskText,
     visibleMarketRows.length ? `The latest closes\n${visibleMarketRows.join('\n')}` : '',
     evidence.length ? `What the model sees\n${evidence.map((line) => `- ${line}`).join('\n')}`
       : tier === 'premium' && baseScore && !context.historicalContext ? `What the model sees\n${baseScore}` : '',

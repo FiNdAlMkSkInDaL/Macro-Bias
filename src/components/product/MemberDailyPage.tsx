@@ -1,3 +1,4 @@
+import { StockRiskCard } from './StockRiskCard';
 import Link from 'next/link';
 
 import type { PublicDailyData } from '@/lib/product/public-daily-data';
@@ -52,6 +53,7 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
         ) : (
           <div className={ui.notice}>{data.loadError || 'A published reading is not available yet.'}<div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link></div></div>
         )}
+        {stocks ? <StockRiskCard state={data.stockRisk} /> : null}
         <section className={styles.chart} aria-label="Price and score history">
           <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
         </section>
