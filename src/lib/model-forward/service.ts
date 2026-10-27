@@ -100,7 +100,7 @@ export async function runModelForward({ preview = false, deps = forwardDependenc
           results.push({ market, targetDate: prediction.targetDate, status: 'skipped', reason: 'target_already_open_or_outside_window' }); continue;
         }
         const payload = { experiment: MODEL_FORWARD.id, modelHash: FORWARD_MODEL_HASH, recipeHash, capturedAt,
-          sourceRevision: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.MODEL_SOURCE_REVISION ?? null,
+          sourceRevision: process.env.VERCEL_GIT_COMMIT_SHA?.trim() || process.env.MODEL_SOURCE_REVISION?.trim() || null,
           deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null, inputHash: digest(prices), prediction, traffic_type: 'internal' as const };
         if (!preview) {
           const result = await insertImmutable(deps.admin, id, MODEL_FORWARD.predictionEvent, { ...payload, checksum: digest(payload) });

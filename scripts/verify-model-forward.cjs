@@ -5,7 +5,7 @@ const loader = require('./distribution-loader.cjs');
 const overrides = {};
 let activeAdmin;
 overrides['../supabase/admin'] = { createSupabaseAdminClient: () => { assert(activeAdmin, 'unexpected provider access'); return activeAdmin; } };
-const load = loader(overrides);
+const load = loader(overrides, { VERCEL_GIT_COMMIT_SHA: '', MODEL_SOURCE_REVISION: 'fixture-source-commit' });
 overrides['../signal'] = load('src/lib/signal/strategy');
 const { MODEL_FORWARD: recipe } = load('src/lib/model-forward/recipe');
 const service = load('src/lib/model-forward/service');
@@ -75,6 +75,7 @@ function addSession(day) {
   const locked = h.state.rows.filter(r => r.event_name === recipe.predictionEvent);
   assert.equal(locked.length, 2, 'concurrent runs must lock one prediction per market/target');
   locked.forEach(row => assert(records.validSavedPrediction(row), 'JSONB key reordering must preserve integrity'));
+  locked.forEach(row => assert.equal(row.metadata.sourceRevision, 'fixture-source-commit', 'empty Vercel Git metadata must use the explicit release commit'));
   const before = json(locked); h.state.now = '2026-10-27T10:00:00Z';
   await service.runModelForward({ deps: h.deps });
   assert.deepEqual(json(h.state.rows.filter(r => r.event_name === recipe.predictionEvent)), before, 'retry cannot revise a prediction');
