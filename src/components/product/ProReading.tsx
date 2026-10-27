@@ -35,7 +35,7 @@ export function ProReading({ asset, tradeDate, score, label, explanation }: {
         <time dateTime={tradeDate ?? undefined}>{dateLabel(tradeDate)}</time>
       </header>
       {hasScore ? <div className={styles.readingBody}>
-        <div className={styles.value}><p>{score > 0 ? '+' : ''}{score}</p><span>{explanation && explanation.status !== 'directional' ? explanation.title : storedLabel}</span></div>
+        <div className={styles.value}><p>{score > 0 ? '+' : ''}{score}</p><span>{storedLabel}</span></div>
         <div className={styles.scale} aria-label={`Published score ${score} on a scale from minus 100 to plus 100`}>
           <div className={styles.rail}><span style={{ left: `${(Math.max(-100, Math.min(100, score)) + 100) / 2}%` }} /></div>
           <div className={styles.scaleLabels}><span>−100</span><span>0</span><span>+100</span></div>
