@@ -1,0 +1,29 @@
+{
+  "version": "publication-aligned-challengers-v1",
+  "lockedBeforeRun": "2026-10-27",
+  "completedPriceCutoff": "2026-10-26",
+  "evaluationStart": "2020-01-01",
+  "historicalReuse": "All historical periods have already been reviewed. This is chronological research, not an untouched holdout or live record.",
+  "targets": {
+    "stocks": "Next available SPY session open to close; assumes publication before that open.",
+    "crypto": "BTC full UTC session source date + 2 calendar days, open to close; no borrowing the partially elapsed publication-day return."
+  },
+  "minimumTrainingRows": 252,
+  "trainingCalendarDays": 1095,
+  "trainingLabelRule": "Target close date must be strictly before prediction source date; extra one-source-session embargo. Production comparator additionally requires matured three-session labels.",
+  "ridgePenaltyMeanLoss": 1,
+  "ridgeRefit": "First eligible source date of each calendar month, using only then-mature labels and training-only standardization.",
+  "analogueNeighbors": 40,
+  "analoguePriorWeight": 0.5,
+  "featureClipStandardDeviations": 4,
+  "features": "Production stationarized six-feature vector plus 1/5/20/60-session own returns and trailing 20-session daily volatility; no news, future prices or parameter search.",
+  "challengers": ["aligned_shrunk_analog", "aligned_ridge"],
+  "baselines": ["cash", "always_up", "trailing_mean", "momentum_20", "momentum_60", "production_raw", "production_filtered"],
+  "tradingDiagnostic": "Common session open-to-close, fully closed each session, unit long/short exposure. Forecast-driven challengers trade only above fixed round-trip cost. Raw production uses its existing market-label boundary; filtered comparator uses actual permission. Risk and exposure differ; do not rank profitability without them.",
+  "roundTripCostBps": { "stocks": 10, "crypto": 30 },
+  "costSensitivityMultiples": [0, 1, 2],
+  "riskForecast": "EWMA of matured target squared returns, decay 0.94, versus rolling-training constant variance. Evaluate QLIKE and absolute-return MAE with RMS-to-absolute normal conversion explicitly approximate.",
+  "uncertainty": { "pairedMovingBlockSessions": 20, "replications": 1000, "seed": 27102026 },
+  "promotion": "No automatic promotion. Require improvement over base return/probability forecasts, no deterioration in recent and annual slices, cost-robust economic benefit, then locked prospective evidence. Historical selection can never satisfy the prospective requirement.",
+  "prospective": "Freeze recipe and code/data fingerprints. Write dated predictions before their target opens and append outcomes only after close; no backfilled prediction counts as prospective. No production policy change in this experiment."
+}

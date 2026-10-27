@@ -1,0 +1,5837 @@
+{
+  "generatedAt": "2026-10-27T18:57:11.763Z",
+  "snapshotCutoff": "2026-10-26",
+  "recipe": {
+    "version": "publication-aligned-challengers-v1",
+    "lockedBeforeRun": "2026-10-27",
+    "completedPriceCutoff": "2026-10-26",
+    "evaluationStart": "2020-01-01",
+    "historicalReuse": "All historical periods have already been reviewed. This is chronological research, not an untouched holdout or live record.",
+    "targets": {
+      "stocks": "Next available SPY session open to close; assumes publication before that open.",
+      "crypto": "BTC full UTC session source date + 2 calendar days, open to close; no borrowing the partially elapsed publication-day return."
+    },
+    "minimumTrainingRows": 252,
+    "trainingCalendarDays": 1095,
+    "trainingLabelRule": "Target close date must be strictly before prediction source date; extra one-source-session embargo. Production comparator additionally requires matured three-session labels.",
+    "ridgePenaltyMeanLoss": 1,
+    "ridgeRefit": "First eligible source date of each calendar month, using only then-mature labels and training-only standardization.",
+    "analogueNeighbors": 40,
+    "analoguePriorWeight": 0.5,
+    "featureClipStandardDeviations": 4,
+    "features": "Production stationarized six-feature vector plus 1/5/20/60-session own returns and trailing 20-session daily volatility; no news, future prices or parameter search.",
+    "challengers": [
+      "aligned_shrunk_analog",
+      "aligned_ridge"
+    ],
+    "baselines": [
+      "cash",
+      "always_up",
+      "trailing_mean",
+      "momentum_20",
+      "momentum_60",
+      "production_raw",
+      "production_filtered"
+    ],
+    "tradingDiagnostic": "Common session open-to-close, fully closed each session, unit long/short exposure. Forecast-driven challengers trade only above fixed round-trip cost. Raw production uses its existing market-label boundary; filtered comparator uses actual permission. Risk and exposure differ; do not rank profitability without them.",
+    "roundTripCostBps": {
+      "stocks": 10,
+      "crypto": 30
+    },
+    "costSensitivityMultiples": [
+      0,
+      1,
+      2
+    ],
+    "riskForecast": "EWMA of matured target squared returns, decay 0.94, versus rolling-training constant variance. Evaluate QLIKE and absolute-return MAE with RMS-to-absolute normal conversion explicitly approximate.",
+    "uncertainty": {
+      "pairedMovingBlockSessions": 20,
+      "replications": 1000,
+      "seed": 27102026
+    },
+    "promotion": "No automatic promotion. Require improvement over base return/probability forecasts, no deterioration in recent and annual slices, cost-robust economic benefit, then locked prospective evidence. Historical selection can never satisfy the prospective requirement.",
+    "prospective": "Freeze recipe and code/data fingerprints. Write dated predictions before their target opens and append outcomes only after close; no backfilled prediction counts as prospective. No production policy change in this experiment."
+  },
+  "fingerprints": {
+    "recipe": "fc916bb82049d5fedb69919029253dc23b52d05c8dde9483b66828d4fb68b4e3",
+    "prices": "629027ecb628a0ec80e1a500d2ee7e0c049d3e2170a6c9a5c6cdd1a2b7fa9077",
+    "code": "3c1c1caa9b80ee5ca1c96d8a4a9de18afa5136257233d63e394cd10cfb1a4685",
+    "files": {
+      "scripts/research-score-benchmarks.ts": "d8a0f631607d4f0e0c664f8d02b14b50ef2fb0ae7502a0e64cfab583d5674e1a",
+      "scripts/lib/scoring-research.ts": "c3668a98691434794cbc83f0401ea98a0092204aa1b744feecfca855029e71d1",
+      "src/lib/macro-bias/calculate-daily-bias.ts": "26bca11b1da04952e5847a90c88f250168609ec3031acad420a04b0a17cf3cc1",
+      "src/lib/macro-bias/constants.ts": "a579620fdc29a9223818b63c581c3ce333ee93f9f302dab5cffddebb6965e26e",
+      "src/lib/macro-bias/technical-analysis.ts": "b7dc68c0b5cc34bcfdf541194660f4933f55328f580b4047ccd21fda30ae86e6",
+      "src/lib/crypto-bias/calculate-crypto-bias.ts": "b9069af64064ecad021e791791d774a23d6f65456020f263927a1f36d2c33d41",
+      "src/lib/crypto-bias/constants.ts": "ec7b4a890446366a4071910e956dab37b6d3388b39b307727c717e878b642d95",
+      "src/lib/signal/strategy.ts": "b3e47b8a990d65a8d8f45a38bf3a8d4ca8a27799b0988bc772f2e57a4263e742",
+      "src/lib/signal/rolling-percentile.ts": "b11c8653aee473d9ca2f35291628848f42086b120572bd45d00420c47e6b8556",
+      "src/lib/signal/trend-veto.ts": "455e7ed89c576988aab9ac78254275dbd2b0fe945fa8f6afc619100c41e6b6b4",
+      "src/utils/knn.ts": "abf1184e31b166c31e06d03745e67042866532f957afb40b0ae57bf3f1f9d8a1",
+      "src/utils/regime-classifier.ts": "1ae3cb28d2b1f54d5c852c23a754f563faebc5e860b3e255b8ccb4ed6d596b80"
+    }
+  },
+  "priceCoverage": {
+    "SPY": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "QQQ": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "TLT": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "GLD": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "USO": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "HYG": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "VIX": {
+      "rows": 2658,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "CPER": {
+      "rows": 2654,
+      "first": "2016-04-07",
+      "last": "2026-10-26"
+    },
+    "BTC-USD": {
+      "rows": 3847,
+      "first": "2016-04-15",
+      "last": "2026-10-26"
+    },
+    "ETH-USD": {
+      "rows": 3274,
+      "first": "2017-11-09",
+      "last": "2026-10-26"
+    },
+    "DXY": {
+      "rows": 2652,
+      "first": "2016-04-15",
+      "last": "2026-10-26"
+    }
+  },
+  "caveats": [
+    "Historical reconstruction from current stored, unadjusted open/close quotes, not original data vintages or actual executed trades. Publication timing is an explicit assumption, not historical delivery verification.",
+    "All 2020-2026 periods have previously been inspected. Chronological fits prevent lookahead but do not remove historical model-selection bias.",
+    "SPY open-close excludes overnight returns and dividends. BTC targets start at the first full UTC session after assumed next-day noon publication. This sacrifices freshness to avoid a fictional entry.",
+    "Production scores target different one/three-close blends; only directional and trading diagnostics are comparable. They are not probabilities or return forecasts for this target; their Brier/MSE are unavailable.",
+    "All models are evaluated on identical dates within a market. Cash earns zero; always-up reopens every target session and pays the same round-trip costs, not buy-and-hold. Gross result is also reported.",
+    "Unit-exposure long/short diagnostics omit borrow, financing, variable spreads, taxes, position sizing and latency. Cash/exposure differ; cumulative returns do not establish investable superiority.",
+    "Paired 20-session block intervals are descriptive, not multiple-testing-adjusted significance. Windows differ between markets and must not be combined.",
+    "No production model change is selected by this report. Genuine prospective evidence requires predictions timestamped before future target opens. Local shadow locks are append-only files, not a hosted daily collection service."
+  ],
+  "stocks": {
+    "sessions": 1712,
+    "firstSource": "2020-01-02",
+    "lastSource": "2026-10-23",
+    "lastTarget": "2026-10-26",
+    "skippedFeatures": 0,
+    "missingTarget": 0,
+    "ridgeFits": 82,
+    "overall": {
+      "models": {
+        "cash": {
+          "sessions": 1712,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 0,
+          "directionHitPct": null,
+          "sameDirectionalSessionsAlwaysUpHitPct": null,
+          "activeHitPct": null,
+          "returnMse": 0.861475,
+          "brier": 0.25,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": 0
+            }
+          ]
+        },
+        "always_up": {
+          "sessions": 1712,
+          "activeSessions": 1712,
+          "longPct": 100,
+          "shortPct": 0,
+          "directionalSessions": 1712,
+          "directionHitPct": 54.09,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.09,
+          "activeHitPct": 54.09,
+          "returnMse": null,
+          "brier": 0.459112,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": -0.07457,
+          "cumulativeUnitReturnPct": -74.09,
+          "maxDrawdownPct": 74.91,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.02543
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.07457
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.17457
+            }
+          ]
+        },
+        "trailing_mean": {
+          "sessions": 1712,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 1712,
+          "directionHitPct": 52.98,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.09,
+          "activeHitPct": null,
+          "returnMse": 0.861717,
+          "brier": 0.248767,
+          "scoreReturnCorrelation": -0.032989,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": 0
+            }
+          ]
+        },
+        "momentum_20": {
+          "sessions": 1712,
+          "activeSessions": 1712,
+          "longPct": 67.76,
+          "shortPct": 32.24,
+          "directionalSessions": 1712,
+          "directionHitPct": 50.76,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.09,
+          "activeHitPct": 50.76,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.06398,
+          "meanNetSessionReturnPct": -0.111628,
+          "cumulativeUnitReturnPct": -86.28,
+          "maxDrawdownPct": 86.93,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.011628
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.111628
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.211628
+            }
+          ]
+        },
+        "momentum_60": {
+          "sessions": 1712,
+          "activeSessions": 1711,
+          "longPct": 76.05,
+          "shortPct": 23.89,
+          "directionalSessions": 1711,
+          "directionHitPct": 52.48,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.12,
+          "activeHitPct": 52.48,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.08215,
+          "meanNetSessionReturnPct": -0.118072,
+          "cumulativeUnitReturnPct": -87.72,
+          "maxDrawdownPct": 87.94,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.01813
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.118072
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.218014
+            }
+          ]
+        },
+        "production_raw": {
+          "sessions": 1712,
+          "activeSessions": 566,
+          "longPct": 19.74,
+          "shortPct": 13.32,
+          "directionalSessions": 1674,
+          "directionHitPct": 51.37,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.18,
+          "activeHitPct": 52.65,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.027288,
+          "meanNetSessionReturnPct": -0.020496,
+          "cumulativeUnitReturnPct": -32.21,
+          "maxDrawdownPct": 38.16,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.012565
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.020496
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.053557
+            }
+          ]
+        },
+        "production_filtered": {
+          "sessions": 1712,
+          "activeSessions": 249,
+          "longPct": 8.82,
+          "shortPct": 5.72,
+          "directionalSessions": 1674,
+          "directionHitPct": 51.37,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.18,
+          "activeHitPct": 55.02,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.027288,
+          "meanNetSessionReturnPct": 0.009551,
+          "cumulativeUnitReturnPct": 15.47,
+          "maxDrawdownPct": 13.98,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.024095
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": 0.009551
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.004993
+            }
+          ]
+        },
+        "aligned_shrunk_analog": {
+          "sessions": 1712,
+          "activeSessions": 237,
+          "longPct": 8.7,
+          "shortPct": 5.14,
+          "directionalSessions": 1712,
+          "directionHitPct": 50.23,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.09,
+          "activeHitPct": 50.21,
+          "returnMse": 0.860864,
+          "brier": 0.250714,
+          "scoreReturnCorrelation": 0.04012,
+          "meanNetSessionReturnPct": -0.007425,
+          "cumulativeUnitReturnPct": -14.03,
+          "maxDrawdownPct": 25.57,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.006419
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.007425
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.021268
+            }
+          ]
+        },
+        "aligned_ridge": {
+          "sessions": 1712,
+          "activeSessions": 132,
+          "longPct": 6.48,
+          "shortPct": 1.23,
+          "directionalSessions": 1712,
+          "directionHitPct": 50.99,
+          "sameDirectionalSessionsAlwaysUpHitPct": 54.09,
+          "activeHitPct": 50.76,
+          "returnMse": 0.860352,
+          "brier": 0.249858,
+          "scoreReturnCorrelation": 0.05044,
+          "meanNetSessionReturnPct": -0.000182,
+          "cumulativeUnitReturnPct": -2.3,
+          "maxDrawdownPct": 15.79,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.007529
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.000182
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.007892
+            }
+          ]
+        }
+      },
+      "pairedComparisons": {
+        "aligned_shrunk_analog": {
+          "mseMinusTrailingMean": -0.000853,
+          "msePaired95": [
+            -0.010546,
+            0.007272
+          ],
+          "brierMinusTrailingMean": 0.001946,
+          "brierPaired95": [
+            0.000315,
+            0.003392
+          ],
+          "netMinusAlwaysUpMeanPct": 0.067145,
+          "netPaired95": [
+            0.029869,
+            0.106394
+          ],
+          "netMinusCashMeanPct": -0.007425,
+          "netMinusCashPaired95": [
+            -0.025961,
+            0.015351
+          ],
+          "netMinusSameExposureLongPct": -0.014641,
+          "netMinusSameExposureLongPaired95": [
+            -0.038617,
+            0.00815
+          ]
+        },
+        "aligned_ridge": {
+          "mseMinusTrailingMean": -0.001365,
+          "msePaired95": [
+            -0.012731,
+            0.009753
+          ],
+          "brierMinusTrailingMean": 0.00109,
+          "brierPaired95": [
+            0.000105,
+            0.002054
+          ],
+          "netMinusAlwaysUpMeanPct": 0.074388,
+          "netPaired95": [
+            0.042092,
+            0.105113
+          ],
+          "netMinusCashMeanPct": -0.000182,
+          "netMinusCashPaired95": [
+            -0.015894,
+            0.018975
+          ],
+          "netMinusSameExposureLongPct": -0.000256,
+          "netMinusSameExposureLongPaired95": [
+            -0.009781,
+            0.010602
+          ]
+        }
+      },
+      "risk": {
+        "sessions": 1712,
+        "constantQlike": 0.893045,
+        "ewmaQlike": 0.637645,
+        "ewmaMinusConstantQlike": -0.255399,
+        "paired95": [
+          -0.541211,
+          -0.056848
+        ],
+        "constantAbsoluteReturnMae": 0.471802,
+        "ewmaAbsoluteReturnMae": 0.428952
+      }
+    },
+    "reviewed2026": {
+      "models": {
+        "cash": {
+          "sessions": 205,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 0,
+          "directionHitPct": null,
+          "sameDirectionalSessionsAlwaysUpHitPct": null,
+          "activeHitPct": null,
+          "returnMse": 0.363706,
+          "brier": 0.25,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": 0
+            }
+          ]
+        },
+        "always_up": {
+          "sessions": 205,
+          "activeSessions": 205,
+          "longPct": 100,
+          "shortPct": 0,
+          "directionalSessions": 205,
+          "directionHitPct": 50.24,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+          "activeHitPct": 50.24,
+          "returnMse": null,
+          "brier": 0.497561,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": -0.082218,
+          "cumulativeUnitReturnPct": -15.83,
+          "maxDrawdownPct": 16.53,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.017782
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.082218
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.182218
+            }
+          ]
+        },
+        "trailing_mean": {
+          "sessions": 205,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 205,
+          "directionHitPct": 50.24,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+          "activeHitPct": null,
+          "returnMse": 0.363961,
+          "brier": 0.2517,
+          "scoreReturnCorrelation": -0.074319,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": 0
+            }
+          ]
+        },
+        "momentum_20": {
+          "sessions": 205,
+          "activeSessions": 205,
+          "longPct": 60.98,
+          "shortPct": 39.02,
+          "directionalSessions": 205,
+          "directionHitPct": 47.32,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+          "activeHitPct": 47.32,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.035113,
+          "meanNetSessionReturnPct": -0.117598,
+          "cumulativeUnitReturnPct": -21.73,
+          "maxDrawdownPct": 21.87,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.017598
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.117598
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.217598
+            }
+          ]
+        },
+        "momentum_60": {
+          "sessions": 205,
+          "activeSessions": 205,
+          "longPct": 86.34,
+          "shortPct": 13.66,
+          "directionalSessions": 205,
+          "directionHitPct": 51.22,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+          "activeHitPct": 51.22,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.094542,
+          "meanNetSessionReturnPct": -0.092561,
+          "cumulativeUnitReturnPct": -17.6,
+          "maxDrawdownPct": 19.63,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.007439
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.092561
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.192561
+            }
+          ]
+        },
+        "production_raw": {
+          "sessions": 205,
+          "activeSessions": 53,
+          "longPct": 19.51,
+          "shortPct": 6.34,
+          "directionalSessions": 200,
+          "directionHitPct": 50,
+          "sameDirectionalSessionsAlwaysUpHitPct": 51,
+          "activeHitPct": 54.72,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.027031,
+          "meanNetSessionReturnPct": -0.011314,
+          "cumulativeUnitReturnPct": -2.38,
+          "maxDrawdownPct": 5.04,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.01454
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.011314
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.037167
+            }
+          ]
+        },
+        "production_filtered": {
+          "sessions": 205,
+          "activeSessions": 26,
+          "longPct": 10.73,
+          "shortPct": 1.95,
+          "directionalSessions": 200,
+          "directionHitPct": 50,
+          "sameDirectionalSessionsAlwaysUpHitPct": 51,
+          "activeHitPct": 69.23,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.027031,
+          "meanNetSessionReturnPct": -0.003493,
+          "cumulativeUnitReturnPct": -0.73,
+          "maxDrawdownPct": 2.09,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.00919
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.003493
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.016175
+            }
+          ]
+        },
+        "aligned_shrunk_analog": {
+          "sessions": 205,
+          "activeSessions": 18,
+          "longPct": 7.8,
+          "shortPct": 0.98,
+          "directionalSessions": 205,
+          "directionHitPct": 44.39,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+          "activeHitPct": 38.89,
+          "returnMse": 0.372858,
+          "brier": 0.25838,
+          "scoreReturnCorrelation": -0.107525,
+          "meanNetSessionReturnPct": -0.017841,
+          "cumulativeUnitReturnPct": -3.65,
+          "maxDrawdownPct": 5.12,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.009061
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.017841
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.026622
+            }
+          ]
+        },
+        "aligned_ridge": {
+          "sessions": 205,
+          "activeSessions": 9,
+          "longPct": 4.39,
+          "shortPct": 0,
+          "directionalSessions": 205,
+          "directionHitPct": 51.71,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+          "activeHitPct": 33.33,
+          "returnMse": 0.368196,
+          "brier": 0.253389,
+          "scoreReturnCorrelation": -0.064054,
+          "meanNetSessionReturnPct": -0.011335,
+          "cumulativeUnitReturnPct": -2.32,
+          "maxDrawdownPct": 3.43,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.006945
+            },
+            {
+              "roundTripCostBps": 10,
+              "meanPct": -0.011335
+            },
+            {
+              "roundTripCostBps": 20,
+              "meanPct": -0.015725
+            }
+          ]
+        }
+      },
+      "pairedComparisons": {
+        "aligned_shrunk_analog": {
+          "mseMinusTrailingMean": 0.008897,
+          "msePaired95": [
+            -0.000174,
+            0.02101
+          ],
+          "brierMinusTrailingMean": 0.00668,
+          "brierPaired95": [
+            0.001861,
+            0.011843
+          ],
+          "netMinusAlwaysUpMeanPct": 0.064377,
+          "netPaired95": [
+            -0.026274,
+            0.141849
+          ],
+          "netMinusCashMeanPct": -0.017841,
+          "netMinusCashPaired95": [
+            -0.049721,
+            0.006608
+          ],
+          "netMinusSameExposureLongPct": -0.014456,
+          "netMinusSameExposureLongPaired95": [
+            -0.043368,
+            0
+          ]
+        },
+        "aligned_ridge": {
+          "mseMinusTrailingMean": 0.004235,
+          "msePaired95": [
+            -0.002126,
+            0.012963
+          ],
+          "brierMinusTrailingMean": 0.001688,
+          "brierPaired95": [
+            -0.002127,
+            0.005784
+          ],
+          "netMinusAlwaysUpMeanPct": 0.070883,
+          "netPaired95": [
+            -0.007112,
+            0.14352
+          ],
+          "netMinusCashMeanPct": -0.011335,
+          "netMinusCashPaired95": [
+            -0.038514,
+            0.005601
+          ],
+          "netMinusSameExposureLongPct": 0,
+          "netMinusSameExposureLongPaired95": [
+            0,
+            0
+          ]
+        }
+      },
+      "risk": {
+        "sessions": 205,
+        "constantQlike": 0.13907,
+        "ewmaQlike": -0.011709,
+        "ewmaMinusConstantQlike": -0.150779,
+        "paired95": [
+          -0.321115,
+          0.050619
+        ],
+        "constantAbsoluteReturnMae": 0.374864,
+        "ewmaAbsoluteReturnMae": 0.302603
+      }
+    },
+    "annual": [
+      {
+        "year": "2020",
+        "sessions": 252,
+        "models": {
+          "cash": {
+            "sessions": 252,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 1.489625,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 57.94,
+            "sameDirectionalSessionsAlwaysUpHitPct": 57.94,
+            "activeHitPct": 57.94,
+            "returnMse": null,
+            "brier": 0.420635,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.081086,
+            "cumulativeUnitReturnPct": -20.01,
+            "maxDrawdownPct": 22.67,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.018914
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.081086
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.181086
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 252,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 52.78,
+            "sameDirectionalSessionsAlwaysUpHitPct": 57.94,
+            "activeHitPct": null,
+            "returnMse": 1.490831,
+            "brier": 0.245956,
+            "scoreReturnCorrelation": -0.110486,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 75.4,
+            "shortPct": 24.6,
+            "directionalSessions": 252,
+            "directionHitPct": 53.57,
+            "sameDirectionalSessionsAlwaysUpHitPct": 57.94,
+            "activeHitPct": 53.57,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.158803,
+            "meanNetSessionReturnPct": -0.175055,
+            "cumulativeUnitReturnPct": -36.89,
+            "maxDrawdownPct": 40.15,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.075055
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.175055
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.275055
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 73.02,
+            "shortPct": 26.98,
+            "directionalSessions": 252,
+            "directionHitPct": 55.95,
+            "sameDirectionalSessionsAlwaysUpHitPct": 57.94,
+            "activeHitPct": 55.95,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.11359,
+            "meanNetSessionReturnPct": -0.160009,
+            "cumulativeUnitReturnPct": -34.45,
+            "maxDrawdownPct": 35.73,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.060009
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.160009
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.260009
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 252,
+            "activeSessions": 102,
+            "longPct": 29.76,
+            "shortPct": 10.71,
+            "directionalSessions": 244,
+            "directionHitPct": 53.28,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.61,
+            "activeHitPct": 52.94,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.050091,
+            "meanNetSessionReturnPct": -0.019826,
+            "cumulativeUnitReturnPct": -5.69,
+            "maxDrawdownPct": 13.38,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.02065
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.019826
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.060303
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 252,
+            "activeSessions": 36,
+            "longPct": 11.9,
+            "shortPct": 2.38,
+            "directionalSessions": 244,
+            "directionHitPct": 53.28,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.61,
+            "activeHitPct": 44.44,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.050091,
+            "meanNetSessionReturnPct": -0.017821,
+            "cumulativeUnitReturnPct": -4.83,
+            "maxDrawdownPct": 11.82,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.003535
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.017821
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.032107
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 252,
+            "activeSessions": 63,
+            "longPct": 20.24,
+            "shortPct": 4.76,
+            "directionalSessions": 252,
+            "directionHitPct": 53.97,
+            "sameDirectionalSessionsAlwaysUpHitPct": 57.94,
+            "activeHitPct": 55.56,
+            "returnMse": 1.476824,
+            "brier": 0.247887,
+            "scoreReturnCorrelation": 0.093077,
+            "meanNetSessionReturnPct": 0.014074,
+            "cumulativeUnitReturnPct": 2.65,
+            "maxDrawdownPct": 10.08,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.039074
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.014074
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.010926
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 252,
+            "activeSessions": 38,
+            "longPct": 13.1,
+            "shortPct": 1.98,
+            "directionalSessions": 252,
+            "directionHitPct": 51.98,
+            "sameDirectionalSessionsAlwaysUpHitPct": 57.94,
+            "activeHitPct": 52.63,
+            "returnMse": 1.490441,
+            "brier": 0.247893,
+            "scoreReturnCorrelation": 0.075773,
+            "meanNetSessionReturnPct": 0.007581,
+            "cumulativeUnitReturnPct": 1.23,
+            "maxDrawdownPct": 9.5,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.02266
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.007581
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.007498
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 252,
+          "constantQlike": 1.955193,
+          "ewmaQlike": 1.312284,
+          "ewmaMinusConstantQlike": -0.642909,
+          "paired95": [
+            -1.922248,
+            0.128987
+          ],
+          "constantAbsoluteReturnMae": 0.582443,
+          "ewmaAbsoluteReturnMae": 0.588547
+        }
+      },
+      {
+        "year": "2021",
+        "sessions": 252,
+        "models": {
+          "cash": {
+            "sessions": 252,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 0.409333,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 54.37,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.37,
+            "activeHitPct": 54.37,
+            "returnMse": null,
+            "brier": 0.456349,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.061956,
+            "cumulativeUnitReturnPct": -14.9,
+            "maxDrawdownPct": 17.36,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.038044
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.061956
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.161956
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 252,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 51.98,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.37,
+            "activeHitPct": null,
+            "returnMse": 0.408233,
+            "brier": 0.248323,
+            "scoreReturnCorrelation": 0.025296,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 80.16,
+            "shortPct": 19.84,
+            "directionalSessions": 252,
+            "directionHitPct": 47.22,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.37,
+            "activeHitPct": 47.22,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.074365,
+            "meanNetSessionReturnPct": -0.139913,
+            "cumulativeUnitReturnPct": -30.09,
+            "maxDrawdownPct": 30.66,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.039913
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.139913
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.239913
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 252,
+            "activeSessions": 251,
+            "longPct": 97.62,
+            "shortPct": 1.98,
+            "directionalSessions": 251,
+            "directionHitPct": 52.59,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.58,
+            "activeHitPct": 52.59,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.1111,
+            "meanNetSessionReturnPct": -0.094806,
+            "cumulativeUnitReturnPct": -21.67,
+            "maxDrawdownPct": 23.94,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.004797
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.094806
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.194409
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 252,
+            "activeSessions": 78,
+            "longPct": 24.6,
+            "shortPct": 6.35,
+            "directionalSessions": 245,
+            "directionHitPct": 51.84,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.69,
+            "activeHitPct": 51.28,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.012306,
+            "meanNetSessionReturnPct": -0.022046,
+            "cumulativeUnitReturnPct": -5.62,
+            "maxDrawdownPct": 11.27,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.008907
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.022046
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.052998
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 252,
+            "activeSessions": 31,
+            "longPct": 10.32,
+            "shortPct": 1.98,
+            "directionalSessions": 245,
+            "directionHitPct": 51.84,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.69,
+            "activeHitPct": 54.84,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.012306,
+            "meanNetSessionReturnPct": 0.0004,
+            "cumulativeUnitReturnPct": 0.03,
+            "maxDrawdownPct": 4.29,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.012702
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.0004
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.011901
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 252,
+            "activeSessions": 16,
+            "longPct": 4.76,
+            "shortPct": 1.59,
+            "directionalSessions": 252,
+            "directionHitPct": 48.02,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.37,
+            "activeHitPct": 43.75,
+            "returnMse": 0.411353,
+            "brier": 0.250007,
+            "scoreReturnCorrelation": 0.007501,
+            "meanNetSessionReturnPct": -0.013798,
+            "cumulativeUnitReturnPct": -3.51,
+            "maxDrawdownPct": 5.92,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.007448
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.013798
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.020147
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 252,
+            "activeSessions": 5,
+            "longPct": 0,
+            "shortPct": 1.98,
+            "directionalSessions": 252,
+            "directionHitPct": 47.62,
+            "sameDirectionalSessionsAlwaysUpHitPct": 54.37,
+            "activeHitPct": 40,
+            "returnMse": 0.409883,
+            "brier": 0.248678,
+            "scoreReturnCorrelation": 0.01753,
+            "meanNetSessionReturnPct": -0.001488,
+            "cumulativeUnitReturnPct": -0.39,
+            "maxDrawdownPct": 1.37,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.000496
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.001488
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.003473
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 252,
+          "constantQlike": 0.315457,
+          "ewmaQlike": 0.159963,
+          "ewmaMinusConstantQlike": -0.155494,
+          "paired95": [
+            -0.403763,
+            0.087401
+          ],
+          "constantAbsoluteReturnMae": 0.409783,
+          "ewmaAbsoluteReturnMae": 0.32208
+        }
+      },
+      {
+        "year": "2022",
+        "sessions": 251,
+        "models": {
+          "cash": {
+            "sessions": 251,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 1.597563,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 251,
+            "activeSessions": 251,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 251,
+            "directionHitPct": 50.6,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.6,
+            "activeHitPct": 50.6,
+            "returnMse": null,
+            "brier": 0.494024,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.1149,
+            "cumulativeUnitReturnPct": -26.56,
+            "maxDrawdownPct": 27.62,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.0149
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.1149
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.2149
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 251,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 251,
+            "directionHitPct": 50.6,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.6,
+            "activeHitPct": null,
+            "returnMse": 1.600996,
+            "brier": 0.252247,
+            "scoreReturnCorrelation": -0.158788,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 251,
+            "activeSessions": 251,
+            "longPct": 39.44,
+            "shortPct": 60.56,
+            "directionalSessions": 251,
+            "directionHitPct": 48.21,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.6,
+            "activeHitPct": 48.21,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.015416,
+            "meanNetSessionReturnPct": -0.091029,
+            "cumulativeUnitReturnPct": -22.02,
+            "maxDrawdownPct": 22.17,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.008971
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.091029
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.191029
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 251,
+            "activeSessions": 251,
+            "longPct": 25.1,
+            "shortPct": 74.9,
+            "directionalSessions": 251,
+            "directionHitPct": 47.41,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.6,
+            "activeHitPct": 47.41,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.141512,
+            "meanNetSessionReturnPct": -0.168435,
+            "cumulativeUnitReturnPct": -35.8,
+            "maxDrawdownPct": 36.74,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.068435
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.168435
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.268435
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 251,
+            "activeSessions": 119,
+            "longPct": 23.9,
+            "shortPct": 23.51,
+            "directionalSessions": 250,
+            "directionHitPct": 51.6,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.4,
+            "activeHitPct": 54.62,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.087786,
+            "meanNetSessionReturnPct": 0.04323,
+            "cumulativeUnitReturnPct": 10.34,
+            "maxDrawdownPct": 8.55,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.090641
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.04323
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.00418
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 251,
+            "activeSessions": 54,
+            "longPct": 10.36,
+            "shortPct": 11.16,
+            "directionalSessions": 250,
+            "directionHitPct": 51.6,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.4,
+            "activeHitPct": 62.96,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.087786,
+            "meanNetSessionReturnPct": 0.056339,
+            "cumulativeUnitReturnPct": 14.6,
+            "maxDrawdownPct": 4.83,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.077853
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.056339
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0.034825
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 251,
+            "activeSessions": 47,
+            "longPct": 8.37,
+            "shortPct": 10.36,
+            "directionalSessions": 251,
+            "directionHitPct": 54.98,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.6,
+            "activeHitPct": 42.55,
+            "returnMse": 1.613733,
+            "brier": 0.251467,
+            "scoreReturnCorrelation": -0.054934,
+            "meanNetSessionReturnPct": -0.079587,
+            "cumulativeUnitReturnPct": -18.4,
+            "maxDrawdownPct": 19.09,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.060862
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.079587
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.098312
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 251,
+            "activeSessions": 55,
+            "longPct": 20.72,
+            "shortPct": 1.2,
+            "directionalSessions": 251,
+            "directionHitPct": 51.79,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.6,
+            "activeHitPct": 54.55,
+            "returnMse": 1.605737,
+            "brier": 0.253702,
+            "scoreReturnCorrelation": 0.000894,
+            "meanNetSessionReturnPct": -0.017229,
+            "cumulativeUnitReturnPct": -4.63,
+            "maxDrawdownPct": 7.93,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.004683
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.017229
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.039142
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 251,
+          "constantQlike": 1.668644,
+          "ewmaQlike": 1.539784,
+          "ewmaMinusConstantQlike": -0.12886,
+          "paired95": [
+            -0.303346,
+            0.003176
+          ],
+          "constantAbsoluteReturnMae": 0.5842,
+          "ewmaAbsoluteReturnMae": 0.589361
+        }
+      },
+      {
+        "year": "2023",
+        "sessions": 250,
+        "models": {
+          "cash": {
+            "sessions": 250,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 0.508498,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 250,
+            "activeSessions": 250,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 250,
+            "directionHitPct": 58.8,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.8,
+            "activeHitPct": 58.8,
+            "returnMse": null,
+            "brier": 0.412,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.027272,
+            "cumulativeUnitReturnPct": -7.18,
+            "maxDrawdownPct": 16.85,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.072728
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.027272
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.127272
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 250,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 250,
+            "directionHitPct": 58.8,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.8,
+            "activeHitPct": null,
+            "returnMse": 0.506767,
+            "brier": 0.244537,
+            "scoreReturnCorrelation": -0.130627,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 250,
+            "activeSessions": 250,
+            "longPct": 63.2,
+            "shortPct": 36.8,
+            "directionalSessions": 250,
+            "directionHitPct": 55.6,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.8,
+            "activeHitPct": 55.6,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.045909,
+            "meanNetSessionReturnPct": -0.036415,
+            "cumulativeUnitReturnPct": -9.28,
+            "maxDrawdownPct": 15.42,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.063585
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.036415
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.136415
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 250,
+            "activeSessions": 250,
+            "longPct": 78.8,
+            "shortPct": 21.2,
+            "directionalSessions": 250,
+            "directionHitPct": 56,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.8,
+            "activeHitPct": 56,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.015025,
+            "meanNetSessionReturnPct": -0.05706,
+            "cumulativeUnitReturnPct": -13.85,
+            "maxDrawdownPct": 21.1,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.04294
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.05706
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.15706
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 250,
+            "activeSessions": 71,
+            "longPct": 16.8,
+            "shortPct": 11.6,
+            "directionalSessions": 246,
+            "directionHitPct": 58.13,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.94,
+            "activeHitPct": 54.93,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.067168,
+            "meanNetSessionReturnPct": -0.017508,
+            "cumulativeUnitReturnPct": -4.54,
+            "maxDrawdownPct": 10.76,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.010892
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.017508
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.045908
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 250,
+            "activeSessions": 30,
+            "longPct": 6.8,
+            "shortPct": 5.2,
+            "directionalSessions": 246,
+            "directionHitPct": 58.13,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.94,
+            "activeHitPct": 50,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.067168,
+            "meanNetSessionReturnPct": -0.020068,
+            "cumulativeUnitReturnPct": -5,
+            "maxDrawdownPct": 8.44,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.008068
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.020068
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.032068
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 250,
+            "activeSessions": 15,
+            "longPct": 3.6,
+            "shortPct": 2.4,
+            "directionalSessions": 250,
+            "directionHitPct": 52.4,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.8,
+            "activeHitPct": 60,
+            "returnMse": 0.507013,
+            "brier": 0.244194,
+            "scoreReturnCorrelation": 0.036196,
+            "meanNetSessionReturnPct": -0.005585,
+            "cumulativeUnitReturnPct": -1.42,
+            "maxDrawdownPct": 3.2,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.000415
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.005585
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.011585
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 250,
+            "activeSessions": 2,
+            "longPct": 0.8,
+            "shortPct": 0,
+            "directionalSessions": 250,
+            "directionHitPct": 56.8,
+            "sameDirectionalSessionsAlwaysUpHitPct": 58.8,
+            "activeHitPct": 50,
+            "returnMse": 0.503983,
+            "brier": 0.244772,
+            "scoreReturnCorrelation": 0.059627,
+            "meanNetSessionReturnPct": 0.002616,
+            "cumulativeUnitReturnPct": 0.65,
+            "maxDrawdownPct": 0.16,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.003416
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.002616
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0.001816
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 250,
+          "constantQlike": 0.460426,
+          "ewmaQlike": 0.286466,
+          "ewmaMinusConstantQlike": -0.173961,
+          "paired95": [
+            -0.293595,
+            -0.061884
+          ],
+          "constantAbsoluteReturnMae": 0.422833,
+          "ewmaAbsoluteReturnMae": 0.362206
+        }
+      },
+      {
+        "year": "2024",
+        "sessions": 252,
+        "models": {
+          "cash": {
+            "sessions": 252,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 0.370965,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 53.57,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.57,
+            "activeHitPct": 53.57,
+            "returnMse": null,
+            "brier": 0.464286,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.094785,
+            "cumulativeUnitReturnPct": -21.63,
+            "maxDrawdownPct": 24.75,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.005215
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.094785
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.194785
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 252,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 53.57,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.57,
+            "activeHitPct": null,
+            "returnMse": 0.371743,
+            "brier": 0.248967,
+            "scoreReturnCorrelation": -0.026485,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 84.13,
+            "shortPct": 15.87,
+            "directionalSessions": 252,
+            "directionHitPct": 51.98,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.57,
+            "activeHitPct": 51.98,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.056228,
+            "meanNetSessionReturnPct": -0.107374,
+            "cumulativeUnitReturnPct": -24.07,
+            "maxDrawdownPct": 26.26,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.007374
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.107374
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.207374
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 252,
+            "activeSessions": 252,
+            "longPct": 99.6,
+            "shortPct": 0.4,
+            "directionalSessions": 252,
+            "directionHitPct": 53.17,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.57,
+            "activeHitPct": 53.17,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.113034,
+            "meanNetSessionReturnPct": -0.104995,
+            "cumulativeUnitReturnPct": -23.62,
+            "maxDrawdownPct": 26.67,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.004995
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.104995
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.204995
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 252,
+            "activeSessions": 71,
+            "longPct": 13.89,
+            "shortPct": 14.29,
+            "directionalSessions": 244,
+            "directionHitPct": 45.9,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.28,
+            "activeHitPct": 45.07,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.073247,
+            "meanNetSessionReturnPct": -0.046057,
+            "cumulativeUnitReturnPct": -11.13,
+            "maxDrawdownPct": 11.82,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.017883
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.046057
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.074232
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 252,
+            "activeSessions": 34,
+            "longPct": 5.56,
+            "shortPct": 7.94,
+            "directionalSessions": 244,
+            "directionHitPct": 45.9,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.28,
+            "activeHitPct": 41.18,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.073247,
+            "meanNetSessionReturnPct": -0.011212,
+            "cumulativeUnitReturnPct": -2.86,
+            "maxDrawdownPct": 4.31,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.00228
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.011212
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.024704
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 252,
+            "activeSessions": 28,
+            "longPct": 6.75,
+            "shortPct": 4.37,
+            "directionalSessions": 252,
+            "directionHitPct": 51.59,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.57,
+            "activeHitPct": 57.14,
+            "returnMse": 0.37314,
+            "brier": 0.251515,
+            "scoreReturnCorrelation": 0.018988,
+            "meanNetSessionReturnPct": 0.001753,
+            "cumulativeUnitReturnPct": 0.4,
+            "maxDrawdownPct": 3.71,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.012864
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.001753
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.009358
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 252,
+            "activeSessions": 1,
+            "longPct": 0.4,
+            "shortPct": 0,
+            "directionalSessions": 252,
+            "directionHitPct": 48.02,
+            "sameDirectionalSessionsAlwaysUpHitPct": 53.57,
+            "activeHitPct": 0,
+            "returnMse": 0.374072,
+            "brier": 0.249411,
+            "scoreReturnCorrelation": -0.045285,
+            "meanNetSessionReturnPct": -0.000716,
+            "cumulativeUnitReturnPct": -0.18,
+            "maxDrawdownPct": 0.18,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.000319
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.000716
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.001113
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 252,
+          "constantQlike": 0.259093,
+          "ewmaQlike": 0.137697,
+          "ewmaMinusConstantQlike": -0.121396,
+          "paired95": [
+            -0.429992,
+            0.086188
+          ],
+          "constantAbsoluteReturnMae": 0.429081,
+          "ewmaAbsoluteReturnMae": 0.299911
+        }
+      },
+      {
+        "year": "2025",
+        "sessions": 250,
+        "models": {
+          "cash": {
+            "sessions": 250,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 1.200611,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 250,
+            "activeSessions": 250,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 250,
+            "directionHitPct": 52.4,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.4,
+            "activeHitPct": 52.4,
+            "returnMse": null,
+            "brier": 0.476,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.060875,
+            "cumulativeUnitReturnPct": -15.37,
+            "maxDrawdownPct": 15.4,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.039125
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.060875
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.160875
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 250,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 250,
+            "directionHitPct": 52.4,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.4,
+            "activeHitPct": null,
+            "returnMse": 1.199448,
+            "brier": 0.250181,
+            "scoreReturnCorrelation": -0.014168,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 250,
+            "activeSessions": 250,
+            "longPct": 69.6,
+            "shortPct": 30.4,
+            "directionalSessions": 250,
+            "directionHitPct": 50.8,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.4,
+            "activeHitPct": 50.8,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.069055,
+            "meanNetSessionReturnPct": -0.114468,
+            "cumulativeUnitReturnPct": -26.05,
+            "maxDrawdownPct": 29.46,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.014468
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.114468
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.214468
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 250,
+            "activeSessions": 250,
+            "longPct": 73.6,
+            "shortPct": 26.4,
+            "directionalSessions": 250,
+            "directionHitPct": 50.8,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.4,
+            "activeHitPct": 50.8,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.089536,
+            "meanNetSessionReturnPct": -0.143799,
+            "cumulativeUnitReturnPct": -31.29,
+            "maxDrawdownPct": 31.31,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.043799
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.143799
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.243799
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 250,
+            "activeSessions": 72,
+            "longPct": 9.6,
+            "shortPct": 19.2,
+            "directionalSessions": 245,
+            "directionHitPct": 48.57,
+            "sameDirectionalSessionsAlwaysUpHitPct": 51.84,
+            "activeHitPct": 54.17,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.030395,
+            "meanNetSessionReturnPct": -0.068341,
+            "cumulativeUnitReturnPct": -16.66,
+            "maxDrawdownPct": 19.42,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.039541
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.068341
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.097141
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 250,
+            "activeSessions": 38,
+            "longPct": 6.4,
+            "shortPct": 8.8,
+            "directionalSessions": 245,
+            "directionHitPct": 48.57,
+            "sameDirectionalSessionsAlwaysUpHitPct": 51.84,
+            "activeHitPct": 60.53,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.030395,
+            "meanNetSessionReturnPct": 0.060636,
+            "cumulativeUnitReturnPct": 15.54,
+            "maxDrawdownPct": 3.43,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.075836
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.060636
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0.045436
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 250,
+            "activeSessions": 50,
+            "longPct": 9.2,
+            "shortPct": 10.8,
+            "directionalSessions": 250,
+            "directionHitPct": 45.2,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.4,
+            "activeHitPct": 50,
+            "returnMse": 1.182845,
+            "brier": 0.252944,
+            "scoreReturnCorrelation": 0.133634,
+            "meanNetSessionReturnPct": 0.04723,
+            "cumulativeUnitReturnPct": 11.53,
+            "maxDrawdownPct": 6.42,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.06723
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.04723
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0.02723
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 250,
+            "activeSessions": 22,
+            "longPct": 5.6,
+            "shortPct": 3.2,
+            "directionalSessions": 250,
+            "directionHitPct": 49.2,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.4,
+            "activeHitPct": 50,
+            "returnMse": 1.181035,
+            "brier": 0.251806,
+            "scoreReturnCorrelation": 0.146413,
+            "meanNetSessionReturnPct": 0.017313,
+            "cumulativeUnitReturnPct": 3.52,
+            "maxDrawdownPct": 6.88,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.026113
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0.017313
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0.008513
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 250,
+          "constantQlike": 1.315807,
+          "ewmaQlike": 0.920963,
+          "ewmaMinusConstantQlike": -0.394844,
+          "paired95": [
+            -1.720519,
+            0.371901
+          ],
+          "constantAbsoluteReturnMae": 0.481465,
+          "ewmaAbsoluteReturnMae": 0.515178
+        }
+      },
+      {
+        "year": "2026",
+        "sessions": 205,
+        "models": {
+          "cash": {
+            "sessions": 205,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 0.363706,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 205,
+            "activeSessions": 205,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 205,
+            "directionHitPct": 50.24,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+            "activeHitPct": 50.24,
+            "returnMse": null,
+            "brier": 0.497561,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.082218,
+            "cumulativeUnitReturnPct": -15.83,
+            "maxDrawdownPct": 16.53,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.017782
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.082218
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.182218
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 205,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 205,
+            "directionHitPct": 50.24,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+            "activeHitPct": null,
+            "returnMse": 0.363961,
+            "brier": 0.2517,
+            "scoreReturnCorrelation": -0.074319,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 205,
+            "activeSessions": 205,
+            "longPct": 60.98,
+            "shortPct": 39.02,
+            "directionalSessions": 205,
+            "directionHitPct": 47.32,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+            "activeHitPct": 47.32,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.035113,
+            "meanNetSessionReturnPct": -0.117598,
+            "cumulativeUnitReturnPct": -21.73,
+            "maxDrawdownPct": 21.87,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.017598
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.117598
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.217598
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 205,
+            "activeSessions": 205,
+            "longPct": 86.34,
+            "shortPct": 13.66,
+            "directionalSessions": 205,
+            "directionHitPct": 51.22,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+            "activeHitPct": 51.22,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.094542,
+            "meanNetSessionReturnPct": -0.092561,
+            "cumulativeUnitReturnPct": -17.6,
+            "maxDrawdownPct": 19.63,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.007439
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.092561
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.192561
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 205,
+            "activeSessions": 53,
+            "longPct": 19.51,
+            "shortPct": 6.34,
+            "directionalSessions": 200,
+            "directionHitPct": 50,
+            "sameDirectionalSessionsAlwaysUpHitPct": 51,
+            "activeHitPct": 54.72,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.027031,
+            "meanNetSessionReturnPct": -0.011314,
+            "cumulativeUnitReturnPct": -2.38,
+            "maxDrawdownPct": 5.04,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.01454
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.011314
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.037167
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 205,
+            "activeSessions": 26,
+            "longPct": 10.73,
+            "shortPct": 1.95,
+            "directionalSessions": 200,
+            "directionHitPct": 50,
+            "sameDirectionalSessionsAlwaysUpHitPct": 51,
+            "activeHitPct": 69.23,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.027031,
+            "meanNetSessionReturnPct": -0.003493,
+            "cumulativeUnitReturnPct": -0.73,
+            "maxDrawdownPct": 2.09,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.00919
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.003493
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.016175
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 205,
+            "activeSessions": 18,
+            "longPct": 7.8,
+            "shortPct": 0.98,
+            "directionalSessions": 205,
+            "directionHitPct": 44.39,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+            "activeHitPct": 38.89,
+            "returnMse": 0.372858,
+            "brier": 0.25838,
+            "scoreReturnCorrelation": -0.107525,
+            "meanNetSessionReturnPct": -0.017841,
+            "cumulativeUnitReturnPct": -3.65,
+            "maxDrawdownPct": 5.12,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.009061
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.017841
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.026622
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 205,
+            "activeSessions": 9,
+            "longPct": 4.39,
+            "shortPct": 0,
+            "directionalSessions": 205,
+            "directionHitPct": 51.71,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.24,
+            "activeHitPct": 33.33,
+            "returnMse": 0.368196,
+            "brier": 0.253389,
+            "scoreReturnCorrelation": -0.064054,
+            "meanNetSessionReturnPct": -0.011335,
+            "cumulativeUnitReturnPct": -2.32,
+            "maxDrawdownPct": 3.43,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.006945
+              },
+              {
+                "roundTripCostBps": 10,
+                "meanPct": -0.011335
+              },
+              {
+                "roundTripCostBps": 20,
+                "meanPct": -0.015725
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 205,
+          "constantQlike": 0.13907,
+          "ewmaQlike": -0.011709,
+          "ewmaMinusConstantQlike": -0.150779,
+          "paired95": [
+            -0.321115,
+            0.050619
+          ],
+          "constantAbsoluteReturnMae": 0.374864,
+          "ewmaAbsoluteReturnMae": 0.302603
+        }
+      }
+    ],
+    "decisions": {
+      "aligned_shrunk_analog": {
+        "decision": "DO_NOT_PROMOTE",
+        "checks": {
+          "improvesReturnMseOverall": true,
+          "improvesReturnMse2026": false,
+          "improvesBrierOverall": false,
+          "improvesBrier2026": false,
+          "positiveNetAtBaseCost": false,
+          "positiveNetAtDoubleCost": false,
+          "positiveNet2026": false,
+          "positiveNetEveryYear": false,
+          "prospectiveValidationComplete": false
+        },
+        "failedChecks": [
+          "improvesReturnMse2026",
+          "improvesBrierOverall",
+          "improvesBrier2026",
+          "positiveNetAtBaseCost",
+          "positiveNetAtDoubleCost",
+          "positiveNet2026",
+          "positiveNetEveryYear",
+          "prospectiveValidationComplete"
+        ]
+      },
+      "aligned_ridge": {
+        "decision": "DO_NOT_PROMOTE",
+        "checks": {
+          "improvesReturnMseOverall": true,
+          "improvesReturnMse2026": false,
+          "improvesBrierOverall": false,
+          "improvesBrier2026": false,
+          "positiveNetAtBaseCost": false,
+          "positiveNetAtDoubleCost": false,
+          "positiveNet2026": false,
+          "positiveNetEveryYear": false,
+          "prospectiveValidationComplete": false
+        },
+        "failedChecks": [
+          "improvesReturnMse2026",
+          "improvesBrierOverall",
+          "improvesBrier2026",
+          "positiveNetAtBaseCost",
+          "positiveNetAtDoubleCost",
+          "positiveNet2026",
+          "positiveNetEveryYear",
+          "prospectiveValidationComplete"
+        ]
+      }
+    },
+    "continuousHoldingContext": {
+      "firstTarget": "2020-01-03",
+      "lastTarget": "2026-10-26",
+      "grossPriceReturnPct": 138.31,
+      "approximateNetAfterOneRoundTripPct": 138.21,
+      "closeObservedDrawdownPct": 34.1,
+      "caveat": "Additional context, not matched target exposure: continuously invested including overnight/weekend gaps, one entry/exit, no dividends, financing or taxes. Daily intraday always-up is not buy-and-hold."
+    },
+    "forwardLock": {
+      "status": "NO_ELIGIBLE_FUTURE_TARGET",
+      "path": null
+    },
+    "latestReconstructedPrediction": {
+      "date": "2026-10-26",
+      "targetDate": "2026-10-27",
+      "generatedAt": "2026-10-27T18:57:22.670Z",
+      "kind": "historical_reconstruction_not_prospective",
+      "ridgeFitMonth": "2026-10",
+      "ridgeTrainingRows": 751,
+      "ridgeMaxTrainingTargetDate": "2026-09-30",
+      "analogTrainingRows": 749,
+      "analogMaxTrainingTargetDate": "2026-10-23",
+      "predictions": {
+        "cash": {
+          "score": 0,
+          "position": 0,
+          "expectedReturn": 0,
+          "probabilityUp": 0.5
+        },
+        "always_up": {
+          "score": 1,
+          "position": 1,
+          "expectedReturn": null,
+          "probabilityUp": 1
+        },
+        "trailing_mean": {
+          "expectedReturn": 0.03062762861813228,
+          "probabilityUp": 0.5327102803738317,
+          "score": 0.03062762861813228,
+          "position": 0
+        },
+        "momentum_20": {
+          "score": -0.0313475529316487,
+          "position": -1,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "momentum_60": {
+          "score": 2.455055352529345,
+          "position": 1,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "production_raw": {
+          "score": -19,
+          "position": 0,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "production_filtered": {
+          "score": -19,
+          "position": 0,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "aligned_shrunk_analog": {
+          "expectedReturn": 0.012568367848517316,
+          "probabilityUp": 0.5413551401869159,
+          "score": 0.012568367848517316,
+          "position": 0
+        },
+        "aligned_ridge": {
+          "expectedReturn": 0.012443698449356763,
+          "probabilityUp": 0.5217787171529003,
+          "score": 0.012443698449356763,
+          "position": 0
+        }
+      },
+      "riskConstant": 0.6411708961687732,
+      "riskEwma": 0.2157423398541999,
+      "state": {
+        "momentum20": -0.0313475529316487,
+        "momentum60": 2.455055352529345,
+        "dailyVolatility20Pct": 0.601064138357918
+      }
+    },
+    "promotion": "RESEARCH_ONLY_PENDING_PROSPECTIVE_VALIDATION"
+  },
+  "crypto": {
+    "sessions": 2489,
+    "firstSource": "2020-01-01",
+    "lastSource": "2026-10-24",
+    "lastTarget": "2026-10-26",
+    "skippedFeatures": 513,
+    "missingTarget": 0,
+    "ridgeFits": 82,
+    "overall": {
+      "models": {
+        "cash": {
+          "sessions": 2489,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 0,
+          "directionHitPct": null,
+          "sameDirectionalSessionsAlwaysUpHitPct": null,
+          "activeHitPct": null,
+          "returnMse": 9.628077,
+          "brier": 0.25,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": 0
+            }
+          ]
+        },
+        "always_up": {
+          "sessions": 2489,
+          "activeSessions": 2489,
+          "longPct": 100,
+          "shortPct": 0,
+          "directionalSessions": 2489,
+          "directionHitPct": 50.78,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.78,
+          "activeHitPct": 50.78,
+          "returnMse": null,
+          "brier": 0.492166,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": -0.156749,
+          "cumulativeUnitReturnPct": -99.41,
+          "maxDrawdownPct": 99.75,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.143251
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.156749
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.456749
+            }
+          ]
+        },
+        "trailing_mean": {
+          "sessions": 2489,
+          "activeSessions": 43,
+          "longPct": 1.73,
+          "shortPct": 0,
+          "directionalSessions": 2489,
+          "directionHitPct": 50.62,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.78,
+          "activeHitPct": 44.19,
+          "returnMse": 9.64066,
+          "brier": 0.250311,
+          "scoreReturnCorrelation": -0.056672,
+          "meanNetSessionReturnPct": -0.024485,
+          "cumulativeUnitReturnPct": -47.12,
+          "maxDrawdownPct": 47.78,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.019303
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.024485
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.029668
+            }
+          ]
+        },
+        "momentum_20": {
+          "sessions": 2489,
+          "activeSessions": 2489,
+          "longPct": 54.56,
+          "shortPct": 45.44,
+          "directionalSessions": 2489,
+          "directionHitPct": 50.5,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.78,
+          "activeHitPct": 50.5,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.023255,
+          "meanNetSessionReturnPct": -0.208884,
+          "cumulativeUnitReturnPct": -99.83,
+          "maxDrawdownPct": 99.88,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.091116
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.208884
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.508884
+            }
+          ]
+        },
+        "momentum_60": {
+          "sessions": 2489,
+          "activeSessions": 2489,
+          "longPct": 56.81,
+          "shortPct": 43.19,
+          "directionalSessions": 2489,
+          "directionHitPct": 50.26,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.78,
+          "activeHitPct": 50.26,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.030435,
+          "meanNetSessionReturnPct": -0.215198,
+          "cumulativeUnitReturnPct": -99.86,
+          "maxDrawdownPct": 99.86,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.084802
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.215198
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.515198
+            }
+          ]
+        },
+        "production_raw": {
+          "sessions": 2489,
+          "activeSessions": 1709,
+          "longPct": 41.02,
+          "shortPct": 27.64,
+          "directionalSessions": 2471,
+          "directionHitPct": 47.35,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.71,
+          "activeHitPct": 48.98,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.000135,
+          "meanNetSessionReturnPct": -0.181428,
+          "cumulativeUnitReturnPct": -99.53,
+          "maxDrawdownPct": 99.65,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.024558
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.181428
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.387414
+            }
+          ]
+        },
+        "production_filtered": {
+          "sessions": 2489,
+          "activeSessions": 1690,
+          "longPct": 40.58,
+          "shortPct": 27.32,
+          "directionalSessions": 2471,
+          "directionHitPct": 47.35,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.71,
+          "activeHitPct": 48.99,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.000135,
+          "meanNetSessionReturnPct": -0.179299,
+          "cumulativeUnitReturnPct": -99.5,
+          "maxDrawdownPct": 99.56,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.024397
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.179299
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.382995
+            }
+          ]
+        },
+        "aligned_shrunk_analog": {
+          "sessions": 2489,
+          "activeSessions": 746,
+          "longPct": 26.64,
+          "shortPct": 3.33,
+          "directionalSessions": 2489,
+          "directionHitPct": 49.3,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.78,
+          "activeHitPct": 49.2,
+          "returnMse": 9.725959,
+          "brier": 0.25287,
+          "scoreReturnCorrelation": -0.025728,
+          "meanNetSessionReturnPct": -0.078892,
+          "cumulativeUnitReturnPct": -91.52,
+          "maxDrawdownPct": 96.61,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.011024
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.078892
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.168807
+            }
+          ]
+        },
+        "aligned_ridge": {
+          "sessions": 2489,
+          "activeSessions": 711,
+          "longPct": 27.36,
+          "shortPct": 1.21,
+          "directionalSessions": 2489,
+          "directionHitPct": 49.34,
+          "sameDirectionalSessionsAlwaysUpHitPct": 50.78,
+          "activeHitPct": 51.34,
+          "returnMse": 9.632337,
+          "brier": 0.250877,
+          "scoreReturnCorrelation": 0.032915,
+          "meanNetSessionReturnPct": 0.024141,
+          "cumulativeUnitReturnPct": 18.1,
+          "maxDrawdownPct": 73.85,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.109838
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": 0.024141
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.061556
+            }
+          ]
+        }
+      },
+      "pairedComparisons": {
+        "aligned_shrunk_analog": {
+          "mseMinusTrailingMean": 0.085298,
+          "msePaired95": [
+            -0.001991,
+            0.177499
+          ],
+          "brierMinusTrailingMean": 0.00256,
+          "brierPaired95": [
+            0.001143,
+            0.003924
+          ],
+          "netMinusAlwaysUpMeanPct": 0.077857,
+          "netPaired95": [
+            -0.029852,
+            0.194356
+          ],
+          "netMinusCashMeanPct": -0.078892,
+          "netMinusCashPaired95": [
+            -0.170595,
+            0.007824
+          ],
+          "netMinusSameExposureLongPct": -0.007678,
+          "netMinusSameExposureLongPaired95": [
+            -0.089691,
+            0.09611
+          ]
+        },
+        "aligned_ridge": {
+          "mseMinusTrailingMean": -0.008323,
+          "msePaired95": [
+            -0.106143,
+            0.084197
+          ],
+          "brierMinusTrailingMean": 0.000566,
+          "brierPaired95": [
+            -0.000103,
+            0.001296
+          ],
+          "netMinusAlwaysUpMeanPct": 0.18089,
+          "netPaired95": [
+            0.080917,
+            0.29643
+          ],
+          "netMinusCashMeanPct": 0.024141,
+          "netMinusCashPaired95": [
+            -0.052484,
+            0.104037
+          ],
+          "netMinusSameExposureLongPct": 0.015562,
+          "netMinusSameExposureLongPaired95": [
+            -0.02944,
+            0.064725
+          ]
+        }
+      },
+      "risk": {
+        "sessions": 2489,
+        "constantQlike": 3.208468,
+        "ewmaQlike": 3.242268,
+        "ewmaMinusConstantQlike": 0.033801,
+        "paired95": [
+          -0.063327,
+          0.143819
+        ],
+        "constantAbsoluteReturnMae": 1.79813,
+        "ewmaAbsoluteReturnMae": 1.60825
+      }
+    },
+    "reviewed2026": {
+      "models": {
+        "cash": {
+          "sessions": 299,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 0,
+          "directionHitPct": null,
+          "sameDirectionalSessionsAlwaysUpHitPct": null,
+          "activeHitPct": null,
+          "returnMse": 5.500045,
+          "brier": 0.25,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": 0
+            }
+          ]
+        },
+        "always_up": {
+          "sessions": 299,
+          "activeSessions": 299,
+          "longPct": 100,
+          "shortPct": 0,
+          "directionalSessions": 299,
+          "directionHitPct": 48.16,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+          "activeHitPct": 48.16,
+          "returnMse": null,
+          "brier": 0.518395,
+          "scoreReturnCorrelation": null,
+          "meanNetSessionReturnPct": -0.302521,
+          "cumulativeUnitReturnPct": -62.8,
+          "maxDrawdownPct": 66,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.002521
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.302521
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.602521
+            }
+          ]
+        },
+        "trailing_mean": {
+          "sessions": 299,
+          "activeSessions": 0,
+          "longPct": 0,
+          "shortPct": 0,
+          "directionalSessions": 299,
+          "directionHitPct": 48.16,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+          "activeHitPct": null,
+          "returnMse": 5.521587,
+          "brier": 0.250556,
+          "scoreReturnCorrelation": -0.053116,
+          "meanNetSessionReturnPct": 0,
+          "cumulativeUnitReturnPct": 0,
+          "maxDrawdownPct": 0,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": 0
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": 0
+            }
+          ]
+        },
+        "momentum_20": {
+          "sessions": 299,
+          "activeSessions": 299,
+          "longPct": 51.17,
+          "shortPct": 48.83,
+          "directionalSessions": 299,
+          "directionHitPct": 52.84,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+          "activeHitPct": 52.84,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": 0.018113,
+          "meanNetSessionReturnPct": -0.228934,
+          "cumulativeUnitReturnPct": -53.58,
+          "maxDrawdownPct": 61.36,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.071066
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.228934
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.528934
+            }
+          ]
+        },
+        "momentum_60": {
+          "sessions": 299,
+          "activeSessions": 299,
+          "longPct": 48.83,
+          "shortPct": 51.17,
+          "directionalSessions": 299,
+          "directionHitPct": 49.16,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+          "activeHitPct": 49.16,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.013787,
+          "meanNetSessionReturnPct": -0.289018,
+          "cumulativeUnitReturnPct": -61.24,
+          "maxDrawdownPct": 61.57,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.010982
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.289018
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.589018
+            }
+          ]
+        },
+        "production_raw": {
+          "sessions": 299,
+          "activeSessions": 178,
+          "longPct": 32.11,
+          "shortPct": 27.42,
+          "directionalSessions": 297,
+          "directionHitPct": 43.77,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.15,
+          "activeHitPct": 48.88,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.066499,
+          "meanNetSessionReturnPct": -0.291719,
+          "cumulativeUnitReturnPct": -60.86,
+          "maxDrawdownPct": 63.61,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.113124
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.291719
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.470314
+            }
+          ]
+        },
+        "production_filtered": {
+          "sessions": 299,
+          "activeSessions": 178,
+          "longPct": 32.11,
+          "shortPct": 27.42,
+          "directionalSessions": 297,
+          "directionHitPct": 43.77,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.15,
+          "activeHitPct": 48.88,
+          "returnMse": null,
+          "brier": null,
+          "scoreReturnCorrelation": -0.066499,
+          "meanNetSessionReturnPct": -0.291719,
+          "cumulativeUnitReturnPct": -60.86,
+          "maxDrawdownPct": 63.61,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.113124
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.291719
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.470314
+            }
+          ]
+        },
+        "aligned_shrunk_analog": {
+          "sessions": 299,
+          "activeSessions": 60,
+          "longPct": 19.06,
+          "shortPct": 1,
+          "directionalSessions": 299,
+          "directionHitPct": 49.5,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+          "activeHitPct": 55,
+          "returnMse": 5.570662,
+          "brier": 0.252729,
+          "scoreReturnCorrelation": -0.01371,
+          "meanNetSessionReturnPct": -0.015828,
+          "cumulativeUnitReturnPct": -5.79,
+          "maxDrawdownPct": 13.69,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": 0.044372
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.015828
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.076029
+            }
+          ]
+        },
+        "aligned_ridge": {
+          "sessions": 299,
+          "activeSessions": 29,
+          "longPct": 9.7,
+          "shortPct": 0,
+          "directionalSessions": 299,
+          "directionHitPct": 46.49,
+          "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+          "activeHitPct": 41.38,
+          "returnMse": 5.624977,
+          "brier": 0.251983,
+          "scoreReturnCorrelation": -0.08152,
+          "meanNetSessionReturnPct": -0.069912,
+          "cumulativeUnitReturnPct": -19.51,
+          "maxDrawdownPct": 21,
+          "meanNetSessionByCost": [
+            {
+              "roundTripCostBps": 0,
+              "meanPct": -0.040815
+            },
+            {
+              "roundTripCostBps": 30,
+              "meanPct": -0.069912
+            },
+            {
+              "roundTripCostBps": 60,
+              "meanPct": -0.099009
+            }
+          ]
+        }
+      },
+      "pairedComparisons": {
+        "aligned_shrunk_analog": {
+          "mseMinusTrailingMean": 0.049075,
+          "msePaired95": [
+            -0.026975,
+            0.125959
+          ],
+          "brierMinusTrailingMean": 0.002173,
+          "brierPaired95": [
+            -0.002536,
+            0.007216
+          ],
+          "netMinusAlwaysUpMeanPct": 0.286693,
+          "netPaired95": [
+            0.019421,
+            0.601032
+          ],
+          "netMinusCashMeanPct": -0.015828,
+          "netMinusCashPaired95": [
+            -0.076803,
+            0.071166
+          ],
+          "netMinusSameExposureLongPct": -0.000507,
+          "netMinusSameExposureLongPaired95": [
+            -0.00827,
+            0.00675
+          ]
+        },
+        "aligned_ridge": {
+          "mseMinusTrailingMean": 0.10339,
+          "msePaired95": [
+            0.017762,
+            0.230219
+          ],
+          "brierMinusTrailingMean": 0.001427,
+          "brierPaired95": [
+            -0.00007,
+            0.003743
+          ],
+          "netMinusAlwaysUpMeanPct": 0.232609,
+          "netPaired95": [
+            -0.017671,
+            0.501358
+          ],
+          "netMinusCashMeanPct": -0.069912,
+          "netMinusCashPaired95": [
+            -0.166592,
+            -0.000788
+          ],
+          "netMinusSameExposureLongPct": 0,
+          "netMinusSameExposureLongPaired95": [
+            0,
+            0
+          ]
+        }
+      },
+      "risk": {
+        "sessions": 299,
+        "constantQlike": 2.712865,
+        "ewmaQlike": 2.889534,
+        "ewmaMinusConstantQlike": 0.17667,
+        "paired95": [
+          -0.095218,
+          0.697432
+        ],
+        "constantAbsoluteReturnMae": 1.300494,
+        "ewmaAbsoluteReturnMae": 1.244397
+      }
+    },
+    "annual": [
+      {
+        "year": "2020",
+        "sessions": 364,
+        "models": {
+          "cash": {
+            "sessions": 364,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 14.359935,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 364,
+            "activeSessions": 364,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 364,
+            "directionHitPct": 56.87,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 56.87,
+            "returnMse": null,
+            "brier": 0.431319,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0.166112,
+            "cumulativeUnitReturnPct": 38.45,
+            "maxDrawdownPct": 56.62,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.466112
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.166112
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.133888
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 364,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 364,
+            "directionHitPct": 55.77,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": null,
+            "returnMse": 14.324478,
+            "brier": 0.247163,
+            "scoreReturnCorrelation": 0.026816,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 364,
+            "activeSessions": 364,
+            "longPct": 69.23,
+            "shortPct": 30.77,
+            "directionalSessions": 364,
+            "directionHitPct": 55.22,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 55.22,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.035656,
+            "meanNetSessionReturnPct": 0.049058,
+            "cumulativeUnitReturnPct": -6.72,
+            "maxDrawdownPct": 62.82,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.349058
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.049058
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.250942
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 364,
+            "activeSessions": 364,
+            "longPct": 71.98,
+            "shortPct": 28.02,
+            "directionalSessions": 364,
+            "directionHitPct": 51.37,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 51.37,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.009215,
+            "meanNetSessionReturnPct": -0.245399,
+            "cumulativeUnitReturnPct": -68.27,
+            "maxDrawdownPct": 82.72,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.054601
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.245399
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.545399
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 364,
+            "activeSessions": 260,
+            "longPct": 46.43,
+            "shortPct": 25,
+            "directionalSessions": 364,
+            "directionHitPct": 50.27,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 51.92,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.037233,
+            "meanNetSessionReturnPct": -0.074385,
+            "cumulativeUnitReturnPct": -33.95,
+            "maxDrawdownPct": 61.4,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.139901
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.074385
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.288671
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 364,
+            "activeSessions": 246,
+            "longPct": 44.23,
+            "shortPct": 23.35,
+            "directionalSessions": 364,
+            "directionHitPct": 50.27,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 51.63,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.037233,
+            "meanNetSessionReturnPct": -0.07947,
+            "cumulativeUnitReturnPct": -34.04,
+            "maxDrawdownPct": 54.84,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.123277
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.07947
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.282217
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 364,
+            "activeSessions": 154,
+            "longPct": 33.79,
+            "shortPct": 8.52,
+            "directionalSessions": 364,
+            "directionHitPct": 54.4,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 64.29,
+            "returnMse": 14.124726,
+            "brier": 0.245958,
+            "scoreReturnCorrelation": 0.090753,
+            "meanNetSessionReturnPct": 0.221057,
+            "cumulativeUnitReturnPct": 97.2,
+            "maxDrawdownPct": 25.04,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.34798
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.221057
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0.094134
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 364,
+            "activeSessions": 120,
+            "longPct": 28.85,
+            "shortPct": 4.12,
+            "directionalSessions": 364,
+            "directionHitPct": 57.97,
+            "sameDirectionalSessionsAlwaysUpHitPct": 56.87,
+            "activeHitPct": 60.83,
+            "returnMse": 14.084926,
+            "brier": 0.245918,
+            "scoreReturnCorrelation": 0.105143,
+            "meanNetSessionReturnPct": 0.237082,
+            "cumulativeUnitReturnPct": 118.12,
+            "maxDrawdownPct": 18.28,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.335983
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.237082
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0.138181
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 364,
+          "constantQlike": 3.683374,
+          "ewmaQlike": 3.805538,
+          "ewmaMinusConstantQlike": 0.122164,
+          "paired95": [
+            -0.187183,
+            0.488907
+          ],
+          "constantAbsoluteReturnMae": 2.202717,
+          "ewmaAbsoluteReturnMae": 1.952509
+        }
+      },
+      {
+        "year": "2021",
+        "sessions": 365,
+        "models": {
+          "cash": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 17.781755,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 50.14,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 50.14,
+            "returnMse": null,
+            "brier": 0.49863,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.108116,
+            "cumulativeUnitReturnPct": -51.31,
+            "maxDrawdownPct": 70.86,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.191884
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.108116
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.408116
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 365,
+            "activeSessions": 43,
+            "longPct": 11.78,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 50.14,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 44.19,
+            "returnMse": 17.792432,
+            "brier": 0.251324,
+            "scoreReturnCorrelation": -0.126363,
+            "meanNetSessionReturnPct": -0.16697,
+            "cumulativeUnitReturnPct": -47.12,
+            "maxDrawdownPct": 47.78,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.131628
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.16697
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.202312
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 54.79,
+            "shortPct": 45.21,
+            "directionalSessions": 365,
+            "directionHitPct": 49.32,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 49.32,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.029461,
+            "meanNetSessionReturnPct": -0.075122,
+            "cumulativeUnitReturnPct": -45.01,
+            "maxDrawdownPct": 62.33,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.224878
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.075122
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.375122
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 69.59,
+            "shortPct": 30.41,
+            "directionalSessions": 365,
+            "directionHitPct": 50.96,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 50.96,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.053875,
+            "meanNetSessionReturnPct": -0.005259,
+            "cumulativeUnitReturnPct": -28.93,
+            "maxDrawdownPct": 67.8,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.294741
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.005259
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.305259
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 365,
+            "activeSessions": 291,
+            "longPct": 50.68,
+            "shortPct": 29.04,
+            "directionalSessions": 362,
+            "directionHitPct": 51.66,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50,
+            "activeHitPct": 52.23,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.05426,
+            "meanNetSessionReturnPct": -0.016514,
+            "cumulativeUnitReturnPct": -27.97,
+            "maxDrawdownPct": 64.48,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.222664
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.016514
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.255692
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 365,
+            "activeSessions": 291,
+            "longPct": 50.68,
+            "shortPct": 29.04,
+            "directionalSessions": 362,
+            "directionHitPct": 51.66,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50,
+            "activeHitPct": 52.23,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.05426,
+            "meanNetSessionReturnPct": -0.016514,
+            "cumulativeUnitReturnPct": -27.97,
+            "maxDrawdownPct": 64.48,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.222664
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.016514
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.255692
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 365,
+            "activeSessions": 219,
+            "longPct": 52.6,
+            "shortPct": 7.4,
+            "directionalSessions": 365,
+            "directionHitPct": 48.49,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 47.03,
+            "returnMse": 18.069359,
+            "brier": 0.255406,
+            "scoreReturnCorrelation": -0.039945,
+            "meanNetSessionReturnPct": -0.216647,
+            "cumulativeUnitReturnPct": -63.92,
+            "maxDrawdownPct": 71.32,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.036647
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.216647
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.396647
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 365,
+            "activeSessions": 230,
+            "longPct": 60.27,
+            "shortPct": 2.74,
+            "directionalSessions": 365,
+            "directionHitPct": 48.77,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 50.43,
+            "returnMse": 17.779528,
+            "brier": 0.253349,
+            "scoreReturnCorrelation": 0.051099,
+            "meanNetSessionReturnPct": 0.071055,
+            "cumulativeUnitReturnPct": 4.06,
+            "maxDrawdownPct": 49.94,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.260096
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.071055
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.117986
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 365,
+          "constantQlike": 3.908719,
+          "ewmaQlike": 3.855775,
+          "ewmaMinusConstantQlike": -0.052944,
+          "paired95": [
+            -0.140789,
+            0.038167
+          ],
+          "constantAbsoluteReturnMae": 2.160537,
+          "ewmaAbsoluteReturnMae": 2.202092
+        }
+      },
+      {
+        "year": "2022",
+        "sessions": 365,
+        "models": {
+          "cash": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 11.074687,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 46.85,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.85,
+            "activeHitPct": 46.85,
+            "returnMse": null,
+            "brier": 0.531507,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.523643,
+            "cumulativeUnitReturnPct": -88.02,
+            "maxDrawdownPct": 88.33,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.223643
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.523643
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.823643
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 46.85,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.85,
+            "activeHitPct": null,
+            "returnMse": 11.211649,
+            "brier": 0.25153,
+            "scoreReturnCorrelation": -0.02145,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 38.63,
+            "shortPct": 61.37,
+            "directionalSessions": 365,
+            "directionHitPct": 46.85,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.85,
+            "activeHitPct": 46.85,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.070877,
+            "meanNetSessionReturnPct": -0.440254,
+            "cumulativeUnitReturnPct": -83.73,
+            "maxDrawdownPct": 86.43,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.140254
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.440254
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.740254
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 17.53,
+            "shortPct": 82.47,
+            "directionalSessions": 365,
+            "directionHitPct": 50.96,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.85,
+            "activeHitPct": 50.96,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.090573,
+            "meanNetSessionReturnPct": -0.366633,
+            "cumulativeUnitReturnPct": -78.7,
+            "maxDrawdownPct": 82.77,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.066633
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.366633
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.666633
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 365,
+            "activeSessions": 273,
+            "longPct": 39.73,
+            "shortPct": 35.07,
+            "directionalSessions": 363,
+            "directionHitPct": 51.24,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.83,
+            "activeHitPct": 48.35,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.042531,
+            "meanNetSessionReturnPct": -0.350883,
+            "cumulativeUnitReturnPct": -76.03,
+            "maxDrawdownPct": 77.31,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.126499
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.350883
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.575266
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 365,
+            "activeSessions": 270,
+            "longPct": 39.45,
+            "shortPct": 34.52,
+            "directionalSessions": 363,
+            "directionHitPct": 51.24,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.83,
+            "activeHitPct": 48.89,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.042531,
+            "meanNetSessionReturnPct": -0.322123,
+            "cumulativeUnitReturnPct": -73.31,
+            "maxDrawdownPct": 74.75,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.100205
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.322123
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.544041
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 365,
+            "activeSessions": 98,
+            "longPct": 22.74,
+            "shortPct": 4.11,
+            "directionalSessions": 365,
+            "directionHitPct": 43.56,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.85,
+            "activeHitPct": 38.78,
+            "returnMse": 11.521269,
+            "brier": 0.253811,
+            "scoreReturnCorrelation": -0.166749,
+            "meanNetSessionReturnPct": -0.33767,
+            "cumulativeUnitReturnPct": -72.81,
+            "maxDrawdownPct": 74.06,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.257122
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.33767
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.418218
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 365,
+            "activeSessions": 58,
+            "longPct": 15.34,
+            "shortPct": 0.55,
+            "directionalSessions": 365,
+            "directionHitPct": 42.74,
+            "sameDirectionalSessionsAlwaysUpHitPct": 46.85,
+            "activeHitPct": 53.45,
+            "returnMse": 11.278724,
+            "brier": 0.250701,
+            "scoreReturnCorrelation": -0.06623,
+            "meanNetSessionReturnPct": -0.010671,
+            "cumulativeUnitReturnPct": -7.24,
+            "maxDrawdownPct": 19.14,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.037
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.010671
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.058343
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 365,
+          "constantQlike": 3.441458,
+          "ewmaQlike": 3.597758,
+          "ewmaMinusConstantQlike": 0.1563,
+          "paired95": [
+            -0.110935,
+            0.666759
+          ],
+          "constantAbsoluteReturnMae": 2.054206,
+          "ewmaAbsoluteReturnMae": 1.83429
+        }
+      },
+      {
+        "year": "2023",
+        "sessions": 365,
+        "models": {
+          "cash": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 5.273333,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 50.14,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 50.14,
+            "returnMse": null,
+            "brier": 0.49863,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.017479,
+            "cumulativeUnitReturnPct": -14.58,
+            "maxDrawdownPct": 48.89,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.282521
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.017479
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.317479
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 50.14,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": null,
+            "returnMse": 5.213781,
+            "brier": 0.250661,
+            "scoreReturnCorrelation": -0.010031,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 63.29,
+            "shortPct": 36.71,
+            "directionalSessions": 365,
+            "directionHitPct": 49.04,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 49.04,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.01879,
+            "meanNetSessionReturnPct": -0.227738,
+            "cumulativeUnitReturnPct": -60.5,
+            "maxDrawdownPct": 74.07,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.072262
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.227738
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.527738
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 71.78,
+            "shortPct": 28.22,
+            "directionalSessions": 365,
+            "directionHitPct": 48.77,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 48.77,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.039285,
+            "meanNetSessionReturnPct": -0.162003,
+            "cumulativeUnitReturnPct": -49.7,
+            "maxDrawdownPct": 64.17,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.137997
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.162003
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.462003
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 365,
+            "activeSessions": 226,
+            "longPct": 39.18,
+            "shortPct": 22.74,
+            "directionalSessions": 362,
+            "directionHitPct": 42.27,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50,
+            "activeHitPct": 43.81,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.074868,
+            "meanNetSessionReturnPct": -0.218741,
+            "cumulativeUnitReturnPct": -57.76,
+            "maxDrawdownPct": 66.3,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.032988
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.218741
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.404495
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 365,
+            "activeSessions": 224,
+            "longPct": 38.63,
+            "shortPct": 22.74,
+            "directionalSessions": 362,
+            "directionHitPct": 42.27,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50,
+            "activeHitPct": 43.75,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.074868,
+            "meanNetSessionReturnPct": -0.227911,
+            "cumulativeUnitReturnPct": -59.05,
+            "maxDrawdownPct": 66.3,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.043801
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.227911
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.41202
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 365,
+            "activeSessions": 86,
+            "longPct": 23.01,
+            "shortPct": 0.55,
+            "directionalSessions": 365,
+            "directionHitPct": 48.49,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 40.7,
+            "returnMse": 5.334167,
+            "brier": 0.253674,
+            "scoreReturnCorrelation": -0.122208,
+            "meanNetSessionReturnPct": -0.089871,
+            "cumulativeUnitReturnPct": -29.89,
+            "maxDrawdownPct": 30.88,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.019186
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.089871
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.160556
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 365,
+            "activeSessions": 130,
+            "longPct": 35.62,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 46.58,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 49.23,
+            "returnMse": 5.233015,
+            "brier": 0.252162,
+            "scoreReturnCorrelation": 0.00312,
+            "meanNetSessionReturnPct": 0.019635,
+            "cumulativeUnitReturnPct": 3.92,
+            "maxDrawdownPct": 15.36,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.126484
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.019635
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.087214
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 365,
+          "constantQlike": 2.938771,
+          "ewmaQlike": 2.80939,
+          "ewmaMinusConstantQlike": -0.129382,
+          "paired95": [
+            -0.384183,
+            0.173623
+          ],
+          "constantAbsoluteReturnMae": 1.888495,
+          "ewmaAbsoluteReturnMae": 1.302907
+        }
+      },
+      {
+        "year": "2024",
+        "sessions": 366,
+        "models": {
+          "cash": {
+            "sessions": 366,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 7.883353,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 366,
+            "activeSessions": 366,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 366,
+            "directionHitPct": 52.73,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.73,
+            "activeHitPct": 52.73,
+            "returnMse": null,
+            "brier": 0.472678,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.044997,
+            "cumulativeUnitReturnPct": -26.43,
+            "maxDrawdownPct": 56.56,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.255003
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.044997
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.344997
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 366,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 366,
+            "directionHitPct": 52.73,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.73,
+            "activeHitPct": null,
+            "returnMse": 7.865815,
+            "brier": 0.250643,
+            "scoreReturnCorrelation": -0.114722,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 366,
+            "activeSessions": 366,
+            "longPct": 61.2,
+            "shortPct": 38.8,
+            "directionalSessions": 366,
+            "directionHitPct": 51.09,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.73,
+            "activeHitPct": 51.09,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.018286,
+            "meanNetSessionReturnPct": -0.196907,
+            "cumulativeUnitReturnPct": -57.94,
+            "maxDrawdownPct": 70.13,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.103093
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.196907
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.496907
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 366,
+            "activeSessions": 366,
+            "longPct": 65.3,
+            "shortPct": 34.7,
+            "directionalSessions": 366,
+            "directionHitPct": 49.18,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.73,
+            "activeHitPct": 49.18,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.012525,
+            "meanNetSessionReturnPct": -0.23927,
+            "cumulativeUnitReturnPct": -64,
+            "maxDrawdownPct": 74.89,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.06073
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.23927
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.53927
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 366,
+            "activeSessions": 255,
+            "longPct": 44.26,
+            "shortPct": 25.41,
+            "directionalSessions": 362,
+            "directionHitPct": 48.62,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.76,
+            "activeHitPct": 50.98,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.017324,
+            "meanNetSessionReturnPct": -0.081381,
+            "cumulativeUnitReturnPct": -32.95,
+            "maxDrawdownPct": 50.11,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.127635
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.081381
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.290397
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 366,
+            "activeSessions": 255,
+            "longPct": 44.26,
+            "shortPct": 25.41,
+            "directionalSessions": 362,
+            "directionHitPct": 48.62,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.76,
+            "activeHitPct": 50.98,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.017324,
+            "meanNetSessionReturnPct": -0.081381,
+            "cumulativeUnitReturnPct": -32.95,
+            "maxDrawdownPct": 50.11,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.127635
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.081381
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.290397
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 366,
+            "activeSessions": 71,
+            "longPct": 18.03,
+            "shortPct": 1.37,
+            "directionalSessions": 366,
+            "directionHitPct": 51.91,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.73,
+            "activeHitPct": 47.89,
+            "returnMse": 7.841667,
+            "brier": 0.253809,
+            "scoreReturnCorrelation": 0.026004,
+            "meanNetSessionReturnPct": -0.038161,
+            "cumulativeUnitReturnPct": -15.1,
+            "maxDrawdownPct": 34.04,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.020036
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.038161
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.096357
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 366,
+            "activeSessions": 70,
+            "longPct": 18.31,
+            "shortPct": 0.82,
+            "directionalSessions": 366,
+            "directionHitPct": 53.01,
+            "sameDirectionalSessionsAlwaysUpHitPct": 52.73,
+            "activeHitPct": 55.71,
+            "returnMse": 7.830883,
+            "brier": 0.251213,
+            "scoreReturnCorrelation": 0.034145,
+            "meanNetSessionReturnPct": 0.037919,
+            "cumulativeUnitReturnPct": 10.91,
+            "maxDrawdownPct": 14.91,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.095296
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0.037919
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.019458
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 366,
+          "constantQlike": 3.071632,
+          "ewmaQlike": 3.126069,
+          "ewmaMinusConstantQlike": 0.054437,
+          "paired95": [
+            -0.066138,
+            0.189254
+          ],
+          "constantAbsoluteReturnMae": 1.579581,
+          "ewmaAbsoluteReturnMae": 1.506585
+        }
+      },
+      {
+        "year": "2025",
+        "sessions": 365,
+        "models": {
+          "cash": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 4.794733,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 50.14,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 50.14,
+            "returnMse": null,
+            "brier": 0.49863,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.292378,
+            "cumulativeUnitReturnPct": -68.55,
+            "maxDrawdownPct": 70.7,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.007622
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.292378
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.592378
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 365,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 50.14,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": null,
+            "returnMse": 4.827757,
+            "brier": 0.250334,
+            "scoreReturnCorrelation": -0.060548,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 43.01,
+            "shortPct": 56.99,
+            "directionalSessions": 365,
+            "directionHitPct": 49.59,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 49.59,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.005121,
+            "meanNetSessionReturnPct": -0.34524,
+            "cumulativeUnitReturnPct": -74.09,
+            "maxDrawdownPct": 74.28,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.04524
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.34524
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.64524
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 365,
+            "activeSessions": 365,
+            "longPct": 51.23,
+            "shortPct": 48.77,
+            "directionalSessions": 365,
+            "directionHitPct": 51.23,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 51.23,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.015274,
+            "meanNetSessionReturnPct": -0.212171,
+            "cumulativeUnitReturnPct": -57.82,
+            "maxDrawdownPct": 62.24,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.087829
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.212171
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.512171
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 365,
+            "activeSessions": 226,
+            "longPct": 33.15,
+            "shortPct": 28.77,
+            "directionalSessions": 361,
+            "directionHitPct": 42.94,
+            "sameDirectionalSessionsAlwaysUpHitPct": 49.86,
+            "activeHitPct": 45.13,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.081122,
+            "meanNetSessionReturnPct": -0.256297,
+            "cumulativeUnitReturnPct": -63.1,
+            "maxDrawdownPct": 67.82,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.070544
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.256297
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.442051
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 365,
+            "activeSessions": 226,
+            "longPct": 33.15,
+            "shortPct": 28.77,
+            "directionalSessions": 361,
+            "directionHitPct": 42.94,
+            "sameDirectionalSessionsAlwaysUpHitPct": 49.86,
+            "activeHitPct": 45.13,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.081122,
+            "meanNetSessionReturnPct": -0.256297,
+            "cumulativeUnitReturnPct": -63.1,
+            "maxDrawdownPct": 67.82,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.070544
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.256297
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.442051
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 365,
+            "activeSessions": 58,
+            "longPct": 15.89,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 48.77,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 43.1,
+            "returnMse": 4.885707,
+            "brier": 0.254659,
+            "scoreReturnCorrelation": -0.063372,
+            "meanNetSessionReturnPct": -0.063008,
+            "cumulativeUnitReturnPct": -21.85,
+            "maxDrawdownPct": 24.47,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.015337
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.063008
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.110679
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 365,
+            "activeSessions": 74,
+            "longPct": 20.27,
+            "shortPct": 0,
+            "directionalSessions": 365,
+            "directionHitPct": 49.32,
+            "sameDirectionalSessionsAlwaysUpHitPct": 50.14,
+            "activeHitPct": 40.54,
+            "returnMse": 4.886824,
+            "brier": 0.250995,
+            "scoreReturnCorrelation": -0.073894,
+            "meanNetSessionReturnPct": -0.13258,
+            "cumulativeUnitReturnPct": -39.54,
+            "maxDrawdownPct": 41.94,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.071758
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.13258
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.193402
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 365,
+          "constantQlike": 2.614515,
+          "ewmaQlike": 2.549894,
+          "ewmaMinusConstantQlike": -0.064621,
+          "paired95": [
+            -0.193042,
+            0.094629
+          ],
+          "constantAbsoluteReturnMae": 1.312603,
+          "ewmaAbsoluteReturnMae": 1.150402
+        }
+      },
+      {
+        "year": "2026",
+        "sessions": 299,
+        "models": {
+          "cash": {
+            "sessions": 299,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 0,
+            "directionHitPct": null,
+            "sameDirectionalSessionsAlwaysUpHitPct": null,
+            "activeHitPct": null,
+            "returnMse": 5.500045,
+            "brier": 0.25,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "always_up": {
+            "sessions": 299,
+            "activeSessions": 299,
+            "longPct": 100,
+            "shortPct": 0,
+            "directionalSessions": 299,
+            "directionHitPct": 48.16,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+            "activeHitPct": 48.16,
+            "returnMse": null,
+            "brier": 0.518395,
+            "scoreReturnCorrelation": null,
+            "meanNetSessionReturnPct": -0.302521,
+            "cumulativeUnitReturnPct": -62.8,
+            "maxDrawdownPct": 66,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.002521
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.302521
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.602521
+              }
+            ]
+          },
+          "trailing_mean": {
+            "sessions": 299,
+            "activeSessions": 0,
+            "longPct": 0,
+            "shortPct": 0,
+            "directionalSessions": 299,
+            "directionHitPct": 48.16,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+            "activeHitPct": null,
+            "returnMse": 5.521587,
+            "brier": 0.250556,
+            "scoreReturnCorrelation": -0.053116,
+            "meanNetSessionReturnPct": 0,
+            "cumulativeUnitReturnPct": 0,
+            "maxDrawdownPct": 0,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": 0
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": 0
+              }
+            ]
+          },
+          "momentum_20": {
+            "sessions": 299,
+            "activeSessions": 299,
+            "longPct": 51.17,
+            "shortPct": 48.83,
+            "directionalSessions": 299,
+            "directionHitPct": 52.84,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+            "activeHitPct": 52.84,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": 0.018113,
+            "meanNetSessionReturnPct": -0.228934,
+            "cumulativeUnitReturnPct": -53.58,
+            "maxDrawdownPct": 61.36,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.071066
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.228934
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.528934
+              }
+            ]
+          },
+          "momentum_60": {
+            "sessions": 299,
+            "activeSessions": 299,
+            "longPct": 48.83,
+            "shortPct": 51.17,
+            "directionalSessions": 299,
+            "directionHitPct": 49.16,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+            "activeHitPct": 49.16,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.013787,
+            "meanNetSessionReturnPct": -0.289018,
+            "cumulativeUnitReturnPct": -61.24,
+            "maxDrawdownPct": 61.57,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.010982
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.289018
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.589018
+              }
+            ]
+          },
+          "production_raw": {
+            "sessions": 299,
+            "activeSessions": 178,
+            "longPct": 32.11,
+            "shortPct": 27.42,
+            "directionalSessions": 297,
+            "directionHitPct": 43.77,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.15,
+            "activeHitPct": 48.88,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.066499,
+            "meanNetSessionReturnPct": -0.291719,
+            "cumulativeUnitReturnPct": -60.86,
+            "maxDrawdownPct": 63.61,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.113124
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.291719
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.470314
+              }
+            ]
+          },
+          "production_filtered": {
+            "sessions": 299,
+            "activeSessions": 178,
+            "longPct": 32.11,
+            "shortPct": 27.42,
+            "directionalSessions": 297,
+            "directionHitPct": 43.77,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.15,
+            "activeHitPct": 48.88,
+            "returnMse": null,
+            "brier": null,
+            "scoreReturnCorrelation": -0.066499,
+            "meanNetSessionReturnPct": -0.291719,
+            "cumulativeUnitReturnPct": -60.86,
+            "maxDrawdownPct": 63.61,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.113124
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.291719
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.470314
+              }
+            ]
+          },
+          "aligned_shrunk_analog": {
+            "sessions": 299,
+            "activeSessions": 60,
+            "longPct": 19.06,
+            "shortPct": 1,
+            "directionalSessions": 299,
+            "directionHitPct": 49.5,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+            "activeHitPct": 55,
+            "returnMse": 5.570662,
+            "brier": 0.252729,
+            "scoreReturnCorrelation": -0.01371,
+            "meanNetSessionReturnPct": -0.015828,
+            "cumulativeUnitReturnPct": -5.79,
+            "maxDrawdownPct": 13.69,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": 0.044372
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.015828
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.076029
+              }
+            ]
+          },
+          "aligned_ridge": {
+            "sessions": 299,
+            "activeSessions": 29,
+            "longPct": 9.7,
+            "shortPct": 0,
+            "directionalSessions": 299,
+            "directionHitPct": 46.49,
+            "sameDirectionalSessionsAlwaysUpHitPct": 48.16,
+            "activeHitPct": 41.38,
+            "returnMse": 5.624977,
+            "brier": 0.251983,
+            "scoreReturnCorrelation": -0.08152,
+            "meanNetSessionReturnPct": -0.069912,
+            "cumulativeUnitReturnPct": -19.51,
+            "maxDrawdownPct": 21,
+            "meanNetSessionByCost": [
+              {
+                "roundTripCostBps": 0,
+                "meanPct": -0.040815
+              },
+              {
+                "roundTripCostBps": 30,
+                "meanPct": -0.069912
+              },
+              {
+                "roundTripCostBps": 60,
+                "meanPct": -0.099009
+              }
+            ]
+          }
+        },
+        "risk": {
+          "sessions": 299,
+          "constantQlike": 2.712865,
+          "ewmaQlike": 2.889534,
+          "ewmaMinusConstantQlike": 0.17667,
+          "paired95": [
+            -0.095218,
+            0.697432
+          ],
+          "constantAbsoluteReturnMae": 1.300494,
+          "ewmaAbsoluteReturnMae": 1.244397
+        }
+      }
+    ],
+    "decisions": {
+      "aligned_shrunk_analog": {
+        "decision": "DO_NOT_PROMOTE",
+        "checks": {
+          "improvesReturnMseOverall": false,
+          "improvesReturnMse2026": false,
+          "improvesBrierOverall": false,
+          "improvesBrier2026": false,
+          "positiveNetAtBaseCost": false,
+          "positiveNetAtDoubleCost": false,
+          "positiveNet2026": false,
+          "positiveNetEveryYear": false,
+          "prospectiveValidationComplete": false
+        },
+        "failedChecks": [
+          "improvesReturnMseOverall",
+          "improvesReturnMse2026",
+          "improvesBrierOverall",
+          "improvesBrier2026",
+          "positiveNetAtBaseCost",
+          "positiveNetAtDoubleCost",
+          "positiveNet2026",
+          "positiveNetEveryYear",
+          "prospectiveValidationComplete"
+        ]
+      },
+      "aligned_ridge": {
+        "decision": "DO_NOT_PROMOTE",
+        "checks": {
+          "improvesReturnMseOverall": true,
+          "improvesReturnMse2026": false,
+          "improvesBrierOverall": false,
+          "improvesBrier2026": false,
+          "positiveNetAtBaseCost": true,
+          "positiveNetAtDoubleCost": false,
+          "positiveNet2026": false,
+          "positiveNetEveryYear": false,
+          "prospectiveValidationComplete": false
+        },
+        "failedChecks": [
+          "improvesReturnMse2026",
+          "improvesBrierOverall",
+          "improvesBrier2026",
+          "positiveNetAtDoubleCost",
+          "positiveNet2026",
+          "positiveNetEveryYear",
+          "prospectiveValidationComplete"
+        ]
+      }
+    },
+    "continuousHoldingContext": {
+      "firstTarget": "2020-01-03",
+      "lastTarget": "2026-10-26",
+      "grossPriceReturnPct": 1045.5,
+      "approximateNetAfterOneRoundTripPct": 1045.2,
+      "closeObservedDrawdownPct": 76.63,
+      "caveat": "Additional context, not matched target exposure: continuously invested including overnight/weekend gaps, one entry/exit, no dividends, financing or taxes. Daily intraday always-up is not buy-and-hold."
+    },
+    "forwardLock": {
+      "status": "LOCKED_BEFORE_TARGET_OPEN",
+      "path": "C:\\Users\\finla\\AppData\\Local\\Temp\\mb-score-benchmarks-20261027\\shadow\\crypto-2026-10-26-2026-10-28.json"
+    },
+    "latestReconstructedPrediction": {
+      "date": "2026-10-26",
+      "targetDate": "2026-10-28",
+      "generatedAt": "2026-10-27T18:57:37.232Z",
+      "kind": "historical_reconstruction_not_prospective",
+      "ridgeFitMonth": "2026-10",
+      "ridgeTrainingRows": 1093,
+      "ridgeMaxTrainingTargetDate": "2026-09-30",
+      "analogTrainingRows": 1093,
+      "analogMaxTrainingTargetDate": "2026-10-25",
+      "predictions": {
+        "cash": {
+          "score": 0,
+          "position": 0,
+          "expectedReturn": 0,
+          "probabilityUp": 0.5
+        },
+        "always_up": {
+          "score": 1,
+          "position": 1,
+          "expectedReturn": null,
+          "probabilityUp": 1
+        },
+        "trailing_mean": {
+          "expectedReturn": 0.10854165108361824,
+          "probabilityUp": 0.5086916742909423,
+          "score": 0.10854165108361824,
+          "position": 0
+        },
+        "momentum_20": {
+          "score": -6.487919989539204,
+          "position": -1,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "momentum_60": {
+          "score": -0.31259717506089135,
+          "position": -1,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "production_raw": {
+          "score": -38,
+          "position": -1,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "production_filtered": {
+          "score": -38,
+          "position": -1,
+          "expectedReturn": null,
+          "probabilityUp": null
+        },
+        "aligned_shrunk_analog": {
+          "expectedReturn": -0.20108372699155064,
+          "probabilityUp": 0.45434583714547117,
+          "score": -0.20108372699155064,
+          "position": 0
+        },
+        "aligned_ridge": {
+          "expectedReturn": 0.07051598268747544,
+          "probabilityUp": 0.509370116845857,
+          "score": 0.07051598268747544,
+          "position": 0
+        }
+      },
+      "riskConstant": 6.037400022992444,
+      "riskEwma": 2.474211597003849,
+      "state": {
+        "momentum20": -6.487919989539204,
+        "momentum60": -0.31259717506089135,
+        "dailyVolatility20Pct": 1.393468361507981
+      }
+    },
+    "promotion": "RESEARCH_ONLY_PENDING_PROSPECTIVE_VALIDATION"
+  }
+}
