@@ -71,6 +71,11 @@ export function dailyEmailReadingLabel(_score: number, label: string, _signal?: 
   return label.replaceAll('_', ' ');
 }
 
+export function dailyEmailTradingText(signal?: TradableSignal | null, score = 0) {
+  const trade = explainReading(score, signal).trade;
+  return trade ? `${trade.title}: ${trade.reason}` : '';
+}
+
 export function dailyEmailMetadataText(context?: DailyEmailContext, market: 'stocks' | 'crypto' = 'crypto') {
   const scoreDate = dailyEmailDisplayDate(context?.scoreDate);
   const priceDate = dailyEmailDisplayDate(context?.marketDataDate);
@@ -90,6 +95,7 @@ export function dailyEmailMetadataText(context?: DailyEmailContext, market: 'sto
 }
 
 export function dailyEmailDeltaText(score: number, context?: DailyEmailContext) {
+  if (context?.scoreVersion && context.previousScoreVersion !== context.scoreVersion) return '';
   const previousDate = dailyEmailDisplayDate(context?.previousScoreDate);
   if (!previousDate || !context?.scoreDate || !dailyEmailDisplayDate(context.scoreDate)
     || !context.previousScoreDate || context.previousScoreDate >= context.scoreDate
@@ -124,14 +130,16 @@ export function dailyEmailHeaderHtml(options: {
   const metadata = dailyEmailMetadataText(context, options.market);
   const delta = dailyEmailDeltaText(score, context);
   const reliability = dailyEmailReliabilityText(signal, score);
+  const trading = dailyEmailTradingText(signal, score);
   return `<div style="color:#a1a1aa;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${escapeDailyEmailHtml(title)}</div>
     ${metadata ? `<div style="margin-top:10px;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeDailyEmailHtml(metadata).replaceAll('\n', '<br />')}</div>` : ''}
-    <div style="margin-top:18px;color:#a1a1aa;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Base score</div>
+    <div style="margin-top:18px;color:#a1a1aa;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">${signal?.scoreContext?.semantics === 'daily_reading_v1' ? 'Daily market score' : 'Base score'}</div>
     <h1 style="margin:6px 0 0;color:${accent};-webkit-text-fill-color:${accent};font-size: 28px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;">${escapeDailyEmailHtml(dailyEmailReadingLabel(score, label, signal))} <span style="display:inline-block;font-size:24px;">(${escapeDailyEmailHtml(dailyEmailSignedNumber(score))})</span></h1>
     ${delta ? `<p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeDailyEmailHtml(delta)}</p>` : ''}
     ${isOverrideActive ? '<p style="margin:14px 0 0;color:#fca5a5;font-size:14px;font-weight:700;">OVERRIDE ACTIVE</p>' : ''}
     ${interpretation ? `<p style="margin:18px 0 0;color:#f1f5f9;-webkit-text-fill-color:#f1f5f9;font-size:18px;line-height:1.6;">${dailyEmailInlineHtml(interpretation)}</p>` : ''}
-    ${reliability ? `<p style="margin:16px 0 0;padding-top:16px;border-top:1px solid #323238;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeDailyEmailHtml(reliability)}</p>` : ''}`;
+    ${reliability ? `<p style="margin:16px 0 0;padding-top:16px;border-top:1px solid #323238;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeDailyEmailHtml(reliability)}</p>` : ''}
+    ${trading ? `<div style="margin-top:20px;padding-top:16px;border-top:1px solid #323238;color:#cbd5e1;font-size:14px;line-height:1.65;"><strong>Trading filters</strong><p style="margin:6px 0 0;">${escapeDailyEmailHtml(trading.replace(/^Trading filters: /, ''))}</p></div>` : ''}`;
 }
 
 export function dailyEmailSectionHtml(title: string, body: string, color = '#7dd3fc') {

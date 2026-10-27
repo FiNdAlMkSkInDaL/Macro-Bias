@@ -86,6 +86,7 @@ type DailyBriefingPromptPayload = {
     distanceQuality: number;
     noTrade: boolean;
     reason: string;
+    dailyReadingIndependentOfTradeFilters: boolean;
   } | null;
 };
 
@@ -349,6 +350,7 @@ function buildPromptPayload(
           distanceQuality: quant.signal.distanceQuality,
           noTrade: quant.signal.noTrade,
           reason: quant.signal.reason,
+          dailyReadingIndependentOfTradeFilters: quant.signal.scoreContext?.semantics === 'daily_reading_v1',
         }
       : null,
     analogs: {

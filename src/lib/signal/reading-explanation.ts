@@ -5,9 +5,30 @@ export type ReadingExplanation = {
   status: 'withheld' | 'neutral' | 'unavailable' | 'directional';
   title: string;
   reason: string;
+  trade?: { title: string; reason: string };
 };
 
 export function explainReading(score: number, signal?: TradableSignal | null): ReadingExplanation {
+  if (signal?.scoreContext?.semantics === 'daily_reading_v1') {
+    const codes = new Set(signal.scoreContext.filters?.map(f => f.code) ?? []);
+    const causes = [
+      codes.has('low_variation') ? 'The low-variation check is active because the matched historical returns are tightly clustered.' : '',
+      codes.has('monday_source') ? "The Monday source-session rule holds the trading decision flat. It applies to Monday's completed prices, including a reading published on Tuesday." : '',
+      codes.has('large_move_fade') ? 'The trading layer adjusts for a large move in the last completed session.' : '',
+      codes.has('overnight_amplifier') ? 'The trading layer adjusts for the opening gap in the completed source session.' : '',
+      codes.has('overnight_conflict') ? 'A conflicting opening gap holds the trading decision flat.' : '',
+    ].filter(Boolean);
+    if (!causes.length) causes.push(signal.position === 'NO_TRADE'
+      ? 'The trading checks reject the historical fit or agreement for a trade.'
+      : signal.position === 'FLAT' ? 'The trading threshold has not been met.'
+        : 'The trading checks permit a directional setup; that is separate from the daily market reading.');
+    return { status: Math.abs(score) <= 20 ? 'neutral' : 'directional',
+      title: score === 0 ? 'Balanced historical reading' : Math.abs(score) <= 20 ? 'Neutral historical reading' : score > 0 ? 'Upward historical lean' : 'Downward historical lean',
+      reason: score === 0 ? 'The matched past returns balance near zero after rounding. This is a market reading, not a trading-filter result.'
+        : Math.abs(score) <= 20 ? `The matched past sessions have a small ${score > 0 ? 'positive' : 'negative'} return tendency, within the neutral range. Trading checks are shown separately.`
+          : `The matched past sessions have a ${score > 0 ? 'positive' : 'negative'} return tendency over the next one to three sessions. The reading is historical context, not a probability or a trade instruction.`,
+      trade: { title: 'Trading filters', reason: causes.join(' ') + ' These checks do not change the daily score or its reading.' } };
+  }
   const reason = signal?.reason ?? '';
   const codes = Array.isArray(signal?.scoreContext?.suppressedBy) ? signal.scoreContext.suppressedBy : [];
   const monday = codes.includes('monday') || /Monday (?:publish )?dampener/i.test(reason);

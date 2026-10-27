@@ -279,7 +279,7 @@ export function ProWorkspace({ asset, published, signal, chart, observations = [
       {briefing.notice ? <p className={styles.briefingNotice}>{briefing.notice}</p> : null}
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
       <div className={styles.readingGrid} data-pro-reading-grid>
-        <ProReading asset={asset} tradeDate={tradeDate} score={published?.score ?? null} label={published?.label ?? null} explanation={published ? explainReading(published.score, signal) : null} />
+        <ProReading asset={asset} tradeDate={tradeDate} score={published?.score ?? null} label={published?.label ?? null} explanation={published ? explainReading(published.score, signal) : null} decision={signal} />
       </div>
       <div className={styles.chart}>
         <MacroMarketChart

@@ -253,7 +253,7 @@ function buildEditorialFallback(context: DailyBriefingStrategyContext) {
       : [spyObservation, `${direction}.`].filter(Boolean).join(' ');
   const setup = market?.marketRows[0] ?? (context.suggestedOverrideActive
     ? "The score is price-based and does not measure the event in the headline."
-    : weakMatch ? "This historical match isn't strong enough for a directional call."
+    : weakMatch ? "The trading checks do not permit a position on this historical setup."
       : neutral ? "There is very little direction in the historical returns."
         : "The score reflects returns from similar past sessions.");
   const focus = market?.marketRows[1] ?? (context.suggestedOverrideActive

@@ -191,10 +191,8 @@ function buildTodayStateVector(input: DailyBiasInput): AnalogStateVector {
       : assertFiniteNumber(expandedData.cper?.close, "CPER close") /
         assertFiniteNumber(input.tickerChanges.GLD.close, "GLD close");
 
-  const vixLevel =
-    expandedData.vixLevelPercentile != null && Number.isFinite(expandedData.vixLevelPercentile)
-      ? expandedData.vixLevelPercentile
-      : assertFiniteNumber(expandedData.vix?.close, "VIX close");
+  const vixLevel = assertFiniteNumber(expandedData.vixLevelPercentile, 'VIX trailing percentile');
+  if (vixLevel < 0 || vixLevel > 100) throw new Error('VIX percentile must be in [0, 100].');
 
   return {
     spyRsi: assertFiniteNumber(expandedData.spy14DayRsi, "SPY RSI"),
@@ -220,7 +218,7 @@ function getHistoricalAnalogVectors(input: DailyBiasInput): HistoricalAnalogVect
   }
 
   // Normalize legacy gammaExposure key on vectors if present.
-  return historicalAnalogVectors.map((analog) => {
+  return historicalAnalogVectors.filter(analog => analog.tradeDate < input.tradeDate).map((analog) => {
     const vector = analog.vector as AnalogStateVector & { gammaExposure?: number };
     if (vector.vixMomentum == null && vector.gammaExposure != null) {
       return {
@@ -402,7 +400,7 @@ function applyMondayDampener(
       score: 0,
       signal: {
         ...signal,
-        reason: `Monday dampener: ${signal.reason}`,
+        reason: `Monday source-session trade filter: ${signal.reason}`,
       },
     };
   }
@@ -415,7 +413,7 @@ function applyMondayDampener(
       size: 0,
       noTrade: false,
       reason:
-        "Monday publish dampener. Analogs may lean, but Monday scores are withheld (measured noise).",
+        "Monday source-session trade filter. The trading decision stays flat; the daily market reading is unchanged.",
     },
   };
 }
@@ -440,11 +438,12 @@ function filterAnalogsByRegime(
 }
 
 /** VIX-regime adaptive K (v18): high vol → K=5, calm → K=7. */
-export function selectNeighborK(vixLevel: number): number {
+export function selectNeighborK(vixIndexLevel: number): number {
+  if (!Number.isFinite(vixIndexLevel) || vixIndexLevel <= 0) throw new Error('A positive raw VIX index level is required for adaptive K.');
   if (!ANALOG_MODEL_SETTINGS.adaptiveNeighborKEnabled) {
     return ANALOG_MODEL_SETTINGS.nearestNeighborCount;
   }
-  return vixLevel >= ANALOG_MODEL_SETTINGS.adaptiveKVixThreshold
+  return vixIndexLevel >= ANALOG_MODEL_SETTINGS.adaptiveKVixThresholdIndexPoints
     ? ANALOG_MODEL_SETTINGS.adaptiveKHighVix
     : ANALOG_MODEL_SETTINGS.adaptiveKLowVix;
 }
@@ -481,7 +480,8 @@ function buildNeighborMatches(
   const minGap = ANALOG_MODEL_SETTINGS.minAnalogCalendarGapDays;
   const lambda =
     options?.temporalDecayLambda ?? ANALOG_MODEL_SETTINGS.temporalDecayLambda;
-  const k = options?.neighborCount ?? selectNeighborK(todayVector.vixLevel);
+  if (options?.neighborCount == null) throw new Error('Neighbor count must be selected with the raw VIX index level.');
+  const k = options.neighborCount;
 
   const ranked = pool
     .filter(
@@ -754,7 +754,9 @@ function buildComponentScores(
 export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
   const todayVector = buildTodayStateVector(input);
   const historicalAnalogs = getHistoricalAnalogVectors(input);
-  const k = selectNeighborK(todayVector.vixLevel);
+  const vixIndexLevel = assertFiniteNumber(input.expandedData?.vix?.close, 'raw VIX index level');
+  if (input.expandedData?.vix?.tradeDate !== input.tradeDate) throw new Error('Raw VIX must match the completed source-session date.');
+  const k = selectNeighborK(vixIndexLevel);
 
   const primary = buildNeighborMatches(input.tradeDate, todayVector, historicalAnalogs, {
     temporalDecayLambda: ANALOG_MODEL_SETTINGS.temporalDecayLambda,
@@ -831,7 +833,7 @@ export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
   let signalForPublish = rawSignal;
   const notes: string[] = [];
   if (ANALOG_MODEL_SETTINGS.adaptiveNeighborKEnabled) {
-    notes.push(`adaptive K=${k} (VIX level ${roundTo(todayVector.vixLevel, 1)})`);
+    notes.push(`adaptive K=${k} (VIX ${roundTo(vixIndexLevel, 2)} index points; percentile ${roundTo(todayVector.vixLevel, 1)})`);
   }
   if (dualNote) notes.push(dualNote);
   if (
@@ -849,7 +851,7 @@ export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
     };
   }
 
-  const { score, signal } = applyMondayDampener(
+  const { score: tradeScore, signal } = applyMondayDampener(
     input.tradeDate,
     vetoedScore,
     signalForPublish,
@@ -857,17 +859,32 @@ export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
   // Keep the existing trading policy intact, but save why a processed zero is
   // different from an ordinary neutral estimate. Older rows retain their reason.
   const suppressedBy: NonNullable<TradableSignal['scoreContext']>['suppressedBy'] = [];
-  if (ANALOG_MODEL_SETTINGS.flatLowNeighborVolEnabled && dispersion < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold && score === 0) suppressedBy.push('low_variation');
+  if (ANALOG_MODEL_SETTINGS.flatLowNeighborVolEnabled && dispersion < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold && tradeScore === 0) suppressedBy.push('low_variation');
   if (ANALOG_MODEL_SETTINGS.skipMondayScores && isUsEquityMonday(input.tradeDate)) suppressedBy.push('monday');
   const rawScore = mapExpectancyToScore(expectancySummary);
   // Only name the overnight veto when it actually zeroed a non-zero arm.
   let beforeOvernight = applyLowNeighborVolFlat(rawScore, blendedNeighborReturns);
   beforeOvernight = applyFadeBigDay(beforeOvernight, sameDayCtc);
   beforeOvernight = applySoftOvernightAmp(beforeOvernight, overnightGap);
-  if (beforeOvernight !== 0 && applyOvernightVeto(beforeOvernight, overnightGap) === 0 && score === 0) suppressedBy.push('overnight_conflict');
-  signal.scoreContext = { rawScore, suppressedBy };
+  if (beforeOvernight !== 0 && applyOvernightVeto(beforeOvernight, overnightGap) === 0 && tradeScore === 0) suppressedBy.push('overnight_conflict');
+  const filters: NonNullable<TradableSignal['scoreContext']>['filters'] = [];
+  let filtered = rawScore;
+  const recordFilter = (code: NonNullable<typeof filters>[number]['code'], after: number, applies = after !== filtered) => {
+    if (applies) filters.push({ code, before: filtered, after });
+    filtered = after;
+  };
+  recordFilter('low_variation', applyLowNeighborVolFlat(filtered, blendedNeighborReturns), ANALOG_MODEL_SETTINGS.flatLowNeighborVolEnabled && dispersion < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold);
+  recordFilter('large_move_fade', applyFadeBigDay(filtered, sameDayCtc));
+  recordFilter('overnight_amplifier', applySoftOvernightAmp(filtered, overnightGap));
+  recordFilter('overnight_conflict', applyOvernightVeto(filtered, overnightGap));
+  if (ANALOG_MODEL_SETTINGS.skipMondayScores && isUsEquityMonday(input.tradeDate)) recordFilter('monday_source', 0, true);
+  signal.scoreContext = { semantics: 'daily_reading_v1', rawScore, tradeScore, sourceTradeDate: input.tradeDate, suppressedBy, filters,
+    vix: { indexLevel: vixIndexLevel, percentile: todayVector.vixLevel, thresholdIndexPoints: ANALOG_MODEL_SETTINGS.adaptiveKVixThresholdIndexPoints, neighborCount: k } };
 
-  // Component glass-box uses the published (possibly dampened) score so pillars match UI.
+  // Publish historical expectancy; trading filters only affect permission and size.
+  const score = rawScore;
+
+  // Contributions use the unfiltered daily reading so pillars match the headline.
   const componentScores = buildComponentScores(
     score,
     todayVector,
@@ -876,9 +893,8 @@ export function calculateDailyBias(input: DailyBiasInput): DailyBiasResult {
     expectancySummary,
   );
 
-  // Keep the published score for delivery. Trading permission lives on `signal`.
-  // When the model refuses a trade, surface NEUTRAL so UI does not imply a lean.
-  const label = signal.position === "NO_TRADE" ? "NEUTRAL" : getBiasLabel(score);
+  // A directional market reading can coexist with FLAT or NO_TRADE permission.
+  const label = getBiasLabel(score);
 
   return {
     tradeDate: input.tradeDate,

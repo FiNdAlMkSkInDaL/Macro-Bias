@@ -1,0 +1,31 @@
+# Daily market readings and independent trading checks
+
+Owner-authorized release, 27 October 2026. The daily number is the rounded historical analogue expectancy mapped to −100…+100. Its own five-state regime is independent of trading permission. Low-variation checks, the Monday source-session hold, large-move fade and source opening-gap adjustments affect only the trading score, permission and size. A genuine estimate that rounds to zero remains zero; no minimum magnitude or cosmetic rescaling is applied.
+
+Stocks use `macro-model-v19-daily-reading-raw-vix`. Adaptive K takes actual completed-session VIX index points: K=7 below 20, K=5 at/above 20. The trailing VIX percentile remains a separate regime/context input. Both inputs must be present, valid and dated correctly. V18 accidentally compared its percentile with 20 despite documentation describing index points. This correction follows the documented units; no threshold search selected the best backtest.
+
+Crypto uses `crypto-model-v5-daily-reading`. Its numeric expectancy is unchanged from v4; NO_TRADE no longer relabels a directional reading as neutral. Both engines reject future-dated analogues from calibration. Stored `tradableSignal.scoreContext` records daily/trading scores separately; stocks also record each policy adjustment and the raw VIX/percentile/K diagnostics. Position consumers must use saved permission, never infer a trade from the market label.
+
+## Validation and findings
+
+Exact evidence and limitations are in `scoring-validation-20261027.json`.
+
+- Stocks: 1,712 reconstructed source sessions through 26 October, three predeclared K policies, 29 comparisons with the production engine. Corrected VIX policy has 43 unfiltered zero readings (2.51%) versus 41.47% processed trading zeros. It remains neutral on 67.17% of source sessions. Neutral is a legitimate result, not a reason to amplify scores.
+- Corrected stock-score association with following returns is weak: correlation 0.0369 at one close and 0.0623 at three closes; the previously reviewed 2026 slice is −0.0083/−0.0133. Filtered trading results have positive aggregate reconstructed net returns under the specified fixed costs but are negative in the 2026 slice. These do not establish a durable trading edge.
+- Crypto: 2,490 causal source-session reconstructions using the actual engine. One/three-close correlations are −0.0398/−0.0272, and −0.0923/−0.1026 in the previously reviewed 2026 slice. This does not validate a positive predictive edge either.
+- Original stored matched sets replay exactly for 20 stock and 26 crypto publications. This checks arithmetic from rounded stored matches, not the full original neighbour-selection/data-vintage process.
+- Timestamp-aware original live evaluation has only 18 completed stock sessions with one directional trade, and 22 crypto sessions with nine directional long-only trades (three correct). These are old-model publications and small samples, not live validation of v19/v5.
+
+The reconstruction uses current stored prices, past-only percentile/regime calibration and only matured three-session neighbour labels. Historical warmup can differ from original jobs. All historical periods were previously examined; none is an untouched holdout. Overlapping outcomes are dependent, fixed transaction costs omit slippage/borrowing/size effects, and source-close relationships are not automatically achievable trading returns. In particular, crypto newsletters arrive after the UTC source close. The report makes no claim of proven forecasting skill or investable profitability.
+
+Live accuracy now grades stocks on the target session only if publication and its latest revision predate that session's New York open. Crypto is graded on the first complete UTC session starting after actual publication. Late, revised, backfilled, unknown-source and unfinished sessions are excluded; query failures are unavailable, never zero results. Eligible sessions are not silently repeated when a daily publication is missing. Legacy pure callers retain their explicitly documented lagged-date convention.
+
+## Release and verification
+
+No database migration, historical score/label rewrite, historical briefing regeneration or manual email is required. The next normal scoring jobs persist the new versions. Stock email deltas are omitted when versions differ or the previous version is unknown. Websites and both email formats show the reading followed by a separate trading-filter section. Entitlements and private model fields retain their existing boundaries. The X experiment's dates, account, posting claim and cron gates are unchanged.
+
+Semantic tests cover positive/negative/true-zero readings, Monday and low-variation trade holds, independent labels, component sums, VIX units and boundary, stale/missing VIX, future analogue rejection and crypto trade refusal. Timestamp tests cover daylight saving, publication boundaries, revisions, backfills and missing-session reuse. Email checks cover stock/crypto, Free/Pro, subjects, HTML/plain text and version-boundary deltas. Existing publisher, content-access, model and X regression checks pass.
+
+Browser QA used the in-app browser on a temporary, explicitly labeled local fixture and the actual stored public reading. Default desktop and 390×844 mobile views had meaningful content, no framework overlay, no console errors and no horizontal overflow. Switching market previews and choosing both newsletters worked without submitting a form. The fixture was removed before the release build; no subscriber or test publication was created. Saved screenshots are in the task's temporary `mb-daily-score-validation-20261027` artifact directory.
+
+Reproduce read-only research with `npx tsx scripts/validate-daily-scoring.ts <private-output.json> 2026-10-26` and `npx tsx scripts/validate-crypto-daily-scoring.ts <private-output.json> 2026-10-26`. Run `verify-daily-score-separation.ts`, `verify-publication-timing.ts` and `verify-daily-score-content.cjs`, then existing model/content/publisher checks, typecheck and build. Forward observations must be grouped by the new model version and actual publication time; do not mix old filtered scores into a claimed new-model track record.

@@ -87,7 +87,6 @@ const BACKTEST_START = "2020-01-01";
 /* ------------------------------------------------------------------ */
 
 function getBiasLabel(score: number, signal: TradableSignal): BiasLabel {
-  if (signal.position === "NO_TRADE") return "NEUTRAL";
   if (score <= -60) return "EXTREME_RISK_OFF";
   if (score < -20) return "RISK_OFF";
   if (score <= 20) return "NEUTRAL";

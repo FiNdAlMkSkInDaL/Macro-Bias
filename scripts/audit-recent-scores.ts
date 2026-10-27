@@ -33,7 +33,8 @@ async function main() {
       const sourceDate = market === 'stocks' ? row.window?.latestTradeDate ?? null : row.trade_date;
       let replay: number | null = null, raw: number | null = null, dispersion: number | null = null;
       const reasons: string[] = [];
-      const supported = row.model === (market === 'stocks' ? 'macro-model-v18-adaptive-k' : CRYPTO_MODEL_VERSION);
+      const supported = market === 'stocks' ? ['macro-model-v18-adaptive-k', 'macro-model-v19-daily-reading-raw-vix'].includes(row.model ?? '')
+        : [CRYPTO_MODEL_VERSION, 'crypto-model-v4-calibrated-gates'].includes(row.model ?? '');
       if (valid && supported) {
         const blended = f1.map((n, i) => n! * settings.oneDayBlendWeight + f3[i]! * settings.threeDayBlendWeight);
         const expectancy = Number((weightedMean(f1 as number[], weights) * settings.oneDayBlendWeight + weightedMean(f3 as number[], weights) * settings.threeDayBlendWeight).toFixed(2));
@@ -55,6 +56,7 @@ async function main() {
         }
         if (raw === 0) reasons.push('raw_estimate_rounds_to_zero');
       }
+      if (row.model === 'macro-model-v19-daily-reading-raw-vix' && raw !== null) replay = raw;
       return { date: row.trade_date, sourceDate, score: row.score, label: row.bias_label, publishedAt: row.created_at,
         model: row.model, originalMatches: matches.length, rawReplay: raw, savedRaw: row.signal?.scoreContext?.rawScore ?? null,
         dispersion, replay, replayMatches: replay === null ? null : replay === row.score,
