@@ -10,15 +10,15 @@ import { useReferralCode } from '@/lib/referral/client';
 import { ArrowIcon } from './ArrowIcon';
 import styles from './HeroSignupForm.module.css';
 
-type SignupLocation = 'landing_hero' | 'landing_footer' | 'stock_daily_hero' | 'stock_daily_footer' | 'crypto_daily_hero' | 'crypto_daily_footer';
+type SignupLocation = 'landing_hero' | 'landing_footer' | 'stock_daily_hero' | 'stock_daily_footer' | 'crypto_daily_hero' | 'crypto_daily_footer' | 'stock_briefing_summary' | 'crypto_briefing_summary';
 
-export function HeroSignupForm({ location = 'landing_hero', pagePath = '/' }: { location?: SignupLocation; pagePath?: '/' | '/today' | '/crypto' }) {
+export function HeroSignupForm({ location = 'landing_hero', pagePath = '/', defaultMarket }: { location?: SignupLocation; pagePath?: string; defaultMarket?: 'stocks' | 'crypto' }) {
   const inputId = useId();
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
-  const [stocksOptedIn, setStocksOptedIn] = useState(pagePath !== '/crypto');
-  const [cryptoOptedIn, setCryptoOptedIn] = useState(pagePath !== '/today');
+  const [stocksOptedIn, setStocksOptedIn] = useState(defaultMarket ? defaultMarket === 'stocks' : pagePath !== '/crypto');
+  const [cryptoOptedIn, setCryptoOptedIn] = useState(defaultMarket ? defaultMarket === 'crypto' : pagePath !== '/today');
   const ref = useReferralCode();
   const neitherSelected = !stocksOptedIn && !cryptoOptedIn;
   const newsletter = stocksOptedIn && cryptoOptedIn ? 'stock and crypto updates' : cryptoOptedIn ? 'crypto update' : 'stock update';

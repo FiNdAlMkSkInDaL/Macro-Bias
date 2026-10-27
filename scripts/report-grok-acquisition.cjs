@@ -11,7 +11,7 @@ const get = load('src/lib/analytics/acquisition-data').getAcquisitionReport;
     return { source, market, campaign, range: report.range, complete: report.coverage.complete,
       metrics: report.coverage.complete ? report.overview : null,
       originalNewsletterChoices: report.coverage.complete ? report.newsletterSignups : null,
-      content: report.coverage.complete ? report.contentRows : null, coverage: report.coverage, freshness: report.freshness };
+      content: report.coverage.complete ? report.attributionContentRows : null, coverage: report.coverage, freshness: report.freshness };
   })));
   console.log(JSON.stringify({ capturedAt: now.toISOString(), touch: 'first', rows,
     note: 'Original opt-ins only. Both counts once overall. Filter per-post content IDs to distinguish the new release from earlier links. Do not add unique visitors across rows or latest-touch assists. No attribution is not proof of no real traffic; consent gaps remain unknown. Newsletter records do not prove verification, readership or ROI.' }, null, 2));

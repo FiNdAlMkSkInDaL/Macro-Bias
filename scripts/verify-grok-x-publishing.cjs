@@ -60,7 +60,7 @@ function harness(options = {}) {
   const cryptoNow = new Date('2026-10-23T14:00:00Z');
   const cryptoFacts = { trade_date: '2026-10-22', ticker_changes: { 'BTC-USD': quote('BTC-USD', 1, '2026-10-22'), 'ETH-USD': quote('ETH-USD', 2, '2026-10-22') } };
   const crypto = api.buildGrokXPost('crypto', [item('2026-10-22', 6), item('2026-10-21', -2)], cryptoNow, cryptoFacts);
-  assert.match(crypto.text, /^Ethereum led the crypto gains/); assert.match(crypto.text, /Bitcoin \+1.00%; Ethereum \+2.00%/);
+  assert.match(crypto.text, /^Ethereum rose faster than Bitcoin/); assert.match(crypto.text, /Bitcoin \+1.00%; Ethereum \+2.00%/);
   assert.match(crypto.text, /Watch whether both keep rising/);
   assert.equal(new URL(crypto.trackedUrl).pathname, '/crypto');
   for (const bad of [[], [item('2026-10-18', 0), item('2026-10-17', 2)], [item('2026-10-22', 0), items[0]],

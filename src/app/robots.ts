@@ -1,17 +1,18 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://macro-bias.com";
+import { getAppUrl } from '@/lib/server-env';
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getAppUrl().replace(/\/$/, '');
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard", "/auth", "/api", "/analytics", "/analytics"],
+        disallow: ["/dashboard", "/crypto/dashboard", "/account", "/auth", "/api", "/analytics", "/test"],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

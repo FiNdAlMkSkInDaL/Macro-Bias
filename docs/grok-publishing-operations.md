@@ -1,5 +1,7 @@
 # Grok publishing experiment, 21–26 October 2026
 
+This historical experiment is closed. The owner authorized a separate server-scheduled X test on 27 October; see [the new test operations](x-commentary-test-20261028.md). Its new cron, dates and campaign do not reopen this expired bot endpoint or the paused Grok routines.
+
 The user authorized useful, authentic automatic Reddit and X publishing on 21 October. The existing Grok routines were changed from draft-only. Their original experiment end remains 26 October. The Codex recurring chat prompt remains paused.
 
 ## X access and the limited server publisher

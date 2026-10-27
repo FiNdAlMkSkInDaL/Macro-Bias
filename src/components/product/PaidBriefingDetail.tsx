@@ -15,6 +15,8 @@ import { briefingBasePath, briefingDate, briefingLabel, briefingScore, briefingT
 import { prepareBriefingDocument, type BriefingHeading } from './briefing-document';
 import shared from './MemberUI.module.css';
 import styles from './PaidBriefing.module.css';
+import { PublicBriefingSummary } from './PublicBriefingSummary';
+import type { PublicBriefingSummary as Summary } from '@/lib/product/public-briefing-summary';
 
 function generatedTime(value: string | null) {
   if (!value || !Number.isFinite(Date.parse(value))) return 'Unavailable';
@@ -56,7 +58,7 @@ function StockStructuredData({ briefing }: { briefing: PaidBriefingDocument }) {
   return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(article).replace(/</g, '\\u003c') }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs).replace(/</g, '\\u003c') }} /></>;
 }
 
-export function PaidBriefingDetail({ asset, date, data }: { asset: ProductAsset; date: string; data: PaidBriefingDetailData }) {
+export function PaidBriefingDetail({ asset, date, data, publicSummary = null }: { asset: ProductAsset; date: string; data: PaidBriefingDetailData; publicSummary?: Summary | null }) {
   const { briefing, metadata, access, viewer, archive, loadError } = data;
   const basePath = briefingBasePath(asset);
   const workspacePath = asset === 'stocks' ? '/dashboard' : '/crypto/dashboard';
@@ -74,7 +76,7 @@ export function PaidBriefingDetail({ asset, date, data }: { asset: ProductAsset;
         <div><dt>First published</dt><dd>{metadata.publishedAt ? releaseTime(metadata.publishedAt) : 'Unavailable'}</dd></div>
       </dl>
       {metadata.score !== null ? <p className={shared.muted}>This is a published model reading, not a prediction of the next move. {metadata.overrideActive ? 'A news override was active; the chart shows the base model. ' : ''}<a className={shared.textLink} href={`/charts/${asset}/${date}`}>Open score history chart<ArrowIcon /></a></p> : null}
-      <p className={shared.muted}>Get the score and a short market update by email, free. <Link className={shared.textLink} href={dailyPath}>Choose your {asset === 'stocks' ? 'stock' : 'crypto'} emails<ArrowIcon /></Link></p>
+      <PublicBriefingSummary asset={asset} date={date} summary={publicSummary} />
       <section className={styles.gate} aria-labelledby="briefing-access-title" data-briefing-gate={access.kind}>
         <h2 id="briefing-access-title">{access.kind === 'sign-in' ? 'Sign in to read this briefing' : 'Get the full market read'}</h2>
         <p>{access.kind === 'sign-in' ? 'The full briefing is included with a Free account. Sign in to read the published market context, model notes and risk check.' : 'Pro includes this full briefing now, with the published market context, model notes and risk check. Scores and dated readings are public.'}</p>

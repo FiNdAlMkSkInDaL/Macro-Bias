@@ -82,6 +82,9 @@ check('distinct visitors and sessions do not count repeated views', () => {
   assert.equal(value.overview.newAccounts, 1);
   assert.equal(value.overview.paidConversions, 1);
   assert.equal(value.overview.subscriberRate, 100);
+  assert.equal(report(base(), { touch: 'first' }).attributionContentRows.find(row => row.key === 'post_a').newSubscribers, 1);
+  assert.equal(report(base(), { touch: 'latest' }).attributionContentRows.some(row => row.key === 'post_a'), false);
+  assert.equal(value.contentRows.some(row => row.key === 'post_a'), false);
 });
 check('newsletter choices retain original signup and respect campaign filters without doubling people', () => {
   const input = base();
