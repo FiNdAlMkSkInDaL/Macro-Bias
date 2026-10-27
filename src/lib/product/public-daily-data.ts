@@ -1,4 +1,6 @@
 import 'server-only';
+import { loadPublicStockRisk } from '../model-forward/public-risk';
+import type { StockRiskState } from '../model-forward/risk';
 
 import { createSupabaseAdminClient } from '../supabase/admin';
 import { completedPriceDateCutoff, isCompletedPriceDate, latestCompletedPriceDate } from '../market-data/completed-price-bars';
@@ -21,6 +23,7 @@ export type PublicDailyCandle = {
 type AvailabilityStatus = 'available' | 'empty' | 'unavailable';
 
 export type PublicDailyData = {
+  stockRisk?: StockRiskState;
   asset: ProductAsset;
   ticker: 'SPY' | 'BTC-USD';
   score: ViewerScore | null;
@@ -124,6 +127,7 @@ function emptyData(asset: ProductAsset): PublicDailyData {
  */
 export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: ProductScore): Promise<PublicDailyData> {
   const result = emptyData(asset);
+  const riskPromise = asset === 'stocks' ? loadPublicStockRisk() : Promise.resolve(undefined);
   let viewer;
   try {
     viewer = preloadedScore ?? await getViewerScore(asset, undefined, 'latest-publication');
@@ -218,5 +222,6 @@ export async function loadPublicDailyData(asset: ProductAsset, preloadedScore?: 
     const date = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${expectedPriceDate}T00:00:00Z`));
     result.priceNotice = `Completed ${asset === 'stocks' ? 'SPY' : 'BTC'} close pending for ${date}.`;
   }
+  result.stockRisk = await riskPromise;
   return result;
 }

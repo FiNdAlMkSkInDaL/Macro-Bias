@@ -417,7 +417,7 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     for (let index = 1; index <= 15; index++) for (let repeat = 0; repeat < index; repeat++) ordinary.push({
       event_name: `ordinary_${index}`, created_at: '2026-10-04T12:00:00Z', page_path: '/', metadata: {}, subscriber_email: null, utm_source: null,
     });
-    const receipts = Array.from({ length: 400 }, (_, index) => ({ event_name: index % 2 ? 'crypto_publication' : 'crypto_email_delivery',
+    const receipts = Array.from({ length: 400 }, (_, index) => ({ event_name: ['crypto_publication', 'crypto_email_delivery', 'model_forward_prediction', 'model_forward_outcome', 'model_forward_health'][index % 5],
       created_at: '2026-10-04T12:00:00Z', page_path: '/api/cron/crypto-publish', metadata: { status: 'accepted' }, subscriber_email: null, utm_source: null }));
     const file = 'src/lib/analytics/dashboard-data.ts';
     const baseline = execFileSync('git', ['show', '65525a3f6732336f75bd6b3ea73ed24378eeb8d3:' + file], { cwd: root, encoding: 'utf8' });
@@ -427,8 +427,8 @@ async function check(name, run) { await run(); passed++; console.log(`PASS ${nam
     const actual = clone(await after.load(file).getAnalyticsDashboardData());
     assert.deepEqual(actual, expected);
     assert.equal(actual.topEvents.length, 15); assert.equal(actual.eventStats.last24h, ordinary.length);
-    assert.equal(after.effects.queries.find(item => item.rpc === 'get_top_events').args.lim, 17);
-    assert.ok(actual.marketing.observedEventNames.every(name => !name.startsWith('crypto_')));
+    assert.equal(after.effects.queries.find(item => item.rpc === 'get_top_events').args.lim, 20);
+    assert.ok(actual.marketing.observedEventNames.every(name => !name.startsWith('crypto_') && !name.startsWith('model_forward_')));
   });
   console.log(`${passed} crypto publisher/regression scenario groups passed. No live writes or delivery.`);
 })().catch(error => { console.error(error); process.exit(1); });

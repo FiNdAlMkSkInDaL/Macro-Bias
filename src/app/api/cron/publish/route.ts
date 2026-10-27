@@ -15,6 +15,7 @@ import type {
   StoredBiasSnapshot,
 } from '../../../../lib/briefing/types';
 import { dispatchQuantBriefing } from '../../../../lib/marketing/email-dispatch';
+import { loadPublicStockRisk } from '../../../../lib/model-forward/public-risk';
 import { buildStockEmailContext, dailyEmailImprovementsEnabled } from '../../../../lib/marketing/daily-email-context';
 import { filterSubscribedEmailRecipients } from '../../../../lib/marketing/email-preferences';
 import {
@@ -991,6 +992,19 @@ async function handlePublish(request: NextRequest) {
           const emailContext = dailyEmailImprovementsEnabled()
             ? buildStockEmailContext(dailyBriefing, latestSnapshot, previousEmailSnapshot)
             : undefined;
+          if (emailContext) {
+            let risk = await loadPublicStockRisk(latestSnapshot.trade_date);
+            // A second opportunity before the open if the morning collection failed.
+            // Deterministic, append-only locks make this safe alongside the daily job.
+            if (!risk.forecast && process.env.VERCEL_ENV === 'production' && process.env.MODEL_FORWARD_MODE !== 'paused') {
+              try {
+                const { runModelForward } = await import('../../../../lib/model-forward/service');
+                await runModelForward(); risk = await loadPublicStockRisk(latestSnapshot.trade_date);
+              }
+              catch { console.warn('[publish-cron] Session risk unavailable; ordinary newsletter dispatch continues.'); }
+            }
+            emailContext.stockRisk = risk;
+          }
           let totalRecipientCount = 0;
 
           if (premiumList.length > 0) {

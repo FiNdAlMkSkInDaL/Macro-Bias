@@ -1,0 +1,9 @@
+.card { margin: 24px 0; padding: clamp(20px, 3vw, 28px); border: 1px solid #344b42; border-radius: 16px; background: #101c17; color: #c7d5cd; line-height: 1.65; }
+.heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 20px; }
+.heading h2 { margin: 0; color: #f0f6f2; font-size: 1.05rem; line-height: 1.4; }
+.heading span { color: #9ac6af; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+.card p { max-width: 78ch; margin: 12px 0 0; font-size: .95rem; }
+.card .estimate { color: #e0f2e8; font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 600; letter-spacing: -.025em; line-height: 1.35; }
+.card details { margin-top: 16px; font-size: .9rem; }
+.card summary { cursor: pointer; color: #b2d7c4; width: fit-content; padding: 4px 0; }
+.card summary:focus-visible { outline: 2px solid #b2d7c4; outline-offset: 5px; }

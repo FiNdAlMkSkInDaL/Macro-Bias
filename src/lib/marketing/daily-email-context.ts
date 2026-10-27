@@ -1,8 +1,10 @@
+import type { StockRiskState } from '../model-forward/risk';
 import type { DailyBriefingResult, StoredBiasSnapshot } from '../briefing/types';
 import { buildStockMarketSnapshot } from '../briefing/stock-market-snapshot';
 
 /** Facts supplied by the publisher, independent of generated newsletter copy. */
 export type DailyEmailContext = {
+  stockRisk?: StockRiskState;
   scoreDate?: string;
   marketDataDate?: string;
   generatedAt?: string;

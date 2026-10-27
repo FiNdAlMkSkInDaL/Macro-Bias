@@ -1,3 +1,4 @@
+import { StockRiskCard } from './StockRiskCard';
 import Link from 'next/link';
 
 import { PaywallWrapper } from '@/components/paywall-wrapper';
@@ -116,6 +117,7 @@ export function FreeWorkspace({ data, audience = 'member', userId }: {
           <Reading name={activeName} heading={`Daily ${marketName} score`} score={data.active.score} href={dailyHref} error={data.active.loadError} />
         </section>
 
+        {data.asset === 'stocks' ? <StockRiskCard state={data.active.stockRisk} /> : null}
         <div className={styles.history}>
           <MacroMarketChart
             variant="history" instrument={instrument} title={`${instrument} price & daily bias`}

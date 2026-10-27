@@ -1,3 +1,4 @@
+import { StockRiskCard } from './StockRiskCard';
 import Link from 'next/link';
 
 import type { PublicDailyData } from '@/lib/product/public-daily-data';
@@ -111,6 +112,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
               <p>{data.loadError ?? 'A public score will appear here after a session has been published. Join the free email updates below.'}</p>
             </div>
           )}
+          {data.asset === 'stocks' ? <StockRiskCard state={data.stockRisk} /> : null}
           <dl className={styles.priceDate}>
             <div>
               <dt>{data.asset === 'crypto' ? 'BTC daily close (UTC)' : `${market.instrument} price close`}</dt>

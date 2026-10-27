@@ -1,3 +1,4 @@
+import { StockRiskCard } from './StockRiskCard';
 import Link from 'next/link';
 
 import { MacroMarketChart } from './MacroMarketChart';
@@ -46,6 +47,7 @@ export function ProDailyPage({ data, briefing }: {
           </section>
         )}
         {score ? <DailyPublicationNote score={score} /> : null}
+        {stocks ? <StockRiskCard state={data.stockRisk} /> : null}
         <section className={styles.chart} aria-label="Price and score history">
           <MacroMarketChart candles={data.candles} marks={data.history} latest={score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null} instrument={stocks ? 'SPY' : 'BTC'} title={`${stocks ? 'SPY' : 'Bitcoin'} price & daily bias`} variant="history" notice={[data.historyNotice, data.priceNotice].filter(Boolean).join(' ') || null} />
           <p className={styles.chartCaption}>Explore past sessions; the score above stays on the published session.</p>
