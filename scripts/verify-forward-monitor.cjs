@@ -10,6 +10,7 @@ assert.equal(comparison([...loss.slice(1), NaN], secondary, policy).eligible, fa
 const report = { checkedAt: '2027-01-11T10:30:00Z', settlementEnd: '2027-02-03T00:00:00Z', issues: [], cohorts: [{ key: 'stocks:hash1:recipe', market: 'stocks', completed: 60, candidates: [{ candidate: 'ewma', passes: true, kind: 'risk', comparisons: [] }] }] };
 let first = advanceState(report, null, policy);
 assert.equal(first.notifications.length, 0);
+assert.deepEqual(advanceState({ ...report, checkedAt: '2027-01-11T00:37:00Z' }, null, policy).state.reviews, {}, 'hourly reviews must wait for the daily job');
 assert.equal(advanceState(report, first.state, policy).notifications.length, 0);
 const next = { ...report, checkedAt: '2027-01-18T10:30:00Z', cohorts: [{ ...report.cohorts[0], completed: 65 }] };
 assert.equal(advanceState(next, first.state, policy).notifications[0].type, 'sustained_early_evidence');

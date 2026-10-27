@@ -6,7 +6,7 @@ Owner instruction on 27 October: monitor failures and consistent benchmark impro
 
 Run `node scripts/monitor-model-forward.cjs --record` from the authorized genuine-growth-analytics checkout. Production access is SELECT-only through the existing service configuration. The only writes are dated aggregate local monitoring state. It does not call any live cron, generate scores, settle outcomes, post, send email or create subscriber records. An unavailable read preserves the last complete snapshot and is an access failure, not zero activity. The normal report script remains available for a simpler aggregate inspection.
 
-The local chat follow-up is scheduled daily at 10:30 Europe/London (UTC throughout this test) through 3 February 2027. It runs after Vercel's 09:00–09:59 UTC collection window and before the stock newsletter. It checks:
+The local chat follow-up is scheduled daily at 10:30 Europe/London (UTC throughout this test) through 3 February 2027. It runs after Vercel's 09:00â€“09:59 UTC collection window and before the stock newsletter. It checks:
 
 - Fresh complete collection health, malformed/changed records and explicit collector errors.
 - Missing scheduled stock/crypto forecasts, respecting exchange holidays, the initial already-open stock session and the fixed end date.
@@ -16,7 +16,7 @@ The local chat follow-up is scheduled daily at 10:30 Europe/London (UTC througho
 
 Failure and recovery notices are deduplicated in `model-forward-monitor-state.json`. Preserve the existing two-week X follow-up as a separate automation and do not resume old listing/Outlook schedules. No credentials or subscriber identities belong in saved state or chat output.
 
-This chat follow-up needs the local computer and app running. The Vercel forecast collector continues with the laptop off, but this is not cloud chat notification delivery. Check the actual project cron configuration read-only if collector health becomes stale; do not change schedules or invoke a live collector to conceal a missing run. The collector's last immutable initial crypto lock is valid even though its optional source commit is empty; its deployment ID and model hash are preserved. The deployment metadata fallback is fixed for subsequent locks.
+The private GitHub workflow now delivers owner emails independently of the laptop and Vercel collector. Local Wednesday research still needs the computer and app. These are owner email alerts, not cloud notifications in this chat. Check the actual project cron configuration read-only if collector health becomes stale; do not change schedules or invoke a live collector to conceal a missing run. The collector's last immutable initial crypto lock is valid even though its optional source commit is empty; its deployment ID and model hash are preserved. The deployment metadata fallback is fixed for subsequent locks.
 
 ## Definition of sustained early evidence
 
