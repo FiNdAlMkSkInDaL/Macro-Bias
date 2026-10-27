@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import { stockLiveSession, stockSessionOpen, cryptoLiveSession, latestPublicationTime } from '../src/lib/signal/publication-timing';
+import { evaluatePublishedScores } from '../src/lib/signal/live-score-evaluation';
+import { buildTradableSignal, STOCKS_STRATEGY_RULES } from '../src/lib/signal';
+assert.equal(new Date(stockSessionOpen('2026-10-27')!).toISOString(), '2026-10-27T13:30:00.000Z');
+assert.equal(new Date(stockSessionOpen('2026-11-03')!).toISOString(), '2026-11-03T14:30:00.000Z');
+assert.equal(stockLiveSession('2026-10-27', '2026-10-26', '2026-10-27T13:09:00Z'), '2026-10-27');
+assert.equal(stockLiveSession('2026-10-27', '2026-10-26', '2026-10-27T13:30:00Z'), null);
+assert.equal(stockLiveSession('2026-10-27', '2026-10-27', '2026-10-27T13:09:00Z'), null);
+assert.equal(stockLiveSession('2026-10-27', null, '2026-10-27T13:09:00Z'), null);
+assert.equal(stockLiveSession('2026-10-27', '2026-10-26', 'invalid'), null);
+assert.equal(cryptoLiveSession('2026-10-26', '2026-10-27T12:39:00Z'), '2026-10-28');
+assert.equal(cryptoLiveSession('2026-10-26', '2026-10-27T00:00:00Z'), '2026-10-27');
+assert.equal(cryptoLiveSession('2026-10-26', '2026-10-26T12:39:00Z'), null);
+assert.equal(cryptoLiveSession('2026-10-25', '2026-10-27T12:39:00Z'), null);
+assert.equal(latestPublicationTime('2026-10-27T13:09:00Z', '2026-10-27T16:00:00Z'), '2026-10-27T16:00:00.000Z');
+const signal = buildTradableSignal({ score: 40, neighborForwardReturns: [1, 2, 3], neighborDistances: [.1, .2, .3], rules: STOCKS_STRATEGY_RULES });
+const evaluated = evaluatePublishedScores([{ tradeDate: '2026-10-27', targetSessionDate: '2026-10-27', score: 40, signal }],
+  [{ tradeDate: '2026-10-27', changePercent: 2 }, { tradeDate: '2026-10-28', changePercent: -5 }]);
+assert.equal(evaluated.totalGraded, 1); assert.equal(evaluated.latest?.sessionDate, '2026-10-27'); assert.equal(evaluated.forwardHitRate, 100);
+console.log('PASS live evaluation timing: NY daylight saving, before-open same-session stocks, crypto first full UTC session, missing/late/backfilled/revised publications excluded, no repeated stale scores.');

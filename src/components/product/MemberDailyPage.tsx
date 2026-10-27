@@ -44,6 +44,7 @@ export function MemberDailyPage({ data }: { data: PublicDailyData }) {
             </div>
             <div className={styles.interpretation}>
               <h2>What this reading means</h2><p>{score.explanation?.reason ?? regime.explanation}</p>
+              {score.explanation?.trade ? <div data-trading-filters><h3>{score.explanation.trade.title}</h3><p>{score.explanation.trade.reason}</p></div> : null}
               <DailyPublicationNote score={score} />
               <div className={ui.actions}><Link className={ui.textLink} href={dashboard}>Open dashboard<ArrowIcon /></Link><Link className={ui.textLink} href={briefings}>Read older briefings<ArrowIcon /></Link></div>
             </div>

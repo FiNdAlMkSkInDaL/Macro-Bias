@@ -8,6 +8,8 @@ export type DailyEmailContext = {
   generatedAt?: string;
   previousScore?: number | null;
   previousScoreDate?: string | null;
+  scoreVersion?: string | null;
+  previousScoreVersion?: string | null;
   interpretation?: string | null;
   /** Supported price observation, safe to retain even when the model withholds a call. */
   marketObservation?: string | null;
@@ -51,7 +53,7 @@ function ordinal(value: number) {
 export function buildStockEmailContext(
   briefing: DailyBriefingResult,
   snapshot: StoredBiasSnapshot,
-  previous: Pick<StoredBiasSnapshot, 'trade_date' | 'score'> | null,
+  previous: (Pick<StoredBiasSnapshot, 'trade_date' | 'score'> & Partial<Pick<StoredBiasSnapshot, 'model_version'>>) | null,
 ): DailyEmailContext {
   const components = Array.isArray(snapshot.component_scores) ? snapshot.component_scores.map(record) : [];
   const historical = components.find((component) => Array.isArray(component.analogMatches) && component.analogMatches.length)
@@ -80,6 +82,8 @@ export function buildStockEmailContext(
   const marketDataDate = market.marketDataDate ?? undefined;
   return {
     scoreDate: snapshot.trade_date,
+    scoreVersion: snapshot.model_version,
+    previousScoreVersion: previous?.model_version ?? null,
     marketDataDate,
     generatedAt: new Date().toISOString(),
     previousScore: previous && previous.trade_date < snapshot.trade_date && finite(previous.score) ? previous.score : null,

@@ -161,7 +161,7 @@ function getHistoricalAnalogVectors(input: CryptoDailyBiasInput): CryptoHistoric
       `Need at least ${CRYPTO_ANALOG_MODEL_SETTINGS.minimumHistoricalAnalogs} analogs; got ${vectors.length}.`,
     );
   }
-  return vectors;
+  return vectors.filter(vector => vector.tradeDate < input.tradeDate);
 }
 
 function buildFeatureStatistics(analogs: CryptoHistoricalAnalogVector[]): FeatureStatistics {
@@ -454,7 +454,8 @@ export function calculateCryptoDailyBias(input: CryptoDailyBiasInput): CryptoDai
       : undefined,
   });
 
-  const label = signal.position === "NO_TRADE" ? "NEUTRAL" : getBiasLabel(score);
+  signal.scoreContext = { semantics: 'daily_reading_v1', rawScore: score, tradeScore: score, sourceTradeDate: input.tradeDate, suppressedBy: [], filters: [] };
+  const label = getBiasLabel(score);
 
   return {
     tradeDate: input.tradeDate,

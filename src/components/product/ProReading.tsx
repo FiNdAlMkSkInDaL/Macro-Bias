@@ -1,5 +1,6 @@
 import type { ProductAsset } from '@/lib/product/score-access';
 import type { ReadingExplanation } from '@/lib/signal/reading-explanation';
+import type { TradableSignal } from '@/lib/signal/types';
 import styles from './ProReading.module.css';
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -20,9 +21,10 @@ function labelText(label: string | null) {
   return label ? label.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Regime unavailable';
 }
 
-export function ProReading({ asset, tradeDate, score, label, explanation }: {
+export function ProReading({ asset, tradeDate, score, label, explanation, decision }: {
   asset: ProductAsset; tradeDate: string | null; score: number | null; label: string | null;
   explanation?: ReadingExplanation | null;
+  decision?: TradableSignal | null;
 }) {
   const market = asset === 'stocks' ? 'stock' : 'crypto';
   const storedLabel = labelText(label);
@@ -42,6 +44,11 @@ export function ProReading({ asset, tradeDate, score, label, explanation }: {
         </div>
       </div> : <p className={styles.missing}>The published reading is unavailable.</p>}
       {hasScore && explanation ? <p className={styles.explanation}>{explanation.reason}</p> : null}
+      {hasScore && explanation?.trade ? <div className={styles.filters} data-trading-filters>
+        <h3>{explanation.trade.title}</h3>
+        {decision ? <p>Trade permission: {decision.position.replace('_', ' ')} · Risk size: {Math.round(decision.size * 100)}%</p> : null}
+        <p>{explanation.trade.reason}</p>
+      </div> : null}
     </section>
   );
 }

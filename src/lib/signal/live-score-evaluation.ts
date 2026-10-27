@@ -5,6 +5,8 @@ export type PublishedScoreForEval = {
   tradeDate: string;
   score: number;
   signal?: TradableSignal | null;
+  /** Explicit full session after actual publication; skips missing/late/backfilled sessions. */
+  targetSessionDate?: string;
 };
 
 export type SessionReturnForEval = {
@@ -63,8 +65,8 @@ function resolveReliability(signal: TradableSignal | null | undefined): Reliabil
 }
 
 /**
- * Grade published scores against the *next* asset session only.
- * Score on date S applies to the first session with tradeDate > S.
+ * Grade explicit eligible full sessions after actual publication when supplied.
+ * Legacy callers without timestamps retain their next-session date convention.
  */
 export function evaluatePublishedScores(
   scores: PublishedScoreForEval[],
@@ -88,7 +90,7 @@ export function evaluatePublishedScores(
     };
   }
 
-  const orderedScores = [...scores].sort((a, b) => a.tradeDate.localeCompare(b.tradeDate));
+  const orderedScores = [...scores].sort((a, b) => (a.targetSessionDate ?? a.tradeDate).localeCompare(b.targetSessionDate ?? b.tradeDate));
   const orderedSessions = [...sessions].sort((a, b) => a.tradeDate.localeCompare(b.tradeDate));
 
   const graded: GradedSession[] = [];
@@ -97,7 +99,9 @@ export function evaluatePublishedScores(
   for (const session of orderedSessions) {
     while (
       scoreIdx + 1 < orderedScores.length &&
-      orderedScores[scoreIdx + 1].tradeDate < session.tradeDate
+      (orderedScores[scoreIdx + 1].targetSessionDate != null
+        ? orderedScores[scoreIdx + 1].targetSessionDate! <= session.tradeDate
+        : orderedScores[scoreIdx + 1].tradeDate < session.tradeDate)
     ) {
       scoreIdx += 1;
     }
@@ -105,7 +109,7 @@ export function evaluatePublishedScores(
     if (scoreIdx < 0) continue;
 
     const prior = orderedScores[scoreIdx];
-    if (prior.tradeDate >= session.tradeDate) continue;
+    if (prior.targetSessionDate != null ? prior.targetSessionDate !== session.tradeDate : prior.tradeDate >= session.tradeDate) continue;
 
     let position = positionFromSignal(prior.signal, prior.score, rules);
     if (mode === "long_only" && position === "SHORT") {

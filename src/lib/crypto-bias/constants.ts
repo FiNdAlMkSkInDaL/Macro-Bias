@@ -35,4 +35,5 @@ export const CRYPTO_LEVEL_FEATURES_FOR_PERCENTILE = [
 
 export const CRYPTO_STRATEGY_RULES_EXPORT = CRYPTO_STRATEGY_RULES;
 
-export const CRYPTO_MODEL_VERSION = "crypto-model-v4-calibrated-gates";
+// v5 preserves v4's numeric expectancy and keeps its regime independent of trade permission.
+export const CRYPTO_MODEL_VERSION = "crypto-model-v5-daily-reading";

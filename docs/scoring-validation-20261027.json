@@ -1,0 +1,2337 @@
+{
+  "generatedAt": "2026-10-27T18:02:53.878Z",
+  "decision": "Publish the unfiltered historical reading and independent trading checks. Correct K selection to actual VIX index points at the fixed boundary20. This is a units correction, not a threshold optimized from results. Predictive edge is not established for either newsletter.",
+  "effectiveVersions": {
+    "stocks": "macro-model-v19-daily-reading-raw-vix",
+    "crypto": "crypto-model-v5-daily-reading"
+  },
+  "releasePolicy": "First newly generated scores after deployment; no historical score/label/briefing backfill, manual email, or test subscribers. Prior stock version deltas omitted at the boundary.",
+  "originalMatchReplay": [
+    {
+      "market": "stocks",
+      "replayCompared": 20,
+      "replayMismatches": []
+    },
+    {
+      "market": "crypto",
+      "replayCompared": 26,
+      "replayMismatches": []
+    }
+  ],
+  "timestampedOriginalLiveEvaluation": {
+    "stocks": {
+      "completedSessions": 18,
+      "directionalSessions": 1,
+      "period": [
+        "2026-10-01",
+        "2026-10-26"
+      ],
+      "notes": "Insufficient live sample. Published before target-session NY open, latest revision timestamp used; late/backfilled/unknown source rows excluded."
+    },
+    "crypto": {
+      "completedSessions": 22,
+      "directionalLongOnlySessions": 9,
+      "correctDirectionalSessions": 3,
+      "period": [
+        "2026-10-05",
+        "2026-10-26"
+      ],
+      "notes": "First full UTC session after actual publication/revision, not hours before the newsletter existed. This is the old published model, not live evidence for v5."
+    }
+  },
+  "stockReconstruction": {
+    "generatedAt": "2026-10-27T18:02:53.878Z",
+    "cutoff": "2026-10-26",
+    "model": "v19 daily raw score / independent trade filters",
+    "methodology": {
+      "variants": "Predeclared legacy percentile20, corrected raw VIX20, and fixed K5. No threshold optimization or best-result selection.",
+      "scoreTarget": "Completed-source-close to next one and three closes, blended 0.55/0.45. Score is not a probability.",
+      "tradeTarget": "Next completed SPY open-to-close, separate permission with fixed 10bp round-trip costs per active day.",
+      "causal": "Past-only trailing percentiles and regime calibration; only matured three-session labels; five-calendar-day neighbor exclusion.",
+      "caveats": [
+        "Reconstruction from current stored prices, not point-in-time-vintage or live performance. Available warmup differs from original ten-year jobs.",
+        "2020\u00ef\u00bf\u00bd2026 were previously examined and used for model selection; none is an untouched holdout. 2026 is a descriptive recent slice.",
+        "Overlapping three-session outcomes are dependent. Direction hit intervals are descriptive Wilson intervals; no independence or significance claim.",
+        "Fixed costs omit variable slippage, borrow and size effects. Historic unit-exposure returns are not investable performance.",
+        "Prospective validation starts with the first new-version publication; no claim of proven predictive edge."
+      ]
+    },
+    "parityChecks": 29,
+    "priceCoverage": {
+      "SPY": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "QQQ": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "TLT": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "GLD": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "USO": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "HYG": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "VIX": {
+        "rows": 2658,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "CPER": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      }
+    },
+    "results": {
+      "legacyPercentile20": {
+        "scores": {
+          "sessions": 1712,
+          "zeroScores": 46,
+          "neutralPct": 65.71,
+          "meanAbsoluteScore": 18.19,
+          "correlation1CloseToClose": 0.0422,
+          "correlation3CloseToClose": 0.0681,
+          "buckets": [
+            {
+              "range": [
+                -100,
+                -21
+              ],
+              "count": 247,
+              "meanForward1Pct": 0.0652,
+              "meanForward3Pct": 0.2184,
+              "directionHitPct": 44.13,
+              "hit95Pct": [
+                38.07,
+                50.36
+              ],
+              "alwaysUpHitPct": 55.87
+            },
+            {
+              "range": [
+                -20,
+                20
+              ],
+              "count": 1125,
+              "meanForward1Pct": 0.0209,
+              "meanForward3Pct": 0.0743,
+              "directionHitPct": null,
+              "hit95Pct": null,
+              "alwaysUpHitPct": 53.69
+            },
+            {
+              "range": [
+                21,
+                100
+              ],
+              "count": 340,
+              "meanForward1Pct": 0.1757,
+              "meanForward3Pct": 0.4587,
+              "directionHitPct": 56.18,
+              "hit95Pct": [
+                50.86,
+                61.35
+              ],
+              "alwaysUpHitPct": 56.18
+            }
+          ]
+        },
+        "trades": {
+          "filtered": {
+            "sessions": 1712,
+            "activeSessions": 242,
+            "cashPct": 85.86,
+            "zeroScorePct": 43.75,
+            "hitRatePct": 54.96,
+            "meanGrossActiveReturnPct": 0.1533,
+            "meanNetReturnAllSessionsPct": 0.0075,
+            "netCumulativeUnitReturnPct": 11.64,
+            "maxDrawdownPct": 16.21
+          },
+          "withoutLowVariation": {
+            "sessions": 1712,
+            "activeSessions": 263,
+            "cashPct": 84.64,
+            "zeroScorePct": 29.44,
+            "hitRatePct": 54.75,
+            "meanGrossActiveReturnPct": 0.139,
+            "meanNetReturnAllSessionsPct": 0.006,
+            "netCumulativeUnitReturnPct": 8.58,
+            "maxDrawdownPct": 17.89
+          }
+        },
+        "annual": [
+          {
+            "year": "2020",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 9,
+              "neutralPct": 61.9,
+              "meanAbsoluteScore": 20.13,
+              "correlation1CloseToClose": 0.0457,
+              "correlation3CloseToClose": 0.0677,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 28,
+                  "meanForward1Pct": 0.1327,
+                  "meanForward3Pct": 1.1299,
+                  "directionHitPct": 42.86,
+                  "hit95Pct": [
+                    26.51,
+                    60.93
+                  ],
+                  "alwaysUpHitPct": 57.14
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 156,
+                  "meanForward1Pct": 0.0221,
+                  "meanForward3Pct": -0.0996,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 58.33
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 68,
+                  "meanForward1Pct": 0.1848,
+                  "meanForward3Pct": 0.5623,
+                  "directionHitPct": 55.88,
+                  "hit95Pct": [
+                    44.08,
+                    67.05
+                  ],
+                  "alwaysUpHitPct": 55.88
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 27,
+              "cashPct": 89.29,
+              "zeroScorePct": 55.95,
+              "hitRatePct": 44.44,
+              "meanGrossActiveReturnPct": -0.1349,
+              "meanNetReturnAllSessionsPct": -0.0252,
+              "netCumulativeUnitReturnPct": -6.52,
+              "maxDrawdownPct": 13.39
+            }
+          },
+          {
+            "year": "2021",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 7,
+              "neutralPct": 67.86,
+              "meanAbsoluteScore": 17.22,
+              "correlation1CloseToClose": 0.033,
+              "correlation3CloseToClose": 0.0769,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 22,
+                  "meanForward1Pct": 0.3512,
+                  "meanForward3Pct": 0.6405,
+                  "directionHitPct": 36.36,
+                  "hit95Pct": [
+                    19.73,
+                    57.05
+                  ],
+                  "alwaysUpHitPct": 63.64
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 171,
+                  "meanForward1Pct": 0.0153,
+                  "meanForward3Pct": 0.1469,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 54.97
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 59,
+                  "meanForward1Pct": 0.2451,
+                  "meanForward3Pct": 0.6455,
+                  "directionHitPct": 64.41,
+                  "hit95Pct": [
+                    51.66,
+                    75.4
+                  ],
+                  "alwaysUpHitPct": 64.41
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 33,
+              "cashPct": 86.9,
+              "zeroScorePct": 46.43,
+              "hitRatePct": 48.48,
+              "meanGrossActiveReturnPct": 0.0669,
+              "meanNetReturnAllSessionsPct": -0.0043,
+              "netCumulativeUnitReturnPct": -1.15,
+              "maxDrawdownPct": 5.1
+            }
+          },
+          {
+            "year": "2022",
+            "scores": {
+              "sessions": 251,
+              "zeroScores": 1,
+              "neutralPct": 53.39,
+              "meanAbsoluteScore": 23.88,
+              "correlation1CloseToClose": 0.0881,
+              "correlation3CloseToClose": 0.1492,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 55,
+                  "meanForward1Pct": -0.3044,
+                  "meanForward3Pct": -0.8547,
+                  "directionHitPct": 63.64,
+                  "hit95Pct": [
+                    50.42,
+                    75.07
+                  ],
+                  "alwaysUpHitPct": 36.36
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 134,
+                  "meanForward1Pct": -0.0385,
+                  "meanForward3Pct": -0.1524,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 45.52
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 62,
+                  "meanForward1Pct": 0.0511,
+                  "meanForward3Pct": 0.1582,
+                  "directionHitPct": 43.55,
+                  "hit95Pct": [
+                    31.94,
+                    55.91
+                  ],
+                  "alwaysUpHitPct": 43.55
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 251,
+              "activeSessions": 52,
+              "cashPct": 79.28,
+              "zeroScorePct": 38.65,
+              "hitRatePct": 63.46,
+              "meanGrossActiveReturnPct": 0.3566,
+              "meanNetReturnAllSessionsPct": 0.0532,
+              "netCumulativeUnitReturnPct": 13.69,
+              "maxDrawdownPct": 5.03
+            }
+          },
+          {
+            "year": "2023",
+            "scores": {
+              "sessions": 250,
+              "zeroScores": 11,
+              "neutralPct": 69.2,
+              "meanAbsoluteScore": 16.59,
+              "correlation1CloseToClose": 0.0597,
+              "correlation3CloseToClose": 0.0614,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 33,
+                  "meanForward1Pct": 0.1933,
+                  "meanForward3Pct": 0.156,
+                  "directionHitPct": 33.33,
+                  "hit95Pct": [
+                    19.75,
+                    50.39
+                  ],
+                  "alwaysUpHitPct": 66.67
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 173,
+                  "meanForward1Pct": 0.0192,
+                  "meanForward3Pct": 0.2265,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 53.18
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 44,
+                  "meanForward1Pct": 0.2933,
+                  "meanForward3Pct": 0.4936,
+                  "directionHitPct": 59.09,
+                  "hit95Pct": [
+                    44.41,
+                    72.31
+                  ],
+                  "alwaysUpHitPct": 59.09
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 250,
+              "activeSessions": 36,
+              "cashPct": 85.6,
+              "zeroScorePct": 36.8,
+              "hitRatePct": 58.33,
+              "meanGrossActiveReturnPct": 0.086,
+              "meanNetReturnAllSessionsPct": -0.002,
+              "netCumulativeUnitReturnPct": -0.61,
+              "maxDrawdownPct": 5.23
+            }
+          },
+          {
+            "year": "2024",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 9,
+              "neutralPct": 69.05,
+              "meanAbsoluteScore": 15.91,
+              "correlation1CloseToClose": -0.0463,
+              "correlation3CloseToClose": -0.1271,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 43,
+                  "meanForward1Pct": 0.0322,
+                  "meanForward3Pct": 0.4268,
+                  "directionHitPct": 39.53,
+                  "hit95Pct": [
+                    26.37,
+                    54.42
+                  ],
+                  "alwaysUpHitPct": 60.47
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 174,
+                  "meanForward1Pct": 0.0918,
+                  "meanForward3Pct": 0.2266,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 58.05
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 35,
+                  "meanForward1Pct": 0.1252,
+                  "meanForward3Pct": 0.2929,
+                  "directionHitPct": 60,
+                  "hit95Pct": [
+                    43.57,
+                    74.45
+                  ],
+                  "alwaysUpHitPct": 60
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 30,
+              "cashPct": 88.1,
+              "zeroScorePct": 44.05,
+              "hitRatePct": 46.67,
+              "meanGrossActiveReturnPct": -0.0225,
+              "meanNetReturnAllSessionsPct": -0.0146,
+              "netCumulativeUnitReturnPct": -3.66,
+              "maxDrawdownPct": 4
+            }
+          },
+          {
+            "year": "2025",
+            "scores": {
+              "sessions": 250,
+              "zeroScores": 8,
+              "neutralPct": 66,
+              "meanAbsoluteScore": 17.61,
+              "correlation1CloseToClose": 0.0226,
+              "correlation3CloseToClose": 0.0762,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 53,
+                  "meanForward1Pct": 0.1624,
+                  "meanForward3Pct": 0.4523,
+                  "directionHitPct": 41.51,
+                  "hit95Pct": [
+                    29.26,
+                    54.91
+                  ],
+                  "alwaysUpHitPct": 58.49
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 165,
+                  "meanForward1Pct": 0.0223,
+                  "meanForward3Pct": -0.0331,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 56.36
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 32,
+                  "meanForward1Pct": 0.1475,
+                  "meanForward3Pct": 1.0037,
+                  "directionHitPct": 56.25,
+                  "hit95Pct": [
+                    39.33,
+                    71.83
+                  ],
+                  "alwaysUpHitPct": 56.25
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 250,
+              "activeSessions": 41,
+              "cashPct": 83.6,
+              "zeroScorePct": 43.2,
+              "hitRatePct": 53.66,
+              "meanGrossActiveReturnPct": 0.4029,
+              "meanNetReturnAllSessionsPct": 0.0497,
+              "netCumulativeUnitReturnPct": 12.43,
+              "maxDrawdownPct": 4.12
+            }
+          },
+          {
+            "year": "2026",
+            "scores": {
+              "sessions": 205,
+              "zeroScores": 1,
+              "neutralPct": 74.15,
+              "meanAbsoluteScore": 15.51,
+              "correlation1CloseToClose": 0.0081,
+              "correlation3CloseToClose": 0.0059,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 13,
+                  "meanForward1Pct": 0.3866,
+                  "meanForward3Pct": 0.5967,
+                  "directionHitPct": 30.77,
+                  "hit95Pct": [
+                    12.68,
+                    57.63
+                  ],
+                  "alwaysUpHitPct": 69.23
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 152,
+                  "meanForward1Pct": -0.0023,
+                  "meanForward3Pct": 0.1406,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 47.37
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 40,
+                  "meanForward1Pct": 0.1886,
+                  "meanForward3Pct": 0.1436,
+                  "directionHitPct": 57.5,
+                  "hit95Pct": [
+                    42.19,
+                    71.49
+                  ],
+                  "alwaysUpHitPct": 57.5
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 205,
+              "activeSessions": 23,
+              "cashPct": 88.78,
+              "zeroScorePct": 40.49,
+              "hitRatePct": 65.22,
+              "meanGrossActiveReturnPct": 0.0451,
+              "meanNetReturnAllSessionsPct": -0.0062,
+              "netCumulativeUnitReturnPct": -1.27,
+              "maxDrawdownPct": 2.37
+            }
+          }
+        ],
+        "reviewed2026": {
+          "scores": {
+            "sessions": 204,
+            "zeroScores": 1,
+            "neutralPct": 74.02,
+            "meanAbsoluteScore": 15.52,
+            "correlation1CloseToClose": 0.0079,
+            "correlation3CloseToClose": 0.0045,
+            "buckets": [
+              {
+                "range": [
+                  -100,
+                  -21
+                ],
+                "count": 13,
+                "meanForward1Pct": 0.3866,
+                "meanForward3Pct": 0.5967,
+                "directionHitPct": 30.77,
+                "hit95Pct": [
+                  12.68,
+                  57.63
+                ],
+                "alwaysUpHitPct": 69.23
+              },
+              {
+                "range": [
+                  -20,
+                  20
+                ],
+                "count": 151,
+                "meanForward1Pct": -0.0035,
+                "meanForward3Pct": 0.1318,
+                "directionHitPct": null,
+                "hit95Pct": null,
+                "alwaysUpHitPct": 47.02
+              },
+              {
+                "range": [
+                  21,
+                  100
+                ],
+                "count": 40,
+                "meanForward1Pct": 0.1886,
+                "meanForward3Pct": 0.1436,
+                "directionHitPct": 57.5,
+                "hit95Pct": [
+                  42.19,
+                  71.49
+                ],
+                "alwaysUpHitPct": 57.5
+              }
+            ]
+          },
+          "trades": {
+            "sessions": 204,
+            "activeSessions": 23,
+            "cashPct": 88.73,
+            "zeroScorePct": 40.69,
+            "hitRatePct": 65.22,
+            "meanGrossActiveReturnPct": 0.0451,
+            "meanNetReturnAllSessionsPct": -0.0062,
+            "netCumulativeUnitReturnPct": -1.27,
+            "maxDrawdownPct": 2.37
+          }
+        }
+      },
+      "rawVix20": {
+        "scores": {
+          "sessions": 1712,
+          "zeroScores": 43,
+          "neutralPct": 67.17,
+          "meanAbsoluteScore": 17.64,
+          "correlation1CloseToClose": 0.0369,
+          "correlation3CloseToClose": 0.0623,
+          "buckets": [
+            {
+              "range": [
+                -100,
+                -21
+              ],
+              "count": 234,
+              "meanForward1Pct": 0.0626,
+              "meanForward3Pct": 0.2549,
+              "directionHitPct": 46.15,
+              "hit95Pct": [
+                39.88,
+                52.55
+              ],
+              "alwaysUpHitPct": 53.85
+            },
+            {
+              "range": [
+                -20,
+                20
+              ],
+              "count": 1150,
+              "meanForward1Pct": 0.0262,
+              "meanForward3Pct": 0.0803,
+              "directionHitPct": null,
+              "hit95Pct": null,
+              "alwaysUpHitPct": 54.17
+            },
+            {
+              "range": [
+                21,
+                100
+              ],
+              "count": 328,
+              "meanForward1Pct": 0.1664,
+              "meanForward3Pct": 0.4313,
+              "directionHitPct": 56.1,
+              "hit95Pct": [
+                50.69,
+                61.37
+              ],
+              "alwaysUpHitPct": 56.1
+            }
+          ]
+        },
+        "trades": {
+          "filtered": {
+            "sessions": 1712,
+            "activeSessions": 236,
+            "cashPct": 86.21,
+            "zeroScorePct": 41.47,
+            "hitRatePct": 55.93,
+            "meanGrossActiveReturnPct": 0.1885,
+            "meanNetReturnAllSessionsPct": 0.0122,
+            "netCumulativeUnitReturnPct": 20.9,
+            "maxDrawdownPct": 15.28
+          },
+          "withoutLowVariation": {
+            "sessions": 1712,
+            "activeSessions": 251,
+            "cashPct": 85.34,
+            "zeroScorePct": 29.5,
+            "hitRatePct": 55.78,
+            "meanGrossActiveReturnPct": 0.175,
+            "meanNetReturnAllSessionsPct": 0.011,
+            "netCumulativeUnitReturnPct": 18.31,
+            "maxDrawdownPct": 16.84
+          }
+        },
+        "annual": [
+          {
+            "year": "2020",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 11,
+              "neutralPct": 61.9,
+              "meanAbsoluteScore": 19.9,
+              "correlation1CloseToClose": 0.0396,
+              "correlation3CloseToClose": 0.0602,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 28,
+                  "meanForward1Pct": 0.1327,
+                  "meanForward3Pct": 1.1299,
+                  "directionHitPct": 42.86,
+                  "hit95Pct": [
+                    26.51,
+                    60.93
+                  ],
+                  "alwaysUpHitPct": 57.14
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 156,
+                  "meanForward1Pct": 0.0221,
+                  "meanForward3Pct": -0.0996,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 58.33
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 68,
+                  "meanForward1Pct": 0.1848,
+                  "meanForward3Pct": 0.5623,
+                  "directionHitPct": 55.88,
+                  "hit95Pct": [
+                    44.08,
+                    67.05
+                  ],
+                  "alwaysUpHitPct": 55.88
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 27,
+              "cashPct": 89.29,
+              "zeroScorePct": 56.35,
+              "hitRatePct": 44.44,
+              "meanGrossActiveReturnPct": -0.1349,
+              "meanNetReturnAllSessionsPct": -0.0252,
+              "netCumulativeUnitReturnPct": -6.52,
+              "maxDrawdownPct": 13.39
+            }
+          },
+          {
+            "year": "2021",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 9,
+              "neutralPct": 68.25,
+              "meanAbsoluteScore": 16.99,
+              "correlation1CloseToClose": 0.0178,
+              "correlation3CloseToClose": 0.0565,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 23,
+                  "meanForward1Pct": 0.3376,
+                  "meanForward3Pct": 0.7597,
+                  "directionHitPct": 39.13,
+                  "hit95Pct": [
+                    22.16,
+                    59.21
+                  ],
+                  "alwaysUpHitPct": 60.87
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 172,
+                  "meanForward1Pct": 0.0121,
+                  "meanForward3Pct": 0.1097,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 55.23
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 57,
+                  "meanForward1Pct": 0.2623,
+                  "meanForward3Pct": 0.7187,
+                  "directionHitPct": 64.91,
+                  "hit95Pct": [
+                    51.94,
+                    76
+                  ],
+                  "alwaysUpHitPct": 64.91
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 30,
+              "cashPct": 88.1,
+              "zeroScorePct": 46.03,
+              "hitRatePct": 50,
+              "meanGrossActiveReturnPct": 0.1065,
+              "meanNetReturnAllSessionsPct": 0.0008,
+              "netCumulativeUnitReturnPct": 0.14,
+              "maxDrawdownPct": 4.34
+            }
+          },
+          {
+            "year": "2022",
+            "scores": {
+              "sessions": 251,
+              "zeroScores": 0,
+              "neutralPct": 52.19,
+              "meanAbsoluteScore": 24.16,
+              "correlation1CloseToClose": 0.0828,
+              "correlation3CloseToClose": 0.1389,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 56,
+                  "meanForward1Pct": -0.3155,
+                  "meanForward3Pct": -0.8163,
+                  "directionHitPct": 66.07,
+                  "hit95Pct": [
+                    53,
+                    77.08
+                  ],
+                  "alwaysUpHitPct": 33.93
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 131,
+                  "meanForward1Pct": -0.0216,
+                  "meanForward3Pct": -0.1742,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 46.56
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 64,
+                  "meanForward1Pct": 0.0276,
+                  "meanForward3Pct": 0.1705,
+                  "directionHitPct": 43.75,
+                  "hit95Pct": [
+                    32.29,
+                    55.91
+                  ],
+                  "alwaysUpHitPct": 43.75
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 251,
+              "activeSessions": 53,
+              "cashPct": 78.88,
+              "zeroScorePct": 38.25,
+              "hitRatePct": 62.26,
+              "meanGrossActiveReturnPct": 0.3394,
+              "meanNetReturnAllSessionsPct": 0.0506,
+              "netCumulativeUnitReturnPct": 12.94,
+              "maxDrawdownPct": 5.03
+            }
+          },
+          {
+            "year": "2023",
+            "scores": {
+              "sessions": 250,
+              "zeroScores": 6,
+              "neutralPct": 70,
+              "meanAbsoluteScore": 16.21,
+              "correlation1CloseToClose": 0.0821,
+              "correlation3CloseToClose": 0.0712,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 33,
+                  "meanForward1Pct": 0.126,
+                  "meanForward3Pct": 0.1154,
+                  "directionHitPct": 39.39,
+                  "hit95Pct": [
+                    24.68,
+                    56.32
+                  ],
+                  "alwaysUpHitPct": 60.61
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 175,
+                  "meanForward1Pct": 0.0364,
+                  "meanForward3Pct": 0.2404,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 54.29
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 42,
+                  "meanForward1Pct": 0.2878,
+                  "meanForward3Pct": 0.48,
+                  "directionHitPct": 59.52,
+                  "hit95Pct": [
+                    44.49,
+                    72.96
+                  ],
+                  "alwaysUpHitPct": 59.52
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 250,
+              "activeSessions": 36,
+              "cashPct": 85.6,
+              "zeroScorePct": 34.8,
+              "hitRatePct": 61.11,
+              "meanGrossActiveReturnPct": 0.1214,
+              "meanNetReturnAllSessionsPct": 0.0031,
+              "netCumulativeUnitReturnPct": 0.66,
+              "maxDrawdownPct": 5.23
+            }
+          },
+          {
+            "year": "2024",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 10,
+              "neutralPct": 72.62,
+              "meanAbsoluteScore": 14.6,
+              "correlation1CloseToClose": -0.0677,
+              "correlation3CloseToClose": -0.1341,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 37,
+                  "meanForward1Pct": 0.114,
+                  "meanForward3Pct": 0.7631,
+                  "directionHitPct": 35.14,
+                  "hit95Pct": [
+                    21.83,
+                    51.24
+                  ],
+                  "alwaysUpHitPct": 64.86
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 183,
+                  "meanForward1Pct": 0.087,
+                  "meanForward3Pct": 0.1881,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 57.92
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 32,
+                  "meanForward1Pct": 0.0503,
+                  "meanForward3Pct": 0.1683,
+                  "directionHitPct": 56.25,
+                  "hit95Pct": [
+                    39.33,
+                    71.83
+                  ],
+                  "alwaysUpHitPct": 56.25
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 30,
+              "cashPct": 88.1,
+              "zeroScorePct": 41.27,
+              "hitRatePct": 40,
+              "meanGrossActiveReturnPct": 0.04,
+              "meanNetReturnAllSessionsPct": -0.0071,
+              "netCumulativeUnitReturnPct": -1.86,
+              "maxDrawdownPct": 3.81
+            }
+          },
+          {
+            "year": "2025",
+            "scores": {
+              "sessions": 250,
+              "zeroScores": 6,
+              "neutralPct": 71.6,
+              "meanAbsoluteScore": 16.18,
+              "correlation1CloseToClose": 0.0129,
+              "correlation3CloseToClose": 0.0723,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 44,
+                  "meanForward1Pct": 0.1503,
+                  "meanForward3Pct": 0.3572,
+                  "directionHitPct": 47.73,
+                  "hit95Pct": [
+                    33.75,
+                    62.06
+                  ],
+                  "alwaysUpHitPct": 52.27
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 179,
+                  "meanForward1Pct": 0.0444,
+                  "meanForward3Pct": 0.034,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 58.1
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 27,
+                  "meanForward1Pct": 0.0907,
+                  "meanForward3Pct": 1.0677,
+                  "directionHitPct": 55.56,
+                  "hit95Pct": [
+                    37.31,
+                    72.41
+                  ],
+                  "alwaysUpHitPct": 55.56
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 250,
+              "activeSessions": 38,
+              "cashPct": 84.8,
+              "zeroScorePct": 39.6,
+              "hitRatePct": 60.53,
+              "meanGrossActiveReturnPct": 0.521,
+              "meanNetReturnAllSessionsPct": 0.064,
+              "netCumulativeUnitReturnPct": 16.52,
+              "maxDrawdownPct": 3.1
+            }
+          },
+          {
+            "year": "2026",
+            "scores": {
+              "sessions": 205,
+              "zeroScores": 1,
+              "neutralPct": 75.12,
+              "meanAbsoluteScore": 14.92,
+              "correlation1CloseToClose": -0.008,
+              "correlation3CloseToClose": -0.0117,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 13,
+                  "meanForward1Pct": 0.449,
+                  "meanForward3Pct": 0.653,
+                  "directionHitPct": 23.08,
+                  "hit95Pct": [
+                    8.18,
+                    50.26
+                  ],
+                  "alwaysUpHitPct": 76.92
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 154,
+                  "meanForward1Pct": -0.018,
+                  "meanForward3Pct": 0.1916,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 46.1
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 38,
+                  "meanForward1Pct": 0.2413,
+                  "meanForward3Pct": -0.0796,
+                  "directionHitPct": 60.53,
+                  "hit95Pct": [
+                    44.72,
+                    74.4
+                  ],
+                  "alwaysUpHitPct": 60.53
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 205,
+              "activeSessions": 22,
+              "cashPct": 89.27,
+              "zeroScorePct": 32.2,
+              "hitRatePct": 68.18,
+              "meanGrossActiveReturnPct": 0.0713,
+              "meanNetReturnAllSessionsPct": -0.0031,
+              "netCumulativeUnitReturnPct": -0.65,
+              "maxDrawdownPct": 1.77
+            }
+          }
+        ],
+        "reviewed2026": {
+          "scores": {
+            "sessions": 204,
+            "zeroScores": 1,
+            "neutralPct": 75,
+            "meanAbsoluteScore": 14.93,
+            "correlation1CloseToClose": -0.0083,
+            "correlation3CloseToClose": -0.0133,
+            "buckets": [
+              {
+                "range": [
+                  -100,
+                  -21
+                ],
+                "count": 13,
+                "meanForward1Pct": 0.449,
+                "meanForward3Pct": 0.653,
+                "directionHitPct": 23.08,
+                "hit95Pct": [
+                  8.18,
+                  50.26
+                ],
+                "alwaysUpHitPct": 76.92
+              },
+              {
+                "range": [
+                  -20,
+                  20
+                ],
+                "count": 153,
+                "meanForward1Pct": -0.0194,
+                "meanForward3Pct": 0.1833,
+                "directionHitPct": null,
+                "hit95Pct": null,
+                "alwaysUpHitPct": 45.75
+              },
+              {
+                "range": [
+                  21,
+                  100
+                ],
+                "count": 38,
+                "meanForward1Pct": 0.2413,
+                "meanForward3Pct": -0.0796,
+                "directionHitPct": 60.53,
+                "hit95Pct": [
+                  44.72,
+                  74.4
+                ],
+                "alwaysUpHitPct": 60.53
+              }
+            ]
+          },
+          "trades": {
+            "sessions": 204,
+            "activeSessions": 22,
+            "cashPct": 89.22,
+            "zeroScorePct": 32.35,
+            "hitRatePct": 68.18,
+            "meanGrossActiveReturnPct": 0.0713,
+            "meanNetReturnAllSessionsPct": -0.0031,
+            "netCumulativeUnitReturnPct": -0.65,
+            "maxDrawdownPct": 1.77
+          }
+        }
+      },
+      "fixed5": {
+        "scores": {
+          "sessions": 1712,
+          "zeroScores": 40,
+          "neutralPct": 63.9,
+          "meanAbsoluteScore": 18.75,
+          "correlation1CloseToClose": 0.0405,
+          "correlation3CloseToClose": 0.0643,
+          "buckets": [
+            {
+              "range": [
+                -100,
+                -21
+              ],
+              "count": 261,
+              "meanForward1Pct": 0.0349,
+              "meanForward3Pct": 0.2341,
+              "directionHitPct": 45.98,
+              "hit95Pct": [
+                40.03,
+                52.04
+              ],
+              "alwaysUpHitPct": 54.02
+            },
+            {
+              "range": [
+                -20,
+                20
+              ],
+              "count": 1094,
+              "meanForward1Pct": 0.0282,
+              "meanForward3Pct": 0.0594,
+              "directionHitPct": null,
+              "hit95Pct": null,
+              "alwaysUpHitPct": 54.3
+            },
+            {
+              "range": [
+                21,
+                100
+              ],
+              "count": 357,
+              "meanForward1Pct": 0.1664,
+              "meanForward3Pct": 0.4688,
+              "directionHitPct": 55.46,
+              "hit95Pct": [
+                50.28,
+                60.53
+              ],
+              "alwaysUpHitPct": 55.46
+            }
+          ]
+        },
+        "trades": {
+          "filtered": {
+            "sessions": 1712,
+            "activeSessions": 258,
+            "cashPct": 84.93,
+            "zeroScorePct": 45.91,
+            "hitRatePct": 57.36,
+            "meanGrossActiveReturnPct": 0.1651,
+            "meanNetReturnAllSessionsPct": 0.0098,
+            "netCumulativeUnitReturnPct": 16.07,
+            "maxDrawdownPct": 15.46
+          },
+          "withoutLowVariation": {
+            "sessions": 1712,
+            "activeSessions": 284,
+            "cashPct": 83.41,
+            "zeroScorePct": 28.8,
+            "hitRatePct": 56.69,
+            "meanGrossActiveReturnPct": 0.146,
+            "meanNetReturnAllSessionsPct": 0.0076,
+            "netCumulativeUnitReturnPct": 11.67,
+            "maxDrawdownPct": 18.43
+          }
+        },
+        "annual": [
+          {
+            "year": "2020",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 8,
+              "neutralPct": 61.9,
+              "meanAbsoluteScore": 20.14,
+              "correlation1CloseToClose": 0.0458,
+              "correlation3CloseToClose": 0.0677,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 28,
+                  "meanForward1Pct": 0.1327,
+                  "meanForward3Pct": 1.1299,
+                  "directionHitPct": 42.86,
+                  "hit95Pct": [
+                    26.51,
+                    60.93
+                  ],
+                  "alwaysUpHitPct": 57.14
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 156,
+                  "meanForward1Pct": 0.0221,
+                  "meanForward3Pct": -0.0996,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 58.33
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 68,
+                  "meanForward1Pct": 0.1848,
+                  "meanForward3Pct": 0.5623,
+                  "directionHitPct": 55.88,
+                  "hit95Pct": [
+                    44.08,
+                    67.05
+                  ],
+                  "alwaysUpHitPct": 55.88
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 27,
+              "cashPct": 89.29,
+              "zeroScorePct": 56.35,
+              "hitRatePct": 44.44,
+              "meanGrossActiveReturnPct": -0.1349,
+              "meanNetReturnAllSessionsPct": -0.0252,
+              "netCumulativeUnitReturnPct": -6.52,
+              "maxDrawdownPct": 13.39
+            }
+          },
+          {
+            "year": "2021",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 6,
+              "neutralPct": 65.08,
+              "meanAbsoluteScore": 18,
+              "correlation1CloseToClose": 0.0259,
+              "correlation3CloseToClose": 0.0734,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 24,
+                  "meanForward1Pct": 0.268,
+                  "meanForward3Pct": 0.6257,
+                  "directionHitPct": 41.67,
+                  "hit95Pct": [
+                    24.47,
+                    61.17
+                  ],
+                  "alwaysUpHitPct": 58.33
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 164,
+                  "meanForward1Pct": 0.0237,
+                  "meanForward3Pct": 0.1089,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 56.1
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 64,
+                  "meanForward1Pct": 0.2261,
+                  "meanForward3Pct": 0.694,
+                  "directionHitPct": 62.5,
+                  "hit95Pct": [
+                    50.25,
+                    73.33
+                  ],
+                  "alwaysUpHitPct": 62.5
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 37,
+              "cashPct": 85.32,
+              "zeroScorePct": 47.62,
+              "hitRatePct": 54.05,
+              "meanGrossActiveReturnPct": 0.0943,
+              "meanNetReturnAllSessionsPct": -0.0008,
+              "netCumulativeUnitReturnPct": -0.28,
+              "maxDrawdownPct": 4.55
+            }
+          },
+          {
+            "year": "2022",
+            "scores": {
+              "sessions": 251,
+              "zeroScores": 1,
+              "neutralPct": 52.19,
+              "meanAbsoluteScore": 24.22,
+              "correlation1CloseToClose": 0.0818,
+              "correlation3CloseToClose": 0.1419,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 57,
+                  "meanForward1Pct": -0.3052,
+                  "meanForward3Pct": -0.8208,
+                  "directionHitPct": 64.91,
+                  "hit95Pct": [
+                    51.94,
+                    76
+                  ],
+                  "alwaysUpHitPct": 35.09
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 131,
+                  "meanForward1Pct": -0.0222,
+                  "meanForward3Pct": -0.1677,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 46.56
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 63,
+                  "meanForward1Pct": 0.0249,
+                  "meanForward3Pct": 0.1768,
+                  "directionHitPct": 42.86,
+                  "hit95Pct": [
+                    31.4,
+                    55.14
+                  ],
+                  "alwaysUpHitPct": 42.86
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 251,
+              "activeSessions": 54,
+              "cashPct": 78.49,
+              "zeroScorePct": 38.65,
+              "hitRatePct": 62.96,
+              "meanGrossActiveReturnPct": 0.3354,
+              "meanNetReturnAllSessionsPct": 0.0506,
+              "netCumulativeUnitReturnPct": 12.96,
+              "maxDrawdownPct": 5.03
+            }
+          },
+          {
+            "year": "2023",
+            "scores": {
+              "sessions": 250,
+              "zeroScores": 10,
+              "neutralPct": 64.4,
+              "meanAbsoluteScore": 18.27,
+              "correlation1CloseToClose": 0.0626,
+              "correlation3CloseToClose": 0.0511,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 41,
+                  "meanForward1Pct": 0.0955,
+                  "meanForward3Pct": 0.3193,
+                  "directionHitPct": 41.46,
+                  "hit95Pct": [
+                    27.76,
+                    56.63
+                  ],
+                  "alwaysUpHitPct": 58.54
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 161,
+                  "meanForward1Pct": 0.0244,
+                  "meanForward3Pct": 0.1723,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 54.04
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 48,
+                  "meanForward1Pct": 0.3077,
+                  "meanForward3Pct": 0.5253,
+                  "directionHitPct": 60.42,
+                  "hit95Pct": [
+                    46.31,
+                    72.98
+                  ],
+                  "alwaysUpHitPct": 60.42
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 250,
+              "activeSessions": 40,
+              "cashPct": 84,
+              "zeroScorePct": 42.4,
+              "hitRatePct": 67.5,
+              "meanGrossActiveReturnPct": 0.1795,
+              "meanNetReturnAllSessionsPct": 0.0127,
+              "netCumulativeUnitReturnPct": 3.11,
+              "maxDrawdownPct": 3.96
+            }
+          },
+          {
+            "year": "2024",
+            "scores": {
+              "sessions": 252,
+              "zeroScores": 8,
+              "neutralPct": 67.46,
+              "meanAbsoluteScore": 16.4,
+              "correlation1CloseToClose": -0.0461,
+              "correlation3CloseToClose": -0.1324,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 44,
+                  "meanForward1Pct": 0.0317,
+                  "meanForward3Pct": 0.4334,
+                  "directionHitPct": 38.64,
+                  "hit95Pct": [
+                    25.72,
+                    53.38
+                  ],
+                  "alwaysUpHitPct": 61.36
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 170,
+                  "meanForward1Pct": 0.0945,
+                  "meanForward3Pct": 0.2293,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 58.24
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 38,
+                  "meanForward1Pct": 0.1129,
+                  "meanForward3Pct": 0.2627,
+                  "directionHitPct": 57.89,
+                  "hit95Pct": [
+                    42.19,
+                    72.15
+                  ],
+                  "alwaysUpHitPct": 57.89
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 252,
+              "activeSessions": 31,
+              "cashPct": 87.7,
+              "zeroScorePct": 48.02,
+              "hitRatePct": 48.39,
+              "meanGrossActiveReturnPct": -0.0184,
+              "meanNetReturnAllSessionsPct": -0.0146,
+              "netCumulativeUnitReturnPct": -3.66,
+              "maxDrawdownPct": 4
+            }
+          },
+          {
+            "year": "2025",
+            "scores": {
+              "sessions": 250,
+              "zeroScores": 6,
+              "neutralPct": 65.6,
+              "meanAbsoluteScore": 17.7,
+              "correlation1CloseToClose": 0.024,
+              "correlation3CloseToClose": 0.0781,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 53,
+                  "meanForward1Pct": 0.1624,
+                  "meanForward3Pct": 0.4523,
+                  "directionHitPct": 41.51,
+                  "hit95Pct": [
+                    29.26,
+                    54.91
+                  ],
+                  "alwaysUpHitPct": 58.49
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 164,
+                  "meanForward1Pct": 0.0251,
+                  "meanForward3Pct": -0.0346,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 56.71
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 33,
+                  "meanForward1Pct": 0.1297,
+                  "meanForward3Pct": 0.9795,
+                  "directionHitPct": 54.55,
+                  "hit95Pct": [
+                    37.99,
+                    70.16
+                  ],
+                  "alwaysUpHitPct": 54.55
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 250,
+              "activeSessions": 42,
+              "cashPct": 83.2,
+              "zeroScorePct": 43.6,
+              "hitRatePct": 52.38,
+              "meanGrossActiveReturnPct": 0.3917,
+              "meanNetReturnAllSessionsPct": 0.049,
+              "netCumulativeUnitReturnPct": 12.24,
+              "maxDrawdownPct": 4.12
+            }
+          },
+          {
+            "year": "2026",
+            "scores": {
+              "sessions": 205,
+              "zeroScores": 1,
+              "neutralPct": 72.2,
+              "meanAbsoluteScore": 16.03,
+              "correlation1CloseToClose": 0.011,
+              "correlation3CloseToClose": 0.0083,
+              "buckets": [
+                {
+                  "range": [
+                    -100,
+                    -21
+                  ],
+                  "count": 14,
+                  "meanForward1Pct": 0.1746,
+                  "meanForward3Pct": 0.365,
+                  "directionHitPct": 35.71,
+                  "hit95Pct": [
+                    16.34,
+                    61.24
+                  ],
+                  "alwaysUpHitPct": 64.29
+                },
+                {
+                  "range": [
+                    -20,
+                    20
+                  ],
+                  "count": 148,
+                  "meanForward1Pct": 0.0157,
+                  "meanForward3Pct": 0.1605,
+                  "directionHitPct": null,
+                  "hit95Pct": null,
+                  "alwaysUpHitPct": 47.97
+                },
+                {
+                  "range": [
+                    21,
+                    100
+                  ],
+                  "count": 43,
+                  "meanForward1Pct": 0.1733,
+                  "meanForward3Pct": 0.1405,
+                  "directionHitPct": 55.81,
+                  "hit95Pct": [
+                    41.11,
+                    69.57
+                  ],
+                  "alwaysUpHitPct": 55.81
+                }
+              ]
+            },
+            "trades": {
+              "sessions": 205,
+              "activeSessions": 27,
+              "cashPct": 86.83,
+              "zeroScorePct": 44.39,
+              "hitRatePct": 66.67,
+              "meanGrossActiveReturnPct": 0.0581,
+              "meanNetReturnAllSessionsPct": -0.0055,
+              "netCumulativeUnitReturnPct": -1.15,
+              "maxDrawdownPct": 2.37
+            }
+          }
+        ],
+        "reviewed2026": {
+          "scores": {
+            "sessions": 204,
+            "zeroScores": 1,
+            "neutralPct": 72.06,
+            "meanAbsoluteScore": 16.02,
+            "correlation1CloseToClose": 0.0106,
+            "correlation3CloseToClose": 0.0055,
+            "buckets": [
+              {
+                "range": [
+                  -100,
+                  -21
+                ],
+                "count": 14,
+                "meanForward1Pct": 0.1746,
+                "meanForward3Pct": 0.365,
+                "directionHitPct": 35.71,
+                "hit95Pct": [
+                  16.34,
+                  61.24
+                ],
+                "alwaysUpHitPct": 64.29
+              },
+              {
+                "range": [
+                  -20,
+                  20
+                ],
+                "count": 147,
+                "meanForward1Pct": 0.0146,
+                "meanForward3Pct": 0.1516,
+                "directionHitPct": null,
+                "hit95Pct": null,
+                "alwaysUpHitPct": 47.62
+              },
+              {
+                "range": [
+                  21,
+                  100
+                ],
+                "count": 43,
+                "meanForward1Pct": 0.1733,
+                "meanForward3Pct": 0.1405,
+                "directionHitPct": 55.81,
+                "hit95Pct": [
+                  41.11,
+                  69.57
+                ],
+                "alwaysUpHitPct": 55.81
+              }
+            ]
+          },
+          "trades": {
+            "sessions": 204,
+            "activeSessions": 27,
+            "cashPct": 86.76,
+            "zeroScorePct": 44.61,
+            "hitRatePct": 66.67,
+            "meanGrossActiveReturnPct": 0.0581,
+            "meanNetReturnAllSessionsPct": -0.0055,
+            "netCumulativeUnitReturnPct": -1.15,
+            "maxDrawdownPct": 2.37
+          }
+        }
+      }
+    }
+  },
+  "cryptoReconstruction": {
+    "generatedAt": "2026-10-27T18:06:01.393Z",
+    "cutoff": "2026-10-26",
+    "methodology": "Actual crypto engine on a causal reconstruction: trailing ranks, past regimes and only matured three-day labels. Shared closes carried forward only from earlier dates. No parameter search. Score labels and trade permissions remain separate.",
+    "limitations": [
+      "Current stored prices and historical warmup differ from each original live job; not point-in-time-vintage replay.",
+      "Historical periods were previously reviewed; no untouched holdout or predictive-edge claim.",
+      "Crypto briefings publish after the source UTC close. Source-close-to-close outcomes measure historical association, not achievable live returns; do not call these trading profits."
+    ],
+    "priceCoverage": {
+      "BTC-USD": {
+        "rows": 3847,
+        "first": "2016-04-15",
+        "last": "2026-10-26"
+      },
+      "ETH-USD": {
+        "rows": 3274,
+        "first": "2017-11-09",
+        "last": "2026-10-26"
+      },
+      "GLD": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      },
+      "DXY": {
+        "rows": 2652,
+        "first": "2016-04-15",
+        "last": "2026-10-26"
+      },
+      "TLT": {
+        "rows": 2654,
+        "first": "2016-04-07",
+        "last": "2026-10-26"
+      }
+    },
+    "overall": {
+      "sessions": 2490,
+      "zeroScores": 19,
+      "neutralPct": 31.73,
+      "correlation1": -0.0398,
+      "correlation3": -0.0272,
+      "buckets": [
+        {
+          "range": [
+            -100,
+            -21
+          ],
+          "count": 685,
+          "meanForward1Pct": 0.4086,
+          "directionHitPct": 46.72,
+          "alwaysUpHitPct": 53.28
+        },
+        {
+          "range": [
+            -20,
+            20
+          ],
+          "count": 790,
+          "meanForward1Pct": 0.064,
+          "directionHitPct": null,
+          "alwaysUpHitPct": 50.89
+        },
+        {
+          "range": [
+            21,
+            100
+          ],
+          "count": 1015,
+          "meanForward1Pct": 0.0317,
+          "directionHitPct": 48.57,
+          "alwaysUpHitPct": 48.57
+        }
+      ]
+    },
+    "reviewed2026": {
+      "sessions": 298,
+      "zeroScores": 2,
+      "neutralPct": 40.27,
+      "correlation1": -0.0923,
+      "correlation3": -0.1026,
+      "buckets": [
+        {
+          "range": [
+            -100,
+            -21
+          ],
+          "count": 83,
+          "meanForward1Pct": 0.1208,
+          "directionHitPct": 50.6,
+          "alwaysUpHitPct": 49.4
+        },
+        {
+          "range": [
+            -20,
+            20
+          ],
+          "count": 120,
+          "meanForward1Pct": 0.0045,
+          "directionHitPct": null,
+          "alwaysUpHitPct": 50
+        },
+        {
+          "range": [
+            21,
+            100
+          ],
+          "count": 95,
+          "meanForward1Pct": -0.1337,
+          "directionHitPct": 43.16,
+          "alwaysUpHitPct": 43.16
+        }
+      ]
+    },
+    "annual": [
+      {
+        "year": "2020",
+        "sessions": 366,
+        "zeroScores": 0,
+        "neutralPct": 28.69,
+        "correlation1": -0.0363,
+        "correlation3": 0.0135,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 92,
+            "meanForward1Pct": 1.0357,
+            "directionHitPct": 43.48,
+            "alwaysUpHitPct": 56.52
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 105,
+            "meanForward1Pct": -0.0967,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 53.33
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 169,
+            "meanForward1Pct": 0.4956,
+            "directionHitPct": 57.99,
+            "alwaysUpHitPct": 57.99
+          }
+        ]
+      },
+      {
+        "year": "2021",
+        "sessions": 365,
+        "zeroScores": 3,
+        "neutralPct": 21.37,
+        "correlation1": 0.0202,
+        "correlation3": 0.0299,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 103,
+            "meanForward1Pct": 0.5852,
+            "directionHitPct": 45.63,
+            "alwaysUpHitPct": 54.37
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 78,
+            "meanForward1Pct": -0.5305,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 48.72
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 184,
+            "meanForward1Pct": 0.3359,
+            "directionHitPct": 50.54,
+            "alwaysUpHitPct": 50.54
+          }
+        ]
+      },
+      {
+        "year": "2022",
+        "sessions": 365,
+        "zeroScores": 1,
+        "neutralPct": 26.3,
+        "correlation1": -0.1338,
+        "correlation3": -0.1024,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 127,
+            "meanForward1Pct": 0.2202,
+            "directionHitPct": 51.18,
+            "alwaysUpHitPct": 48.82
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 96,
+            "meanForward1Pct": 0.0466,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 51.04
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 142,
+            "meanForward1Pct": -0.8263,
+            "directionHitPct": 41.55,
+            "alwaysUpHitPct": 41.55
+          }
+        ]
+      },
+      {
+        "year": "2023",
+        "sessions": 365,
+        "zeroScores": 4,
+        "neutralPct": 38.36,
+        "correlation1": -0.0515,
+        "correlation3": -0.1021,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 82,
+            "meanForward1Pct": 0.3428,
+            "directionHitPct": 46.34,
+            "alwaysUpHitPct": 53.66
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 140,
+            "meanForward1Pct": 0.3338,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 53.57
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 143,
+            "meanForward1Pct": 0.2273,
+            "directionHitPct": 44.06,
+            "alwaysUpHitPct": 44.06
+          }
+        ]
+      },
+      {
+        "year": "2024",
+        "sessions": 366,
+        "zeroScores": 5,
+        "neutralPct": 29.78,
+        "correlation1": -0.0432,
+        "correlation3": -0.0431,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 95,
+            "meanForward1Pct": 0.2356,
+            "directionHitPct": 44.21,
+            "alwaysUpHitPct": 55.79
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 109,
+            "meanForward1Pct": 0.649,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 54.13
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 162,
+            "meanForward1Pct": -0.0182,
+            "directionHitPct": 48.77,
+            "alwaysUpHitPct": 48.77
+          }
+        ]
+      },
+      {
+        "year": "2025",
+        "sessions": 365,
+        "zeroScores": 4,
+        "neutralPct": 38.9,
+        "correlation1": -0.0932,
+        "correlation3": -0.1512,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 103,
+            "meanForward1Pct": 0.3477,
+            "directionHitPct": 44.66,
+            "alwaysUpHitPct": 55.34
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 142,
+            "meanForward1Pct": -0.1435,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 45.77
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 120,
+            "meanForward1Pct": -0.1074,
+            "directionHitPct": 50,
+            "alwaysUpHitPct": 50
+          }
+        ]
+      },
+      {
+        "year": "2026",
+        "sessions": 298,
+        "zeroScores": 2,
+        "neutralPct": 40.27,
+        "correlation1": -0.0923,
+        "correlation3": -0.1026,
+        "buckets": [
+          {
+            "range": [
+              -100,
+              -21
+            ],
+            "count": 83,
+            "meanForward1Pct": 0.1208,
+            "directionHitPct": 50.6,
+            "alwaysUpHitPct": 49.4
+          },
+          {
+            "range": [
+              -20,
+              20
+            ],
+            "count": 120,
+            "meanForward1Pct": 0.0045,
+            "directionHitPct": null,
+            "alwaysUpHitPct": 50
+          },
+          {
+            "range": [
+              21,
+              100
+            ],
+            "count": 95,
+            "meanForward1Pct": -0.1337,
+            "directionHitPct": 43.16,
+            "alwaysUpHitPct": 43.16
+          }
+        ]
+      }
+    ]
+  },
+  "qa": {
+    "engineSemanticTests": true,
+    "publicationTimingTests": true,
+    "emailBothTiersBothMarkets": true,
+    "backwardCompatibility": true,
+    "browser": "In-app browser; local labeled fixtures and actual stored public reading",
+    "viewports": [
+      "Default desktop (1280px wide)",
+      "390x844"
+    ],
+    "consoleErrors": [],
+    "layoutOverflow": false,
+    "interaction": "Market preview switch and both-newsletter selection, with no submission."
+  }
+}

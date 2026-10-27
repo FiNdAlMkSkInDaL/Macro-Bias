@@ -99,6 +99,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
                 <p className={styles.regime}>{regime.label}</p>
               </div>
               {score.explanation ? <p className={styles.explanation}>{score.explanation.reason}</p> : null}
+              {score.explanation?.trade ? <div className={styles.explanation} data-trading-filters><strong>{score.explanation.trade.title}</strong><p>{score.explanation.trade.reason}</p></div> : null}
               <div className={styles.scale} aria-hidden="true">
                 <div className={styles.scaleTrack}><span className={styles[`${regime.tone}Marker`]} style={{ left: `${(score.score + 100) / 2}%` }} /></div>
                 <div className={styles.scaleLabels}><span>−100</span><span>0</span><span>+100</span></div>

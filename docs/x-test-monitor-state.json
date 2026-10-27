@@ -1,0 +1,187 @@
+{
+  "experiment": "mb_x_commentary_20261028",
+  "capturedAt": "2026-10-27T17:48:32.731Z",
+  "phase": "before_start",
+  "baselineIsPerformanceEvidence": false,
+  "first": {
+    "complete": true,
+    "range": {
+      "startDate": "2026-10-27",
+      "endDate": "2026-10-27",
+      "startInclusive": "2026-10-27T00:00:00.000Z",
+      "endExclusive": "2026-10-28T00:00:00.000Z",
+      "timezone": "UTC"
+    },
+    "metrics": {
+      "pageViews": 0,
+      "visitors": 0,
+      "sessions": 0,
+      "newSubscribers": 0,
+      "newAccounts": 0,
+      "paidConversions": 0,
+      "subscriberVisitors": 0,
+      "subscriberRate": null
+    },
+    "newsletters": {
+      "stocks": 0,
+      "crypto": 0,
+      "both": 0,
+      "unknown": 0
+    },
+    "posts": [],
+    "coverage": {
+      "complete": true,
+      "datasets": [
+        {
+          "name": "events",
+          "rows": 10,
+          "total": 10,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "subscribers",
+          "rows": 0,
+          "total": 0,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "accounts",
+          "rows": 20,
+          "total": 20,
+          "available": true,
+          "complete": true
+        }
+      ],
+      "warnings": [
+        "Historical subscriber/account sources remain Unknown when no confirmed attribution was saved. Paid upgrades are verified first payments recorded after this tracking release; older paid conversion history is unavailable."
+      ],
+      "identifiedPageViews": 0,
+      "unidentifiedPageViews": 0,
+      "identityCoveragePct": null,
+      "knownSubscriberSources": 0,
+      "unknownSubscriberSources": 0,
+      "knownAccountSources": 0,
+      "unknownAccountSources": 0,
+      "linkedSubscriberCount": 0,
+      "linkedAccountCount": 0,
+      "linkedPaidCount": 0,
+      "unlinkedSubscriberCount": 0,
+      "unlinkedAccountCount": 0,
+      "unlinkedPaidCount": 0,
+      "legacyPageViews": 0,
+      "unverifiedLegacyPageViews": 0,
+      "excludedInternalRows": 0,
+      "excludedTestSubscribers": 0,
+      "excludedTestAccounts": 0,
+      "excludedRows": 0,
+      "excludedReferralOnlyRows": 0,
+      "paidHistoryAvailable": false,
+      "consentIdentifiedVisits": 0,
+      "truncatedDatasets": []
+    }
+  },
+  "latestAssist": {
+    "complete": true,
+    "range": {
+      "startDate": "2026-10-27",
+      "endDate": "2026-10-27",
+      "startInclusive": "2026-10-27T00:00:00.000Z",
+      "endExclusive": "2026-10-28T00:00:00.000Z",
+      "timezone": "UTC"
+    },
+    "metrics": {
+      "pageViews": 0,
+      "visitors": 0,
+      "sessions": 0,
+      "newSubscribers": 0,
+      "newAccounts": 0,
+      "paidConversions": 0,
+      "subscriberVisitors": 0,
+      "subscriberRate": null
+    },
+    "newsletters": {
+      "stocks": 0,
+      "crypto": 0,
+      "both": 0,
+      "unknown": 0
+    },
+    "posts": [],
+    "coverage": {
+      "complete": true,
+      "datasets": [
+        {
+          "name": "events",
+          "rows": 10,
+          "total": 10,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "subscribers",
+          "rows": 0,
+          "total": 0,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "accounts",
+          "rows": 20,
+          "total": 20,
+          "available": true,
+          "complete": true
+        }
+      ],
+      "warnings": [
+        "Historical subscriber/account sources remain Unknown when no confirmed attribution was saved. Paid upgrades are verified first payments recorded after this tracking release; older paid conversion history is unavailable."
+      ],
+      "identifiedPageViews": 0,
+      "unidentifiedPageViews": 0,
+      "identityCoveragePct": null,
+      "knownSubscriberSources": 0,
+      "unknownSubscriberSources": 0,
+      "knownAccountSources": 0,
+      "unknownAccountSources": 0,
+      "linkedSubscriberCount": 0,
+      "linkedAccountCount": 0,
+      "linkedPaidCount": 0,
+      "unlinkedSubscriberCount": 0,
+      "unlinkedAccountCount": 0,
+      "unlinkedPaidCount": 0,
+      "legacyPageViews": 0,
+      "unverifiedLegacyPageViews": 0,
+      "excludedInternalRows": 0,
+      "excludedTestSubscribers": 0,
+      "excludedTestAccounts": 0,
+      "excludedRows": 0,
+      "excludedReferralOnlyRows": 0,
+      "paidHistoryAvailable": false,
+      "consentIdentifiedVisits": 0,
+      "truncatedDatasets": []
+    }
+  },
+  "deliveries": [],
+  "runs": [],
+  "latestCheckpoint": null,
+  "notified": {
+    "firstVerifiedPost": null,
+    "subscriberCount": 0,
+    "paidConversionCount": 0,
+    "blockers": [],
+    "finalEvaluation": false
+  },
+  "coverage": {
+    "publishingAndCheckpoints": "Vercel hosted; independent of laptop",
+    "chatFollowUp": "Local Codex heartbeat; execution environment must be available",
+    "schedule": "Daily 16:10 UTC through 11 November 2026",
+    "firstSlot": "2026-10-28 15:00–15:59 UTC",
+    "productionPreflight": {
+      "publishingEnabled": true,
+      "account": "macro_bias",
+      "bothPreviewsReady": true,
+      "deployment": "dpl_D6UB8EXk9zjdscV7dm1oEzzaxKzT",
+      "checkedDate": "2026-10-27"
+    }
+  }
+}

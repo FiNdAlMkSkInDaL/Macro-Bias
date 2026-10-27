@@ -13,7 +13,7 @@ export type TradableSignal = {
   reliability: ReliabilityGrade;
   /** Fraction of K neighbors whose blended forward return shares the score sign. */
   neighborAgreement: number;
-  /** Mean Euclidean (decayed) distance of the neighbor set. */
+  /** Mean decayed distance under the market's configured distance metric. */
   meanNeighborDistance: number;
   /** Distance quality in (0, 1], higher = tighter cluster. */
   distanceQuality: number;
@@ -21,8 +21,16 @@ export type TradableSignal = {
   noTrade: boolean;
   /** Short plain-English reason for the permission. */
   reason: string;
-  /** Audit context only. Does not change score, permission or risk size. */
-  scoreContext?: { rawScore: number; suppressedBy: Array<'low_variation' | 'monday' | 'overnight_conflict'> };
+  /** Daily reading and independently processed trade decision. Older rows may lack this context. */
+  scoreContext?: {
+    rawScore: number;
+    tradeScore?: number;
+    semantics?: 'daily_reading_v1';
+    sourceTradeDate?: string;
+    suppressedBy: Array<'low_variation' | 'monday' | 'overnight_conflict'>;
+    filters?: Array<{ code: 'low_variation' | 'large_move_fade' | 'overnight_amplifier' | 'overnight_conflict' | 'monday_source'; before: number; after: number }>;
+    vix?: { indexLevel: number; percentile: number; thresholdIndexPoints: number; neighborCount: number };
+  };
 };
 
 export type StrategyRules = {

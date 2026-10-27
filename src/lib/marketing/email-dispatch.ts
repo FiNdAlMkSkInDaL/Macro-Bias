@@ -18,6 +18,7 @@ import {
   dailyEmailMetadataText,
   dailyEmailParagraphHtml,
   dailyEmailReliabilityText,
+  dailyEmailTradingText,
   dailyEmailReadingLabel,
   dailyEmailSectionHtml,
   dailyEmailShellHtml,
@@ -1203,10 +1204,11 @@ function createOptimisedQuantBriefingEmailContent(
   const text = [
     'Daily Macro Bias',
     dailyEmailMetadataText(context, 'stocks'),
-    `BASE SCORE: ${readingLabel} (${formatSignedNumber(score)})${isOverrideActive ? '\nOVERRIDE ACTIVE' : ''}`,
+    `${signal?.scoreContext?.semantics === 'daily_reading_v1' ? 'DAILY MARKET SCORE' : 'BASE SCORE'}: ${readingLabel} (${formatSignedNumber(score)})${isOverrideActive ? '\nOVERRIDE ACTIVE' : ''}`,
     delta,
     interpretation,
     reliability,
+    dailyEmailTradingText(signal, score),
     visibleMarketRows.length ? `The latest closes\n${visibleMarketRows.join('\n')}` : '',
     evidence.length ? `What the model sees\n${evidence.map((line) => `- ${line}`).join('\n')}`
       : tier === 'premium' && baseScore && !context.historicalContext ? `What the model sees\n${baseScore}` : '',

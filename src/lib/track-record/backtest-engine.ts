@@ -18,6 +18,7 @@ import {
   type TradableSignal,
   weightedMean,
 } from "@/lib/signal";
+import { classifyRegime, resolveThresholds } from "@/utils/regime-classifier";
 import { trendSignFromCloseVsSma } from "@/lib/signal/trend-veto";
 import {
   computeQualityReport,
@@ -94,7 +95,6 @@ const BACKTEST_START = "2020-01-01";
 /* ------------------------------------------------------------------ */
 
 function getBiasLabel(score: number, signal: TradableSignal): BiasLabel {
-  if (signal.position === "NO_TRADE") return "NEUTRAL";
   if (score <= -60) return "EXTREME_RISK_OFF";
   if (score < -20) return "RISK_OFF";
   if (score <= 20) return "NEUTRAL";
@@ -254,6 +254,8 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
   type HistoricPoint = {
     tradeDate: string;
+    index: number;
+    rawVix: number;
     vector: FeatureVector;
     spyClose: number;
     spyForward1DReturn: number | null;
@@ -300,6 +302,8 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
     allPoints.push({
       tradeDate: date,
+      index: i,
+      rawVix: vixClose,
       vector: {
         spyRsi: rsi,
         vixMomentum,
@@ -370,7 +374,13 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
   for (let ti = backtestStartIdx; ti < stationarizedPoints.length; ti++) {
     const today = stationarizedPoints[ti];
-    const analogPool = stationarizedPoints.slice(0, ti); // only past data
+    const matured = stationarizedPoints.slice(0, ti).filter(p => p.index + 3 <= today.index && p.spyForward1DReturn !== null && p.spyForward3DReturn !== null);
+    const calibrationDataset = matured.map(p => ({ tradeDate: p.tradeDate, vector: p.vector, spyForward1DayReturn: p.spyForward1DReturn!, spyForward3DayReturn: p.spyForward3DReturn! }));
+    if (calibrationDataset.length < 20) continue;
+    const thresholds = resolveThresholds({ calibrationDataset });
+    const regime = classifyRegime(today.vector, { thresholds });
+    const sameRegime = matured.filter(p => classifyRegime(p.vector, { thresholds }) === regime);
+    const analogPool = sameRegime.length >= 20 ? sameRegime : matured;
 
     if (analogPool.length < 20) continue;
 
@@ -423,7 +433,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
 
     // v18 adaptive K: high VIX → 5, calm → 7
     const kUse = ANALOG_MODEL_SETTINGS.adaptiveNeighborKEnabled
-      ? today.vector.vixLevel >= ANALOG_MODEL_SETTINGS.adaptiveKVixThreshold
+      ? today.rawVix >= ANALOG_MODEL_SETTINGS.adaptiveKVixThresholdIndexPoints
         ? ANALOG_MODEL_SETTINGS.adaptiveKHighVix
         : ANALOG_MODEL_SETTINGS.adaptiveKLowVix
       : K_MIN;
@@ -451,7 +461,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
         slice.map((r) => r.analog.spyForward3DReturn ?? 0),
         weights,
       );
-      const blended = W1 * avg1d + W3 * avg3d;
+      const blended = Number((W1 * avg1d + W3 * avg3d).toFixed(2));
       let s = Math.max(
         -100,
         Math.min(100, Math.round(Math.tanh(blended / BLENDED_RETURN_SCALE) * 100)),
@@ -466,7 +476,7 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
         const sd = Math.sqrt(rets.reduce((a, v) => a + (v - m) ** 2, 0) / rets.length);
         if (sd < ANALOG_MODEL_SETTINGS.flatLowNeighborVolThreshold) s = 0;
       }
-      if (ANALOG_MODEL_SETTINGS.fadeBigDayEnabled && ti > 0 && s !== 0) {
+      if (ANALOG_MODEL_SETTINGS.fadeBigDayEnabled && ti > 0) {
         const prevClose = stationarizedPoints[ti - 1]?.spyClose;
         const ctc =
           prevClose > 0 ? pctChange(prevClose, today.spyClose) : today.spyChangePercent;
@@ -586,6 +596,12 @@ export const getBacktestData = cache(async (): Promise<BacktestSummary> => {
       }
     }
 
+    const weights = ranked.map(r => r.weight);
+    const expectancy = Number((W1 * weightedMean(ranked.map(r => r.analog.spyForward1DReturn!), weights)
+      + W3 * weightedMean(ranked.map(r => r.analog.spyForward3DReturn!), weights)).toFixed(2));
+    const dailyScore = Math.round(Math.tanh(expectancy / BLENDED_RETURN_SCALE) * 100);
+    signal.scoreContext = { semantics: 'daily_reading_v1', rawScore: dailyScore, tradeScore: score, sourceTradeDate: today.tradeDate, suppressedBy: [] };
+    score = dailyScore;
     const biasLabel = getBiasLabel(score, signal);
 
     // Forward accuracy uses the raw score sign (diagnostic). Trading uses signal.

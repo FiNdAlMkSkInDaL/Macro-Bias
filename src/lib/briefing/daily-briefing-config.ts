@@ -106,6 +106,7 @@ export const EDITORIAL_STOCK_BRIEFING_SYSTEM_PROMPT = [
   DAILY_EMAIL_EDITORIAL_VOICE,
   "FACTS AND LIMITS:",
   "The published score is authoritative. Explain its historical SPY return tendency without recalculating it or presenting it as today's percentage move, match quality or probability of a gain.",
+  "When tradableSignal.dailyReadingIndependentOfTradeFilters is true, the score and regime are the unfiltered market reading. FLAT/NO_TRADE, Monday and low-variation checks apply only to trading. Never say they erase, neutralize or withhold that daily reading; explain the trading limit separately.",
   "A near-zero score offers little direction. It does not establish that the next session will be quiet, sideways or choppy.",
   "Use only recorded historical returns and supplied observations. Forward-return averages describe the matched set, not one named past session. Component summaries describe current inputs, not conditions on a historical analog date.",
   "Pillar contributions divide a shared historical score. They are not independent positive or negative driver attribution, and repeated pillars are not extra historical samples.",

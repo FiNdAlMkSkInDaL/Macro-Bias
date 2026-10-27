@@ -13,3 +13,6 @@
 .missing{margin:16px 0 0;color:#acb6ad;font-size:15px;line-height:1.65}
 @media(max-width:600px){.reading{padding:16px}.readingHeader{gap:12px;align-items:flex-start}.reading h2{font-size:18px}.readingBody{grid-template-columns:104px minmax(0,1fr);gap:16px;margin-top:12px}.value p{font-size:42px}.value>span{font-size:14px}}
 .explanation { margin: 16px 0 0; color: #cbd5c5; font-size: 14px; line-height: 1.65; max-width: 75ch; }
+.filters { margin-top: 20px; padding-top: 16px; border-top: 1px solid #353a34; color: #cbd5c5; font-size: 14px; line-height: 1.65; }
+.filters h3 { margin: 0 0 8px; color: #f1f5ef; font-size: 14px; }
+.filters p { margin: 6px 0 0; max-width: 75ch; }

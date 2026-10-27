@@ -25,12 +25,13 @@ export const BIAS_SIGNAL_WEIGHTS = {
   positioning: 25,
 } as const;
 
-// KNN engine settings (model v18 — measured against walk-forward next-session OTC).
+// v19: unfiltered daily reading, separate trading policy, raw VIX index-point K threshold.
+// v18's threshold actually used a VIX percentile. Its old selection metrics do not
+// validate the corrected policy. See docs/scoring-validation-20261027.json.
 // Level features: walk-forward percentile ranks.
 // v8–v17: cosine, Mon skip, fade, overnight veto/amp, low-vol flat, blend 0.55/0.45, thr22, lowvol0.5.
 // v18: adaptive K by VIX — K=5 when VIX≥20, else K=7 (broader calm-market memory).
 //      Dual no-decay agree looked good alone but failed re-lock / stack checks; left off.
-// Measured on v17: hit ~58.7→58.5%, edge +0.52→+0.55, prod 1.85→1.94, yE+ 7/7.
 export const ANALOG_MODEL_SETTINGS = {
   blendedReturnScale: 2.75,
   minimumHistoricalAnalogs: 20,
@@ -102,7 +103,8 @@ export const ANALOG_MODEL_SETTINGS = {
    * High vol (VIX≥20) → K=5; calm → K=7.
    */
   adaptiveNeighborKEnabled: true,
-  adaptiveKVixThreshold: 20,
+  /** Actual VIX index points, never its 0–100 trailing percentile. */
+  adaptiveKVixThresholdIndexPoints: 20,
   adaptiveKHighVix: 5,
   adaptiveKLowVix: 7,
 } as const;
@@ -134,4 +136,4 @@ export const STOCKS_KNN_FEATURE_KEYS = [
 /** Re-export unified strategy rules so callers need one import surface. */
 export const STRATEGY_RULES = STOCKS_STRATEGY_RULES;
 
-export const MODEL_VERSION = "macro-model-v18-adaptive-k";
+export const MODEL_VERSION = "macro-model-v19-daily-reading-raw-vix";

@@ -1,0 +1,187 @@
+/** Read-only predeclared VIX-policy comparison; never writes scores or sends anything.
+ * npx tsx scripts/validate-daily-scoring.ts <output.json> [completed-cutoff-YYYY-MM-DD]
+ * Reconstructed history is not an out-of-sample live trading record. */
+import { loadEnvConfig } from '@next/env';
+loadEnvConfig(process.cwd());
+import { writeFileSync } from 'node:fs';
+import { createClient } from '@supabase/supabase-js';
+import { ANALOG_MODEL_SETTINGS as settings, STOCKS_LEVEL_FEATURES_FOR_PERCENTILE, STOCKS_KNN_FEATURE_KEYS, STRATEGY_RULES } from '../src/lib/macro-bias/constants';
+import { applyFadeBigDay, applyOvernightVeto, applySoftOvernightAmp, calculateDailyBias, neighborReturnDispersion, selectNeighborK } from '../src/lib/macro-bias/calculate-daily-bias';
+import { buildTradableSignal, inverseDistanceWeight, positionFromSignal, stationarizeLevelFeatures, weightedMean } from '../src/lib/signal';
+import { classifyRegime, resolveThresholds } from '../src/utils/regime-classifier';
+import { isUsEquityMonday, calculateBaseDistance } from '../src/utils/knn';
+import type { AnalogStateVector, DailyBiasInput, HistoricalAnalogVector, TickerChangeMap } from '../src/lib/macro-bias/types';
+
+const cutoff = process.argv[3] ?? '2026-10-26'; // Explicit completed-session cutoff; never infer unfinished outcomes.
+if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff) || !Number.isFinite(Date.parse(`${cutoff}T00:00:00Z`))) throw Error('Supply cutoff as YYYY-MM-DD');
+const tickers = ['SPY', 'QQQ', 'TLT', 'GLD', 'USO', 'HYG', 'VIX', 'CPER'] as const;
+type Price = { trade_date: string; open: number; close: number };
+type Point = HistoricalAnalogVector & { index: number; rawVix: number; close: number; open: number; ctc: number; overnight: number; outcomeDate: string | null; outcome: number | null };
+const mean = (v: number[]) => v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0;
+const pct = (a: number, b: number) => (b / a - 1) * 100;
+const round = (n: number, digits = 2) => Number(n.toFixed(digits));
+const dayGap = (a: string, b: string) => (Date.parse(a) - Date.parse(b)) / 86_400_000;
+const scoreOf = (n: { analog: Point; weight: number }[]) => {
+  const w = n.map(x => x.weight);
+  const blend = round(weightedMean(n.map(x => x.analog.spyForward1DayReturn), w) * settings.oneDayBlendWeight
+    + weightedMean(n.map(x => x.analog.spyForward3DayReturn), w) * settings.threeDayBlendWeight);
+  return Math.round(Math.tanh(blend / settings.blendedReturnScale) * 100);
+};
+function rsiSeries(closes: number[]) {
+  const out: (number | null)[] = closes.map(() => null);
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= 14; i++) { const d = closes[i] - closes[i - 1]; gain += Math.max(0, d); loss += Math.max(0, -d); }
+  gain /= 14; loss /= 14;
+  out[14] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  for (let i = 15; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1]; gain = (gain * 13 + Math.max(0, d)) / 14; loss = (loss * 13 + Math.max(0, -d)) / 14;
+    out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  }
+  return out;
+}
+type Decision = { score: number; position: string; zero: boolean };
+type Day = { raw: number; forward1: number; forward3: number; date: string; outcomeDate: string; outcome: number; filterTriggered: boolean; on: Decision; off: Decision };
+function summary(days: Day[], variant: 'on' | 'off') {
+  const active = days.filter(d => ['LONG', 'SHORT'].includes(d[variant].position));
+  const returns = days.map(d => d[variant].position === 'LONG' ? d.outcome : d[variant].position === 'SHORT' ? -d.outcome : 0);
+  const activeReturns = active.map(d => d[variant].position === 'LONG' ? d.outcome : -d.outcome);
+  const net = days.map((d, i) => returns[i] - (['LONG', 'SHORT'].includes(d[variant].position) ? 2 * STRATEGY_RULES.frictionBps / 100 : 0));
+  let equity = 100, peak = 100, drawdown = 0;
+  for (const r of net) { equity *= 1 + r / 100; peak = Math.max(peak, equity); drawdown = Math.max(drawdown, (peak - equity) / peak * 100); }
+  return { sessions: days.length, activeSessions: active.length, cashPct: round(100 * (days.length - active.length) / days.length),
+    zeroScorePct: round(100 * days.filter(d => d[variant].zero).length / days.length),
+    hitRatePct: active.length ? round(100 * activeReturns.filter(x => x > 0).length / active.length) : null,
+    meanGrossActiveReturnPct: active.length ? round(mean(activeReturns), 4) : null,
+    meanNetReturnAllSessionsPct: round(mean(net), 4), netCumulativeUnitReturnPct: round(equity - 100), maxDrawdownPct: round(drawdown) };
+}
+async function main() {
+  const output = process.argv[2]; if (!output) throw Error('Supply an output JSON path outside the repository.');
+  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const series = await Promise.all(tickers.map(async ticker => {
+    const rows: Price[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await db.from('etf_daily_prices').select('trade_date,open,close').eq('ticker', ticker)
+        .lte('trade_date', cutoff).order('trade_date').range(offset, offset + 999);
+      if (error) throw Error(`Price read failed for ${ticker}`);
+      for (const row of data ?? []) { if (!(row.close > 0) || !(row.open > 0)) throw Error(`Invalid price for ${ticker}`); rows.push(row); }
+      if (!data || data.length < 1000) break;
+    }
+    return rows;
+  }));
+  const maps = Object.fromEntries(tickers.map((t, i) => [t, new Map(series[i].map(p => [p.trade_date, p]))])) as Record<typeof tickers[number], Map<string, Price>>;
+  const dates = series[0].map(p => p.trade_date).filter(d => tickers.every(t => maps[t].has(d)));
+  const closes = dates.map(d => maps.SPY.get(d)!.close), rsi = rsiSeries(closes);
+  const raw: Point[] = [];
+  for (let i = 14; i < dates.length; i++) {
+    const get = (ticker: typeof tickers[number], at = i) => maps[ticker].get(dates[at])!;
+    const current = get('SPY'), previous = get('SPY', i - 1);
+    raw.push({ tradeDate: dates[i], index: i, rawVix: get('VIX').close, vector: { spyRsi: rsi[i]!, vixMomentum: -pct(get('VIX', i - 5).close, get('VIX').close),
+      hygTltRatio: get('HYG').close / get('TLT').close, cperGldRatio: get('CPER').close / get('GLD').close,
+      usoMomentum: pct(get('USO', i - 5).close, get('USO').close), vixLevel: get('VIX').close },
+      spyForward1DayReturn: i + 1 < dates.length ? pct(current.close, get('SPY', i + 1).close) : NaN,
+      spyForward3DayReturn: i + 3 < dates.length ? pct(current.close, get('SPY', i + 3).close) : NaN,
+      close: current.close, open: current.open, ctc: pct(previous.close, current.close), overnight: pct(previous.close, current.open),
+      outcomeDate: dates[i + 1] ?? null, outcome: i + 1 < dates.length ? pct(get('SPY', i + 1).open, get('SPY', i + 1).close) : null });
+  }
+  const points = stationarizeLevelFeatures(raw, STOCKS_LEVEL_FEATURES_FOR_PERCENTILE, { window: settings.percentileWindowSessions, minHistory: settings.percentileMinHistorySessions });
+  const variants = ['legacyPercentile20', 'rawVix20', 'fixed5'] as const;
+  const samples = Object.fromEntries(variants.map(v => [v, [] as Day[]])) as Record<typeof variants[number], Day[]>;
+  let parityChecks = 0;
+  for (let ti = 0; ti < points.length; ti++) {
+    const today = points[ti];
+    if (today.tradeDate < '2020-01-01' || !today.outcomeDate || today.outcome == null) continue;
+    // Only mature three-session labels available at the source close enter calibration or matching.
+    const history = points.slice(0, ti).filter(p => p.index + 3 <= today.index && Number.isFinite(p.spyForward3DayReturn));
+    if (history.length < 20) continue;
+    const thresholds = resolveThresholds({ calibrationDataset: history });
+    const regime = classifyRegime(today.vector, { thresholds });
+    const same = history.filter(p => classifyRegime(p.vector, { thresholds }) === regime);
+    const pool = same.length >= 20 ? same : history;
+    const stats = Object.fromEntries(STOCKS_KNN_FEATURE_KEYS.map(k => {
+      const values = pool.map(p => p.vector[k]), m = mean(values);
+      return [k, { mean: m, sd: Math.sqrt(mean(values.map(v => (v - m) ** 2))) || 1 }];
+    }));
+    const z = (v: AnalogStateVector) => Object.fromEntries(STOCKS_KNN_FEATURE_KEYS.map(k => [k, (v[k] - stats[k].mean) / stats[k].sd]));
+    const tz = z(today.vector);
+    const ranked = pool.filter(p => dayGap(today.tradeDate, p.tradeDate) >= settings.minAnalogCalendarGapDays).map(analog => {
+      const distance = calculateBaseDistance({ tradeDate: today.tradeDate, vector: tz }, { tradeDate: analog.tradeDate, vector: z(analog.vector) }, settings.distanceMetric, [...STOCKS_KNN_FEATURE_KEYS])
+        * Math.exp(settings.temporalDecayLambda * dayGap(today.tradeDate, analog.tradeDate));
+      return { analog, distance, weight: inverseDistanceWeight(distance, settings.distanceWeightEpsilon) };
+    }).sort((a, b) => a.distance - b.distance);
+    for (const variant of variants) {
+    const k = variant === 'legacyPercentile20' ? today.vector.vixLevel >= 20 ? 5 : 7 : variant === 'rawVix20' ? selectNeighborK(today.rawVix) : 5;
+    const neighbors = ranked.slice(0, k);
+    const blended = neighbors.map(n => n.analog.spyForward1DayReturn * settings.oneDayBlendWeight + n.analog.spyForward3DayReturn * settings.threeDayBlendWeight);
+    const rawScore = scoreOf(neighbors), triggered = neighborReturnDispersion(blended) < settings.flatLowNeighborVolThreshold;
+    const decision = (enabled: boolean): Decision => {
+      let score = enabled && triggered ? 0 : rawScore;
+      score = applyFadeBigDay(score, today.ctc); score = applySoftOvernightAmp(score, today.overnight); score = applyOvernightVeto(score, today.overnight);
+      const signal = buildTradableSignal({ score, neighborForwardReturns: blended, neighborDistances: neighbors.map(n => n.distance), rules: STRATEGY_RULES });
+      if (settings.skipMondayScores && isUsEquityMonday(today.tradeDate)) { score = 0; if (signal.position !== 'NO_TRADE') { signal.position = 'FLAT'; signal.size = 0; } }
+      return { score, position: positionFromSignal(signal, score, STRATEGY_RULES), zero: score === 0 };
+    };
+    const on = decision(true), off = decision(false);
+    if (variant === 'rawVix20' && (ti % 140 === 0 || today.tradeDate >= '2026-10-01')) {
+      const input = { tradeDate: today.tradeDate, tickerChanges: { SPY: { ticker: 'SPY', tradeDate: today.tradeDate, close: today.close, previousClose: today.close / (1 + today.ctc / 100), percentChange: today.ctc, open: today.open } } as TickerChangeMap,
+        expandedData: { historicalAnalogVectors: history, vix: {ticker: '^VIX', tradeDate: today.tradeDate, close: today.rawVix, previousClose: today.rawVix, percentChange: 0}, spy14DayRsi: today.vector.spyRsi, vixMomentum: today.vector.vixMomentum, uso5DayMomentum: today.vector.usoMomentum,
+          hygTltRatioPercentile: today.vector.hygTltRatio, cperGldRatioPercentile: today.vector.cperGldRatio, vixLevelPercentile: today.vector.vixLevel } } satisfies DailyBiasInput;
+      const actual = calculateDailyBias(input);
+      if (actual.score !== rawScore || actual.signal.scoreContext?.tradeScore !== on.score || positionFromSignal(actual.signal, actual.score, STRATEGY_RULES) !== on.position) throw Error(`Production parity failed on ${today.tradeDate}`);
+      parityChecks++;
+    }
+    samples[variant].push({ raw: rawScore, forward1: today.spyForward1DayReturn, forward3: today.spyForward3DayReturn, date: today.tradeDate, outcomeDate: today.outcomeDate, outcome: today.outcome, filterTriggered: triggered, on, off });
+    }
+  }
+  const days = samples.rawVix20;
+  const affected = days.filter(d => d.on.position !== d.off.position);
+  const blocked = affected.filter(d => d.on.position === 'CASH' && d.off.position !== 'CASH');
+  const years = [...new Set(days.map(d => d.outcomeDate.slice(0, 4)))].map(year => {
+    const group = days.filter(d => d.outcomeDate.startsWith(year)); return { year, on: summary(group, 'on'), off: summary(group, 'off') };
+  });
+
+  function correlation(pairs: number[][]) {
+    const p = pairs.filter(v => v.every(Number.isFinite)); if (p.length < 3) return null;
+    const a = mean(p.map(x=>x[0])), b = mean(p.map(x=>x[1]));
+    const top = p.reduce((n,x)=>n+(x[0]-a)*(x[1]-b),0);
+    const bottom = Math.sqrt(p.reduce((n,x)=>n+(x[0]-a)**2,0)*p.reduce((n,x)=>n+(x[1]-b)**2,0));
+    return bottom ? round(top/bottom,4) : null;
+  }
+  function scoreStats(group: Day[]) {
+    return {sessions:group.length, zeroScores:group.filter(d=>d.raw===0).length,
+      neutralPct:round(100*group.filter(d=>Math.abs(d.raw)<=20).length/group.length),
+      meanAbsoluteScore:round(mean(group.map(d=>Math.abs(d.raw)))),
+      correlation1CloseToClose:correlation(group.map(d=>[d.raw,d.forward1])),
+      correlation3CloseToClose:correlation(group.map(d=>[d.raw,d.forward3])),
+      buckets:[[-100,-21],[-20,20],[21,100]].map(([lo,hi])=>{
+        const rows=group.filter(d=>d.raw>=lo&&d.raw<=hi&&Number.isFinite(d.forward1));
+        const directional=lo>0||hi<0, wins=rows.filter(d=>lo>0?d.forward1>0:d.forward1<0).length;
+        const n=rows.length, p=n?wins/n:0, z=1.96, den=1+z*z/(n||1);
+        const middle=(p+z*z/(2*(n||1)))/den, margin=z*Math.sqrt((p*(1-p)+z*z/(4*(n||1)))/(n||1))/den;
+        return {range:[lo,hi],count:n,meanForward1Pct:n?round(mean(rows.map(d=>d.forward1)),4):null,
+          meanForward3Pct:rows.filter(d=>Number.isFinite(d.forward3)).length?round(mean(rows.filter(d=>Number.isFinite(d.forward3)).map(d=>d.forward3)),4):null,
+          directionHitPct:directional&&n?round(100*p):null,hit95Pct:directional&&n?[round(100*(middle-margin)),round(100*(middle+margin))]:null,
+          alwaysUpHitPct:n?round(100*rows.filter(d=>d.forward1>0).length/n):null};
+      })};
+  }
+  const results = Object.fromEntries(variants.map(v=>{
+    const group=samples[v];
+    return [v,{scores:scoreStats(group),trades:{filtered:summary(group,'on'),withoutLowVariation:summary(group,'off')},
+      annual:[...new Set(group.map(d=>d.outcomeDate.slice(0,4)))].map(year=>{const y=group.filter(d=>d.outcomeDate.startsWith(year));return {year,scores:scoreStats(y),trades:summary(y,'on')};}),
+      reviewed2026:{scores:scoreStats(group.filter(d=>d.date>='2026-01-01')),trades:summary(group.filter(d=>d.date>='2026-01-01'),'on')},
+      recent:group.slice(-20)}];
+  }));
+  const report={generatedAt:new Date().toISOString(),cutoff,model:'v19 daily raw score / independent trade filters',
+    methodology:{variants:'Predeclared legacy percentile20, corrected raw VIX20, and fixed K5. No threshold optimization or best-result selection.',
+      scoreTarget:'Completed-source-close to next one and three closes, blended 0.55/0.45. Score is not a probability.',
+      tradeTarget:'Next completed SPY open-to-close, separate permission with fixed 10bp round-trip costs per active day.',
+      causal:'Past-only trailing percentiles and regime calibration; only matured three-session labels; five-calendar-day neighbor exclusion.',
+      caveats:['Reconstruction from current stored prices, not point-in-time-vintage or live performance. Available warmup differs from original ten-year jobs.',
+        '2020–2026 were previously examined and used for model selection; none is an untouched holdout. 2026 is a descriptive recent slice.',
+        'Overlapping three-session outcomes are dependent. Direction hit intervals are descriptive Wilson intervals; no independence or significance claim.',
+        'Fixed costs omit variable slippage, borrow and size effects. Historic unit-exposure returns are not investable performance.',
+        'Prospective validation starts with the first new-version publication; no claim of proven predictive edge.']},
+    parityChecks, priceCoverage:Object.fromEntries(tickers.map((t,i)=>[t,{rows:series[i].length,first:series[i][0]?.trade_date,last:series[i].at(-1)?.trade_date}])),results};
+  writeFileSync(output,JSON.stringify(report,null,2)+'\n');
+  console.log(JSON.stringify({output,parityChecks,results:Object.fromEntries(variants.map(v=>[v,{scores:results[v].scores,trades:results[v].trades.filtered,reviewed2026:results[v].reviewed2026}]))},null,2));
+}
+main().catch(error=>{console.error(error instanceof Error?error.message:'Scoring validation unavailable');process.exitCode=1;});

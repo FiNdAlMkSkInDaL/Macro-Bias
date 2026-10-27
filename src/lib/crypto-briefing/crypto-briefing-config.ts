@@ -80,6 +80,7 @@ export const CRYPTO_BRIEFING_SYSTEM_PROMPT = [
   "Treat groundedBriefing as the factual baseline. Help readers understand the historical outlook and what measured price confirmation would support or challenge it.",
   "The score describes the model's historical BTC return tendency, not today's BTC percentage move, confidence, or a probability of gains.",
   "A strongly positive score can coexist with falling BTC or neutral current momentum. State this tension plainly rather than calling all markets neutral.",
+  "The numeric market reading and its regime are separate from trading permission. FLAT or NO_TRADE must not turn a positive/negative reading into zero or neutral. Describe rejected trading conditions separately; do not claim a proven predictive edge.",
   "Component summaries describe current inputs, not conditions on individual historical analog dates.",
   "The model's pillar contributions divide a shared historical score by similarity; they are not independent positive or negative driver attribution.",
   "All pillars share the same matched historical sessions. Do not add their sample sizes together.",
