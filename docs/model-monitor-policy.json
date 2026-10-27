@@ -1,0 +1,22 @@
+{
+  "version": "model-monitor-20261027-v1",
+  "experiment": "mb_model_forward_20261027_v1",
+  "subscriberPolicy": "Freeze existing subscriber emails and production scoring. All further learners are private research; promotion requires an explicit new owner decision.",
+  "minimumCompleted": 60,
+  "recentBlock": 20,
+  "weeklyReviewDayUtc": 1,
+  "confirmAfterDays": 7,
+  "maximumHealthAgeHours": 26,
+  "outcomeGraceHours": 48,
+  "captureGraceHourUtc": 10.5,
+  "familywiseAlphaPerReview": 0.05,
+  "primaryComparisons": 11,
+  "bootstrapReplications": 10000,
+  "bootstrapBlock": 20,
+  "bootstrapSeed": 27102026,
+  "directionalCandidates": ["aligned_shrunk_analog", "aligned_ridge"],
+  "directionalBaselines": ["cash", "trailing_mean"],
+  "riskCandidates": {"stocks": "ewma", "crypto": "shrink_50"},
+  "riskBaselines": {"stocks": ["constant"], "crypto": ["constant", "ewma"]},
+  "interpretation": "Require lower overall and last two nonoverlapping 20-session primary losses; adjusted paired interval below zero; secondary loss no worse; confirmation at two weekly reviews with new outcomes. Repeated overlapping reviews are not independent proof or a trading-profit claim. No automatic promotion."
+}
