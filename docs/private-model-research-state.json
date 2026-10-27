@@ -9,11 +9,19 @@
       "id": "private-positive-score-calibration-v1",
       "recipe": "docs/score-calibration-recipe-20261027.json",
       "report": "docs/score-calibration-results-20261027.json",
-      "markets": ["stocks", "crypto"],
+      "markets": [
+        "stocks",
+        "crypto"
+      ],
       "decision": "DO_NOT_PROMOTE",
       "reason": "Neither reliably beats past up frequency; tiny stock return-error changes are uncertain, crypto return error worsens."
     }
   ],
   "subscriberChangesAllowed": false,
-  "productionPromotionAllowed": false
+  "productionPromotionAllowed": false,
+  "executionStatus": "MIGRATED_TO_PRIVATE_CLOUD_LEDGER",
+  "canonicalLedger": "https://github.com/FiNdAlMkSkInDaL/Macro-Bias-Model-Monitor/issues/2",
+  "hostedWorkflow": "https://github.com/FiNdAlMkSkInDaL/Macro-Bias-Model-Monitor/actions/workflows/private-research.yml",
+  "localExecutionEnabled": false,
+  "localFieldsAreHistorical": true
 }
