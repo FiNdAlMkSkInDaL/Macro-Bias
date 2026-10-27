@@ -25,3 +25,7 @@ Captures stop before 1 February 2027; settlement ends on 3 February. After a com
 Set up the dedicated production environment token and three private repository secrets without logging values. Create private issue 1 before enabling the workflow. After deployment, dispatch the hosted workflow with `setup_check=true`, inspect the actual run and saved state, then verify the explicitly labeled owner delivery-check email. Do not run the forecast collector, regenerate scores, create subscribers or send a newsletter to test monitoring.
 
 Read-only sources: [GitHub scheduled workflow limits](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys). These document delivery mechanics; model results come from the private experiment.
+
+## Separate candidate cohorts
+
+The owner authorized automatic private forward evaluation for qualifying historical candidates; see `private-candidate-forward-tests.md`. The read token additionally permits completed public market quotes at `/api/monitor/research-prices`; the existing aggregate route and its response remain unchanged. The private candidate collector has a separate catalog, checkpoints, recipes and per-cohort windows. The hourly owner monitor remains active after the original February final review only while those separate cohorts need monitoring. Original forecast capture, live scores and subscriber emails are unchanged.
