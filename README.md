@@ -6,13 +6,9 @@ I wanted one number before the open, so I publish a daily score.
 
 A score from -100 to +100 for stocks, and the same idea for crypto. Each score comes with a permission: LONG, SHORT, FLAT, or NO_TRADE. Reliability is a grade from A to F. F means NO_TRADE. A dead zone around zero means FLAT. It is not a price target and it is not a certainty claim.
 
-**Who it is for**
-
-People who want that permission on the site and in their inbox before the session, and who will stand aside when the grade says not to trade.
-
 **How the score is made**
 
-Stocks use the current feature package: SPY RSI, VIX momentum, HYG/TLT, CPER/GLD, and USO momentum. Levels become rolling percentiles. Similar past days are the nearest neighbors by cosine distance on z-scored features. K adapts when volatility is high. Neighbor returns map onto the score. Crypto uses the parallel path in `src/lib/crypto-bias/`. A sentence under the score can be written copy. The score itself is the KNN output.
+Stocks use the current feature package: SPY RSI, VIX momentum, HYG/TLT, CPER/GLD, and USO momentum. Levels become rolling percentiles. Similar past days are the nearest neighbors by cosine distance on z-scored features. K adapts when volatility is high. Neighbor returns map onto the score. Crypto uses the parallel path in `src/lib/crypto-bias/`. The score itself is the KNN output.
 
 **What paid unlocks**
 
