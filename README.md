@@ -21,13 +21,3 @@ Free shows the previous session's score on the site. Paid shows today's stock an
 **Honest limits**
 
 Not financial advice. Not a managed fund. `/track-record` lists settled next-session open-to-close results already stored with the scores. A session that has not settled is not on that page.
-
-## Run
-
-```bash
-npm install
-cp .env.example .env.local
-npm run dev
-```
-
-Fill the secrets in `.env.example` that you actually use: Supabase, the Stripe price ids, Resend, and `CRON_SECRET`.
