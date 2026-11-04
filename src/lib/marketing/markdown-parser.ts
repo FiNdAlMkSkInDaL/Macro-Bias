@@ -15,12 +15,18 @@ export type MarketingPost = {
   slug: string;
   title: string;
   type: MarketingPostType;
+  summary?: string;
+  market?: 'stocks' | 'crypto';
+  publishedAt?: string;
 };
 
 type ParsedFrontmatter = {
   campaignType?: string;
   slug?: string;
   title?: string;
+  summary?: string;
+  market?: string;
+  publishedAt?: string;
 };
 
 const MARKETING_CONTENT_ROOT = path.join(process.cwd(), 'src', 'content', 'marketing');
@@ -91,6 +97,10 @@ async function parseMarketingPost(entry: Dirent<string>, type: MarketingPostType
     slug,
     title: getTitle(frontmatter.title, slug),
     type: campaignType,
+    ...(typeof frontmatter.summary === 'string' && frontmatter.summary.trim() ? { summary: frontmatter.summary.trim() } : {}),
+    ...(frontmatter.market === 'stocks' || frontmatter.market === 'crypto' ? { market: frontmatter.market } : {}),
+    ...(typeof frontmatter.publishedAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.publishedAt)
+      && Number.isFinite(Date.parse(frontmatter.publishedAt)) ? { publishedAt: frontmatter.publishedAt } : {}),
   } satisfies MarketingPost;
 }
 

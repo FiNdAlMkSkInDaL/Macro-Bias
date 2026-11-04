@@ -1,0 +1,374 @@
+{
+  "capturedAt": "2026-11-04T13:24:15.627Z",
+  "scope": "Read-only brand-account visibility, delivery and audience audit. No publication, account mutation, website signup or paid access purchase.",
+  "account": {
+    "id": "2040912693125607424",
+    "name": "Macro Bias",
+    "username": "macro_bias",
+    "createdAt": "2026-04-05T22:01:28.000Z",
+    "description": "Watching regime, rotation, and when to stay flat. Charts + commentary. https://t.co/Q98cdNU0KG",
+    "protected": false,
+    "verified": false,
+    "publicMetrics": {
+      "followers_count": 1,
+      "following_count": 21,
+      "like_count": 71,
+      "listed_count": 0,
+      "media_count": 8,
+      "tweet_count": 61
+    },
+    "profileWebsite": [
+      "https://www.macro-bias.com"
+    ],
+    "bioLinks": [
+      "http://macro-bias.com"
+    ],
+    "pinnedPostId": null
+  },
+  "posts": [
+    {
+      "id": "2115458854016208903",
+      "createdAt": "2026-10-28T15:01:08.000Z",
+      "authorMatches": true,
+      "text": "Ethereum rose faster than Bitcoin.\nBitcoin +1.00%; Ethereum +1.18% (27 Oct UTC close).\nWatch whether both keep rising next session; one coin rising alone is a different picture.\nhttps://t.co/6ucAOVa10l",
+      "possiblySensitive": false,
+      "withheld": null,
+      "metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "links": [
+        {
+          "expandedUrl": "https://www.macro-bias.com/crypto/briefings/2026-10-27?utm_source=x&utm_medium=organic_social&utm_campaign=mb_x_commentary_20261028&utm_content=crypto_20261028",
+          "providerFetchStatus": 200,
+          "title": "Ethereum led the gains — Crypto briefing — 2026-10-27",
+          "cardImagePresent": true
+        }
+      ]
+    },
+    {
+      "id": "2115821241445605428",
+      "createdAt": "2026-10-29T15:01:08.000Z",
+      "authorMatches": true,
+      "text": "Nasdaq-100 stocks led the gains.\nNasdaq ETF QQQ +0.60%; S&amp;P 500 ETF SPY +0.34% (28 Oct close).\nSPY is above its 20-day average ($770.90). Watch whether it holds that line.\nhttps://t.co/GnU0xjo7Qg",
+      "possiblySensitive": false,
+      "withheld": null,
+      "metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "links": [
+        {
+          "expandedUrl": "https://www.macro-bias.com/briefings/2026-10-29?utm_source=x&utm_medium=organic_social&utm_campaign=mb_x_commentary_20261028&utm_content=stocks_20261029",
+          "providerFetchStatus": 200,
+          "title": "The Nasdaq-100 led the gains — Stock briefing — 2026-10-29",
+          "cardImagePresent": true
+        }
+      ]
+    },
+    {
+      "id": "2116183630179430417",
+      "createdAt": "2026-10-30T15:01:08.000Z",
+      "authorMatches": true,
+      "text": "Ethereum fell harder than Bitcoin.\nBitcoin -4.30%; Ethereum -4.59% (29 Oct UTC close).\nWatch whether both recover next session, or one keeps falling.\nhttps://t.co/EYOQ85vv0H",
+      "possiblySensitive": false,
+      "withheld": null,
+      "metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "links": [
+        {
+          "expandedUrl": "https://www.macro-bias.com/crypto/briefings/2026-10-29?utm_source=x&utm_medium=organic_social&utm_campaign=mb_x_commentary_20261028&utm_content=crypto_20261030",
+          "providerFetchStatus": 200,
+          "title": "Ethereum took the bigger fall — Crypto briefing — 2026-10-29",
+          "cardImagePresent": true
+        }
+      ]
+    },
+    {
+      "id": "2117633180752548282",
+      "createdAt": "2026-11-03T15:01:08.000Z",
+      "authorMatches": true,
+      "text": "Nasdaq-100 stocks took the bigger hit.\nNasdaq ETF QQQ -1.36%; S&amp;P 500 ETF SPY -0.48% (2 Nov close).\nSPY is below its 20-day average ($769.33). Watch whether it can reclaim that line.\nhttps://t.co/F2BVaL6Jaw",
+      "possiblySensitive": false,
+      "withheld": null,
+      "metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "links": [
+        {
+          "expandedUrl": "https://www.macro-bias.com/briefings/2026-11-03?utm_source=x&utm_medium=organic_social&utm_campaign=mb_x_commentary_20261028&utm_content=stocks_20261103",
+          "providerFetchStatus": 200,
+          "title": "The Nasdaq-100 took the bigger fall — Stock briefing — 2026-11-03",
+          "cardImagePresent": true
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "profile": {
+      "available": true,
+      "expectedAccount": true,
+      "protected": false,
+      "withheld": null
+    },
+    "posts": {
+      "available": true,
+      "requested": 4,
+      "returned": 4,
+      "allExpectedAuthors": true,
+      "errorsPresent": false
+    },
+    "recentTimeline": {
+      "available": true,
+      "returned": 10
+    },
+    "recentSearch": {
+      "available": true,
+      "returned": 4
+    }
+  },
+  "limitations": [
+    "Public metrics are provider-reported impressions, not unique people or subscriber attribution. Search API availability cannot prove visibility in every user timeline or rule out ranking restrictions.",
+    "No anonymous requests were made to Macro Bias tracked campaign destinations, avoiding synthetic acquisition traffic. Profile HTTP shells/login responses alone are not proof of a suspension or shadowban."
+  ],
+  "recentTimeline": {
+    "returned": 10,
+    "posts": [
+      {
+        "id": "2117633180752548282",
+        "createdAt": "2026-11-03T15:01:08.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 0,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2116183630179430417",
+        "createdAt": "2026-10-30T15:01:08.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 0,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2115821241445605428",
+        "createdAt": "2026-10-29T15:01:08.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 0,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2115458854016208903",
+        "createdAt": "2026-10-28T15:01:08.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 1,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2112871501657444465",
+        "createdAt": "2026-10-21T11:39:55.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 0,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2108556846198100210",
+        "createdAt": "2026-10-09T13:55:01.000Z",
+        "isReply": true,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 125,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 1,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2108556230709113231",
+        "createdAt": "2026-10-09T13:52:35.000Z",
+        "isReply": true,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 3,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2108555494881431590",
+        "createdAt": "2026-10-09T13:49:39.000Z",
+        "isReply": true,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 36,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2108458622347030966",
+        "createdAt": "2026-10-09T07:24:43.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 14,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      },
+      {
+        "id": "2108094064965112106",
+        "createdAt": "2026-10-08T07:16:06.000Z",
+        "isReply": false,
+        "metrics": {
+          "bookmark_count": 0,
+          "impression_count": 14,
+          "like_count": 0,
+          "quote_count": 0,
+          "reply_count": 0,
+          "retweet_count": 0
+        }
+      }
+    ],
+    "observation": "Older replies show reported impressions including 125 and 36, versus one impression across the four current standalone experiment posts. Different dates/audiences and tiny samples do not prove a causal format advantage."
+  },
+  "recentSearch": {
+    "count": 4,
+    "ids": [
+      "2117633180752548282",
+      "2116183630179430417",
+      "2115821241445605428",
+      "2115458854016208903"
+    ]
+  },
+  "anonymousHTTP": [
+    {
+      "url": "https://x.com/macro_bias",
+      "status": 200,
+      "finalUrl": "https://x.com/macro_bias",
+      "profileNamePresent": true,
+      "tweetTextPresent": true,
+      "loginGate": false,
+      "bytes": 162459
+    },
+    {
+      "url": "https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Fmacro_bias%2Fstatus%2F2117633180752548282&omit_script=true",
+      "status": 200,
+      "finalUrl": "https://publish.x.com/oembed?url=https%3A%2F%2Fx.com%2Fmacro_bias%2Fstatus%2F2117633180752548282&omit_script=true",
+      "profileNamePresent": true,
+      "tweetTextPresent": true,
+      "loginGate": false,
+      "bytes": 871
+    }
+  ],
+  "assessment": {
+    "explicitProtectedAccount": false,
+    "explicitWithholding": false,
+    "followers": 1,
+    "following": 21,
+    "pinnedPostPresent": false,
+    "verifiedExperimentPosts": 4,
+    "totalReportedExperimentImpressions": 1
+  },
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Replace the abstract bio with a plain promise about free stock/crypto briefings, and use one canonical HTTPS profile link with separate profile attribution.",
+      "reason": "Current bio says regime, rotation and flat; it does not explain what the subscriber receives."
+    },
+    {
+      "priority": 2,
+      "action": "Prepare a clear pinned introduction with both sample briefings and a free signup destination; review before posting/pinning.",
+      "reason": "There is no pinned post and the account has one follower."
+    },
+    {
+      "priority": 3,
+      "action": "Prioritise relevant, permitted participation in existing audiences over increasing unattended standalone post frequency.",
+      "reason": "Current profile, recent search API, all four posts and anonymous embed are accessible; near-zero audience is directly observed. Do not infer a shadowban or automate unsolicited replies."
+    }
+  ],
+  "conclusion": "No explicit protected/withheld signal, successful authenticated and anonymous post retrieval, and all four experiment posts returned by recent search. No evidence of broken delivery or link-card failure in this audit. Account has one follower and no pinned introduction; observed reach is negligible. Search/ranking restriction absence is not established.",
+  "profileFixProposal": {
+    "status": "awaiting_root_deployment_confirmation_and_GO_no_mutation",
+    "bio": "Free stocks & crypto briefings: what moved, how the major markets compare, and what to watch next. Stocks on market days. Crypto daily.",
+    "bioCharacters": 135,
+    "bioLimit": 160,
+    "website": "https://www.macro-bias.com/learn?utm_source=x&utm_medium=profile&utm_campaign=mb_acquisition_turnaround_20261104",
+    "websiteCharacters": 112,
+    "accountVerified": "macro_bias",
+    "existingOAuthAccessLevel": "read-write",
+    "accessLevelObservedAt": "2026-11-04T13:27:59.709Z",
+    "candidateLegacyCall": {
+      "method": "POST",
+      "path": "/1.1/account/update_profile.json",
+      "sdk": "TwitterApi.v1.updateAccountProfile({description, url})",
+      "documentaryStatus": "Installed SDK exposes this formerly documented public v1.1 endpoint. The current official v2 OpenAPI 2.173 and its 200 paths contain no profile-update operation; the old official reference redirects to the overview. Endpoint access under this account is not yet verified; no write probe performed."
+    },
+    "websiteLengthCaveat": "Requested expanded URL is 112 characters; older v1.1 profile docs used a 100-character website limit. Current official v2 contract does not specify this legacy operation. A first-party short redirect preserving UTMs would avoid that compatibility risk.",
+    "pin": {
+      "status": "not_supported_by_verified_current_official_API",
+      "reason": "The official current OpenAPI has pin-list operations but no pin-post operation. Pinned tweet is a lookup field only. Do not use undocumented account/pin_tweet or private GraphQL endpoints. No existing balanced introductory post was found among the ten recent posts reviewed; a new post would change current experiment delivery and is not authorized in this task."
+    },
+    "sources": [
+      "https://help.x.com/en/managing-your-account/how-to-customize-your-profile",
+      "https://docs.x.com/openapi.json",
+      "https://docs.x.com/x-api/llms.txt",
+      "https://developer.x.com/en/docs/twitter-api/v1/accounts-and-users/manage-account-settings/api-reference/post-account-update_profile"
+    ],
+    "mutationsAttempted": 0
+  }
+}

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { ArrowIcon } from '@/components/product/ArrowIcon';
@@ -11,6 +12,11 @@ import styles from './home.module.css';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const metadata: Metadata = {
+  title: 'Free stocks and crypto market briefings',
+  description: 'What moved, how the major markets compare, and what to watch next. Read a public stocks or crypto sample before joining the free email updates.',
+  alternates: { canonical: '/' },
+};
 
 type HomePageProps = {
   searchParams: Promise<{
@@ -82,18 +88,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className={styles.hero} aria-labelledby="hero-heading">
         <div className={styles.heroCopy}>
           <h1 id="hero-heading" className={styles.headline}>
-            Your chart tells<br />half the story.
-            <span>Read the market<br className={styles.desktopBreak} /> behind it.</span>
+            Make sense of<br />stocks and crypto.
+            <span>What moved.<br className={styles.desktopBreak} /> What to watch next.</span>
           </h1>
           <p className={styles.description}>
-            Macro Bias turns cross-market signals into one daily score. See the backdrop behind your next stock or crypto trade.
+            Short, free market briefings with dated price comparisons and a daily reading. Stocks on market days. Crypto every day. Read a public sample before deciding.
           </p>
           <div className={styles.heroSignup}>
-            <p className={styles.signupLabel}>Free daily stock + crypto scores and market updates.</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, marginBottom: 20 }}>
+              <Link href="/today" className={styles.textLink}>Read a stocks sample <ArrowIcon /></Link>
+              <Link href="/crypto" className={styles.textLink}>Read a crypto sample <ArrowIcon /></Link>
+            </div>
+            <p className={styles.signupLabel}>Get the next update, free. Choose either newsletter or both.</p>
             <HeroSignupForm />
           </div>
-          <Link href="/today" className={styles.textLink} data-analytics-event="landing_today_click" data-analytics-location="landing_hero">
-            Explore the stock bias <ArrowIcon diagonal />
+          <Link href="/learn" className={styles.textLink} data-analytics-event="landing_guides_click" data-analytics-location="landing_hero">
+            Learn how to compare the markets <ArrowIcon diagonal />
           </Link>
         </div>
         <MacroMarketChart

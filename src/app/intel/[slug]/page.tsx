@@ -13,6 +13,7 @@ import {
   type MarketingPost,
 } from "@/lib/marketing/markdown-parser";
 import { getAppUrl } from "@/lib/server-env";
+import { HeroSignupForm } from '@/components/product/HeroSignupForm';
 
 
 
@@ -60,7 +61,7 @@ const getIntelArticle = cache(async (slug: string): Promise<IntelArticle | null>
 
   return {
     ...post,
-    publishedAt: fileStats.mtime.toISOString(),
+    publishedAt: post.publishedAt ?? fileStats.mtime.toISOString(),
   };
 });
 
@@ -82,7 +83,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const appUrl = getAppUrl().replace(/\/$/, "");
   const canonicalUrl = `${appUrl}/intel/${article.slug}`;
-  const description = getExcerpt(article.content);
+  const description = article.summary ?? getExcerpt(article.content);
 
   return {
     title: article.title,
@@ -116,7 +117,7 @@ export default async function IntelArticlePage({ params }: PageProps) {
 
   const appUrl = getAppUrl().replace(/\/$/, "");
   const canonicalUrl = `${appUrl}/intel/${article.slug}`;
-  const description = getExcerpt(article.content);
+  const description = article.summary ?? getExcerpt(article.content);
   const publishedDate = formatPublishedDate(article.publishedAt);
   const articleStructuredData = {
     "@context": "https://schema.org",
@@ -151,18 +152,18 @@ export default async function IntelArticlePage({ params }: PageProps) {
         <header className="border border-white/10 bg-zinc-950">
           <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-8">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-              [ Published Market Intel ]
+              Macro Bias · Market guides
             </p>
             <div className="flex items-center gap-3 font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.3em] text-zinc-500">
               <span>{publishedDate}</span>
               <span className="hidden text-zinc-700 sm:inline">/</span>
-              <span>{article.slug}</span>
+              <span>{article.market === 'stocks' ? 'Stocks guide' : article.market === 'crypto' ? 'Crypto guide' : 'Market guide'}</span>
             </div>
           </div>
 
           <div className="space-y-5 px-5 py-8 sm:px-8 sm:py-10">
             <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-600">
-              Terminal Dispatch
+              Understand the comparison
             </p>
             <h1 className="max-w-3xl font-[family:var(--font-heading)] text-4xl font-semibold tracking-[-0.06em] text-white sm:text-5xl lg:text-6xl">
               {article.title}
@@ -175,7 +176,7 @@ export default async function IntelArticlePage({ params }: PageProps) {
 
         <article className="mt-6 border border-white/10 bg-zinc-950 px-5 py-8 sm:px-8 sm:py-10">
           <div className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-600">
-            [ Article Body ]
+            Evidence, examples and limits
           </div>
 
           <div className="mt-6 text-base leading-8 text-zinc-300">
@@ -257,25 +258,27 @@ export default async function IntelArticlePage({ params }: PageProps) {
 
         <section className="mt-6 border border-white/10 bg-white/[0.03] px-5 py-8 sm:px-8 sm:py-10">
           <p className="font-[family:var(--font-data)] text-[10px] uppercase tracking-[0.42em] text-zinc-500">
-            [ Access The Model ]
+            Keep the context in your inbox
           </p>
           <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <h2 className="font-[family:var(--font-heading)] text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
-                Macro Bias is an institutional-grade regime scoring engine for active traders.
+                What moved. How markets compare. What to watch next.
               </h2>
               <p className="mt-4 text-sm leading-7 text-zinc-400 sm:text-base">
-                Track volatility, credit, trend, and positioning in one terminal before you size risk, force conviction, or chase a broken tape.
+                Free stocks briefings on market days and crypto briefings every day. Choose either or both. Read a public sample before deciding.
               </p>
             </div>
 
-            <Link
-              className="inline-flex items-center justify-center border border-white/15 bg-white px-5 py-3 font-[family:var(--font-data)] text-xs font-semibold uppercase tracking-[0.28em] text-zinc-950 transition hover:bg-zinc-200"
-              href="/"
-            >
-              Access the Terminal
-            </Link>
+            <div className="flex shrink-0 gap-4 text-sm text-[#c9f58a] underline underline-offset-4">
+              <Link href="/today">Read a stocks sample</Link>
+              <Link href="/crypto">Read a crypto sample</Link>
+            </div>
           </div>
+          <div className="mt-6 max-w-2xl">
+            <HeroSignupForm location="landing_footer" pagePath={`/intel/${article.slug}`} defaultMarket={article.market} />
+          </div>
+          <Link href="/learn" className="mt-6 inline-block text-sm text-zinc-400 underline underline-offset-4">More market guides</Link>
         </section>
       </div>
     </main>
