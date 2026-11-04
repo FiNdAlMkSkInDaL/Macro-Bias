@@ -31,3 +31,13 @@ Few visits calls for a distribution review. Visits with few signups calls for an
 ## Validation
 
 Focused report checks cover owner access before service reads, finite dates, original opt-in/deduplication semantics, first/latest separation, overlapping resource rows, unavailable data and the fixed profile redirect. Public-summary privacy and X experiment regression suites pass. Rendered desktop/mobile checks cover real samples before forms, expandable context, correct individual/both newsletter controls, sample/guide navigation, no errors/overlays/overflow, and anonymous owner-report sign-in. Screenshots and temporary QA scripts live outside the repository. The production build, current forward fingerprint and all 40 protected subscriber/model file hashes must pass before release. Original dirty listing and X monitoring records are preserved separately.
+
+## Verified launch evidence
+
+PR51 merged at 0648a3f225cdd7a87954ed903cfc4045b5607350 and the Vercel production build passed. Anonymous HTTP checks confirmed the homepage, both real-sample market pages, /learn and both guides (200), plus the fixed /start/x redirect (307, no-store). The owner-only scorecard remains behind sign-in. No production signup was used for verification.
+
+The official X API accepted one profile update and an independent read confirmed the approved free-briefing bio and short tracked website. No X post or pin was added and the eight test slots are unchanged.
+
+One balanced educational own-feed Bluesky introduction was published after the resources were live: https://bsky.app/profile/macrobias.bsky.social/post/3mziio45aq22t . Its account/text/link/URI/CID were independently verified and the atomic internal delivery receipt is published. The approved transparent bio and bot self-label were applied. A preservation-check false positive from SDK object prototypes stopped the first attempt before any claim/post; read-only diagnosis resolved it, and there was exactly one post call with no resend. No community replies or mentions were sent. The owner confirmed no established Stocktwits account, so those contributions remain unpublished.
+
+The complete pre-launch aggregate baseline is saved in turnaround-baseline-20261104.json. It is setup evidence, not proof of success. No advertising, paid listing or API-credit purchase was made. Original dirty historical operational files remain outside these release commits.

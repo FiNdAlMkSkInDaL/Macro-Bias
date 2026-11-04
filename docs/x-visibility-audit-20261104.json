@@ -343,12 +343,12 @@
   ],
   "conclusion": "No explicit protected/withheld signal, successful authenticated and anonymous post retrieval, and all four experiment posts returned by recent search. No evidence of broken delivery or link-card failure in this audit. Account has one follower and no pinned introduction; observed reach is negligible. Search/ranking restriction absence is not established.",
   "profileFixProposal": {
-    "status": "awaiting_root_deployment_confirmation_and_GO_no_mutation",
+    "status": "updated_and_independently_verified",
     "bio": "Free stocks & crypto briefings: what moved, how the major markets compare, and what to watch next. Stocks on market days. Crypto daily.",
     "bioCharacters": 135,
     "bioLimit": 160,
-    "website": "https://www.macro-bias.com/learn?utm_source=x&utm_medium=profile&utm_campaign=mb_acquisition_turnaround_20261104",
-    "websiteCharacters": 112,
+    "website": "https://www.macro-bias.com/start/x",
+    "websiteCharacters": 34,
     "accountVerified": "macro_bias",
     "existingOAuthAccessLevel": "read-write",
     "accessLevelObservedAt": "2026-11-04T13:27:59.709Z",
@@ -369,6 +369,30 @@
       "https://docs.x.com/x-api/llms.txt",
       "https://developer.x.com/en/docs/twitter-api/v1/accounts-and-users/manage-account-settings/api-reference/post-account-update_profile"
     ],
-    "mutationsAttempted": 0
+    "mutationsAttempted": 1
+  },
+  "profileFixExecution": {
+    "attemptedAt": "2026-11-04T13:47:55.899Z",
+    "endpoint": "POST https://api.x.com/1.1/account/update_profile.json",
+    "bio": "Free stocks & crypto briefings: what moved, how the major markets compare, and what to watch next. Stocks on market days. Crypto daily.",
+    "bioCharacters": 135,
+    "website": "https://www.macro-bias.com/start/x",
+    "rootDeploymentConfirmation": "Production 0648a3... READY; /learn HTTP200; /start/x HTTP307 fixed campaign redirect",
+    "attempts": 1,
+    "pinningAttempted": false,
+    "newPostsCreated": false,
+    "apiAccepted": true,
+    "status": "updated_and_independently_verified",
+    "verifiedAt": "2026-11-04T13:47:57.138Z",
+    "readback": {
+      "username": "macro_bias",
+      "description": "Free stocks & crypto briefings: what moved, how the major markets compare, and what to watch next. Stocks on market days. Crypto daily.",
+      "expandedWebsite": [
+        "https://www.macro-bias.com/start/x"
+      ]
+    },
+    "descriptionMatches": true,
+    "websiteMatches": true,
+    "verifiedComplete": true
   }
 }
