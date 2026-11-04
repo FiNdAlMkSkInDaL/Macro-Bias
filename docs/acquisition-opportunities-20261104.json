@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-04T13:32:23.157388+00:00",
+  "checkedAt": "2026-11-04T13:50:39.415Z",
   "campaign": "mb_acquisition_turnaround_20261104",
   "scope": "Free directory listing and community opportunity execution. Subscriber emails, scores, expired schedules and current X test unchanged.",
   "budgetSpent": 0,
@@ -207,11 +207,10 @@
       },
       "draft": "$SPY $QQQ A QQQ/SPY gap shows relative leadership, not market breadth. To check participation, compare equal-weight vs cap-weight indices and advancing vs declining stocks. One day’s gap isn’t a timing signal. Disclosure: I work on Macro Bias.",
       "draftType": "Standalone educational contribution, no external link; owner must review and make it their own before manual posting.",
-      "status": "prepared_not_posted",
+      "status": "not_posted_no_owned_account",
       "publicationBlockers": [
-        "No authorized authenticated Stocktwits account or contribution history has been established.",
-        "The disclosure counts toward promotional activity; verify the account meets the 90% non-promotional history and new-account ticker restrictions first.",
-        "Native Windows browser control stopped on URL-policy enforcement. No UI retry or automated community posting attempted."
+        "Owner confirmed no Stocktwits account; do not create one or post there.",
+        "Retain this draft as research only; it is not a publishing route."
       ]
     },
     {
@@ -231,11 +230,10 @@
       },
       "draft": "$BTC.X $ETH.X If ETH rises faster than BTC, ETH/BTC rises too. That shows relative strength between two assets—not all altcoins, fresh inflows or proof of a new trend. Compare the same timestamps and more than one session. Disclosure: I work on Macro Bias.",
       "draftType": "Standalone educational contribution, no external link; owner must review and make it their own before manual posting.",
-      "status": "prepared_not_posted",
+      "status": "not_posted_no_owned_account",
       "publicationBlockers": [
-        "No authorized authenticated Stocktwits account or contribution history has been established.",
-        "Verify promotional-history/new-account rules before posting; do not create filler posts to manufacture eligibility.",
-        "Native Windows browser control stopped on URL-policy enforcement. No UI retry or automated community posting attempted."
+        "Owner confirmed no Stocktwits account; do not create one or post there.",
+        "Retain this draft as research only; it is not a publishing route."
       ]
     }
   ],
@@ -249,5 +247,144 @@
     "Expired Reddit bot routines remain paused. No Reddit API/browser publication without the previously missing approved access and commercial/automation evidence.",
     "No mass distribution, hidden affiliation, invented personal trading experience, or copy-pasted replies to unrelated threads.",
     "Prepared drafts are not published contributions, distribution results or subscribers."
-  ]
+  ],
+  "blueskyCommunityReview": {
+    "checkedAt": "2026-11-04T13:42:29.046494+00:00",
+    "ownedAccount": "macrobias.bsky.social",
+    "accountVerified": "Successful authentication using existing authorized configuration; no credentials/session tokens saved in this evidence.",
+    "officialRules": [
+      {
+        "url": "https://bsky.social/about/support/community-guidelines",
+        "observedLastUpdated": "2025-09-19",
+        "relevantRules": [
+          "No spam or disruptive repeated posting.",
+          "No artificial manipulation of reach or engagement.",
+          "Clearly identify commercial content and affiliation.",
+          "Educational analysis is welcome when appropriately framed."
+        ]
+      },
+      {
+        "url": "https://bsky.network/docs/developer-guidelines/",
+        "relevantRule": "Automated or bulk interactions that notify users, including replies, fall under the spam definition."
+      },
+      {
+        "url": "https://github.com/bluesky-social/bsky-docs/blob/main/docs/starter-templates/bots.mdx",
+        "relevantRules": [
+          "Automated own-account posts on a regular interval are welcome.",
+          "Interactions such as replies, reposts and likes require an opt-in in which the user tagged the bot.",
+          "Bot profile self-label is recommended as a best practice."
+        ]
+      }
+    ],
+    "policyConclusion": "A sparse useful standalone post on the owned brand feed is supported; unsolicited automated replies are not. Do not turn general public questions into opt-in for this bot.",
+    "publicQuestionSearch": {
+      "since": "2026-10-21T00:00:00Z",
+      "untilCheckedAt": "2026-11-04T13:42:29.046494+00:00",
+      "queries": [
+        "SPY QQQ",
+        "ETH BTC",
+        "ETH/BTC",
+        "QQQ why",
+        "SPY breadth"
+      ],
+      "method": "Official app.bsky.feed.searchPosts, sort latest, limit 100 per query through the authenticated owned account. Public endpoint returned HTTP 403 before authenticated search succeeded; no endpoint or rate-limit bypass.",
+      "result": "No genuinely suitable recent help question verified in the inspected results. Most matches were publisher posts, promotional rhetorical questions or unrelated context. Do not force two replies or claim opportunities are conversations.",
+      "postsPublished": 0
+    },
+    "publicProfileRead": {
+      "handle": "macrobias.bsky.social",
+      "displayName": "Macro Bias",
+      "labels": [],
+      "postsCount": 561,
+      "botLabel": "Recommended best practice not currently observed; no profile change performed."
+    },
+    "standaloneDraft": {
+      "status": "published_verified",
+      "type": "own_feed_standalone_no_mentions_no_reply_no_quote",
+      "markets": [
+        "stocks",
+        "crypto"
+      ],
+      "text": "QQQ can beat SPY while most stocks struggle. ETH can beat BTC while both fall. Relative strength isn't the whole story. We made two free guides:\n\nhttps://www.macro-bias.com/learn?utm_source=bluesky&utm_medium=social&utm_campaign=mb_acquisition_turnaround_20261104&utm_content=learn_intro",
+      "characters": 287,
+      "url": "https://www.macro-bias.com/learn?utm_source=bluesky&utm_medium=social&utm_campaign=mb_acquisition_turnaround_20261104&utm_content=learn_intro",
+      "publicationConditions": [
+        "Parent reviews exact copy.",
+        "The /learn resource hub is deployed and public content matches the two promised guides.",
+        "Read-only duplicate check before one-off publication.",
+        "Do not restart or change any schedule."
+      ],
+      "affiliation": "The owned Macro Bias brand account and first-person reference to our guides identify the commercial affiliation without pretending to be an independent trader.",
+      "tracking": "First-touch campaign mb_acquisition_turnaround_20261104, source bluesky, medium social, content learn_intro. Subscriber tracking remains consent-limited and no synthetic visits or subscribers should be created.",
+      "claimProtocol": {
+        "id": "36006af2-a631-5b67-aabc-0ddcab2029ba",
+        "event": "acquisition_turnaround_delivery",
+        "traffic_type": "internal",
+        "key": "mb_acquisition_turnaround_20261104:bluesky:learn_intro",
+        "rule": "Atomic INSERT success required before one official API post. Existing claim stops; uncertain response stays needs_review with no resend, claim deletion or retry. Verify returned URI and CID via official GET."
+      }
+    },
+    "externalActions": "Exactly one approved standalone own-feed resource intro published and verified. Approved profile description and bot self-label applied. No community replies, mentions, quotes, likes, follows, or schedule changes.",
+    "profileProposal": {
+      "status": "applied_verified",
+      "description": "Free stocks & crypto briefings. What moved, market comparisons and what to watch next. Automated Macro Bias posts.\nhttps://www.macro-bias.com/learn?utm_source=bluesky&utm_medium=profile&utm_campaign=mb_acquisition_turnaround_20261104",
+      "characters": 233,
+      "mutation": "Preserve all existing app.bsky.actor.profile fields; replace description and union bot into existing labels.values while preserving label fields.",
+      "linkCheck": "Do not HTTP-follow this tagged URL. Root verifies untagged /learn production route.",
+      "approvedByParent": true,
+      "verificationLimitation": "No original pre-write byte snapshot persisted. Current canonical JSON matches reviewed snapshot; original mutation spread existing record fields. Initial avatar/banner BlobRef prototype comparison caused a false mismatch, preserved in previousStops."
+    },
+    "oneOffPublication": {
+      "status": "published",
+      "stage": "complete",
+      "reason": null,
+      "claimId": "36006af2-a631-5b67-aabc-0ddcab2029ba",
+      "noResend": true,
+      "previousStops": [
+        {
+          "status": "stopped_before_post",
+          "stage": "profile_transparency",
+          "reason": "unintended_profile_change",
+          "claimOrPostAttempted": false
+        }
+      ],
+      "readOnlyDiagnosis": {
+        "reproducedOnUnchangedRecord": true,
+        "structuredCloneMismatchFields": [
+          "avatar",
+          "banner"
+        ],
+        "originalSdkTypes": [
+          "BlobRef",
+          "BlobRef"
+        ],
+        "clonedTypes": [
+          "Object",
+          "Object"
+        ],
+        "currentValidationCanonicalJsonPreserved": true,
+        "originalBeforeWriteSnapshotPersisted": false,
+        "currentPrivateSnapshotSaved": true,
+        "parentApprovedNoProfileWriteContinuation": true
+      },
+      "profileVerifiedAt": "2026-11-04T13:50:02.770Z",
+      "profileVerified": true,
+      "profileReadOnlyContinuation": true,
+      "profileVerificationMethod": "Canonical JSON equality with private current-record snapshot plus approved bio and bot label.",
+      "profileVerificationLimitation": "Original before-write profile snapshot was not persisted. First check was a false mismatch from structuredClone removing avatar/banner SDK BlobRef prototypes; write spread original record. Parent reviewed and approved continuation without another profile write.",
+      "account": "macrobias.bsky.social",
+      "resolvedStopReason": "unintended_profile_change was a prototype comparison false positive; no claim or post had occurred.",
+      "event": "acquisition_turnaround_delivery",
+      "claimedAt": "2026-11-04T13:50:02.774Z",
+      "remoteUri": "at://did:plc:w7bpdelvlrpjlmv5edae4wcp/app.bsky.feed.post/3mziio45aq22t",
+      "remoteCid": "bafyreibs2adltfoh7zdu7abnmiezlvllmvzql7vhodg4ottsavh4zwdp2y",
+      "permalink": "https://bsky.app/profile/macrobias.bsky.social/post/3mziio45aq22t",
+      "repositoryVerified": true,
+      "publicPostVerified": true,
+      "finishedAt": "2026-11-04T13:50:03.782Z",
+      "receiptReadVerifiedAt": "2026-11-04T13:50:39.414Z",
+      "receiptTrafficType": "internal",
+      "postApiCalls": 1
+    }
+  }
 }

@@ -1,0 +1,193 @@
+{
+  "capturedAt": "2026-11-04T13:46:38.417Z",
+  "campaign": "mb_acquisition_turnaround_20261104",
+  "window": {
+    "campaign": "mb_acquisition_turnaround_20261104",
+    "start": "2026-11-04",
+    "end": "2026-11-17",
+    "reviewDate": "2026-11-18",
+    "targets": {
+      "identifiedVisitors": 100,
+      "uniqueSubscribers": 10,
+      "stocks": 5,
+      "crypto": 5
+    },
+    "resources": [
+      "/learn",
+      "/intel/spy-vs-qqq-divergence",
+      "/intel/bitcoin-ethereum-divergence"
+    ]
+  },
+  "setupBaselineIsPerformanceEvidence": false,
+  "releaseNotYetVerifiedLive": true,
+  "first": {
+    "complete": true,
+    "range": {
+      "startDate": "2026-11-04",
+      "endDate": "2026-11-04",
+      "startInclusive": "2026-11-04T00:00:00.000Z",
+      "endExclusive": "2026-11-05T00:00:00.000Z",
+      "timezone": "UTC"
+    },
+    "metrics": {
+      "pageViews": 0,
+      "visitors": 0,
+      "sessions": 0,
+      "newSubscribers": 0,
+      "newAccounts": 0,
+      "paidConversions": 0,
+      "subscriberVisitors": 0,
+      "subscriberRate": null
+    },
+    "newsletters": {
+      "stocks": 0,
+      "crypto": 0,
+      "both": 0,
+      "unknown": 0
+    },
+    "sources": [],
+    "coverage": {
+      "complete": true,
+      "datasets": [
+        {
+          "name": "events",
+          "rows": 12,
+          "total": 12,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "subscribers",
+          "rows": 0,
+          "total": 0,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "accounts",
+          "rows": 20,
+          "total": 20,
+          "available": true,
+          "complete": true
+        }
+      ],
+      "warnings": [
+        "Historical subscriber/account sources remain Unknown when no confirmed attribution was saved. Paid upgrades are verified first payments recorded after this tracking release; older paid conversion history is unavailable."
+      ],
+      "identifiedPageViews": 0,
+      "unidentifiedPageViews": 0,
+      "identityCoveragePct": null,
+      "knownSubscriberSources": 0,
+      "unknownSubscriberSources": 0,
+      "knownAccountSources": 0,
+      "unknownAccountSources": 0,
+      "linkedSubscriberCount": 0,
+      "linkedAccountCount": 0,
+      "linkedPaidCount": 0,
+      "unlinkedSubscriberCount": 0,
+      "unlinkedAccountCount": 0,
+      "unlinkedPaidCount": 0,
+      "legacyPageViews": 0,
+      "unverifiedLegacyPageViews": 0,
+      "excludedInternalRows": 0,
+      "excludedTestSubscribers": 0,
+      "excludedTestAccounts": 0,
+      "excludedRows": 0,
+      "excludedReferralOnlyRows": 0,
+      "paidHistoryAvailable": false,
+      "consentIdentifiedVisits": 0,
+      "truncatedDatasets": []
+    }
+  },
+  "latestAssist": {
+    "complete": true,
+    "range": {
+      "startDate": "2026-11-04",
+      "endDate": "2026-11-04",
+      "startInclusive": "2026-11-04T00:00:00.000Z",
+      "endExclusive": "2026-11-05T00:00:00.000Z",
+      "timezone": "UTC"
+    },
+    "metrics": {
+      "pageViews": 0,
+      "visitors": 0,
+      "sessions": 0,
+      "newSubscribers": 0,
+      "newAccounts": 0,
+      "paidConversions": 0,
+      "subscriberVisitors": 0,
+      "subscriberRate": null
+    },
+    "newsletters": {
+      "stocks": 0,
+      "crypto": 0,
+      "both": 0,
+      "unknown": 0
+    },
+    "sources": [],
+    "coverage": {
+      "complete": true,
+      "datasets": [
+        {
+          "name": "events",
+          "rows": 12,
+          "total": 12,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "subscribers",
+          "rows": 0,
+          "total": 0,
+          "available": true,
+          "complete": true
+        },
+        {
+          "name": "accounts",
+          "rows": 20,
+          "total": 20,
+          "available": true,
+          "complete": true
+        }
+      ],
+      "warnings": [
+        "Historical subscriber/account sources remain Unknown when no confirmed attribution was saved. Paid upgrades are verified first payments recorded after this tracking release; older paid conversion history is unavailable."
+      ],
+      "identifiedPageViews": 0,
+      "unidentifiedPageViews": 0,
+      "identityCoveragePct": null,
+      "knownSubscriberSources": 0,
+      "unknownSubscriberSources": 0,
+      "knownAccountSources": 0,
+      "unknownAccountSources": 0,
+      "linkedSubscriberCount": 0,
+      "linkedAccountCount": 0,
+      "linkedPaidCount": 0,
+      "unlinkedSubscriberCount": 0,
+      "unlinkedAccountCount": 0,
+      "unlinkedPaidCount": 0,
+      "legacyPageViews": 0,
+      "unverifiedLegacyPageViews": 0,
+      "excludedInternalRows": 0,
+      "excludedTestSubscribers": 0,
+      "excludedTestAccounts": 0,
+      "excludedRows": 0,
+      "excludedReferralOnlyRows": 0,
+      "paidHistoryAvailable": false,
+      "consentIdentifiedVisits": 0,
+      "truncatedDatasets": []
+    }
+  },
+  "resourceEntries": {
+    "complete": true,
+    "range": {
+      "startDate": "2026-11-04",
+      "endDate": "2026-11-04",
+      "startInclusive": "2026-11-04T00:00:00.000Z",
+      "endExclusive": "2026-11-05T00:00:00.000Z",
+      "timezone": "UTC"
+    },
+    "rows": [],
+    "note": "First-entry pages across all sources, including organic search and tagged visits. This overlaps the campaign report; do not add the two or sum distinct visitors across rows."
+  }
+}
