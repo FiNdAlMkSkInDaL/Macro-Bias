@@ -5,22 +5,27 @@ import { MemberDailyPage } from '@/components/product/MemberDailyPage';
 import { loadPublicDailyData } from '@/lib/product/public-daily-data';
 import { getViewerScore } from '@/lib/product/score-access';
 import { loadPaidBriefingLink } from '@/lib/product/paid-briefing-link';
+import { loadPublicBriefingSummary } from '@/lib/product/public-briefing-summary-data';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Free stock market newsletter and daily score',
+  title: 'Free stock market newsletter: what moved and what to watch',
   description:
-    'See the latest published stock market score and SPY history. Get the score and a short market update free by email on market days. No account needed.',
+    'See a real published summary before joining. What moved, how US stock benchmarks compare, and what to watch next. Free email updates on market days; no account needed.',
   alternates: { canonical: '/today' },
-  openGraph: { title: 'A wider view of the stock market — Macro Bias', description: 'The published stock score and a short market update, free by email on market days.', url: '/today' },
+  openGraph: { title: 'Make sense of the stock market — Macro Bias', description: 'What moved, how US stock benchmarks compare, and what to watch next. Free email updates on market days.', url: '/today' },
 };
 
 export default async function TodayPage() {
   const viewer = await getViewerScore('stocks', undefined, 'latest-publication', { includeExplanation: true });
 
   if (!viewer.signedIn && !viewer.paid) {
-    return <PublicDailyPage data={await loadPublicDailyData('stocks', viewer)} />;
+    const [data, summary] = await Promise.all([
+      loadPublicDailyData('stocks', viewer),
+      viewer.score ? loadPublicBriefingSummary('stocks', viewer.score.tradeDate) : Promise.resolve(null),
+    ]);
+    return <PublicDailyPage data={data} sample={summary && viewer.score ? { date: viewer.score.tradeDate, summary } : null} />;
   }
 
   if (!viewer.paid) {

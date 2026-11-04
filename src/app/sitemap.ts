@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: appUrl, changeFrequency: "daily", priority: 1 },
     ...['/today', '/crypto'].map(path => ({ url: `${appUrl}${path}`, changeFrequency: 'daily' as const, priority: 0.9 })),
     ...['/briefings', '/crypto/briefings', '/track-record', '/crypto/track-record'].map(path => ({ url: `${appUrl}${path}`, changeFrequency: 'daily' as const, priority: 0.7 })),
-    ...['/pricing', '/about', '/faq', '/regime'].map(path => ({ url: `${appUrl}${path}`, changeFrequency: 'monthly' as const, priority: 0.6 })),
+    ...['/pricing', '/about', '/faq', '/regime', '/learn'].map(path => ({ url: `${appUrl}${path}`, changeFrequency: 'monthly' as const, priority: 0.6 })),
     ...ALL_REGIME_SLUGS.map(slug => ({ url: `${appUrl}/regime/${slug}`, changeFrequency: 'monthly' as const, priority: 0.5 })),
     ...posts.map(post => ({ url: `${appUrl}/intel/${post.slug}`, changeFrequency: 'monthly' as const, priority: 0.5 })),
     ...published(stocks.items, '/briefings'), ...published(crypto.items, '/crypto/briefings'),

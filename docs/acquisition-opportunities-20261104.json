@@ -1,0 +1,253 @@
+{
+  "checkedAt": "2026-11-04T13:32:23.157388+00:00",
+  "campaign": "mb_acquisition_turnaround_20261104",
+  "scope": "Free directory listing and community opportunity execution. Subscriber emails, scores, expired schedules and current X test unchanged.",
+  "budgetSpent": 0,
+  "submissions": [
+    {
+      "name": "StackLetter",
+      "status": "submitted_pending_review",
+      "evidence": {
+        "at": "2026-11-04T13:27:59.432246+00:00",
+        "request": "POST advertised /add multipart public form; fresh session CSRF; no login/CAPTCHA",
+        "http": 200,
+        "finalUrl": "https://www.stackletter.com/",
+        "receiptCandidates": [
+          "olitics Software Growth Travel General Art Science Food &amp; Drink Sports Your newsletter has been submitted successfully. We will review it and publish it soon. THE READY BRIEF General THE READY BRIEF is a daily newsletter that translates headline news into what actually matters for you",
+          "ft pages that capture both search demand and reader engagement. On-page SEO analysis: Automatically review on-page elements including meta titles, meta descriptions, headings, image alt text, and canonicalization, highlighting issues and optimization opportunities. Actionable optimizat"
+        ]
+      },
+      "receipt": "Your newsletter has been submitted successfully. We will review it and publish it soon."
+    },
+    {
+      "name": "Rad Letters",
+      "status": "submitted_pending_review",
+      "evidence": {
+        "at": "2026-11-04T13:30:25.587220+00:00",
+        "request": "POST advertised /submit-newsletter multipart public form; standard review free; fresh public session CSRF; no account or CAPTCHA",
+        "http": 200,
+        "finalUrl": "https://radletters.com/submission-success?upgrade_type=free",
+        "receiptCandidates": [
+          ".plausible.q || []).push(arguments) } Rad Letters Menu Home Blog Add Newsletter Thanks — your newsletter has been submitted with sponsorship info. We emailed you a secure link to manage your submission info later. Manage submission info Back to Home © 2026 Rad Lett"
+        ],
+        "secureManagementLink": "Returned by provider; deliberately not retained."
+      },
+      "receipt": "Thanks — your newsletter has been submitted with sponsorship info. We emailed you a secure link to manage your submission info later."
+    }
+  ],
+  "publicListingCopy": {
+    "name": "Macro Bias — Stocks & Crypto",
+    "description": "Free stocks and crypto briefings: what moved, how the major markets compare, and what to watch next. Stocks on market days, crypto daily. Choose either newsletter or both. Optional paid reports go deeper.",
+    "publicContactEmail": "macrobias.team@outlook.com",
+    "pricing": "Freemium",
+    "language": "English",
+    "tags": [
+      "stocks",
+      "crypto",
+      "markets",
+      "investing",
+      "daily"
+    ],
+    "twitterUsername": "macro_bias",
+    "subscriberCount": null,
+    "subscriberCountNote": "Optional field omitted rather than reuse the old 45 record count as a current verified audience."
+  },
+  "opportunities": [
+    {
+      "name": "StackLetter",
+      "url": "https://www.stackletter.com/submit",
+      "audienceEvidence": "https://www.stackletter.com/category/finance",
+      "cost": 0,
+      "status": "submitted_pending_review",
+      "fit": "Active Finance directory includes comparable daily stocks/crypto newsletters.",
+      "trackedUrl": "https://www.macro-bias.com/?utm_source=stackletter&utm_medium=directory&utm_campaign=mb_acquisition_turnaround_20261104",
+      "publicForm": {
+        "method": "POST",
+        "action": "https://www.stackletter.com/add",
+        "encoding": "multipart/form-data",
+        "accountRequired": false,
+        "captchaObserved": false,
+        "category": "Finance",
+        "categoryValue": "10",
+        "frequency": "Daily",
+        "language": "English",
+        "cost": "Freemium",
+        "fields": [
+          "name",
+          "description",
+          "url",
+          "category",
+          "tags",
+          "frequency",
+          "language",
+          "cost",
+          "twitter",
+          "email"
+        ],
+        "optionalFieldsOmitted": [
+          "image",
+          "subscriber_count",
+          "launch_year"
+        ],
+        "csrf": "Session-bound hidden public-form token; not retained in this record."
+      },
+      "executionNote": "Native Computer Use stopped before any field entry because browser URL could not be established. Direct advertised public HTML form action identified; parent approval pending for non-UI alternative.",
+      "submissionAttempt": {
+        "at": "2026-11-04T13:27:59.432246+00:00",
+        "request": "POST advertised /add multipart public form; fresh session CSRF; no login/CAPTCHA",
+        "http": 200,
+        "finalUrl": "https://www.stackletter.com/",
+        "receiptCandidates": [
+          "olitics Software Growth Travel General Art Science Food &amp; Drink Sports Your newsletter has been submitted successfully. We will review it and publish it soon. THE READY BRIEF General THE READY BRIEF is a daily newsletter that translates headline news into what actually matters for you",
+          "ft pages that capture both search demand and reader engagement. On-page SEO analysis: Automatically review on-page elements including meta titles, meta descriptions, headings, image alt text, and canonicalization, highlighting issues and optimization opportunities. Actionable optimizat"
+        ]
+      },
+      "receipt": "Your newsletter has been submitted successfully. We will review it and publish it soon."
+    },
+    {
+      "name": "Reader.Directory",
+      "url": "https://reader.directory/submit",
+      "guidelines": "https://reader.directory/faq",
+      "cost": 0,
+      "status": "blocked_current_route",
+      "fit": "Finance category is described in FAQ, but category page and form currently return no category options. Audience activity unconfirmed.",
+      "trackedUrl": "https://www.macro-bias.com/?utm_source=reader_directory&utm_medium=directory&utm_campaign=mb_acquisition_turnaround_20261104",
+      "blocker": "Public form has no action, method or field name attributes. No documented submission API discovered. Native Computer Use unavailable, and no private endpoint will be guessed.",
+      "requiredConsent": "Email stored for submission-status contact."
+    },
+    {
+      "name": "BeeDirectory",
+      "url": "https://bee-directory.com/submit",
+      "guidelines": "https://bee-directory.com/",
+      "status": "blocked_http_402",
+      "fit": "Official homepage says free submission open to non-Beehiiv publications, with Finance & Investing category.",
+      "blocker": "Submission route returns HTTP 402 Payment Required. No purchase, payment bypass or account setup attempted."
+    },
+    {
+      "name": "Rad Letters",
+      "url": "https://radletters.com/add-newsletter",
+      "cost": 0,
+      "status": "submitted_pending_review",
+      "trackedUrl": "https://www.macro-bias.com/?utm_source=radletters&utm_medium=directory&utm_campaign=mb_acquisition_turnaround_20261104",
+      "publicForm": {
+        "action": "https://radletters.com/submit-newsletter",
+        "method": "POST",
+        "encoding": "multipart/form-data",
+        "reviewOption": "free",
+        "topics": [
+          "Finance",
+          "Investing",
+          "Crypto"
+        ],
+        "sponsorFields": "Omitted; no partner/sponsor opt-ins",
+        "subscriberCount": "Omitted; not publicly shown",
+        "captchaObserved": false,
+        "accountRequired": false
+      },
+      "tagline": "Free stocks (market days) and crypto (daily) briefings: what moved, market comparisons, what to watch next.",
+      "submissionAttempt": {
+        "at": "2026-11-04T13:30:25.587220+00:00",
+        "request": "POST advertised /submit-newsletter multipart public form; standard review free; fresh public session CSRF; no account or CAPTCHA",
+        "http": 200,
+        "finalUrl": "https://radletters.com/submission-success?upgrade_type=free",
+        "receiptCandidates": [
+          ".plausible.q || []).push(arguments) } Rad Letters Menu Home Blog Add Newsletter Thanks — your newsletter has been submitted with sponsorship info. We emailed you a secure link to manage your submission info later. Manage submission info Back to Home © 2026 Rad Lett"
+        ],
+        "secureManagementLink": "Returned by provider; deliberately not retained in operational record."
+      },
+      "receipt": "Thanks — your newsletter has been submitted with sponsorship info. We emailed you a secure link to manage your submission info later.",
+      "receiptNote": "Provider uses this generic wording. Only publishing frequency was supplied; all sponsorship availability/contact, media-kit, audience and count fields were omitted. Standard review was free."
+    }
+  ],
+  "excluded": [
+    {
+      "name": "Existing five directory submissions",
+      "reason": "No duplicate submissions to Letterlist, Fintech Newsletters, Epirus, GoLetter or InboxReads."
+    },
+    {
+      "name": "BlogHub",
+      "reason": "Unchanged historical FedCM sign-in failure; not retried."
+    },
+    {
+      "name": "FindStox",
+      "reason": "Free route requires subscriber-email promotion, inconsistent with frozen subscriber emails."
+    },
+    {
+      "name": "CrossLetter / takesponsors",
+      "reason": "Primarily sponsor/cross-promotion discovery, not the requested reader-acquisition emphasis."
+    },
+    {
+      "name": "SendFox",
+      "reason": "Requires changing newsletter sending platform."
+    },
+    {
+      "name": "Newsletters.co",
+      "reason": "Redirects to unrelated coaching site."
+    },
+    {
+      "name": "The Sample",
+      "reason": "Public submit route returned 404."
+    }
+  ],
+  "communityOpportunities": [
+    {
+      "market": "stocks",
+      "destination": "Stocktwits SPY / QQQ discussion stream",
+      "url": "https://stocktwits.com/symbol/SPY",
+      "activityEvidence": "Public stream contains current ticker discussion, public sentiment and recent comments; checked 4 November 2026. This is an observed active context, not a claim about reach.",
+      "rulesUrl": "https://help.stocktwits.com/c/best-practices/community-guidelines/self-promotion-guidelines",
+      "rulesCheckedAt": "2026-11-04",
+      "rules": {
+        "creatorsAllowed": true,
+        "standaloneValueRequired": true,
+        "promotionMaximumShare": 0.1,
+        "newAccountPromotionalTickerRestriction": "First 50 posts",
+        "noGatedLinks": true,
+        "disclosureRequired": true
+      },
+      "draft": "$SPY $QQQ A QQQ/SPY gap shows relative leadership, not market breadth. To check participation, compare equal-weight vs cap-weight indices and advancing vs declining stocks. One day’s gap isn’t a timing signal. Disclosure: I work on Macro Bias.",
+      "draftType": "Standalone educational contribution, no external link; owner must review and make it their own before manual posting.",
+      "status": "prepared_not_posted",
+      "publicationBlockers": [
+        "No authorized authenticated Stocktwits account or contribution history has been established.",
+        "The disclosure counts toward promotional activity; verify the account meets the 90% non-promotional history and new-account ticker restrictions first.",
+        "Native Windows browser control stopped on URL-policy enforcement. No UI retry or automated community posting attempted."
+      ]
+    },
+    {
+      "market": "crypto",
+      "destination": "Stocktwits Bitcoin discussion feed",
+      "url": "https://stocktwits.com/coins/bitcoin",
+      "activityEvidence": "Public Bitcoin feed includes current BTC/USD market data and ticker discussion; checked 4 November 2026. No claim of guaranteed exposure.",
+      "rulesUrl": "https://help.stocktwits.com/c/best-practices/community-guidelines/self-promotion-guidelines",
+      "rulesCheckedAt": "2026-11-04",
+      "rules": {
+        "creatorsAllowed": true,
+        "standaloneValueRequired": true,
+        "promotionMaximumShare": 0.1,
+        "newAccountPromotionalTickerRestriction": "First 50 posts",
+        "noGatedLinks": true,
+        "disclosureRequired": true
+      },
+      "draft": "$BTC.X $ETH.X If ETH rises faster than BTC, ETH/BTC rises too. That shows relative strength between two assets—not all altcoins, fresh inflows or proof of a new trend. Compare the same timestamps and more than one session. Disclosure: I work on Macro Bias.",
+      "draftType": "Standalone educational contribution, no external link; owner must review and make it their own before manual posting.",
+      "status": "prepared_not_posted",
+      "publicationBlockers": [
+        "No authorized authenticated Stocktwits account or contribution history has been established.",
+        "Verify promotional-history/new-account rules before posting; do not create filler posts to manufacture eligibility.",
+        "Native Windows browser control stopped on URL-policy enforcement. No UI retry or automated community posting attempted."
+      ]
+    }
+  ],
+  "computerUseBlocker": {
+    "status": "stopped",
+    "message": "Could not determine current browser URL on Windows with enough confidence to enforce policy.",
+    "actionsAfterBlock": "No Windows UI retry, no authentication, no form typing or submission."
+  },
+  "communityGuardrails": [
+    "No X unsolicited automated replies; written platform approval/opt-in requirements remain in force.",
+    "Expired Reddit bot routines remain paused. No Reddit API/browser publication without the previously missing approved access and commercial/automation evidence.",
+    "No mass distribution, hidden affiliation, invented personal trading experience, or copy-pasted replies to unrelated threads.",
+    "Prepared drafts are not published contributions, distribution results or subscribers."
+  ]
+}

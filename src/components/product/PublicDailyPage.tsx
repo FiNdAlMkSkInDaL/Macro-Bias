@@ -2,6 +2,7 @@ import { StockRiskCard } from './StockRiskCard';
 import Link from 'next/link';
 
 import type { PublicDailyData } from '@/lib/product/public-daily-data';
+import type { PublicBriefingSummary } from '@/lib/product/public-briefing-summary';
 import { ArrowIcon } from './ArrowIcon';
 import { DailyPublicationNote } from './DailyPublicationNote';
 import { DailyReadingRefresh } from './DailyReadingRefresh';
@@ -15,9 +16,9 @@ const MARKETS = {
     path: '/today',
     instrument: 'SPY',
     chartName: 'SPY',
-    headline: 'Read the market behind',
-    accent: 'your stock chart.',
-    description: 'A daily stock score built from price momentum and signals across bonds, commodities and volatility.',
+    headline: 'Make sense of',
+    accent: 'the stock market.',
+    description: 'What moved, how US stock benchmarks compare, and what to watch next. A short market update on market days, free by email.',
     contextTitle: 'A wider view of the market.',
     contextDescription: 'A stock chart shows price. Macro Bias also looks at the conditions around it.',
     inputs: [
@@ -35,9 +36,9 @@ const MARKETS = {
     path: '/crypto',
     instrument: 'BTC',
     chartName: 'Bitcoin',
-    headline: 'See the bigger picture',
-    accent: 'behind crypto.',
-    description: 'A daily crypto score connecting Bitcoin momentum, Ethereum’s relative strength and wider macro conditions.',
+    headline: 'Make sense of',
+    accent: 'the crypto market.',
+    description: 'What moved, how Bitcoin and Ethereum compare, and what to watch next. A short market update every day, free by email.',
     contextTitle: 'Crypto moves in a wider market.',
     contextDescription: 'Bitcoin has its own rhythm. Macro Bias also looks at the markets around it.',
     inputs: [
@@ -65,12 +66,13 @@ function displayDate(date: string) {
     .format(new Date(`${date}T00:00:00Z`));
 }
 
-export function PublicDailyPage({ data }: { data: PublicDailyData }) {
+export function PublicDailyPage({ data, sample }: { data: PublicDailyData; sample?: { date: string; summary: PublicBriefingSummary } | null }) {
   const market = MARKETS[data.asset];
   const score = data.score;
   const regime = score ? REGIMES[score.label] : null;
   const latest = score ? { tradeDate: score.tradeDate, score: score.score, biasLabel: score.label } : null;
   const latestPriceDate = data.availability.lastCandleDate;
+  const archivePath = data.asset === 'stocks' ? '/briefings' : '/crypto/briefings';
 
   return (
     <main className={styles.page} data-public-daily={data.asset}>
@@ -82,6 +84,7 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
 
       <section className={styles.hero} aria-labelledby="daily-heading">
         <div className={styles.heroCopy}>
+          <p className={styles.eyebrow}>Free {data.asset === 'stocks' ? 'stock' : 'crypto'} market updates</p>
           <h1 id="daily-heading">{market.headline}<span>{market.accent}</span></h1>
           <p className={styles.description}>{market.description}</p>
         </div>
@@ -131,11 +134,25 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
           ) : null}
         </section>
         <div className={styles.signup}>
-          <p className={styles.signupLabel}>The {data.asset === 'stocks' ? 'stock market update, every market day' : 'crypto market update, every day'}. Free by email.</p>
+          {sample ? <section className={styles.sample} aria-labelledby="newsletter-sample-heading" data-newsletter-sample={data.asset}>
+            <p className={styles.sampleLabel}>A real published summary · <time dateTime={sample.summary.marketDataDate}>{displayDate(sample.summary.marketDataDate)}</time> {data.asset === 'stocks' ? 'New York close' : 'UTC close'}</p>
+            <h2 id="newsletter-sample-heading">{sample.summary.headline}</h2>
+            <p>{sample.summary.observation}</p>
+            <details className={styles.sampleDetail}>
+              <summary>What does that mean for the next session? <ArrowIcon /></summary>
+              <p>{sample.summary.context}</p>
+              <p>{sample.summary.watch}</p>
+            </details>
+            <Link href={`${archivePath}/${sample.date}`} className={styles.sampleLink}>Read this published summary <ArrowIcon /></Link>
+          </section> : <div className={styles.sampleUnavailable}>
+            <p>See what you’re signing up for.</p>
+            <Link href={archivePath}>Browse real published updates <ArrowIcon /></Link>
+          </div>}
+          <p className={styles.signupLabel}>Get the next {data.asset === 'stocks' ? 'stock' : 'crypto'} update, free.</p>
           <HeroSignupForm location={market.signupHero} pagePath={market.path} />
-          <p className={styles.signupDetails}>The published score and a short explanation of the market around it. Read the latest score here before deciding.</p>
+          <p className={styles.signupDetails}>{data.asset === 'stocks' ? 'Delivered on market days.' : 'Delivered every day.'} The daily reading and a short market explanation. Choose stocks, crypto or both.</p>
           <div className={styles.discoveryLinks}>
-            <Link href={data.asset === 'stocks' ? '/briefings' : '/crypto/briefings'}>Browse past readings <ArrowIcon /></Link>
+            <Link href={archivePath}>Browse past readings <ArrowIcon /></Link>
             <Link href={market.trackRecord}>Check the track record <ArrowIcon /></Link>
           </div>
         </div>
@@ -193,6 +210,8 @@ export function PublicDailyPage({ data }: { data: PublicDailyData }) {
         </div>
       </section>
       <nav className={styles.discoveryLinks} aria-label="Learn about market regimes">
+        <Link href={data.asset === 'stocks' ? '/intel/spy-vs-qqq-divergence' : '/intel/bitcoin-ethereum-divergence'}>{data.asset === 'stocks' ? 'Why SPY and QQQ diverge' : 'Why Bitcoin and Ethereum diverge'}</Link>
+        <Link href="/learn">Market guides</Link>
         <Link href="/regime/risk-on">What risk-on means</Link><Link href="/regime/risk-off">What risk-off means</Link><Link href="/regime/neutral">When the reading is neutral</Link>
       </nav>
     </main>
