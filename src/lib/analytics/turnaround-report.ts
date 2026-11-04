@@ -21,7 +21,10 @@ export async function getTurnaroundReport(now = new Date()) {
   ]);
   const view = (report: typeof first) => ({ complete: report.coverage.complete, range: report.range,
     metrics: report.coverage.complete ? report.overview : null, newsletters: report.coverage.complete ? report.newsletterSignups : null,
-    sources: report.coverage.complete ? report.sourceRows : null, coverage: report.coverage });
+    sources: report.coverage.complete ? report.sourceRows : null,
+    contents: report.coverage.complete ? report.contentRows : null,
+    attributionContents: report.coverage.complete ? report.attributionContentRows : null,
+    coverage: report.coverage, freshness: report.freshness });
   return { phase: today > TURNAROUND.end ? 'ended' as const : 'running' as const, capturedAt: now.toISOString(), policy: TURNAROUND,
     first: view(first), latestAssist: view(latest),
     resourceEntries: { complete: all.coverage.complete, range: all.range,
