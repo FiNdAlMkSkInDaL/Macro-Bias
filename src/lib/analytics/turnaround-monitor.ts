@@ -7,6 +7,7 @@ const DELIVERY_EVENT = 'acquisition_turnaround_delivery';
 const STATUS = new Set(['claimed', 'published', 'failed', 'uncertain', 'blocked', 'skipped']);
 const CHANNEL = new Set(['bluesky', 'x']);
 const ACCOUNT = new Set(['macrobias.bsky.social', 'macro_bias']);
+const CONTENT_IDS = new Set(['learn_intro', 'guide_feed_stocks_20261114', 'guide_feed_crypto_20261114']);
 
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -42,7 +43,7 @@ export async function readTurnaroundDeliveries(admin = createSupabaseAdminClient
       const metadata = record(row.metadata);
       return {
         channel: choice(metadata.channel, CHANNEL),
-        contentId: choice(metadata.content_id, new Set(['learn_intro'])),
+        contentId: choice(metadata.content_id, CONTENT_IDS),
         market: choice(metadata.market, new Set(['stocks', 'crypto', 'both'])),
         status: choice(metadata.status, STATUS),
         account: choice(metadata.account, ACCOUNT),
