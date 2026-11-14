@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 };
 
 const guides = [
-  { market: 'Stocks', title: 'SPY vs QQQ: when the indexes disagree', path: '/intel/spy-vs-qqq-divergence', description: 'Compare matched returns, understand a moving-average reference, and avoid confusing two ETFs with market breadth.', sample: '/today', archive: '/briefings', cadence: 'Free updates on market days' },
-  { market: 'Crypto', title: 'Bitcoin vs Ethereum: relative strength explained', path: '/intel/bitcoin-ethereum-divergence', description: 'Work through ETH/BTC, distinguish losing less from gaining, and compare the same completed UTC session.', sample: '/crypto', archive: '/crypto/briefings', cadence: 'Free updates every day' },
+  { market: 'Stocks', briefing: 'stock', title: 'SPY vs QQQ: when the indexes disagree', path: '/intel/spy-vs-qqq-divergence', description: 'Compare matched returns, understand a moving-average reference, and avoid confusing two ETFs with market breadth.', sample: '/today', archive: '/briefings', cadence: 'Free updates on market days' },
+  { market: 'Crypto', briefing: 'crypto', title: 'Bitcoin vs Ethereum: relative strength explained', path: '/intel/bitcoin-ethereum-divergence', description: 'Work through ETH/BTC, distinguish losing less from gaining, and compare the same completed UTC session.', sample: '/crypto', archive: '/crypto/briefings', cadence: 'Free updates every day' },
 ];
 
 export default function LearnPage() {
@@ -25,7 +25,8 @@ export default function LearnPage() {
         <Link className="mt-6 text-[#c9f58a] underline underline-offset-4" href={g.path}>Read the worked example →</Link>
         <div className="mt-6 border-t border-zinc-800 pt-6">
           <p className="mb-3 text-sm text-zinc-400">{g.cadence}. Optional paid briefings go deeper.</p>
-          <Link className="block font-medium underline underline-offset-4" href={g.sample}>See a real {g.market.toLowerCase()} sample</Link>
+          <a className="inline-flex min-h-11 items-center rounded-md bg-[#c9f58a] px-4 py-2 text-sm font-semibold text-[#172016] hover:bg-[#dcffab] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c9f58a]" href={`${g.path}#free-briefing-signup`}>Get the next free {g.briefing} briefing</a>
+          <Link className="mt-3 block font-medium underline underline-offset-4" href={g.sample}>See a real {g.market.toLowerCase()} sample</Link>
           <Link className="mt-3 inline-block text-sm text-zinc-400 underline underline-offset-4" href={g.archive}>Browse published summaries</Link>
         </div>
       </section>)}

@@ -119,6 +119,8 @@ export default async function IntelArticlePage({ params }: PageProps) {
   const canonicalUrl = `${appUrl}/intel/${article.slug}`;
   const description = article.summary ?? getExcerpt(article.content);
   const publishedDate = formatPublishedDate(article.publishedAt);
+  const signup = article.slug === 'spy-vs-qqq-divergence' ? { briefing: 'stock', sample: '/today' }
+    : article.slug === 'bitcoin-ethereum-divergence' ? { briefing: 'crypto', sample: '/crypto' } : null;
   const articleStructuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -171,6 +173,10 @@ export default async function IntelArticlePage({ params }: PageProps) {
             <p className="max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
               {description}
             </p>
+            {signup ? <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <a className="inline-flex min-h-11 items-center rounded-md bg-[#c9f58a] px-4 py-2 text-sm font-semibold text-[#172016] hover:bg-[#dcffab] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c9f58a]" href="#free-briefing-signup">Get the next free {signup.briefing} briefing</a>
+              <Link className="text-sm font-medium text-[#c9f58a] underline underline-offset-4" href={signup.sample}>Read a {signup.briefing} sample</Link>
+            </div> : null}
           </div>
         </header>
 
@@ -275,7 +281,7 @@ export default async function IntelArticlePage({ params }: PageProps) {
               <Link href="/crypto">Read a crypto sample</Link>
             </div>
           </div>
-          <div className="mt-6 max-w-2xl">
+          <div id={signup ? 'free-briefing-signup' : undefined} tabIndex={signup ? -1 : undefined} className="mt-6 max-w-2xl scroll-mt-24">
             <HeroSignupForm location="landing_footer" pagePath={`/intel/${article.slug}`} defaultMarket={article.market} />
           </div>
           <Link href="/learn" className="mt-6 inline-block text-sm text-zinc-400 underline underline-offset-4">More market guides</Link>
